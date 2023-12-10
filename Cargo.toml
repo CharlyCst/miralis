@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 uart_16550 = "0.3.0"
 spin = "0.5.2"
-
+log = "0.4.17"

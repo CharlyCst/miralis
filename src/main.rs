@@ -1,12 +1,13 @@
 #![no_std]
 #![no_main]
 
+mod logger;
 mod platform;
 
 use core::arch::asm;
 use core::panic::PanicInfo;
 
-use platform::{debug_print, exit_failure, exit_success, init};
+use platform::{exit_failure, exit_success, init};
 
 // Defined in the linker script
 extern "C" {
@@ -33,12 +34,13 @@ pub unsafe extern "C" fn _start() -> ! {
 
 extern "C" fn main() -> ! {
     init();
-    debug_print(core::format_args!("Hello, world!\n"));
+    log::info!("Hello, world!");
 
     exit_success();
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    log::error!("Panicked at {:#?} ", info);
     exit_failure();
 }

@@ -3,6 +3,7 @@ pub mod virt;
 use core::fmt;
 
 // Re-export virt platform by default for now
+use crate::logger;
 use virt::VirtPlatform as CurrentPlatform;
 
 pub trait Platform {
@@ -14,6 +15,7 @@ pub trait Platform {
 
 pub fn init() {
     CurrentPlatform::init();
+    logger::init(log::LevelFilter::Info);
 }
 
 pub fn debug_print(args: fmt::Arguments) {
