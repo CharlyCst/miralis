@@ -1,3 +1,5 @@
+STACK_SIZE = 0x2000;
+
 SECTIONS
 {
   /* Start address */
@@ -30,5 +32,16 @@ SECTIONS
     *(.bss)
     *(.bss.*)
   }
+
+
+  /* Then we allocate some stack space */
+  .stack : ALIGN(0x1000)
+   {
+      . = ALIGN(8);
+      _stack_start = .;
+      . = . + STACK_SIZE;
+      . = ALIGN(8);
+      _stack_end = .;
+   }
 }
 

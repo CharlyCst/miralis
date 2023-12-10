@@ -10,6 +10,10 @@ build:
 	{{rustflags}} cargo build {{cargo_target}} {{cargo_args}}
 	rust-objcopy -O binary {{mirage_elf}} {{mirage_img}}
 
+run:
+	@just build
+	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic
+
 run-dbg:
 	@just build
 	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic -s -S
