@@ -3,10 +3,10 @@
 
 mod platform;
 
-use core::panic::PanicInfo;
 use core::arch::asm;
+use core::panic::PanicInfo;
 
-use platform::{debug_print, init};
+use platform::{debug_print, exit_failure, exit_success, init};
 
 // Defined in the linker script
 extern "C" {
@@ -35,14 +35,10 @@ extern "C" fn main() -> ! {
     init();
     debug_print(core::format_args!("Hello, world!\n"));
 
-    loop {
-        core::hint::spin_loop();
-    }
+    exit_success();
 }
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {
-        core::hint::spin_loop();
-    }
+    exit_failure();
 }

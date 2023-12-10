@@ -8,6 +8,8 @@ use virt::VirtPlatform as CurrentPlatform;
 pub trait Platform {
     fn init();
     fn debug_print(args: fmt::Arguments);
+    fn exit_success() -> !;
+    fn exit_failure() -> !;
 }
 
 pub fn init() {
@@ -16,4 +18,12 @@ pub fn init() {
 
 pub fn debug_print(args: fmt::Arguments) {
     CurrentPlatform::debug_print(args);
+}
+
+pub fn exit_success() -> ! {
+    CurrentPlatform::exit_success();
+}
+
+pub fn exit_failure() -> ! {
+    CurrentPlatform::exit_failure();
 }

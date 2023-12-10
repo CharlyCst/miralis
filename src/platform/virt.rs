@@ -1,5 +1,6 @@
 //! QEMU Virt board
 
+use core::arch::asm;
 use core::fmt;
 use core::fmt::Write;
 
@@ -11,6 +12,7 @@ use super::Platform;
 // —————————————————————————— Platform parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
+const TEST_MMIO_ADDRESS: usize = 0x100000;
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
@@ -33,5 +35,30 @@ impl Platform for VirtPlatform {
                 .write_fmt(args)
                 .expect("Printing to serial failed")
         };
+    }
+
+    fn exit_success() -> ! {
+        exit_qemu(true)
+    }
+
+    fn exit_failure() -> ! {
+        exit_qemu(false)
+    }
+}
+
+fn exit_qemu(success: bool) -> ! {
+    let code = if success { 0x5555 } else { (1 << 16) | 0x3333 };
+
+    unsafe {
+        asm! {
+            "sw {code}, 0({address})",
+            code = in(reg) code,
+            address = in(reg) TEST_MMIO_ADDRESS,
+        }
+    }
+
+    // Loop forever if shutdown failed
+    loop {
+        core::hint::spin_loop();
     }
 }
