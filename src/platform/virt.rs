@@ -22,6 +22,7 @@ pub struct VirtPlatform {}
 
 impl Platform for VirtPlatform {
     fn init() {
+        // Serial
         let mut uart = SERIAL_PORT.lock();
         let mut mmio = unsafe { MmioSerialPort::new(SERIAL_PORT_BASE_ADDRESS) };
         mmio.init();

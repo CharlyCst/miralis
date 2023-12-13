@@ -4,7 +4,7 @@
 //! future, we could emulate RISC-V instructions to enable running the monitor in user space, which
 //! would be very helpful for testing purpose.
 
-use core::arch::asm;
+use core::arch::{asm, global_asm};
 
 /// Export the current architecture.
 /// For now, only bare-metal is supported
@@ -12,13 +12,30 @@ pub type Arch = Metal;
 
 /// Architecture abstraction layer.
 pub trait Architecture {
+    fn init();
     fn read_mstatus() -> usize;
+    unsafe fn mret();
 }
+
+// ——————————————————————————————— Bare Metal ——————————————————————————————— //
 
 /// Bare metal RISC-V runtime.
 pub struct Metal {}
 
 impl Architecture for Metal {
+    fn init() {
+        // Set trap handler
+        let handler = _raw_trap_handler as usize;
+        unsafe { write_mtvec(handler) };
+        let mtvec = read_mtvec();
+        assert_eq!(handler, mtvec, "Failed to set trap handler");
+
+        // Try trapping, just to test :)
+        unsafe {
+            Self::mret();
+        }
+    }
+
     fn read_mstatus() -> usize {
         let mstatus: usize;
         unsafe {
@@ -28,4 +45,47 @@ impl Architecture for Metal {
         }
         return mstatus;
     }
+
+    unsafe fn mret() {
+        asm!("mret")
+    }
+}
+
+unsafe fn write_mtvec(value: usize) {
+    asm!(
+        "csrw mtvec, {x}",
+        x = in(reg) value
+    )
+}
+
+fn read_mtvec() -> usize {
+    let mtvec: usize;
+    unsafe {
+        asm!(
+            "csrr {x}, mtvec",
+            x = out(reg) mtvec
+        )
+    }
+    return mtvec;
+}
+
+#[no_mangle]
+extern "C" fn trap_handler() {
+    log::info!("Trapped!");
+}
+
+// —————————————————————————————— Trap Handler —————————————————————————————— //
+
+global_asm!(r#"
+.text
+.align 4
+.global _raw_trap_handler
+_raw_trap_handler:
+    j {handler}
+"#,
+    handler = sym trap_handler,
+);
+
+extern "C" {
+    fn _raw_trap_handler();
 }

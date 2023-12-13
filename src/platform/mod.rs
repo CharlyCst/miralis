@@ -4,6 +4,7 @@ use core::fmt;
 
 // Re-export virt platform by default for now
 use crate::logger;
+use crate::arch::{Arch, Architecture};
 use virt::VirtPlatform as CurrentPlatform;
 
 pub trait Platform {
@@ -16,6 +17,9 @@ pub trait Platform {
 pub fn init() {
     CurrentPlatform::init();
     logger::init(log::LevelFilter::Info);
+
+    // Trap handler
+    Arch::init();
 }
 
 pub fn debug_print(args: fmt::Arguments) {
