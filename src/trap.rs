@@ -2,6 +2,19 @@
 
 use core::fmt;
 
+use crate::arch::{Arch, Architecture};
+
+// —————————————————————————————— Trap Handler —————————————————————————————— //
+
+/// Trap handler entry point
+#[no_mangle]
+pub(crate) extern "C" fn trap_handler() {
+    log::info!("Trapped!");
+    log::info!("  mcause: {:?}", Arch::read_mcause());
+}
+
+// ————————————————————————————————— mcause ————————————————————————————————— //
+
 #[derive(Clone, Copy)]
 pub struct MCause(usize);
 

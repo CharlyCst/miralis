@@ -6,7 +6,7 @@
 
 use core::arch::{asm, global_asm};
 
-use crate::trap::MCause;
+use crate::trap::{MCause, trap_handler};
 
 /// Export the current architecture.
 /// For now, only bare-metal is supported
@@ -85,12 +85,6 @@ fn read_mtvec() -> usize {
         )
     }
     return mtvec;
-}
-
-#[no_mangle]
-extern "C" fn trap_handler() {
-    log::info!("Trapped!");
-    log::info!("  mcause: {:?}", Arch::read_mcause());
 }
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
