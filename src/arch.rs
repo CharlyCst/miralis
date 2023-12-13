@@ -6,6 +6,8 @@
 
 use core::arch::{asm, global_asm};
 
+use crate::trap::MCause;
+
 /// Export the current architecture.
 /// For now, only bare-metal is supported
 pub type Arch = Metal;
@@ -14,7 +16,9 @@ pub type Arch = Metal;
 pub trait Architecture {
     fn init();
     fn read_mstatus() -> usize;
+    fn read_mcause() -> MCause;
     unsafe fn mret();
+    unsafe fn ecall();
 }
 
 // ——————————————————————————————— Bare Metal ——————————————————————————————— //
@@ -32,7 +36,7 @@ impl Architecture for Metal {
 
         // Try trapping, just to test :)
         unsafe {
-            Self::mret();
+            Self::ecall();
         }
     }
 
@@ -41,13 +45,27 @@ impl Architecture for Metal {
         unsafe {
             asm!(
                 "csrr {x}, mstatus",
-                x = out(reg) mstatus)
+                x = out(reg) mstatus);
         }
         return mstatus;
     }
 
+    fn read_mcause() -> MCause {
+        let mcause: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mcause",
+                x = out(reg) mcause);
+        }
+        return MCause::new(mcause);
+    }
+
     unsafe fn mret() {
         asm!("mret")
+    }
+
+    unsafe fn ecall() {
+        asm!("ecall")
     }
 }
 
@@ -72,6 +90,7 @@ fn read_mtvec() -> usize {
 #[no_mangle]
 extern "C" fn trap_handler() {
     log::info!("Trapped!");
+    log::info!("  mcause: {:?}", Arch::read_mcause());
 }
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //

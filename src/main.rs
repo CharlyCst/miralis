@@ -4,6 +4,7 @@
 mod arch;
 mod logger;
 mod platform;
+mod trap;
 
 use arch::{Arch, Architecture};
 use core::arch::asm;
