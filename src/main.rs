@@ -1,9 +1,11 @@
 #![no_std]
 #![no_main]
 
+mod arch;
 mod logger;
 mod platform;
 
+use arch::{Arch, Architecture};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
@@ -35,6 +37,7 @@ pub unsafe extern "C" fn _start() -> ! {
 extern "C" fn main() -> ! {
     init();
     log::info!("Hello, world!");
+    log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
 
     exit_success();
 }
