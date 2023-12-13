@@ -6,7 +6,7 @@
 
 use core::arch::{asm, global_asm};
 
-use crate::trap::{MCause, trap_handler};
+use crate::trap::{trap_handler, MCause};
 
 /// Export the current architecture.
 /// For now, only bare-metal is supported
@@ -17,6 +17,9 @@ pub trait Architecture {
     fn init();
     fn read_mstatus() -> usize;
     fn read_mcause() -> MCause;
+    fn read_mepc() -> usize;
+    fn read_mtval() -> usize;
+    unsafe fn write_mepc(mepc: usize);
     unsafe fn mret();
     unsafe fn ecall();
 }
@@ -58,6 +61,33 @@ impl Architecture for Metal {
                 x = out(reg) mcause);
         }
         return MCause::new(mcause);
+    }
+
+    fn read_mepc() -> usize {
+        let mepc: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mepc",
+                x = out(reg) mepc);
+        }
+        return mepc;
+    }
+
+    fn read_mtval() -> usize {
+        let mtval: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mtval",
+                x = out(reg) mtval);
+        }
+        return mtval;
+    }
+
+    unsafe fn write_mepc(mepc: usize) {
+        asm!(
+            "csrw mepc, {x}",
+            x = in(reg) mepc
+        )
     }
 
     unsafe fn mret() {

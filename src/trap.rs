@@ -10,7 +10,17 @@ use crate::arch::{Arch, Architecture};
 #[no_mangle]
 pub(crate) extern "C" fn trap_handler() {
     log::info!("Trapped!");
-    log::info!("  mcause: {:?}", Arch::read_mcause());
+    log::info!("  mcause:  {:?}", Arch::read_mcause());
+    log::info!("  mstatus: 0x{:x}", Arch::read_mstatus());
+    log::info!("  mepc:    0x{:x}", Arch::read_mepc());
+    log::info!("  mtval:   0x{:x}", Arch::read_mtval());
+
+    // Skip instruction and return
+    unsafe {
+        log::info!("Skipping trapping instruction");
+        Arch::write_mepc(Arch::read_mepc() + 4);
+        Arch::mret();
+    }
 }
 
 // ————————————————————————————————— mcause ————————————————————————————————— //
