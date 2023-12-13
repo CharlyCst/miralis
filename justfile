@@ -22,7 +22,7 @@ run-dbg:
 	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic -s -S
 
 gdb:
-	rust-gdb {{mirage_elf}} -q -ex "target remote :1234"
+	rust-gdb {{mirage_elf}} -q -ex "target remote :1234" -x "config.gdb"
 
 # The following line gives highlighting on vim
 # vim: set ft=make :
