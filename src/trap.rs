@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use crate::arch::{Arch, Architecture};
+use crate::{arch::{Arch, Architecture}, platform::exit_success};
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
 
@@ -14,6 +14,16 @@ pub(crate) extern "C" fn trap_handler() {
     log::info!("  mstatus: 0x{:x}", Arch::read_mstatus());
     log::info!("  mepc:    0x{:x}", Arch::read_mepc());
     log::info!("  mtval:   0x{:x}", Arch::read_mtval());
+
+    match Arch::read_mcause().0 {
+        11 => {
+            // ECall from M-mode
+            // For now we just exit successfuly
+            log::info!("Success!");
+            exit_success();
+        }
+        _ => () // Continue
+    }
 
     // Skip instruction and return
     unsafe {
@@ -61,7 +71,7 @@ impl fmt::Debug for MCause {
             // Trap
             match val {
                 0 => write!(f, "instruction address misaligned"),
-                1 => write!(f, "instruction addess fault"),
+                1 => write!(f, "instruction access fault"),
                 2 => write!(f, "illegal instruction"),
                 3 => write!(f, "breakpoint"),
                 4 => write!(f, "load address misaligned"),

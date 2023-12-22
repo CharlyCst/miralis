@@ -19,9 +19,34 @@ pub trait Architecture {
     fn read_mcause() -> MCause;
     fn read_mepc() -> usize;
     fn read_mtval() -> usize;
+    unsafe fn set_mpp(mode: Mode);
     unsafe fn write_mepc(mepc: usize);
+    unsafe fn write_mstatus(mstatus: usize);
     unsafe fn mret();
     unsafe fn ecall();
+}
+
+/// Privilege modes
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub enum Mode {
+    /// User
+    U,
+    /// Supervisor
+    S,
+    /// Machine
+    M,
+}
+
+impl Mode {
+    /// Returns the bit pattern corresponding to the given mode.
+    pub fn to_bits(self) -> usize {
+        match self {
+            Mode::U => 0,
+            Mode::S => 1,
+            Mode::M => 3,
+        }
+    }
 }
 
 // ——————————————————————————————— Bare Metal ——————————————————————————————— //
@@ -36,11 +61,6 @@ impl Architecture for Metal {
         unsafe { write_mtvec(handler) };
         let mtvec = read_mtvec();
         assert_eq!(handler, mtvec, "Failed to set trap handler");
-
-        // Try trapping, just to test :)
-        unsafe {
-            Self::ecall();
-        }
     }
 
     fn read_mstatus() -> usize {
@@ -90,12 +110,26 @@ impl Architecture for Metal {
         )
     }
 
+    unsafe fn write_mstatus(mstatus: usize) {
+        asm!(
+            "csrw mstatus, {x}",
+            x = in(reg) mstatus
+        )
+    }
+
     unsafe fn mret() {
         asm!("mret")
     }
 
     unsafe fn ecall() {
         asm!("ecall")
+    }
+
+    unsafe fn set_mpp(mode: Mode) {
+        const MPP_MASK: usize = 0b11_usize << 11;
+        let value = mode.to_bits() << 11;
+        let mstatus = Self::read_mstatus();
+        Self::write_mstatus((mstatus & !MPP_MASK) | value)
     }
 }
 

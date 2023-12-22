@@ -7,6 +7,7 @@ payload_target      := "--target ./config/riscv-unknown-payload.json"
 mirage_elf          := "target/riscv-unknown-mirage/debug/mirage"
 mirage_img          := "target/riscv-unknown-mirage/debug/mirage.img"
 payload_path        := "target/riscv-unknown-payload/debug"
+payload_addr        := "0x80100000"
 
 build:
 	{{rustflags}} cargo build {{mirage_target}} {{cargo_args}}
@@ -22,14 +23,14 @@ fmt:
 run:
 	@just build-payload
 	@just build
-	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic -device loader,file={{payload_path}}/ecall.img,addr=0x80100000,force-raw=on
+	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic -device loader,file={{payload_path}}/ecall.img,addr={{payload_addr}},force-raw=on
 
 run-dbg:
 	@just build
-	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic -s -S -device loader,file={{payload_path}}/ecall.img,addr=0x80100000,force-raw=on
+	qemu-system-riscv64 -machine virt -bios {{mirage_img}} -nographic -s -S -device loader,file={{payload_path}}/ecall.img,addr={{payload_addr}},force-raw=on
 
 gdb:
-	rust-gdb {{mirage_elf}} -q -ex "target remote :1234" -x "./config/config.gdb"
+	rust-gdb {{mirage_elf}} -q -ex "target remote :1234" -x "./config/setup.gdb"
 
 # The following line gives highlighting on vim
 # vim: set ft=make :

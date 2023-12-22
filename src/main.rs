@@ -12,6 +12,8 @@ use core::panic::PanicInfo;
 
 use platform::{exit_failure, exit_success, init};
 
+use crate::platform::load_payload;
+
 // Defined in the linker script
 extern "C" {
     static _stack_start: usize;
@@ -39,6 +41,17 @@ extern "C" fn main() -> ! {
     init();
     log::info!("Hello, world!");
     log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
+
+    log::info!("Preparing jump into payload");
+    let payload_addr = load_payload();
+    unsafe {
+        // Set return address
+        Arch::write_mepc(payload_addr);
+        Arch::set_mpp(arch::Mode::M);
+        // Return into payload
+        Arch::mret();
+    }
+    log::info!("Done!");
 
     exit_success();
 }

@@ -12,6 +12,9 @@ pub trait Platform {
     fn debug_print(args: fmt::Arguments);
     fn exit_success() -> !;
     fn exit_failure() -> !;
+
+    /// Load the payload (virtual M-mode software) and return its address.
+    fn load_payload() -> usize;
 }
 
 pub fn init() {
@@ -20,6 +23,11 @@ pub fn init() {
 
     // Trap handler
     Arch::init();
+}
+
+/// Load the payload (virtual M-mode software) and return its address.
+pub fn load_payload() -> usize {
+    CurrentPlatform::load_payload()
 }
 
 pub fn debug_print(args: fmt::Arguments) {
