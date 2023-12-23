@@ -6,7 +6,7 @@ mod logger;
 mod platform;
 mod trap;
 
-use arch::{Arch, Architecture};
+use arch::{pmpcfg, Arch, Architecture};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
@@ -45,9 +45,11 @@ extern "C" fn main() -> ! {
     log::info!("Preparing jump into payload");
     let payload_addr = load_payload();
     unsafe {
-        // Set return address
+        // Set return address, mode and PMP permissions
         Arch::write_mepc(payload_addr);
-        Arch::set_mpp(arch::Mode::M);
+        Arch::set_mpp(arch::Mode::U);
+        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
+        Arch::write_pmpaddr(0, usize::MAX);
         // Return into payload
         Arch::mret();
     }

@@ -19,7 +19,7 @@ pub(crate) extern "C" fn trap_handler() {
     log::info!("  mtval:   0x{:x}", Arch::read_mtval());
 
     match Arch::read_mcause() {
-        MCause::EcallFromMMode => {
+        MCause::EcallFromMMode | MCause::EcallFromUMode => {
             // For now we just exit successfuly
             log::info!("Success!");
             exit_success();

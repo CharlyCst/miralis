@@ -22,6 +22,8 @@ pub trait Architecture {
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_mepc(mepc: usize);
     unsafe fn write_mstatus(mstatus: usize);
+    unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize);
+    unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret();
     unsafe fn ecall();
 }
@@ -47,6 +49,31 @@ impl Mode {
             Mode::M => 3,
         }
     }
+}
+
+/// PMP Configuration
+///
+/// Hold constants for the pmpcfg CSRs.
+#[allow(unused)]
+pub mod pmpcfg {
+    /// Read access
+    pub const R: usize = 0b00000001;
+    /// Write access
+    pub const W: usize = 0b00000010;
+    /// Execute access
+    pub const X: usize = 0b00000100;
+
+    /// Region is not active
+    pub const OFF: usize = 0b00000000;
+    /// Address is Top Of Range (TOP)
+    pub const TOR: usize = 0b00001000;
+    /// Naturally aligned four-byte region
+    pub const NA4: usize = 0b00010000;
+    /// Naturally aligned power of two
+    pub const NAPOT: usize = 0b00011000;
+
+    /// Locked
+    pub const L: usize = 0b10000000;
 }
 
 // ——————————————————————————————— Bare Metal ——————————————————————————————— //
@@ -103,6 +130,13 @@ impl Architecture for Metal {
         return mtval;
     }
 
+    unsafe fn set_mpp(mode: Mode) {
+        const MPP_MASK: usize = 0b11_usize << 11;
+        let value = mode.to_bits() << 11;
+        let mstatus = Self::read_mstatus();
+        Self::write_mstatus((mstatus & !MPP_MASK) | value)
+    }
+
     unsafe fn write_mepc(mepc: usize) {
         asm!(
             "csrw mepc, {x}",
@@ -117,19 +151,42 @@ impl Architecture for Metal {
         )
     }
 
+    unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize) {
+        match idx {
+            0 => {
+                asm!(
+                    "csrw pmpcfg0, {x}",
+                    x = in(reg) pmpcfg
+                )
+            }
+            _ => todo!("pmpcfg{} not yet implemented", idx),
+        }
+    }
+
+    unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize) {
+        match idx {
+            0 => {
+                asm!(
+                    "csrw pmpaddr0, {x}",
+                    x = in(reg) pmpaddr
+                )
+            }
+            1 => {
+                asm!(
+                    "csrw pmpaddr1, {x}",
+                    x = in(reg) pmpaddr
+                )
+            }
+            _ => todo!("pmpaddr{} not yet implemented", idx),
+        }
+    }
+
     unsafe fn mret() {
         asm!("mret")
     }
 
     unsafe fn ecall() {
         asm!("ecall")
-    }
-
-    unsafe fn set_mpp(mode: Mode) {
-        const MPP_MASK: usize = 0b11_usize << 11;
-        let value = mode.to_bits() << 11;
-        let mstatus = Self::read_mstatus();
-        Self::write_mstatus((mstatus & !MPP_MASK) | value)
     }
 }
 
