@@ -3,6 +3,13 @@ mirage_elf          := "target/riscv-unknown-mirage/debug/mirage"
 fmt:
 	cargo fmt
 
+test:
+	# Running tests...
+	cargo run --package runner -- --payload ecall
+
+	# Checking formatting...
+	cargo fmt --all -- --check
+
 run:
 	cargo run --package runner -- -v --payload ecall
 
