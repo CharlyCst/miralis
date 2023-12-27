@@ -3,8 +3,8 @@ pub mod virt;
 use core::fmt;
 
 // Re-export virt platform by default for now
-use crate::logger;
 use crate::arch::{Arch, Architecture};
+use crate::logger;
 use virt::VirtPlatform as CurrentPlatform;
 
 pub trait Platform {
