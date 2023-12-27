@@ -11,4 +11,5 @@ log = "0.4.17"
 [workspace]
 members = [
     "payloads/ecall",
+    "runner",
 ]
