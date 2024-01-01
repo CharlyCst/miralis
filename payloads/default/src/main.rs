@@ -10,6 +10,7 @@ global_asm!(
 .align 4
 .global _start
 _start:
+    csrr x1, mstatus
     ecall
 "#,
 );

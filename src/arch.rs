@@ -24,7 +24,7 @@ pub trait Architecture {
     unsafe fn write_mstatus(mstatus: usize);
     unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize);
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
-    unsafe fn mret();
+    unsafe fn mret() -> !;
     unsafe fn ecall();
 }
 
@@ -181,8 +181,8 @@ impl Architecture for Metal {
         }
     }
 
-    unsafe fn mret() {
-        asm!("mret")
+    unsafe fn mret() -> ! {
+        asm!("mret", options(noreturn))
     }
 
     unsafe fn ecall() {

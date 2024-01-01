@@ -10,7 +10,7 @@ use arch::{pmpcfg, Arch, Architecture};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
-use platform::{exit_failure, exit_success, init};
+use platform::{exit_failure, init};
 
 use crate::platform::load_payload;
 
@@ -53,9 +53,6 @@ extern "C" fn main() -> ! {
         // Return into payload
         Arch::mret();
     }
-    log::info!("Done!");
-
-    exit_success();
 }
 
 #[panic_handler]
