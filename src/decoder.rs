@@ -7,6 +7,7 @@ const OPCODE_MASK: usize = 0b1111111 << 0;
 pub enum Instr {
     Ecall,
     Ebreak,
+    Wfi,
     Csrrw(Csr),
     Csrrs(Csr),
     Csrrc(Csr),
@@ -28,6 +29,7 @@ enum Opcode {
 #[derive(Debug)]
 pub enum Csr {
     Mstatus,
+    Mscratch,
     Unknown,
 }
 
@@ -65,8 +67,9 @@ fn decode_system(raw: usize) -> Instr {
 
     if func3 == 0b000 {
         return match imm {
-            0 => Instr::Ecall,
-            1 => Instr::Ebreak,
+            0b000000000000 => Instr::Ecall,
+            0b000000000001 => Instr::Ebreak,
+            0b000100000101 => Instr::Wfi,
             _ => Instr::Unknown,
         };
     }
@@ -86,7 +89,8 @@ fn decode_system(raw: usize) -> Instr {
 
 fn decode_csr(csr: usize) -> Csr {
     match csr {
-        0x300  => Csr::Mstatus,
+        0x300 => Csr::Mstatus,
+        0x340 => Csr::Mscratch,
         _ => Csr::Unknown,
     }
 }
