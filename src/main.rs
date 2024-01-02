@@ -5,6 +5,7 @@ mod arch;
 mod logger;
 mod platform;
 mod trap;
+mod decoder;
 
 use arch::{pmpcfg, Arch, Architecture};
 use core::arch::asm;

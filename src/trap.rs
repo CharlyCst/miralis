@@ -2,10 +2,9 @@
 
 use core::fmt;
 
-use crate::{
-    arch::{Arch, Architecture},
-    platform::exit_success,
-};
+use crate::arch::{Arch, Architecture};
+use crate::decoder::decode;
+use crate::platform::exit_success;
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
 
@@ -26,7 +25,8 @@ pub(crate) extern "C" fn trap_handler() {
         }
         MCause::IllegalInstr => {
             let instr = unsafe { Arch::get_raw_faulting_instr() };
-            log::info!("Faulting instruction: 0x{:x}", instr);
+            let instr = decode(instr);
+            log::info!("Faulting instruction: {:?}", instr);
         }
         _ => (), // Continue
     }
