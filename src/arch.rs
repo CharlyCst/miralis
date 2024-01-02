@@ -5,6 +5,7 @@
 //! would be very helpful for testing purpose.
 
 use core::arch::{asm, global_asm};
+use core::ptr;
 
 use crate::trap::{trap_handler, MCause};
 
@@ -26,6 +27,15 @@ pub trait Architecture {
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret() -> !;
     unsafe fn ecall();
+
+    /// Return the faulting instruction.
+    ///
+    /// Assumptions:
+    /// - The last trap is an illegal instruction trap (thus the instruction might be stored into
+    ///   mtval)
+    /// - The value of mepc has not been  modified since last trap, as this function might need to
+    ///   read memory at mepc.
+    unsafe fn get_raw_faulting_instr() -> usize;
 }
 
 /// Privilege modes
@@ -187,6 +197,22 @@ impl Architecture for Metal {
 
     unsafe fn ecall() {
         asm!("ecall")
+    }
+
+    unsafe fn get_raw_faulting_instr() -> usize {
+        // First, try mtval and check if it contains an instruction
+        let mtval = Self::read_mtval();
+        if mtval != 0 {
+            return mtval
+        }
+
+        let epc = Self::read_mepc();
+        let instr_ptr = epc as *const u32;
+
+        // With compressed instruction extention ("C") instructions can be misaligned.
+        // TODO: add support for 16 bits instructions
+        let instr = ptr::read_unaligned(instr_ptr);
+        instr as usize
     }
 }
 

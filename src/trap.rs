@@ -24,6 +24,10 @@ pub(crate) extern "C" fn trap_handler() {
             log::info!("Success!");
             exit_success();
         }
+        MCause::IllegalInstr => {
+            let instr = unsafe { Arch::get_raw_faulting_instr() };
+            log::info!("Faulting instruction: 0x{:x}", instr);
+        }
         _ => (), // Continue
     }
 
