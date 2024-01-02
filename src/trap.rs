@@ -3,8 +3,8 @@
 use core::fmt;
 
 use crate::arch::{Arch, Architecture};
-use crate::decoder::decode;
-use crate::platform::exit_success;
+use crate::decoder::{decode, Instr};
+use crate::platform::{exit_failure, exit_success};
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
 
@@ -27,6 +27,15 @@ pub(crate) extern "C" fn trap_handler() {
             let instr = unsafe { Arch::get_raw_faulting_instr() };
             let instr = decode(instr);
             log::info!("Faulting instruction: {:?}", instr);
+
+            match instr {
+                Instr::Wfi => {
+                    // For now payloads only call WFI when panicking
+                    log::error!("Payload panicked!");
+                    exit_failure();
+                }
+                _ => (),
+            }
         }
         _ => (), // Continue
     }
