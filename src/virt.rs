@@ -2,7 +2,7 @@
 
 use core::ops::{Index, IndexMut};
 
-use crate::registers::{Csr, Register};
+use crate::arch::{Csr, Register};
 
 /// The context of a virtual firmware.
 #[derive(Debug, Default)]

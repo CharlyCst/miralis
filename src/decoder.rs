@@ -1,6 +1,6 @@
 //! RISC-V instruction decoder
 
-use crate::registers::{Csr, Register};
+use crate::arch::{Csr, Register};
 
 const OPCODE_MASK: usize = 0b1111111 << 0;
 

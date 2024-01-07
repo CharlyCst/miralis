@@ -5,7 +5,6 @@ mod arch;
 mod decoder;
 mod logger;
 mod platform;
-mod registers;
 mod trap;
 mod virt;
 
@@ -15,8 +14,8 @@ use core::panic::PanicInfo;
 
 use platform::{init, Plat, Platform};
 
+use crate::arch::{Csr, Register};
 use crate::decoder::{decode, Instr};
-use crate::registers::Register;
 use crate::trap::MCause;
 use crate::virt::VirtContext;
 
@@ -128,9 +127,9 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx[*csr] = ctx[*reg]
         }
         Instr::Csrrs(csr, reg) => match *csr {
-            registers::Csr::Mstatus => todo!("CSR not yet supported"),
-            registers::Csr::Mscratch => ctx[*reg] = ctx[*csr],
-            registers::Csr::Unknown => todo!("Unknown CSR"),
+            Csr::Mstatus => todo!("CSR not yet supported"),
+            Csr::Mscratch => ctx[*reg] = ctx[*csr],
+            Csr::Unknown => todo!("Unknown CSR"),
         },
         _ => (),
     }
