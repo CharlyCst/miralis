@@ -17,7 +17,7 @@ use platform::{exit_failure, exit_success, init};
 use crate::decoder::{decode, Instr};
 use crate::platform::{load_payload, stack_address};
 use crate::trap::MCause;
-use crate::virt::VirtContext;
+use crate::virt::{Register, VirtContext};
 
 // Defined in the linker script
 extern "C" {
@@ -62,7 +62,7 @@ extern "C" fn main() -> ! {
 
 fn main_loop() -> ! {
     let mut ctx = VirtContext::default();
-    ctx.regs[1] = stack_address();
+    ctx[Register::X2] = stack_address();
 
     loop {
         unsafe {
