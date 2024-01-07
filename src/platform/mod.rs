@@ -5,7 +5,10 @@ use core::fmt;
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
 use crate::logger;
-use virt::VirtPlatform as CurrentPlatform;
+
+/// Export the current platform.
+/// For now, only QEMU's Virt board is supported
+pub type Plat = virt::VirtPlatform;
 
 pub trait Platform {
     fn init();
@@ -17,34 +20,13 @@ pub trait Platform {
     fn load_payload() -> usize;
 
     /// Return the initial payload stack address.
-    fn stack_addr() -> usize;
+    fn stack_address() -> usize;
 }
 
 pub fn init() {
-    CurrentPlatform::init();
+    Plat::init();
     logger::init(log::LevelFilter::Info);
 
     // Trap handler
     Arch::init();
-}
-
-/// Load the payload (virtual M-mode software) and return its address.
-pub fn load_payload() -> usize {
-    CurrentPlatform::load_payload()
-}
-
-pub fn stack_address() -> usize {
-    CurrentPlatform::stack_addr()
-}
-
-pub fn debug_print(args: fmt::Arguments) {
-    CurrentPlatform::debug_print(args);
-}
-
-pub fn exit_success() -> ! {
-    CurrentPlatform::exit_success();
-}
-
-pub fn exit_failure() -> ! {
-    CurrentPlatform::exit_failure();
 }

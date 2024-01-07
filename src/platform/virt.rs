@@ -53,7 +53,7 @@ impl Platform for VirtPlatform {
         return PAYLOAD_ADDR;
     }
 
-    fn stack_addr() -> usize {
+    fn stack_address() -> usize {
         return PAYLOAD_STACK;
     }
 }

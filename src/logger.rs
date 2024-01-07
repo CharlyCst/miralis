@@ -3,7 +3,7 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 use log::{LevelFilter, Metadata, Record};
 
-use crate::platform::debug_print;
+use crate::platform::{Plat, Platform};
 
 pub struct Logger {}
 
@@ -14,7 +14,7 @@ impl log::Log for Logger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
-            debug_print(core::format_args!(
+            Plat::debug_print(core::format_args!(
                 "[{} | {}] {}\n",
                 record.level(),
                 record.target(),

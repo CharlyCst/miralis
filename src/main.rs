@@ -13,10 +13,9 @@ use arch::{pmpcfg, Arch, Architecture};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
-use platform::{exit_failure, exit_success, init};
+use platform::{init, Plat, Platform};
 
 use crate::decoder::{decode, Instr};
-use crate::platform::{load_payload, stack_address};
 use crate::registers::Register;
 use crate::trap::MCause;
 use crate::virt::VirtContext;
@@ -50,7 +49,7 @@ extern "C" fn main() -> ! {
     log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
 
     log::info!("Preparing jump into payload");
-    let payload_addr = load_payload();
+    let payload_addr = Plat::load_payload();
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::write_mepc(payload_addr);
@@ -64,7 +63,7 @@ extern "C" fn main() -> ! {
 
 fn main_loop() -> ! {
     let mut ctx = VirtContext::default();
-    ctx[Register::X2] = stack_address();
+    ctx[Register::X2] = Plat::stack_address();
 
     loop {
         unsafe {
@@ -88,7 +87,7 @@ fn handle_trap(ctx: &mut VirtContext) {
 
         if TRAP_COUNTER >= 10 {
             log::error!("Trap counter reached limit");
-            exit_failure();
+            Plat::exit_failure();
         }
         TRAP_COUNTER += 1;
     }
@@ -97,7 +96,7 @@ fn handle_trap(ctx: &mut VirtContext) {
         MCause::EcallFromMMode | MCause::EcallFromUMode => {
             // For now we just exit successfuly
             log::info!("Success!");
-            exit_success();
+            Plat::exit_success();
         }
         MCause::IllegalInstr => {
             let instr = unsafe { Arch::get_raw_faulting_instr() };
@@ -120,7 +119,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Wfi => {
             // For now payloads only call WFI when panicking
             log::error!("Payload panicked!");
-            exit_failure();
+            Plat::exit_failure();
         }
         Instr::Csrrw(csr, reg) => {
             if csr.is_unknown() {
@@ -140,5 +139,5 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     log::error!("Panicked at {:#?} ", info);
-    exit_failure();
+    Plat::exit_failure();
 }
