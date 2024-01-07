@@ -6,6 +6,7 @@ fmt:
 test:
 	# Running tests...
 	cargo run --package runner -- --payload ecall
+	cargo run --package runner -- --payload mscratch
 
 	# Checking formatting...
 	cargo fmt --all -- --check
