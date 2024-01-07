@@ -15,6 +15,9 @@ pub trait Platform {
 
     /// Load the payload (virtual M-mode software) and return its address.
     fn load_payload() -> usize;
+
+    /// Return the initial payload stack address.
+    fn stack_addr() -> usize;
 }
 
 pub fn init() {
@@ -28,6 +31,10 @@ pub fn init() {
 /// Load the payload (virtual M-mode software) and return its address.
 pub fn load_payload() -> usize {
     CurrentPlatform::load_payload()
+}
+
+pub fn stack_address() -> usize {
+    CurrentPlatform::stack_addr()
 }
 
 pub fn debug_print(args: fmt::Arguments) {

@@ -14,6 +14,7 @@ use super::Platform;
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const PAYLOAD_ADDR: usize = 0x80100000;
+const PAYLOAD_STACK: usize = 0x80200000; // TODO: how should we pick that value?
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
@@ -50,6 +51,10 @@ impl Platform for VirtPlatform {
     fn load_payload() -> usize {
         // We directly load the payload from QEMU, nothing to do here.
         return PAYLOAD_ADDR;
+    }
+
+    fn stack_addr() -> usize {
+        return PAYLOAD_STACK;
     }
 }
 

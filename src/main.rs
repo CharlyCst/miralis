@@ -2,18 +2,22 @@
 #![no_main]
 
 mod arch;
+mod decoder;
 mod logger;
 mod platform;
 mod trap;
-mod decoder;
+mod virt;
 
 use arch::{pmpcfg, Arch, Architecture};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
-use platform::{exit_failure, init};
+use platform::{exit_failure, exit_success, init};
 
-use crate::platform::load_payload;
+use crate::decoder::{decode, Instr};
+use crate::platform::{load_payload, stack_address};
+use crate::trap::MCause;
+use crate::virt::VirtContext;
 
 // Defined in the linker script
 extern "C" {
@@ -51,8 +55,68 @@ extern "C" fn main() -> ! {
         Arch::set_mpp(arch::Mode::U);
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
-        // Return into payload
-        Arch::mret();
+    }
+
+    main_loop();
+}
+
+fn main_loop() -> ! {
+    let mut ctx = VirtContext::default();
+    ctx.regs[1] = stack_address();
+
+    loop {
+        unsafe {
+            Arch::enter_virt_firmware(&mut ctx);
+            handle_trap();
+        }
+    }
+}
+
+fn handle_trap() {
+    log::info!("Trapped!");
+    log::info!("  mcause:  {:?}", Arch::read_mcause());
+    log::info!("  mstatus: 0x{:x}", Arch::read_mstatus());
+    log::info!("  mepc:    0x{:x}", Arch::read_mepc());
+    log::info!("  mtval:   0x{:x}", Arch::read_mtval());
+
+    // Temporary safeguard
+    unsafe {
+        static mut TRAP_COUNTER: usize = 0;
+
+        if TRAP_COUNTER >= 10 {
+            log::error!("Trap counter reached limit");
+            exit_failure();
+        }
+        TRAP_COUNTER += 1;
+    }
+
+    match Arch::read_mcause() {
+        MCause::EcallFromMMode | MCause::EcallFromUMode => {
+            // For now we just exit successfuly
+            log::info!("Success!");
+            exit_success();
+        }
+        MCause::IllegalInstr => {
+            let instr = unsafe { Arch::get_raw_faulting_instr() };
+            let instr = decode(instr);
+            log::info!("Faulting instruction: {:?}", instr);
+
+            match instr {
+                Instr::Wfi => {
+                    // For now payloads only call WFI when panicking
+                    log::error!("Payload panicked!");
+                    exit_failure();
+                }
+                _ => (),
+            }
+        }
+        _ => (), // Continue
+    }
+
+    // Skip instruction and return
+    unsafe {
+        log::info!("Skipping trapping instruction");
+        Arch::write_mepc(Arch::read_mepc() + 4);
     }
 }
 
