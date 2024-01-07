@@ -3,8 +3,7 @@
 use core::arch::{asm, global_asm};
 use core::ptr;
 
-use super::{Architecture, Mode};
-use crate::trap::MCause;
+use super::{Architecture, Mode, MCause};
 use crate::virt::VirtContext;
 
 /// Bare metal RISC-V runtime.

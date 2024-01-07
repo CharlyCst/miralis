@@ -5,7 +5,6 @@ mod arch;
 mod decoder;
 mod logger;
 mod platform;
-mod trap;
 mod virt;
 
 use arch::{pmpcfg, Arch, Architecture};
@@ -14,9 +13,8 @@ use core::panic::PanicInfo;
 
 use platform::{init, Plat, Platform};
 
-use crate::arch::{Csr, Register};
+use crate::arch::{Csr, Register, MCause};
 use crate::decoder::{decode, Instr};
-use crate::trap::MCause;
 use crate::virt::VirtContext;
 
 // Defined in the linker script
