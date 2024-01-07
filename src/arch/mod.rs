@@ -8,10 +8,10 @@ mod metal;
 mod registers;
 mod trap;
 
-use crate::virt::VirtContext;
-
 pub use registers::{Csr, Register};
 pub use trap::MCause;
+
+use crate::virt::VirtContext;
 
 /// Export the current architecture.
 /// For now, only bare-metal is supported

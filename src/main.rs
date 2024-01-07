@@ -7,13 +7,13 @@ mod logger;
 mod platform;
 mod virt;
 
-use arch::{pmpcfg, Arch, Architecture};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
+use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
-use crate::arch::{Csr, Register, MCause};
+use crate::arch::{Csr, MCause, Register};
 use crate::decoder::{decode, Instr};
 use crate::virt::VirtContext;
 

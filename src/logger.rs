@@ -1,6 +1,7 @@
 //! Structured logging implementation
 
 use core::sync::atomic::{AtomicBool, Ordering};
+
 use log::{LevelFilter, Metadata, Record};
 
 use crate::platform::{Plat, Platform};
