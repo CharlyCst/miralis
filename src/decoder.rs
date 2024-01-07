@@ -1,5 +1,7 @@
 //! RISC-V instruction decoder
 
+use crate::registers::{Register, Csr};
+
 const OPCODE_MASK: usize = 0b1111111 << 0;
 
 /// A RISC-V instruction.
@@ -8,8 +10,8 @@ pub enum Instr {
     Ecall,
     Ebreak,
     Wfi,
-    Csrrw(Csr),
-    Csrrs(Csr),
+    Csrrw(Csr, Register),
+    Csrrs(Csr, Register),
     Csrrc(Csr),
     Csrrwi(Csr),
     Csrrsi(Csr),
@@ -22,14 +24,6 @@ pub enum Instr {
 enum Opcode {
     Load,
     System,
-    Unknown,
-}
-
-/// A RISC-V Control and Status Register (CSR).
-#[derive(Debug)]
-pub enum Csr {
-    Mstatus,
-    Mscratch,
     Unknown,
 }
 
@@ -60,9 +54,9 @@ fn decode_opcode(raw: usize) -> Opcode {
 }
 
 fn decode_system(raw: usize) -> Instr {
-    let _rd = (raw >> 7) & 0b11111;
+    let rd = (raw >> 7) & 0b11111;
     let func3 = (raw >> 12) & 0b111;
-    let _rs1 = (raw >> 15) & 0b11111;
+    let rs1 = (raw >> 15) & 0b11111;
     let imm = (raw >> 20) & 0b111111111111;
 
     if func3 == 0b000 {
@@ -77,8 +71,8 @@ fn decode_system(raw: usize) -> Instr {
     let csr = decode_csr(imm);
 
     match func3 {
-        0b001 => Instr::Csrrw(csr),
-        0b010 => Instr::Csrrs(csr),
+        0b001 => Instr::Csrrw(csr, Register::try_from(rs1).unwrap()),
+        0b010 => Instr::Csrrs(csr, Register::try_from(rd).unwrap()),
         0b011 => Instr::Csrrc(csr),
         0b101 => Instr::Csrrwi(csr),
         0b110 => Instr::Csrrsi(csr),

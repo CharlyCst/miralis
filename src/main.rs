@@ -5,6 +5,7 @@ mod arch;
 mod decoder;
 mod logger;
 mod platform;
+mod registers;
 mod trap;
 mod virt;
 
@@ -16,8 +17,9 @@ use platform::{exit_failure, exit_success, init};
 
 use crate::decoder::{decode, Instr};
 use crate::platform::{load_payload, stack_address};
+use crate::registers::Register;
 use crate::trap::MCause;
-use crate::virt::{Register, VirtContext};
+use crate::virt::VirtContext;
 
 // Defined in the linker script
 extern "C" {
@@ -67,12 +69,13 @@ fn main_loop() -> ! {
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
-            handle_trap();
+            handle_trap(&mut ctx);
+            log::info!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap() {
+fn handle_trap(ctx: &mut VirtContext) {
     log::info!("Trapped!");
     log::info!("  mcause:  {:?}", Arch::read_mcause());
     log::info!("  mstatus: 0x{:x}", Arch::read_mstatus());
@@ -100,15 +103,7 @@ fn handle_trap() {
             let instr = unsafe { Arch::get_raw_faulting_instr() };
             let instr = decode(instr);
             log::info!("Faulting instruction: {:?}", instr);
-
-            match instr {
-                Instr::Wfi => {
-                    // For now payloads only call WFI when panicking
-                    log::error!("Payload panicked!");
-                    exit_failure();
-                }
-                _ => (),
-            }
+            emulate_instr(ctx, &instr);
         }
         _ => (), // Continue
     }
@@ -117,6 +112,28 @@ fn handle_trap() {
     unsafe {
         log::info!("Skipping trapping instruction");
         Arch::write_mepc(Arch::read_mepc() + 4);
+    }
+}
+
+fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
+    match instr {
+        Instr::Wfi => {
+            // For now payloads only call WFI when panicking
+            log::error!("Payload panicked!");
+            exit_failure();
+        }
+        Instr::Csrrw(csr, reg) => {
+            if csr.is_unknown() {
+                todo!("Unknown CSR");
+            }
+            ctx[*csr] = ctx[*reg]
+        }
+        Instr::Csrrs(csr, reg) => match *csr {
+            registers::Csr::Mstatus => todo!("CSR not yet supported"),
+            registers::Csr::Mscratch => ctx[*reg] = ctx[*csr],
+            registers::Csr::Unknown => todo!("Unknown CSR"),
+        },
+        _ => (),
     }
 }
 
