@@ -38,6 +38,13 @@ pub enum Register {
     X31 = 32,
 }
 
+impl Register {
+    /// Convert a `usize` to a register by masking high order bits.
+    pub fn from(value: usize) -> Self {
+        Register::try_from(value & 0b11111).unwrap()
+    }
+}
+
 /// A RISC-V Control and Status Register (CSR).
 #[derive(Clone, Copy, Debug)]
 pub enum Csr {

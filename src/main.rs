@@ -118,18 +118,34 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             log::error!("Payload panicked!");
             Plat::exit_failure();
         }
-        Instr::Csrrw(csr, reg) => {
+        Instr::Csrrw { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 todo!("Unknown CSR");
             }
-            ctx[*csr] = ctx[*reg]
+            let tmp = ctx[*csr];
+            ctx[*csr] = ctx[*rs1];
+            ctx[*rd] = tmp;
+            csr_side_effect(ctx, *csr);
         }
-        Instr::Csrrs(csr, reg) => match *csr {
-            Csr::Mstatus => todo!("CSR not yet supported"),
-            Csr::Mscratch => ctx[*reg] = ctx[*csr],
-            Csr::Unknown => todo!("Unknown CSR"),
-        },
+        Instr::Csrrs { csr, rd, rs1 } => {
+            if csr.is_unknown() {
+                todo!("Unknown CSR");
+            }
+            let tmp = ctx[*csr];
+            ctx[*csr] = tmp | ctx[*rs1];
+            ctx[*rd] = tmp;
+            csr_side_effect(ctx, *csr);
+        }
         _ => (),
+    }
+}
+
+/// Some CSRs might have side effect when written, this functions emulate those side effects.
+fn csr_side_effect(_ctx: &mut VirtContext, csr: Csr) {
+    match csr {
+        Csr::Mstatus => todo!("Emulate mstatus"),
+        Csr::Mscratch => (), // No side effect
+        Csr::Unknown => panic!("Unknown CSR"),
     }
 }
 
