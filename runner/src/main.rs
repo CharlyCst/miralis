@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
@@ -109,6 +109,11 @@ fn objcopy(target: &Target) -> PathBuf {
         }
     }
 
+    if is_older(&elf_path, &bin_path) {
+        // No change since last objcopy, skipping
+        return bin_path;
+    }
+
     let mut objopy_cmd = Command::new("rust-objcopy");
     objopy_cmd
         .arg("-O")
@@ -200,6 +205,21 @@ fn get_target_config_path(target: &Target) -> PathBuf {
         Target::Payload(_) => path.push(format!("{}.json", PAYLOAD_TARGET)),
     }
     path
+}
+
+/// Return true if `b` is older than `b`
+fn is_older(a: &Path, b: &Path) -> bool {
+    let Ok(a_meta) = a.metadata() else {
+        return false;
+    };
+    let Ok(b_meta) = b.metadata() else {
+        return false;
+    };
+
+    match (a_meta.modified(), b_meta.modified()) {
+        (Ok(a), Ok(b)) => a <= b,
+        _ => false,
+    }
 }
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
