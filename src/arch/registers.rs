@@ -49,6 +49,7 @@ impl Register {
 #[derive(Clone, Copy, Debug)]
 pub enum Csr {
     Mstatus,
+    Mtvec,
     Mscratch,
     Unknown,
 }

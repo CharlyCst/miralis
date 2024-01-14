@@ -126,7 +126,11 @@ fn decode_system(raw: usize) -> Instr {
 fn decode_csr(csr: usize) -> Csr {
     match csr {
         0x300 => Csr::Mstatus,
+        0x305 => Csr::Mtvec,
         0x340 => Csr::Mscratch,
-        _ => Csr::Unknown,
+        _ => {
+            log::info!("Unknown CSR: 0x{:x}", csr);
+            Csr::Unknown
+        }
     }
 }
