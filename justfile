@@ -13,6 +13,7 @@ test:
 	# Running tests...
 	cargo run --package runner -- --payload ecall
 	cargo run --package runner -- --payload mscratch
+	cargo run --package runner -- --payload csr_ops
 
 	# Checking formatting...
 	cargo fmt --all -- --check

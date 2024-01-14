@@ -82,7 +82,7 @@ fn handle_trap(ctx: &mut VirtContext) {
     unsafe {
         static mut TRAP_COUNTER: usize = 0;
 
-        if TRAP_COUNTER >= 10 {
+        if TRAP_COUNTER >= 100 {
             log::error!("Trap counter reached limit");
             Plat::exit_failure();
         }
