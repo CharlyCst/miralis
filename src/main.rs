@@ -136,7 +136,15 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx[*rd] = tmp;
             csr_side_effect(ctx, *csr);
         }
-        _ => (),
+        Instr::Csrrwi { csr, rd, uimm } => {
+            if csr.is_unknown() {
+                todo!("Unknown CSR");
+            }
+            ctx[*rd] = ctx[*csr];
+            ctx[*csr] = *uimm;
+            csr_side_effect(ctx, *csr);
+        }
+        _ => todo!("Instruction not yet implemented: {:?}", instr),
     }
 }
 
