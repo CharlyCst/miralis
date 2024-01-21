@@ -30,5 +30,13 @@ run-dbg:
 gdb:
 	rust-gdb {{mirage_elf}} -q -x "./config/setup.gdb"
 
+# Install the rust toolchain and required components
+install-toolchain:
+	rustup toolchain install $(cat rust-toolchain)
+	rustup component add rustfmt --toolchain "$(cat rust-toolchain)"
+	rustup component add rust-src --toolchain "$(cat rust-toolchain)"
+	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
+	cargo install cargo-binutils
+
 # The following line gives highlighting on vim
 # vim: set ft=make :

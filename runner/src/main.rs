@@ -121,8 +121,12 @@ fn objcopy(target: &Target) -> PathBuf {
         .arg(elf_path)
         .arg(&bin_path);
 
-    if !objopy_cmd.status().unwrap().success() {
-        panic!("objcopy failed - is `rust-objcopy` installed? Try installing with `rustup component add llvm-tools`");
+    if !objopy_cmd
+        .status()
+        .expect("objcopy failed. Is `rust-objcopy` installed?")
+        .success()
+    {
+        panic!("objcopy failed");
     }
 
     bin_path
@@ -163,7 +167,7 @@ fn run(mirage: PathBuf, payload: PathBuf, args: &Args) {
         println!();
     }
 
-    let exit_status = qemu_cmd.status().unwrap();
+    let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
     if !exit_status.success() {
         std::process::exit(exit_status.code().unwrap_or(1));
     }

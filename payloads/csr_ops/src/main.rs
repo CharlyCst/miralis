@@ -46,7 +46,7 @@ fn test_csr_op(regs: &[(usize, usize, usize)]) {
         check_csrrs(*in_rs1, *in_csr, out_csr, out_rd);
     }
     // CSRRWI
-    for (in_rd, in_rs1, in_csr) in regs {
+    for (in_rd, _, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrwi(*in_csr, *in_rd) };
         check_csrrwi(*in_csr, out_csr, out_rd);
     }
