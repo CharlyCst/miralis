@@ -8,6 +8,7 @@ The Mirage project uses [`just`](https://github.com/casey/just) to easily build,
 You can easily install `just` with your favorite package manager or `cargo` by following [the instructions](https://just.systems/man/en/chapter_4.html).
 
 Mirage is primary developed and tested on QEMU, therefore you will need to install `qemu-system-riscv64` on your system.
+Then you will need to install the rust toolchain, if rust is installed through rustup on the machine this can be done by running `just install-toolchain`
 
 Then running Mirage is as simple as invoking `just run`.
 
