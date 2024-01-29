@@ -20,7 +20,7 @@ pub trait Platform {
     fn load_payload() -> usize;
 
     /// Return the initial payload stack address.
-    fn stack_address() -> usize;
+    fn payload_stack_address() -> usize;
 }
 
 pub fn init() {

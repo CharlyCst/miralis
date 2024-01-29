@@ -31,21 +31,23 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
+    let mut ctx = VirtContext::default();
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::write_mepc(payload_addr);
         Arch::set_mpp(arch::Mode::U);
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
+        // Configure the payload context
+        ctx[Register::X2] = Plat::payload_stack_address();
+        ctx[Register::X10] = hart_id;
+        ctx[Register::X11] = device_tree_blob_addr;
     }
 
-    main_loop();
+    main_loop(ctx);
 }
 
-fn main_loop() -> ! {
-    let mut ctx = VirtContext::default();
-    ctx[Register::X2] = Plat::stack_address();
-
+fn main_loop(mut ctx: VirtContext) -> ! {
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
