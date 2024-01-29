@@ -7,7 +7,6 @@ mod logger;
 mod platform;
 mod virt;
 
-use core::arch::asm;
 use core::panic::PanicInfo;
 
 use arch::{pmpcfg, Arch, Architecture};
@@ -19,31 +18,16 @@ use crate::virt::VirtContext;
 
 // Defined in the linker script
 extern "C" {
-    static _stack_start: usize;
-    static _stack_end: usize;
+    pub(crate) static _stack_start: usize;
+    pub(crate) static _stack_end: usize;
 }
 
-#[no_mangle]
-#[link_section = ".entry_point"]
-pub unsafe extern "C" fn _start() -> ! {
-    /// Address of the top of the stack (stack grow towerd lower addresses)
-    static STACK: &'static usize = unsafe { &_stack_end };
-
-    // Initialize stack pointer and jump into main
-    // TODO: zero-out the BSS (QEMU might do it for us, but real hardware will not)
-    asm!(
-        "mv sp, {stack}",
-        "j {main}",
-        main = sym main,
-        stack = in(reg) STACK,
-        options(noreturn)
-    );
-}
-
-extern "C" fn main() -> ! {
+pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     init();
     log::info!("Hello, world!");
+    log::info!("Hart ID: {}", hart_id);
     log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
+    log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();

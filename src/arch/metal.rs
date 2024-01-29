@@ -5,6 +5,7 @@ use core::ptr;
 
 use super::{Architecture, MCause, Mode};
 use crate::virt::VirtContext;
+use crate::{_stack_end, main};
 
 /// Bare metal RISC-V runtime.
 pub struct Metal {}
@@ -196,6 +197,25 @@ fn read_mtvec() -> usize {
     }
     return mtvec;
 }
+
+// —————————————————————————————— Entry Point ——————————————————————————————— //
+
+global_asm!(
+r#"
+.text
+.global _start
+_start:
+    ld sp, __stack_addr
+    j {main}
+
+// Store the address of the stack in memory
+// That way it can be loaded as an absolute value
+__stack_addr:
+    .dword {stack}
+"#,
+    main = sym main,
+    stack = sym _stack_end,
+);
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
 
