@@ -138,6 +138,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 fn csr_side_effect(_ctx: &mut VirtContext, csr: Csr) {
     match csr {
         Csr::Mstatus => todo!("Emulate mstatus"),
+        Csr::Mie => (),      // No side effect
         Csr::Mtvec => (),    // No side effect
         Csr::Mscratch => (), // No side effect
         Csr::Unknown => panic!("Unknown CSR"),

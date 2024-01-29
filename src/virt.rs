@@ -18,6 +18,7 @@ pub struct VirtContext {
 /// Control and Status Registers (CSR) for a virtual firmware.
 #[derive(Debug, Default)]
 pub struct VirtCsr {
+    mie: usize,
     mtvec: usize,
     mscratch: usize,
 }
@@ -44,6 +45,7 @@ impl Index<Csr> for VirtContext {
     fn index(&self, index: Csr) -> &Self::Output {
         match index {
             Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Mie => &self.csr.mie,
             Csr::Mtvec => &self.csr.mtvec,
             Csr::Mscratch => &self.csr.mscratch,
             Csr::Unknown => panic!("Tried to access unknown CSR"),
@@ -55,6 +57,7 @@ impl IndexMut<Csr> for VirtContext {
     fn index_mut(&mut self, index: Csr) -> &mut Self::Output {
         match index {
             Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Mie => &mut self.csr.mie,
             Csr::Mtvec => &mut self.csr.mtvec,
             Csr::Mscratch => &mut self.csr.mscratch,
             Csr::Unknown => panic!("Tried to access unknown CSR"),

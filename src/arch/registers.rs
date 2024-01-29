@@ -48,9 +48,15 @@ impl Register {
 /// A RISC-V Control and Status Register (CSR).
 #[derive(Clone, Copy, Debug)]
 pub enum Csr {
+    /// Machine Status
     Mstatus,
+    /// Machine Interrupt Enable
+    Mie,
+    /// Machine Trap Vector
     Mtvec,
+    /// Machine Scratch
     Mscratch,
+    /// An unknown CSR
     Unknown,
 }
 
