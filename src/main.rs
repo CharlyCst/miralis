@@ -12,7 +12,7 @@ use core::panic::PanicInfo;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
-use crate::arch::{Csr, MCause, Register};
+use crate::arch::{MCause, Register};
 use crate::decoder::{decode, Instr};
 use crate::virt::{RegisterContext, VirtContext};
 
@@ -111,7 +111,6 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             let tmp = ctx.get(csr);
             ctx.set(csr, ctx.get(rs1));
             ctx.set(rd, tmp);
-            csr_side_effect(ctx, *csr);
         }
         Instr::Csrrs { csr, rd, rs1 } => {
             if csr.is_unknown() {
@@ -120,7 +119,6 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             let tmp = ctx.get(csr);
             ctx.set(csr, tmp | ctx.get(rs1));
             ctx.set(rd, tmp);
-            csr_side_effect(ctx, *csr);
         }
         Instr::Csrrwi { csr, rd, uimm } => {
             if csr.is_unknown() {
@@ -128,21 +126,8 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             }
             ctx.set(rd, ctx.get(csr));
             ctx.set(csr, *uimm);
-            csr_side_effect(ctx, *csr);
         }
         _ => todo!("Instruction not yet implemented: {:?}", instr),
-    }
-}
-
-/// Some CSRs might have side effect when written, this functions emulate those side effects.
-fn csr_side_effect(_ctx: &mut VirtContext, csr: Csr) {
-    match csr {
-        Csr::Mhartid => (), // No side effect
-        Csr::Mstatus => todo!("Emulate mstatus"),
-        Csr::Mie => (),      // No side effect
-        Csr::Mtvec => (),    // No side effect
-        Csr::Mscratch => (), // No side effect
-        Csr::Unknown => panic!("Unknown CSR"),
     }
 }
 
