@@ -14,7 +14,7 @@ use platform::{init, Plat, Platform};
 
 use crate::arch::{Csr, MCause, Register};
 use crate::decoder::{decode, Instr};
-use crate::virt::VirtContext;
+use crate::virt::{RegisterContext, VirtContext};
 
 // Defined in the linker script
 extern "C" {
@@ -31,7 +31,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
-    let mut ctx = VirtContext::default();
+    let mut ctx = VirtContext::new(hart_id);
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::write_mepc(payload_addr);
@@ -39,9 +39,9 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
         // Configure the payload context
-        ctx[Register::X2] = Plat::payload_stack_address();
-        ctx[Register::X10] = hart_id;
-        ctx[Register::X11] = device_tree_blob_addr;
+        ctx.set(Register::X2, Plat::payload_stack_address());
+        ctx.set(Register::X10, hart_id);
+        ctx.set(Register::X11, device_tree_blob_addr);
     }
 
     main_loop(ctx);
@@ -108,26 +108,26 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             if csr.is_unknown() {
                 todo!("Unknown CSR");
             }
-            let tmp = ctx[*csr];
-            ctx[*csr] = ctx[*rs1];
-            ctx[*rd] = tmp;
+            let tmp = ctx.get(csr);
+            ctx.set(csr, ctx.get(rs1));
+            ctx.set(rd, tmp);
             csr_side_effect(ctx, *csr);
         }
         Instr::Csrrs { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 todo!("Unknown CSR");
             }
-            let tmp = ctx[*csr];
-            ctx[*csr] = tmp | ctx[*rs1];
-            ctx[*rd] = tmp;
+            let tmp = ctx.get(csr);
+            ctx.set(csr, tmp | ctx.get(rs1));
+            ctx.set(rd, tmp);
             csr_side_effect(ctx, *csr);
         }
         Instr::Csrrwi { csr, rd, uimm } => {
             if csr.is_unknown() {
                 todo!("Unknown CSR");
             }
-            ctx[*rd] = ctx[*csr];
-            ctx[*csr] = *uimm;
+            ctx.set(rd, ctx.get(csr));
+            ctx.set(csr, *uimm);
             csr_side_effect(ctx, *csr);
         }
         _ => todo!("Instruction not yet implemented: {:?}", instr),
@@ -137,6 +137,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 /// Some CSRs might have side effect when written, this functions emulate those side effects.
 fn csr_side_effect(_ctx: &mut VirtContext, csr: Csr) {
     match csr {
+        Csr::Mhartid => (), // No side effect
         Csr::Mstatus => todo!("Emulate mstatus"),
         Csr::Mie => (),      // No side effect
         Csr::Mtvec => (),    // No side effect

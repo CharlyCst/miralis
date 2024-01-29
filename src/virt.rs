@@ -1,18 +1,32 @@
 //! Firmware Virtualisation
 
-use core::ops::{Index, IndexMut};
+use core::usize;
 
 use crate::arch::{Csr, Register};
 
 /// The context of a virtual firmware.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
     host_stack: usize,
     /// Basic registers
     regs: [usize; 32],
+    /// Virtual Constrol and Status Registers
     pub csr: VirtCsr,
+    /// Hart ID
+    hart_id: usize,
+}
+
+impl VirtContext {
+    pub fn new(hart_id: usize) -> Self {
+        VirtContext {
+            host_stack: 0,
+            regs: Default::default(),
+            csr: Default::default(),
+            hart_id,
+        }
+    }
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
@@ -23,44 +37,64 @@ pub struct VirtCsr {
     mscratch: usize,
 }
 
-// ————————————————————————————————— Index —————————————————————————————————— //
+// ———————————————————————— Register Setters/Getters ———————————————————————— //
 
-impl Index<Register> for VirtContext {
-    type Output = usize;
+/// A trait implemented by virtual contexts to read and write registers.
+pub trait RegisterContext<R> {
+    fn get(&self, register: R) -> usize;
+    fn set(&mut self, register: R, value: usize);
+}
 
-    fn index(&self, index: Register) -> &Self::Output {
-        &self.regs[index as usize]
+impl RegisterContext<Register> for VirtContext {
+    fn get(&self, register: Register) -> usize {
+        // NOTE: Register x0 is never set, so always keeps a value of 0
+        self.regs[register as usize]
+    }
+
+    fn set(&mut self, register: Register, value: usize) {
+        // Skip register x0
+        if register == Register::X0 {
+            return;
+        }
+        self.regs[register as usize] = value;
     }
 }
 
-impl IndexMut<Register> for VirtContext {
-    fn index_mut(&mut self, index: Register) -> &mut Self::Output {
-        &mut self.regs[index as usize]
-    }
-}
-
-impl Index<Csr> for VirtContext {
-    type Output = usize;
-
-    fn index(&self, index: Csr) -> &Self::Output {
-        match index {
+impl RegisterContext<Csr> for VirtContext {
+    fn get(&self, register: Csr) -> usize {
+        match register {
+            Csr::Mhartid => self.hart_id,
             Csr::Mstatus => todo!("CSR not yet implemented"),
-            Csr::Mie => &self.csr.mie,
-            Csr::Mtvec => &self.csr.mtvec,
-            Csr::Mscratch => &self.csr.mscratch,
-            Csr::Unknown => panic!("Tried to access unknown CSR"),
+            Csr::Mie => self.csr.mie,
+            Csr::Mtvec => self.csr.mtvec,
+            Csr::Mscratch => self.csr.mscratch,
+            Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
+        }
+    }
+
+    fn set(&mut self, register: Csr, value: usize) {
+        match register {
+            Csr::Mhartid => (), // Read-only
+            Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Mie => self.csr.mie = value,
+            Csr::Mtvec => self.csr.mtvec = value,
+            Csr::Mscratch => self.csr.mscratch = value,
+            Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
 }
 
-impl IndexMut<Csr> for VirtContext {
-    fn index_mut(&mut self, index: Csr) -> &mut Self::Output {
-        match index {
-            Csr::Mstatus => todo!("CSR not yet implemented"),
-            Csr::Mie => &mut self.csr.mie,
-            Csr::Mtvec => &mut self.csr.mtvec,
-            Csr::Mscratch => &mut self.csr.mscratch,
-            Csr::Unknown => panic!("Tried to access unknown CSR"),
-        }
+/// Forward RegisterContext implementation for register references
+impl<'a, R> RegisterContext<&'a R> for VirtContext
+where
+    R: Copy,
+    VirtContext: RegisterContext<R>,
+{
+    fn get(&self, register: &'a R) -> usize {
+        self.get(*register)
+    }
+
+    fn set(&mut self, register: &'a R, value: usize) {
+        self.set(*register, value)
     }
 }

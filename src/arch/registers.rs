@@ -1,7 +1,7 @@
 //! RISC-V Registers
 
 /// General purpose registers.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Register {
     X0 = 0,
@@ -48,6 +48,8 @@ impl Register {
 /// A RISC-V Control and Status Register (CSR).
 #[derive(Clone, Copy, Debug)]
 pub enum Csr {
+    /// Machine Hart ID
+    Mhartid,
     /// Machine Status
     Mstatus,
     /// Machine Interrupt Enable

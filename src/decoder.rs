@@ -129,6 +129,7 @@ fn decode_csr(csr: usize) -> Csr {
         0x304 => Csr::Mie,
         0x305 => Csr::Mtvec,
         0x340 => Csr::Mscratch,
+        0xF14 => Csr::Mhartid,
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
