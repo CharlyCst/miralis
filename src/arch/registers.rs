@@ -52,6 +52,8 @@ pub enum Csr {
     Mhartid,
     /// Machine Status
     Mstatus,
+    /// Machine ISA extensions
+    Misa,
     /// Machine Interrupt Enable
     Mie,
     /// Machine Trap Vector

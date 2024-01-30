@@ -1,8 +1,6 @@
 //! Firmware Virtualisation
 
-use core::usize;
-
-use crate::arch::{Csr, Register};
+use crate::arch::{Arch, Architecture, Csr, Register};
 
 /// The context of a virtual firmware.
 #[derive(Debug)]
@@ -32,6 +30,7 @@ impl VirtContext {
 /// Control and Status Registers (CSR) for a virtual firmware.
 #[derive(Debug, Default)]
 pub struct VirtCsr {
+    misa: usize,
     mie: usize,
     mtvec: usize,
     mscratch: usize,
@@ -65,6 +64,7 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => self.hart_id,
             Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
@@ -76,6 +76,16 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Misa => {
+                // TODO: handle misa emulation properly
+                if value != Arch::read_misa() {
+                    // For now we panic if the payload tries to update misa. In the future we will
+                    // most likely have a mask of minimal features required by Mirage and pass the
+                    // changes through.
+                    panic!("misa emulation is not yet implemented");
+                }
+                self.csr.misa = value;
+            }
             Csr::Mie => self.csr.mie = value,
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,

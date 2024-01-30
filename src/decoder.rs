@@ -126,6 +126,7 @@ fn decode_system(raw: usize) -> Instr {
 fn decode_csr(csr: usize) -> Csr {
     match csr {
         0x300 => Csr::Mstatus,
+        0x301 => Csr::Misa,
         0x304 => Csr::Mie,
         0x305 => Csr::Mtvec,
         0x340 => Csr::Mscratch,

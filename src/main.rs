@@ -12,7 +12,7 @@ use core::panic::PanicInfo;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
-use crate::arch::{MCause, Register};
+use crate::arch::{Csr, MCause, Register};
 use crate::decoder::{decode, Instr};
 use crate::virt::{RegisterContext, VirtContext};
 
@@ -38,10 +38,12 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::set_mpp(arch::Mode::U);
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
+
         // Configure the payload context
         ctx.set(Register::X2, Plat::payload_stack_address());
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
+        ctx.set(Csr::Misa, Arch::read_misa());
     }
 
     main_loop(ctx);

@@ -19,6 +19,16 @@ impl Architecture for Metal {
         assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 
+    fn read_misa() -> usize {
+        let misa: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, misa",
+                x = out(reg) misa);
+        }
+        return misa;
+    }
+
     fn read_mstatus() -> usize {
         let mstatus: usize;
         unsafe {
@@ -70,6 +80,13 @@ impl Architecture for Metal {
         asm!(
             "csrw mepc, {x}",
             x = in(reg) mepc
+        )
+    }
+
+    unsafe fn write_misa(misa: usize) {
+        asm!(
+            "csrw misa, {x}",
+            x = in(reg) misa
         )
     }
 
