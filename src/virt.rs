@@ -32,6 +32,7 @@ impl VirtContext {
 pub struct VirtCsr {
     misa: usize,
     mie: usize,
+    mip: usize,
     mtvec: usize,
     mscratch: usize,
 }
@@ -66,6 +67,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mstatus => todo!("CSR not yet implemented"),
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
+            Csr::Mip => self.csr.mip,
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
@@ -87,6 +89,14 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.misa = value;
             }
             Csr::Mie => self.csr.mie = value,
+            Csr::Mip => {
+                // TODO: handle misa emulation properly
+                if value != 0 {
+                    // We only support resetting mip for now
+                    panic!("mip emulation is not yet implemented");
+                }
+                self.csr.mip = value;
+            }
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),

@@ -60,6 +60,8 @@ pub enum Csr {
     Mtvec,
     /// Machine Scratch
     Mscratch,
+    /// Machine Interrupt Pending
+    Mip,
     /// An unknown CSR
     Unknown,
 }
