@@ -1,4 +1,5 @@
 mirage_elf          := "target/riscv-unknown-mirage/debug/mirage"
+default             := "default"
 
 # Print the list of commands
 help:
@@ -18,13 +19,13 @@ test:
 	# Checking formatting...
 	cargo fmt --all -- --check
 
-# Run Mirage with the default payload
-run:
-	cargo run --package runner -- -v --payload default
+# Run Mirage
+run payload=default:
+	cargo run --package runner -- -v --payload {{payload}}
 
 # Run Mirage but wait for a debugger to connect
-run-dbg:
-	cargo run --package runner -- -v --payload default --dbg --stop
+debug payload=default:
+	cargo run --package runner -- -v --payload {{payload}} --dbg --stop
 
 # Connect a debugger to a running Mirage instance
 gdb:

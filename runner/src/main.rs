@@ -1,7 +1,7 @@
-use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
+use std::{env, fs};
 
 use clap::Parser;
 
@@ -175,6 +175,7 @@ fn run(mirage: PathBuf, payload: PathBuf, args: &Args) {
 
 // —————————————————————————————— Path Helpers —————————————————————————————— //
 
+/// Return the root of the workspace.
 fn get_workspace_path() -> PathBuf {
     let Ok(runner_manifest) = std::env::var("CARGO_MANIFEST_DIR") else {
         panic!("Could not locate workspace root");
@@ -183,6 +184,7 @@ fn get_workspace_path() -> PathBuf {
     path.parent().unwrap().to_owned()
 }
 
+/// Return the target directory.
 fn get_target_dir_path(target: &Target) -> PathBuf {
     let mut path = get_workspace_path();
     path.push("target");
@@ -194,12 +196,14 @@ fn get_target_dir_path(target: &Target) -> PathBuf {
     path
 }
 
+/// Return the path to the config directory.
 fn get_config_path() -> PathBuf {
     let mut path = get_workspace_path();
     path.push("config");
     path
 }
 
+/// Return the target triple definition path for the provided target.
 fn get_target_config_path(target: &Target) -> PathBuf {
     let mut path = get_config_path();
     match target {
@@ -226,6 +230,33 @@ fn is_older(a: &Path, b: &Path) -> bool {
     }
 }
 
+/// Return true if the payload is one of the knwon test payloads.
+fn is_known_payload(name: &str) -> bool {
+    // Get the path to the payloads directory
+    let mut payloads_path = get_workspace_path();
+    payloads_path.push("payloads");
+    assert!(
+        payloads_path.is_dir(),
+        "Could not find 'payloads' directory"
+    );
+
+    // Check if one entry match the name
+    for entry in fs::read_dir(&payloads_path).unwrap() {
+        let Ok(file_path) = entry.map(|e| e.path()) else {
+            continue;
+        };
+        let Some(file_name) = file_path.file_name() else {
+            continue;
+        };
+        if file_name == name {
+            return true;
+        }
+    }
+
+    // Could not find payload
+    false
+}
+
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
 fn main() {
@@ -234,6 +265,11 @@ fn main() {
     println!("Running Mirage with '{}' payload", &args.payload);
 
     let mirage = build_target(Target::Mirage);
-    let payload = build_target(Target::Payload(args.payload.clone()));
+    let payload = if is_known_payload(&args.payload) {
+        build_target(Target::Payload(args.payload.clone()))
+    } else {
+        PathBuf::from_str(&args.payload).expect("Invalid payload path")
+    };
+
     run(mirage, payload, &args);
 }

@@ -29,5 +29,7 @@ Running `just` or `just help` give the list of available commands.
 Integration tests can be run with `just test`.
 
 We provide a GDB script (in `config/setup.gdb`) and `just` commands to facilitate debugging.
-To start a GDB session, first run Mirage with `just run-dbg` and then run `just gdb` in another terminal.
+To start a GDB session, first run Mirage with `just debug` and then run `just gdb` in another terminal.
 
+The payload can be selected as an additional argument to `just run`.
+Valid payloads are either names of payloads under the `./payloads/` directory, or paths to external firmware images.
