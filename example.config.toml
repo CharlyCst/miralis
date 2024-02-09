@@ -1,0 +1,7 @@
+# Mirage configuration example
+#
+# To configure Mirage create a copy of that file named config.toml
+
+[log]
+# The default log level
+level = "info"

@@ -1,9 +1,15 @@
-use std::path::{Path, PathBuf};
+use std::env;
+use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
-use std::{env, fs};
 
 use clap::Parser;
+
+mod config;
+mod path;
+
+use config::Config;
+use path::{get_target_config_path, get_target_dir_path, is_known_payload, is_older};
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
@@ -16,9 +22,9 @@ const QEMU_ARGS: &[&str] = &[
     "-machine", "virt",
 ];
 
-// ————————————————————————————— Configurationn ————————————————————————————— //
+// —————————————————————————— Target & Build Info ——————————————————————————— //
 
-/// Address at which the paylod is loaded in memory.
+/// Address at which the payload is loaded in memory.
 const PAYLOAD_ADDR: u64 = 0x80100000;
 
 /// Target triple used to build the monitor.
@@ -65,7 +71,7 @@ fn parse_args() -> Args {
 /// Perform the actual build by invoking cargo.
 ///
 /// Returns the path of the resulting binary.
-fn build_target(target: Target) -> PathBuf {
+fn build_target(target: Target, cfg: &Config) -> PathBuf {
     let path = get_target_dir_path(&target);
     println!("{:?}", path);
 
@@ -78,7 +84,9 @@ fn build_target(target: Target) -> PathBuf {
     build_cmd.env("RUSTFLAGS", "-C link-arg=-Tconfig/linker-script.x");
 
     match target {
-        Target::Mirage => (),
+        Target::Mirage => {
+            build_cmd.envs(cfg.build_envs());
+        }
         Target::Payload(ref payload) => {
             build_cmd.arg("--package").arg(payload);
         }
@@ -173,90 +181,6 @@ fn run(mirage: PathBuf, payload: PathBuf, args: &Args) {
     }
 }
 
-// —————————————————————————————— Path Helpers —————————————————————————————— //
-
-/// Return the root of the workspace.
-fn get_workspace_path() -> PathBuf {
-    let Ok(runner_manifest) = std::env::var("CARGO_MANIFEST_DIR") else {
-        panic!("Could not locate workspace root");
-    };
-    let path = PathBuf::from_str(&runner_manifest).unwrap();
-    path.parent().unwrap().to_owned()
-}
-
-/// Return the target directory.
-fn get_target_dir_path(target: &Target) -> PathBuf {
-    let mut path = get_workspace_path();
-    path.push("target");
-    match target {
-        Target::Mirage => path.push(MIRAGE_TARGET),
-        Target::Payload(_) => path.push(PAYLOAD_TARGET),
-    }
-    path.push("debug"); // TODO: add support for release mode
-    path
-}
-
-/// Return the path to the config directory.
-fn get_config_path() -> PathBuf {
-    let mut path = get_workspace_path();
-    path.push("config");
-    path
-}
-
-/// Return the target triple definition path for the provided target.
-fn get_target_config_path(target: &Target) -> PathBuf {
-    let mut path = get_config_path();
-    match target {
-        Target::Mirage => {
-            path.push(format!("{}.json", MIRAGE_TARGET));
-        }
-        Target::Payload(_) => path.push(format!("{}.json", PAYLOAD_TARGET)),
-    }
-    path
-}
-
-/// Return true if `b` is older than `b`
-fn is_older(a: &Path, b: &Path) -> bool {
-    let Ok(a_meta) = a.metadata() else {
-        return false;
-    };
-    let Ok(b_meta) = b.metadata() else {
-        return false;
-    };
-
-    match (a_meta.modified(), b_meta.modified()) {
-        (Ok(a), Ok(b)) => a <= b,
-        _ => false,
-    }
-}
-
-/// Return true if the payload is one of the knwon test payloads.
-fn is_known_payload(name: &str) -> bool {
-    // Get the path to the payloads directory
-    let mut payloads_path = get_workspace_path();
-    payloads_path.push("payloads");
-    assert!(
-        payloads_path.is_dir(),
-        "Could not find 'payloads' directory"
-    );
-
-    // Check if one entry match the name
-    for entry in fs::read_dir(&payloads_path).unwrap() {
-        let Ok(file_path) = entry.map(|e| e.path()) else {
-            continue;
-        };
-        let Some(file_name) = file_path.file_name() else {
-            continue;
-        };
-        if file_name == name {
-            return true;
-        }
-    }
-
-    // Could not find payload
-    false
-}
-
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
 fn main() {
@@ -264,9 +188,11 @@ fn main() {
 
     println!("Running Mirage with '{}' payload", &args.payload);
 
-    let mirage = build_target(Target::Mirage);
+    let cfg = config::read_config();
+
+    let mirage = build_target(Target::Mirage, &cfg);
     let payload = if is_known_payload(&args.payload) {
-        build_target(Target::Payload(args.payload.clone()))
+        build_target(Target::Payload(args.payload.clone()), &cfg)
     } else {
         PathBuf::from_str(&args.payload).expect("Invalid payload path")
     };
