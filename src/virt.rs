@@ -11,7 +11,7 @@ pub struct VirtContext {
     /// Basic registers
     regs: [usize; 32],
     /// Virtual Constrol and Status Registers
-    pub csr: VirtCsr,
+    csr: VirtCsr,
     /// Hart ID
     hart_id: usize,
 }
