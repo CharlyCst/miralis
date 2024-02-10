@@ -25,7 +25,7 @@ pub trait Platform {
 
 pub fn init() {
     Plat::init();
-    logger::init(log::LevelFilter::Info);
+    logger::init();
 
     // Trap handler
     Arch::init();

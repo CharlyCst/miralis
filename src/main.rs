@@ -54,17 +54,17 @@ fn main_loop(mut ctx: VirtContext) -> ! {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
             handle_trap(&mut ctx);
-            log::info!("{:x?}", &ctx);
+            log::trace!("{:x?}", &ctx);
         }
     }
 }
 
 fn handle_trap(ctx: &mut VirtContext) {
-    log::info!("Trapped!");
-    log::info!("  mcause:  {:?}", Arch::read_mcause());
-    log::info!("  mstatus: 0x{:x}", Arch::read_mstatus());
-    log::info!("  mepc:    0x{:x}", Arch::read_mepc());
-    log::info!("  mtval:   0x{:x}", Arch::read_mtval());
+    log::trace!("Trapped!");
+    log::trace!("  mcause:  {:?}", Arch::read_mcause());
+    log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
+    log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
+    log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
 
     // Temporary safeguard
     unsafe {
@@ -86,7 +86,7 @@ fn handle_trap(ctx: &mut VirtContext) {
         MCause::IllegalInstr => {
             let instr = unsafe { Arch::get_raw_faulting_instr() };
             let instr = decode(instr);
-            log::info!("Faulting instruction: {:?}", instr);
+            log::trace!("Faulting instruction: {:?}", instr);
             emulate_instr(ctx, &instr);
         }
         _ => (), // Continue
@@ -94,7 +94,7 @@ fn handle_trap(ctx: &mut VirtContext) {
 
     // Skip instruction and return
     unsafe {
-        log::info!("Skipping trapping instruction");
+        log::trace!("Skipping trapping instruction");
         Arch::write_mepc(Arch::read_mepc() + 4);
     }
 }

@@ -1,16 +1,22 @@
 //! Structured logging implementation
 
+use core::option_env;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use log::{LevelFilter, Metadata, Record};
 
 use crate::platform::{Plat, Platform};
 
-pub struct Logger {}
+// ————————————————————————————————— Logger ————————————————————————————————— //
+
+pub struct Logger {
+    log_level: LevelFilter,
+    max_level: LevelFilter,
+}
 
 impl log::Log for Logger {
-    fn enabled(&self, _metadata: &Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        self.log_level >= metadata.level()
     }
 
     fn log(&self, record: &Record) {
@@ -27,14 +33,38 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-pub fn init(level: LevelFilter) {
+impl Logger {
+    const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Info;
+
+    const fn new_from_env() -> Self {
+        let log_level = match option_env!("MIRAGE_LOG_LEVEL") {
+            Some(s) => match s.as_bytes() {
+                b"trace" => LevelFilter::Trace,
+                b"debug" => LevelFilter::Debug,
+                b"info" => LevelFilter::Info,
+                b"warn" => LevelFilter::Warn,
+                b"error" => LevelFilter::Error,
+                b"off" => LevelFilter::Off,
+                _ => Self::DEFAULT_LOG_LEVEL,
+            },
+            _ => Self::DEFAULT_LOG_LEVEL,
+        };
+
+        Logger {
+            log_level,
+            max_level: log_level,
+        }
+    }
+}
+
+pub fn init() {
     static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
-    static LOGGER: Logger = Logger {};
+    static LOGGER: Logger = Logger::new_from_env();
 
     match IS_INITIALIZED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
         Ok(_) => {
             log::set_logger(&LOGGER).unwrap();
-            log::set_max_level(level);
+            log::set_max_level(LOGGER.max_level);
         }
         Err(_) => {
             log::warn!("Logger is already initialized, skipping init");
