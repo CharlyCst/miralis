@@ -60,6 +60,5 @@ pub fn read_config() -> Config {
 
     // Parse the config and returns it
     let config = toml::from_str::<Config>(&config).expect("Failed to parse configuration");
-    println!("{:x?}", config);
     config
 }

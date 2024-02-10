@@ -29,7 +29,7 @@ debug payload=default:
 
 # Connect a debugger to a running Mirage instance
 gdb:
-	rust-gdb {{mirage_elf}} -q -x "./config/setup.gdb"
+	rust-gdb {{mirage_elf}} -q -x "./misc/setup.gdb"
 
 # Install the rust toolchain and required components
 install-toolchain:

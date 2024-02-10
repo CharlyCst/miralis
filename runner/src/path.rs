@@ -27,16 +27,16 @@ pub fn get_target_dir_path(target: &Target) -> PathBuf {
     path
 }
 
-/// Return the path to the config directory.
-fn get_config_path() -> PathBuf {
+/// Return the path to the misc directory.
+fn get_misc_path() -> PathBuf {
     let mut path = get_workspace_path();
-    path.push("config");
+    path.push("misc");
     path
 }
 
 /// Return the target triple definition path for the provided target.
 pub fn get_target_config_path(target: &Target) -> PathBuf {
-    let mut path = get_config_path();
+    let mut path = get_misc_path();
     match target {
         Target::Mirage => {
             path.push(format!("{}.json", MIRAGE_TARGET));

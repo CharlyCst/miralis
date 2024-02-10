@@ -81,7 +81,7 @@ fn build_target(target: Target, cfg: &Config) -> PathBuf {
         .args(CARGO_ARGS)
         .arg("--target")
         .arg(get_target_config_path(&target));
-    build_cmd.env("RUSTFLAGS", "-C link-arg=-Tconfig/linker-script.x");
+    build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script.x");
 
     match target {
         Target::Mirage => {
