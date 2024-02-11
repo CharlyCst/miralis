@@ -3,7 +3,7 @@
 use core::option_env;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use log::{LevelFilter, Metadata, Record};
+use log::{Level, LevelFilter, Metadata, Record};
 
 use crate::platform::{Plat, Platform};
 
@@ -23,7 +23,7 @@ impl log::Log for Logger {
         if self.enabled(record.metadata()) {
             Plat::debug_print(core::format_args!(
                 "[{} | {}] {}\n",
-                record.level(),
+                level_display(record.level()),
                 record.target(),
                 record.args()
             ))
@@ -70,4 +70,16 @@ pub fn init() {
             log::warn!("Logger is already initialized, skipping init");
         }
     };
+}
+
+// ————————————————————————————————— Utils —————————————————————————————————— //
+
+fn level_display(level: Level) -> &'static str {
+    match level {
+        Level::Error => "Error",
+        Level::Warn => "Warn ",
+        Level::Info => "Info ",
+        Level::Debug => "Debug",
+        Level::Trace => "Trace",
+    }
 }
