@@ -62,11 +62,11 @@ pub enum Csr {
     Mscratch,
     /// Machine Interrupt Pending
     Mip,
-    /// Machine Vendor ID 
+    /// Machine Vendor ID
     Mvendorid,
-    /// Machine Architecture ID 
+    /// Machine Architecture ID
     Marchid,
-    /// Machine Implementation ID 
+    /// Machine Implementation ID
     Mimpid,
     /// An unknown CSR
     Unknown,
