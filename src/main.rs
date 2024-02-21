@@ -129,6 +129,30 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.set(rd, ctx.get(csr));
             ctx.set(csr, *uimm);
         }
+        Instr::Csrrsi { csr, rd, uimm } => {
+            if csr.is_unknown() {
+                todo!("Unknown CSR");
+            }
+            let tmp = ctx.get(csr);
+            ctx.set(csr, tmp | uimm);
+            ctx.set(rd, tmp);
+        }
+        Instr::Csrrc { csr, rd, rs1 } => {
+            if csr.is_unknown() {
+                todo!("Unknown CSR");
+            }
+            let tmp = ctx.get(csr);
+            ctx.set(csr, tmp & !ctx.get(rs1));
+            ctx.set(rd, tmp);
+        }
+        Instr::Csrrci { csr, rd, uimm } => {
+            if csr.is_unknown() {
+                todo!("Unknown CSR");
+            }
+            let tmp = ctx.get(csr);
+            ctx.set(csr, tmp & !uimm);
+            ctx.set(rd, tmp);
+        }
         _ => todo!("Instruction not yet implemented: {:?}", instr),
     }
 }
