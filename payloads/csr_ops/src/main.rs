@@ -58,7 +58,7 @@ fn test_csr_op(regs: &[(usize, usize, usize)]) {
     // CSRRC
     for (in_rd, in_rs1, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrc(*in_csr, *in_rd, *in_rs1) };
-        check_csrrc(*in_rs1,*in_csr, out_csr, out_rd);
+        check_csrrc(*in_rs1, *in_csr, out_csr, out_rd);
     }
     // CSRRCI
     for (in_rd, _, in_csr) in regs {
@@ -150,7 +150,7 @@ fn check_csrrc(in_rs1: usize, in_csr: usize, out_csr: usize, out_rd: usize) {
     assert_eq!(out_rd, in_csr);
 }
 
-unsafe fn csrrc(csr: usize, rd: usize, rs1 : usize) -> (usize, usize) {
+unsafe fn csrrc(csr: usize, rd: usize, rs1: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
     asm!(
