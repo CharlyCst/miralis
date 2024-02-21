@@ -4,7 +4,6 @@
 use core::arch::{asm, global_asm};
 use core::panic::PanicInfo;
 use core::usize;
-use core::fmt;
 
 global_asm!(
     r#"
@@ -21,7 +20,8 @@ extern "C" fn entry() -> ! {
     let csrs = [
         "mvendorid",
         "marchid",
-        "mimpd"
+        "mimpid",
+        "mhartid"
     ];
 
     for csr in csrs{
@@ -36,16 +36,35 @@ extern "C" fn entry() -> ! {
 
 fn test_csr_id(csr_name : &str) -> (usize,usize){
     let expected: usize = 0x0;
-    let res: usize;
-    let strdaad = "";
-    unsafe {
-        asm!(
-            "li {0}, 0x42",
-            "csrr {1}, csr_name",
-            in(reg) expected,
-            out(reg) res
-        );
-    }
+    let res: usize; 
+    
+    match csr_name {
+        "mvendorid" => unsafe {
+            asm!(
+                "csrr {0}, mvendorid",
+                out(reg) res
+            );
+        },
+        "marchid" => unsafe {
+            asm!(
+                "csrr {0}, marchid",
+                out(reg) res
+            );
+        },
+        "mimpid" => unsafe {
+            asm!(
+                "csrr {0}, mimpid",
+                out(reg) res
+            );
+        },
+        "mhartid" => unsafe {
+            asm!(
+                "csrr {0}, mhartid",
+                out(reg) res
+            );
+        },
+        _ => res = 0x42,//TO FAIL BY DEFAULT IF NO VALID CSR REGISTER IS FOUND
+    };
 
     (res, expected)
 }
@@ -53,11 +72,6 @@ fn test_csr_id(csr_name : &str) -> (usize,usize){
 fn read_test(out_csr: usize, expected: usize){
     assert_eq!(out_csr, expected);
 } 
-
-fn check(in_rs1: usize, in_csr: usize, out_csr: usize, out_rd: usize) {
-    assert_eq!(out_csr, in_rs1);
-    assert_eq!(out_rd, in_csr);
-}
 
 #[inline(always)]
 fn success() {
