@@ -35,6 +35,9 @@ pub struct VirtCsr {
     mip: usize,
     mtvec: usize,
     mscratch: usize,
+    mvendorid: usize,
+    marchid: usize,
+    mimpid: usize,
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
@@ -70,6 +73,9 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mip => self.csr.mip,
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
+            Csr::Mvendorid => self.csr.mvendorid,
+            Csr::Marchid => self.csr.marchid,
+            Csr::Mimpid => self.csr.mimpid,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -99,7 +105,11 @@ impl RegisterContext<Csr> for VirtContext {
             }
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
+            Csr::Mvendorid => (), //Read-only
+            Csr::Marchid => (), //Read-only
+            Csr::Mimpid => (), //Read-only
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
+            
         }
     }
 }
