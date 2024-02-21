@@ -14,5 +14,6 @@ members = [
     "payloads/default",
     "payloads/ecall",
     "payloads/mscratch",
+    "payloads/csr_id",
     "runner",
 ]

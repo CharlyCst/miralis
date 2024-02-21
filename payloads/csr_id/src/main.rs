@@ -21,6 +21,7 @@ extern "C" fn entry() -> ! {
     let res: usize;
     unsafe {
         asm!(
+            "li {0}, 0x42",
             "csrr {1}, mimpid",
             in(reg) expected,
             out(reg) res,
