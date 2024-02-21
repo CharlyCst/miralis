@@ -35,7 +35,7 @@ pub enum Register {
     X28 = 28,
     X29 = 29,
     X30 = 30,
-    X31 = 32,
+    X31 = 31,
 }
 
 impl Register {
@@ -113,7 +113,7 @@ impl TryFrom<usize> for Register {
             28 => Ok(Register::X28),
             29 => Ok(Register::X29),
             30 => Ok(Register::X30),
-            32 => Ok(Register::X31),
+            31 => Ok(Register::X31),
             _ => Err(()),
         }
     }
