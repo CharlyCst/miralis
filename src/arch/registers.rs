@@ -65,7 +65,7 @@ pub enum Csr {
     /// Machine Vendor ID 
     Mvendorid,
     /// Machine Architecture ID 
-    MarchId,
+    Marchid,
     /// Machine Implementation ID 
     Mimpid,
     /// An unknown CSR

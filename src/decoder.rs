@@ -133,7 +133,7 @@ fn decode_csr(csr: usize) -> Csr {
         0x344 => Csr::Mip,
         0xF14 => Csr::Mhartid,
         0xF11 => Csr::Mvendorid,
-        0xF12 => Csr::MarchId,
+        0xF12 => Csr::Marchid,
         0xF13 => Csr::Mimpid,
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
