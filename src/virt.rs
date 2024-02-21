@@ -106,10 +106,9 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
             Csr::Mvendorid => (), //Read-only
-            Csr::Marchid => (), //Read-only
-            Csr::Mimpid => (), //Read-only
+            Csr::Marchid => (),   //Read-only
+            Csr::Mimpid => (),    //Read-only
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
-            
         }
     }
 }

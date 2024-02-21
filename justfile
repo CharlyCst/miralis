@@ -15,6 +15,7 @@ test:
 	cargo run --package runner -- --payload ecall
 	cargo run --package runner -- --payload mscratch
 	cargo run --package runner -- --payload csr_ops
+	cargo run --package runner -- --payload csr_id
 
 	# Checking formatting...
 	cargo fmt --all -- --check
