@@ -66,21 +66,19 @@ fn handle_trap(ctx: &mut VirtContext) {
     log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
 
-    // Temporary safeguard
-    unsafe {
-        static mut TRAP_COUNTER: usize = 0;
-
-        if TRAP_COUNTER >= 200 {
-            log::error!("Trap counter reached limit");
-            Plat::exit_failure();
-        }
-        TRAP_COUNTER += 1;
+    // Keep track of the number of exit
+    ctx.nb_exits += 1;
+    log::trace!("  exits:   {}", ctx.nb_exits);
+    if ctx.nb_exits >= 200 {
+        log::error!("Trap counter reached limit: {}", ctx.nb_exits);
+        Plat::exit_failure();
     }
 
     match Arch::read_mcause() {
         MCause::EcallFromMMode | MCause::EcallFromUMode => {
             // For now we just exit successfuly
             log::info!("Success!");
+            log::info!("Number of payload exits: {}", ctx.nb_exits);
             Plat::exit_success();
         }
         MCause::IllegalInstr => {
