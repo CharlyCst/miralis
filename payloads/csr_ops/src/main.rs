@@ -5,6 +5,8 @@ use core::arch::{asm, global_asm};
 use core::panic::PanicInfo;
 use core::usize;
 
+use mirage_abi::{failure, success};
+
 global_asm!(
     r#"
 .text
@@ -31,7 +33,6 @@ extern "C" fn entry() -> ! {
 
     test_csr_op(&regs);
     success();
-    panic!();
 }
 
 fn test_csr_op(regs: &[(usize, usize, usize)]) {
@@ -184,16 +185,7 @@ unsafe fn csrrci(csr: usize, rd: usize) -> (usize, usize) {
     (csr, rd)
 }
 
-#[inline(always)]
-fn success() {
-    unsafe {
-        asm!("ecall");
-    }
-}
-
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {
-        unsafe { asm!("wfi") };
-    }
+    failure();
 }
