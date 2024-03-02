@@ -36,10 +36,10 @@ SECTIONS
   .stack : ALIGN(0x1000)
    {
       . = ALIGN(8);
-      _stack_start = .;
+      _stack_bottom = .;
       . = . + STACK_SIZE;
       . = ALIGN(8);
-      _stack_end = .;
+      _stack_top = .;
    }
 }
 

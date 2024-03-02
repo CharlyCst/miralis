@@ -2,6 +2,7 @@
 #![no_main]
 
 mod arch;
+mod debug;
 mod decoder;
 mod logger;
 mod platform;
@@ -18,8 +19,8 @@ use crate::virt::{RegisterContext, VirtContext};
 
 // Defined in the linker script
 extern "C" {
-    pub(crate) static _stack_start: usize;
-    pub(crate) static _stack_end: usize;
+    pub(crate) static _stack_bottom: u8;
+    pub(crate) static _stack_top: u8;
 }
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
@@ -79,6 +80,7 @@ fn handle_trap(ctx: &mut VirtContext) {
             // For now we just exit successfuly
             log::info!("Success!");
             log::info!("Number of payload exits: {}", ctx.nb_exits);
+            unsafe { debug::log_stack_usage() };
             Plat::exit_success();
         }
         MCause::IllegalInstr => {
@@ -158,5 +160,6 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     log::error!("Panicked at {:#?} ", info);
+    unsafe { debug::log_stack_usage() };
     Plat::exit_failure();
 }

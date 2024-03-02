@@ -5,7 +5,7 @@ use core::ptr;
 
 use super::{Architecture, MCause, Mode};
 use crate::virt::VirtContext;
-use crate::{_stack_end, main};
+use crate::{_stack_bottom, _stack_top, main};
 
 /// Bare metal RISC-V runtime.
 pub struct Metal {}
@@ -222,16 +222,31 @@ r#"
 .text
 .global _start
 _start:
-    ld sp, __stack_addr
+    // Start by filling the stack with a known memory pattern
+    ld t0, __stack_bottom
+    ld t1, __stack_top
+    li t2, 0x0BADBED0
+loop:
+    bgeu t0, t1, done // Exit when reaching the end address
+    sw t2, 0(t0)      // Write the pattern
+    addi t0, t0, 4    // increment the cursor
+    j loop
+done:
+
+    // Then load the stack pointer and jump into main
+    ld sp, __stack_top
     j {main}
 
 // Store the address of the stack in memory
 // That way it can be loaded as an absolute value
-__stack_addr:
-    .dword {stack}
+__stack_top:
+    .dword {stack_top}
+__stack_bottom:
+    .dword {stack_bottom}
 "#,
     main = sym main,
-    stack = sym _stack_end,
+    stack_top = sym _stack_top,
+    stack_bottom = sym _stack_bottom,
 );
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
