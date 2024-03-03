@@ -22,7 +22,7 @@ extern "C" fn entry() -> ! {
     let secret_addr: usize = 0x0000000000000042;
     let secret_cfg: usize = 0b00000111;
     let mut res: usize;
-    
+
     // Test normal write to config
     unsafe {
         asm!(
@@ -34,7 +34,7 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    read_test(res,secret_cfg);
+    read_test(res, secret_cfg);
 
     // Test invalid write to config
     unsafe {
@@ -47,7 +47,7 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    read_test(res,secret_cfg);
+    read_test(res, secret_cfg);
 
     // Test out of range write to config : for 16 pmp
     unsafe {
@@ -60,8 +60,8 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    read_test(res,0);
-    
+    read_test(res, 0);
+
     // Test normal write to address
     unsafe {
         asm!(
@@ -73,7 +73,7 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    read_test(res,secret_addr);
+    read_test(res, secret_addr);
 
     // Test invalid write to address
     unsafe {
@@ -86,7 +86,7 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    read_test(res,secret_addr);
+    read_test(res, secret_addr);
 
     // Test out of range write to address : for 16 pmp
     unsafe {
@@ -99,7 +99,7 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    read_test(res,0);
+    read_test(res, 0);
 
     success();
 }
