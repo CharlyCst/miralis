@@ -14,6 +14,8 @@ pub struct VirtContext {
     csr: VirtCsr,
     /// Hart ID
     hart_id: usize,
+    /// Number of exists to Mirage
+    pub(crate) nb_exits: usize,
 }
 
 impl VirtContext {
@@ -22,6 +24,7 @@ impl VirtContext {
             host_stack: 0,
             regs: Default::default(),
             csr: Default::default(),
+            nb_exits: 0,
             hart_id,
         }
     }

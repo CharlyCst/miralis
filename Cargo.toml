@@ -10,10 +10,16 @@ log = "0.4.17"
 
 [workspace]
 members = [
+    # Payloads
     "payloads/csr_ops",
     "payloads/default",
     "payloads/ecall",
     "payloads/mscratch",
     "payloads/csr_id",
+
+    # Crates
+    "crates/mirage_abi",
+
+    # Tooling
     "runner",
 ]
