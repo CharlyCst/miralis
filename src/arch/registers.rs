@@ -79,9 +79,6 @@ pub enum Csr {
 }
 
 impl Csr {
-    pub fn nbr_pmps() -> usize{
-        64
-    }
     pub fn is_unknown(self) -> bool {
         match self {
             Csr::Unknown => true,
@@ -89,7 +86,6 @@ impl Csr {
         }
     }
 }
-
 
 // —————————————————————————————— Conversions ——————————————————————————————— //
 

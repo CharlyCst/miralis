@@ -1,6 +1,7 @@
 //! Firmware Virtualisation
 
 use crate::arch::{Arch, Architecture, Csr, Register};
+use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
 #[derive(Debug)]
@@ -20,13 +21,22 @@ pub struct VirtContext {
 
 impl VirtContext {
     pub fn new(hart_id: usize) -> Self {
-        VirtContext {
+        let mut vc = VirtContext {
             host_stack: 0,
             regs: Default::default(),
             csr: Default::default(),
             nb_exits: 0,
             hart_id,
-        }
+        };
+
+        vc.csr.nbr_pmps = match Plat::get_nb_pmp() {
+            0 => 0,
+            16 => 0,
+            64 => 16,
+            _ => 0,
+        };
+
+        return vc;
     }
 }
 
@@ -42,9 +52,8 @@ pub struct VirtCsr {
     marchid: usize,
     mimpid: usize,
     pmp_cfg: [usize; 16],
-    pmp_addr_1: [usize; 32],
-    pmp_addr_2: [usize; 32],
-
+    pmp_addr: [[usize; 32]; 2],
+    nbr_pmps: usize,
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
@@ -83,8 +92,28 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mvendorid => self.csr.mvendorid,
             Csr::Marchid => self.csr.marchid,
             Csr::Mimpid => self.csr.mimpid,
-            Csr::Pmpcfg(csr) => 0, // No PMPs are emulated
-            Csr::Pmpaddr(csr) => 0, // No PMPs are emulated
+            Csr::Pmpcfg(pmp_cfg_idx) => {
+                if (pmp_cfg_idx % 2 == 1) {
+                    // Illegal because we are in a RISCV64 setting
+                    panic!("Illegal PMP_CFG {:?}", register)
+                }
+                if (pmp_cfg_idx >= self.csr.nbr_pmps / 8) {
+                    //This PMP is not emulated
+                    return 0;
+                }
+                self.csr.pmp_cfg[pmp_cfg_idx]
+            }
+            Csr::Pmpaddr(pmp_addr_idx) => {
+                if (pmp_addr_idx >= self.csr.nbr_pmps) {
+                    //This PMP is not emulated
+                    return 0;
+                }
+                self.csr.pmp_addr[if pmp_addr_idx < 32 { 0 } else { 1 }][if pmp_addr_idx < 32 {
+                    pmp_addr_idx
+                } else {
+                    pmp_addr_idx - 32
+                }]
+            }
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -117,8 +146,53 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mvendorid => (), // Read-only
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
-            Csr::Pmpcfg(csr) => (), // No PMPs are emulated
-            Csr::Pmpaddr(csr) => (), // No PMPs are emulated
+            Csr::Pmpcfg(pmp_cfg_idx) => {
+                let _locks = !((0b1 << 7) << 0
+                    | (0b1 << 7) << 8
+                    | (0b1 << 7) << 16
+                    | (0b1 << 7) << 24
+                    | (0b1 << 7) << 32
+                    | (0b1 << 7) << 40
+                    | (0b1 << 7) << 48
+                    | (0b1 << 7) << 56)
+                    & value;
+
+                if _locks != 0 {
+                    panic!("PMP lock bits are not yet supported")
+                }
+
+                let _legal_value = !((0b11 << 5) << 0
+                    | (0b11 << 5) << 8
+                    | (0b11 << 5) << 16
+                    | (0b11 << 5) << 24
+                    | (0b11 << 5) << 32
+                    | (0b11 << 5) << 40
+                    | (0b11 << 5) << 48
+                    | (0b11 << 5) << 56)
+                    & value;
+                if (pmp_cfg_idx % 2 == 1) {
+                    // Illegal because we are in a RISCV64 setting
+                    panic!("Illegal PMP_CFG {:?}", register)
+                }
+                if (pmp_cfg_idx >= self.csr.nbr_pmps / 8) {
+                    //This PMP is not emulated
+                    ()
+                }
+                self.csr.pmp_cfg[pmp_cfg_idx] = _legal_value
+            }
+            Csr::Pmpaddr(pmp_addr_idx) => {
+                let _legal_value = (!(0b1111111111 << 54)) & value;
+
+                if (pmp_addr_idx >= self.csr.nbr_pmps) {
+                    //This PMP is not emulated
+                    ()
+                }
+                self.csr.pmp_addr[if pmp_addr_idx < 32 { 0 } else { 1 }][if pmp_addr_idx < 32 {
+                    pmp_addr_idx
+                } else {
+                    pmp_addr_idx - 32
+                }] = _legal_value
+            }
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

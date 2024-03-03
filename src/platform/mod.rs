@@ -21,6 +21,9 @@ pub trait Platform {
 
     /// Return the initial payload stack address.
     fn payload_stack_address() -> usize;
+
+    /// Return the number of PMPs of the platform
+    fn get_nb_pmp() -> usize;
 }
 
 pub fn init() {

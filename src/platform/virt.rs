@@ -56,6 +56,10 @@ impl Platform for VirtPlatform {
     fn payload_stack_address() -> usize {
         return PAYLOAD_STACK;
     }
+
+    fn get_nb_pmp() -> usize {
+        64
+    }
 }
 
 fn exit_qemu(success: bool) -> ! {
