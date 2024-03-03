@@ -93,18 +93,18 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Marchid => self.csr.marchid,
             Csr::Mimpid => self.csr.mimpid,
             Csr::Pmpcfg(pmp_cfg_idx) => {
-                if (pmp_cfg_idx % 2 == 1) {
+                if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
                 }
-                if (pmp_cfg_idx >= self.csr.nbr_pmps / 8) {
+                if pmp_cfg_idx >= self.csr.nbr_pmps / 8 {
                     //This PMP is not emulated
                     return 0;
                 }
                 self.csr.pmp_cfg[pmp_cfg_idx]
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if (pmp_addr_idx >= self.csr.nbr_pmps) {
+                if pmp_addr_idx >= self.csr.nbr_pmps {
                     //This PMP is not emulated
                     return 0;
                 }
@@ -147,7 +147,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
             Csr::Pmpcfg(pmp_cfg_idx) => {
-                let _locks = !((0b1 << 7) << 0
+                let _locks = ((0b1 << 7) << 0
                     | (0b1 << 7) << 8
                     | (0b1 << 7) << 16
                     | (0b1 << 7) << 24
@@ -170,11 +170,11 @@ impl RegisterContext<Csr> for VirtContext {
                     | (0b11 << 5) << 48
                     | (0b11 << 5) << 56)
                     & value;
-                if (pmp_cfg_idx % 2 == 1) {
+                if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
                 }
-                if (pmp_cfg_idx >= self.csr.nbr_pmps / 8) {
+                if pmp_cfg_idx >= self.csr.nbr_pmps / 8 {
                     //This PMP is not emulated
                     ()
                 }
@@ -183,7 +183,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Pmpaddr(pmp_addr_idx) => {
                 let _legal_value = (!(0b1111111111 << 54)) & value;
 
-                if (pmp_addr_idx >= self.csr.nbr_pmps) {
+                if pmp_addr_idx >= self.csr.nbr_pmps {
                     //This PMP is not emulated
                     ()
                 }
