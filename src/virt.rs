@@ -10,7 +10,7 @@ pub struct VirtContext {
     host_stack: usize,
     /// Basic registers
     regs: [usize; 32],
-    /// Virtual Constrol and Status Registers
+    /// Virtual Control and Status Registers
     csr: VirtCsr,
     /// Hart ID
     hart_id: usize,
@@ -38,6 +38,10 @@ pub struct VirtCsr {
     mvendorid: usize,
     marchid: usize,
     mimpid: usize,
+    pmp_cfg: [usize; 16],
+    pmp_addr_1: [usize; 32],
+    pmp_addr_2: [usize; 32],
+
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
@@ -76,6 +80,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mvendorid => self.csr.mvendorid,
             Csr::Marchid => self.csr.marchid,
             Csr::Mimpid => self.csr.mimpid,
+            Csr::Pmpcfg(csr) => 0, // No PMPs are emulated
+            Csr::Pmpaddr(csr) => 0, // No PMPs are emulated
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -108,6 +114,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mvendorid => (), // Read-only
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
+            Csr::Pmpcfg(csr) => (), // No PMPs are emulated
+            Csr::Pmpaddr(csr) => (), // No PMPs are emulated
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

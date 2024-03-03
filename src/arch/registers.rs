@@ -1,5 +1,7 @@
 //! RISC-V Registers
 
+use core::usize;
+
 /// General purpose registers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -68,11 +70,18 @@ pub enum Csr {
     Marchid,
     /// Machine Implementation ID
     Mimpid,
+    /// PMP config  
+    Pmpcfg(usize),
+    /// PMP addr  
+    Pmpaddr(usize),
     /// An unknown CSR
     Unknown,
 }
 
 impl Csr {
+    pub fn nbr_pmps() -> usize{
+        64
+    }
     pub fn is_unknown(self) -> bool {
         match self {
             Csr::Unknown => true,
@@ -80,6 +89,7 @@ impl Csr {
         }
     }
 }
+
 
 // —————————————————————————————— Conversions ——————————————————————————————— //
 
