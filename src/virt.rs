@@ -1,6 +1,7 @@
 //! Firmware Virtualisation
 
 use crate::arch::{Arch, Architecture, Csr, Register};
+use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
 #[derive(Debug)]
@@ -10,8 +11,10 @@ pub struct VirtContext {
     host_stack: usize,
     /// Basic registers
     regs: [usize; 32],
-    /// Virtual Constrol and Status Registers
+    /// Virtual Control and Status Registers
     csr: VirtCsr,
+    /// Number of virtual PMPs
+    nbr_pmps: usize,
     /// Hart ID
     hart_id: usize,
     /// Number of exists to Mirage
@@ -26,12 +29,18 @@ impl VirtContext {
             csr: Default::default(),
             nb_exits: 0,
             hart_id,
+            nbr_pmps: match Plat::get_nb_pmp() {
+                0 => 0,
+                16 => 0,
+                64 => 16,
+                _ => 0,
+            },
         }
     }
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct VirtCsr {
     misa: usize,
     mie: usize,
@@ -41,6 +50,25 @@ pub struct VirtCsr {
     mvendorid: usize,
     marchid: usize,
     mimpid: usize,
+    pmp_cfg: [usize; 16],
+    pmp_addr: [usize; 64],
+}
+
+impl Default for VirtCsr {
+    fn default() -> VirtCsr {
+        VirtCsr {
+            misa: 0,
+            mie: 0,
+            mip: 0,
+            mtvec: 0,
+            mscratch: 0,
+            mvendorid: 0,
+            marchid: 0,
+            mimpid: 0,
+            pmp_cfg: [0; 16],
+            pmp_addr: [0; 64],
+        }
+    }
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
@@ -79,6 +107,24 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mvendorid => self.csr.mvendorid,
             Csr::Marchid => self.csr.marchid,
             Csr::Mimpid => self.csr.mimpid,
+            Csr::Pmpcfg(pmp_cfg_idx) => {
+                if pmp_cfg_idx % 2 == 1 {
+                    // Illegal because we are in a RISCV64 setting
+                    panic!("Illegal PMP_CFG {:?}", register)
+                }
+                if pmp_cfg_idx >= self.nbr_pmps / 8 {
+                    // This PMP is not emulated
+                    return 0;
+                }
+                self.csr.pmp_cfg[pmp_cfg_idx]
+            }
+            Csr::Pmpaddr(pmp_addr_idx) => {
+                if pmp_addr_idx >= self.nbr_pmps {
+                    // This PMP is not emulated
+                    return 0;
+                }
+                self.csr.pmp_addr[pmp_addr_idx]
+            }
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -111,6 +157,25 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mvendorid => (), // Read-only
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
+            Csr::Pmpcfg(pmp_cfg_idx) => {
+                if Csr::PMP_CFG_LOCK_MASK & value != 0 {
+                    panic!("PMP lock bits are not yet supported")
+                } else if pmp_cfg_idx % 2 == 1 {
+                    // Illegal because we are in a RISCV64 setting
+                    panic!("Illegal PMP_CFG {:?}", register)
+                } else if pmp_cfg_idx >= self.nbr_pmps / 8 {
+                    // This PMP is not emulated, ignore changes
+                    return;
+                }
+                self.csr.pmp_cfg[pmp_cfg_idx] = Csr::PMP_CFG_LEGAL_MASK & value;
+            }
+            Csr::Pmpaddr(pmp_addr_idx) => {
+                if pmp_addr_idx >= self.nbr_pmps {
+                    // This PMP is not emulated, ignore
+                    return;
+                }
+                self.csr.pmp_addr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
+            }
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
