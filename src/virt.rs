@@ -54,19 +54,19 @@ pub struct VirtCsr {
     pmp_addr: [usize; 64],
 }
 
-impl Default for VirtCsr{
+impl Default for VirtCsr {
     fn default() -> VirtCsr {
-        VirtCsr{
-            misa : 0,
-            mie : 0,
-            mip : 0,
-            mtvec : 0,
-            mscratch : 0,
-            mvendorid : 0,
-            marchid : 0,
-            mimpid : 0,
-            pmp_cfg : [0;16],
-            pmp_addr : [0;64],
+        VirtCsr {
+            misa: 0,
+            mie: 0,
+            mip: 0,
+            mtvec: 0,
+            mscratch: 0,
+            mvendorid: 0,
+            marchid: 0,
+            mimpid: 0,
+            pmp_cfg: [0; 16],
+            pmp_addr: [0; 64],
         }
     }
 }
