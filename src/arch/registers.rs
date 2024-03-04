@@ -1,7 +1,5 @@
 //! RISC-V Registers
 
-use core::usize;
-
 /// General purpose registers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -79,6 +77,26 @@ pub enum Csr {
 }
 
 impl Csr {
+pub const PMP_CFG_LOCK_MASK : usize = (0b1 << 7) << 0
+    | (0b1 << 7) << 8
+    | (0b1 << 7) << 16
+    | (0b1 << 7) << 24
+    | (0b1 << 7) << 32
+    | (0b1 << 7) << 40
+    | (0b1 << 7) << 48
+    | (0b1 << 7) << 56;
+
+pub const PMP_CFG_LEGAL_MASK : usize = !((0b11 << 5) << 0
+| (0b11 << 5) << 8
+| (0b11 << 5) << 16
+| (0b11 << 5) << 24
+| (0b11 << 5) << 32
+| (0b11 << 5) << 40
+| (0b11 << 5) << 48
+| (0b11 << 5) << 56);
+
+pub const PMP_ADDR_LEGAL_MASK: usize = !(0b1111111111 << 54);
+
     pub fn is_unknown(self) -> bool {
         match self {
             Csr::Unknown => true,
@@ -86,6 +104,11 @@ impl Csr {
         }
     }
 }
+
+
+
+
+
 
 // —————————————————————————————— Conversions ——————————————————————————————— //
 

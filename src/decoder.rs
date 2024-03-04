@@ -135,15 +135,11 @@ fn decode_csr(csr: usize) -> Csr {
         0xF11 => Csr::Mvendorid,
         0xF12 => Csr::Marchid,
         0xF13 => Csr::Mimpid,
+        0x3A0 ..= 0x3AF => Csr::Pmpcfg(csr - 0x3A0), 
+        0x3B0 ..= 0x3EF => Csr::Pmpaddr(csr - 0x3AF),
         _ => {
-            if 0x3A0 <= csr && csr <= 0x3AF {
-                Csr::Pmpcfg(csr - 0x3A0)
-            } else if 0x3AF < csr && csr <= 0x3EF {
-                Csr::Pmpaddr(csr - 0x3AF)
-            } else {
-                log::info!("Unknown CSR: 0x{:x}", csr);
-                Csr::Unknown
-            }
+            log::info!("Unknown CSR: 0x{:x}", csr);
+            Csr::Unknown
         }
     }
 }

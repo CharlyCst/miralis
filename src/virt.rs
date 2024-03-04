@@ -13,6 +13,8 @@ pub struct VirtContext {
     regs: [usize; 32],
     /// Virtual Control and Status Registers
     csr: VirtCsr,
+    /// Number of virtual PMPs
+    nbr_pmps: usize,
     /// Hart ID
     hart_id: usize,
     /// Number of exists to Mirage
@@ -21,22 +23,20 @@ pub struct VirtContext {
 
 impl VirtContext {
     pub fn new(hart_id: usize) -> Self {
-        let mut vc = VirtContext {
+        return VirtContext {
             host_stack: 0,
             regs: Default::default(),
             csr: Default::default(),
             nb_exits: 0,
             hart_id,
+            nbr_pmps : match Plat::get_nb_pmp() {
+                0 => 0,
+                16 => 0,
+                64 => 16,
+                _ => 0,
+            },
         };
 
-        vc.csr.nbr_pmps = match Plat::get_nb_pmp() {
-            0 => 0,
-            16 => 0,
-            64 => 16,
-            _ => 0,
-        };
-
-        return vc;
     }
 }
 
@@ -53,7 +53,6 @@ pub struct VirtCsr {
     mimpid: usize,
     pmp_cfg: [usize; 16],
     pmp_addr: [[usize; 32]; 2],
-    nbr_pmps: usize,
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
@@ -97,14 +96,14 @@ impl RegisterContext<Csr> for VirtContext {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
                 }
-                if pmp_cfg_idx >= self.csr.nbr_pmps / 8 {
+                if pmp_cfg_idx >= self.nbr_pmps / 8 {
                     //This PMP is not emulated
                     return 0;
                 }
                 self.csr.pmp_cfg[pmp_cfg_idx]
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if pmp_addr_idx >= self.csr.nbr_pmps {
+                if pmp_addr_idx >= self.nbr_pmps {
                     //This PMP is not emulated
                     return 0;
                 }
@@ -147,45 +146,29 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
             Csr::Pmpcfg(pmp_cfg_idx) => {
-                let _locks = ((0b1 << 7) << 0
-                    | (0b1 << 7) << 8
-                    | (0b1 << 7) << 16
-                    | (0b1 << 7) << 24
-                    | (0b1 << 7) << 32
-                    | (0b1 << 7) << 40
-                    | (0b1 << 7) << 48
-                    | (0b1 << 7) << 56)
-                    & value;
+                let _locks = Csr::PMP_CFG_LOCK_MASK & value;
 
                 if _locks != 0 {
                     panic!("PMP lock bits are not yet supported")
                 }
 
-                let _legal_value = !((0b11 << 5) << 0
-                    | (0b11 << 5) << 8
-                    | (0b11 << 5) << 16
-                    | (0b11 << 5) << 24
-                    | (0b11 << 5) << 32
-                    | (0b11 << 5) << 40
-                    | (0b11 << 5) << 48
-                    | (0b11 << 5) << 56)
-                    & value;
+                let _legal_value = Csr::PMP_CFG_LEGAL_MASK & value;
                 if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
                 }
-                if pmp_cfg_idx >= self.csr.nbr_pmps / 8 {
+                if pmp_cfg_idx >= self.nbr_pmps / 8 {
                     //This PMP is not emulated
-                    ()
+                    return
                 }
                 self.csr.pmp_cfg[pmp_cfg_idx] = _legal_value
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                let _legal_value = (!(0b1111111111 << 54)) & value;
+                let _legal_value = Csr::PMP_ADDR_LEGAL_MASK & value;
 
-                if pmp_addr_idx >= self.csr.nbr_pmps {
+                if pmp_addr_idx >= self.nbr_pmps {
                     //This PMP is not emulated
-                    ()
+                    return
                 }
                 self.csr.pmp_addr[if pmp_addr_idx < 32 { 0 } else { 1 }][if pmp_addr_idx < 32 {
                     pmp_addr_idx
