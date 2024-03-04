@@ -23,6 +23,8 @@ extern "C" fn entry() -> ! {
     let secret_cfg: usize = 0b00000111;
     let mut res: usize;
 
+    /* THESE TESTS ARE ONLY POSSIBLE WHEN HAVING AT LEAST 2 EMULATED PMPs
+
     // Test normal write to config
     unsafe {
         asm!(
@@ -100,6 +102,7 @@ extern "C" fn entry() -> ! {
     }
 
     read_test(res, 0);
+    */
 
     success();
 }
