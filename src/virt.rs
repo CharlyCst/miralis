@@ -29,14 +29,13 @@ impl VirtContext {
             csr: Default::default(),
             nb_exits: 0,
             hart_id,
-            nbr_pmps : match Plat::get_nb_pmp() {
+            nbr_pmps: match Plat::get_nb_pmp() {
                 0 => 0,
                 16 => 0,
                 64 => 16,
                 _ => 0,
             },
         };
-
     }
 }
 
@@ -159,7 +158,7 @@ impl RegisterContext<Csr> for VirtContext {
                 }
                 if pmp_cfg_idx >= self.nbr_pmps / 8 {
                     //This PMP is not emulated
-                    return
+                    return;
                 }
                 self.csr.pmp_cfg[pmp_cfg_idx] = _legal_value
             }
@@ -168,7 +167,7 @@ impl RegisterContext<Csr> for VirtContext {
 
                 if pmp_addr_idx >= self.nbr_pmps {
                     //This PMP is not emulated
-                    return
+                    return;
                 }
                 self.csr.pmp_addr[if pmp_addr_idx < 32 { 0 } else { 1 }][if pmp_addr_idx < 32 {
                     pmp_addr_idx
