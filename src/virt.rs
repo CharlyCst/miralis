@@ -40,7 +40,7 @@ impl VirtContext {
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct VirtCsr {
     misa: usize,
     mie: usize,
@@ -51,7 +51,24 @@ pub struct VirtCsr {
     marchid: usize,
     mimpid: usize,
     pmp_cfg: [usize; 16],
-    pmp_addr: [[usize; 32]; 2],
+    pmp_addr: [usize; 64],
+}
+
+impl Default for VirtCsr{
+    fn default() -> VirtCsr {
+        VirtCsr{
+            misa : 0,
+            mie : 0,
+            mip : 0,
+            mtvec : 0,
+            mscratch : 0,
+            mvendorid : 0,
+            marchid : 0,
+            mimpid : 0,
+            pmp_cfg : [0;16],
+            pmp_addr : [0;64],
+        }
+    }
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
@@ -106,11 +123,7 @@ impl RegisterContext<Csr> for VirtContext {
                     //This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmp_addr[if pmp_addr_idx < 32 { 0 } else { 1 }][if pmp_addr_idx < 32 {
-                    pmp_addr_idx
-                } else {
-                    pmp_addr_idx - 32
-                }]
+                self.csr.pmp_addr[pmp_addr_idx]
             }
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
@@ -169,11 +182,7 @@ impl RegisterContext<Csr> for VirtContext {
                     //This PMP is not emulated
                     return;
                 }
-                self.csr.pmp_addr[if pmp_addr_idx < 32 { 0 } else { 1 }][if pmp_addr_idx < 32 {
-                    pmp_addr_idx
-                } else {
-                    pmp_addr_idx - 32
-                }] = _legal_value
+                self.csr.pmp_addr[pmp_addr_idx] = _legal_value
             }
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
