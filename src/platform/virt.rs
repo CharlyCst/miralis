@@ -58,7 +58,7 @@ impl Platform for VirtPlatform {
     }
 
     fn get_nb_pmp() -> usize {
-        64
+        16
     }
 }
 
