@@ -16,6 +16,7 @@ members = [
     "payloads/ecall",
     "payloads/mscratch",
     "payloads/csr_id",
+    "payloads/pmp",
 
     # Crates
     "crates/mirage_abi",
