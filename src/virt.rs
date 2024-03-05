@@ -11,6 +11,8 @@ pub struct VirtContext {
     host_stack: usize,
     /// Basic registers
     regs: [usize; 32],
+    /// Program Counter
+    pub(crate) pc: usize,
     /// Virtual Control and Status Registers
     csr: VirtCsr,
     /// Number of virtual PMPs
@@ -27,6 +29,7 @@ impl VirtContext {
             host_stack: 0,
             regs: Default::default(),
             csr: Default::default(),
+            pc: 0,
             nb_exits: 0,
             hart_id,
             nbr_pmps: match Plat::get_nb_pmp() {

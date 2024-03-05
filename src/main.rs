@@ -35,7 +35,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let mut ctx = VirtContext::new(hart_id);
     unsafe {
         // Set return address, mode and PMP permissions
-        Arch::write_mepc(payload_addr);
         Arch::set_mpp(arch::Mode::U);
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
@@ -45,6 +44,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
         ctx.set(Csr::Misa, Arch::read_misa());
+        ctx.pc = payload_addr;
     }
 
     main_loop(ctx);
@@ -88,14 +88,11 @@ fn handle_trap(ctx: &mut VirtContext) {
             let instr = decode(instr);
             log::trace!("Faulting instruction: {:?}", instr);
             emulate_instr(ctx, &instr);
+
+            // Skip to next instruction
+            ctx.pc += 4;
         }
         _ => (), // Continue
-    }
-
-    // Skip instruction and return
-    unsafe {
-        log::trace!("Skipping trapping instruction");
-        Arch::write_mepc(Arch::read_mepc() + 4);
     }
 }
 

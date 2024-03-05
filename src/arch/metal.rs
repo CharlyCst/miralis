@@ -76,13 +76,6 @@ impl Architecture for Metal {
         Self::write_mstatus((mstatus & !MPP_MASK) | value)
     }
 
-    unsafe fn write_mepc(mepc: usize) {
-        asm!(
-            "csrw mepc, {x}",
-            x = in(reg) mepc
-        )
-    }
-
     unsafe fn write_misa(misa: usize) {
         asm!(
             "csrw misa, {x}",
@@ -257,9 +250,11 @@ global_asm!(
 .align 4
 .global _enter_virt_firmware
 _enter_virt_firmware:
-    csrw mscratch, x31      // Save context in mscratch
-    sd x30, (0)(sp)         // Store return address
-    sd sp,(8*0)(x31)        // Store host stack
+    csrw mscratch, x31        // Save context in mscratch
+    sd x30, (0)(sp)           // Store return address
+    sd sp,(8*0)(x31)          // Store host stack
+    ld x1,(8+8*32)(x31)       // Read payload PC
+    csrw mepc,x1              // Restore payload PC in mepc
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
     ld x3,(8+8*3)(x31)
@@ -337,6 +332,8 @@ _raw_trap_handler:
     sd x30,(8+8*30)(x31)
     csrr x30, mscratch    // Restore x31 into x30 from mscratch
     sd x30,(8+8*31)(x31)  // Save x31 (whose value is stored in x30)
+    csrr x30, mepc        // Read payload PC
+    sd x30, (8+8*32)(x31) // Save the PC
     ld sp,(8*0)(x31)      // Restore host stack
     ld x30,(sp)           // Load return address from stack
     jr x30                // Return
