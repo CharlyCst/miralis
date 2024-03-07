@@ -55,6 +55,12 @@ pub struct VirtCsr {
     mimpid: usize,
     pmp_cfg: [usize; 16],
     pmp_addr: [usize; 64],
+    mcycle: usize,
+    minstret: usize,
+    mhpmcounter: [usize; 29],
+    mcountinhibit: usize,
+    mhpmevent: [usize; 29],
+    mcounteren: usize,
 }
 
 impl Default for VirtCsr {
@@ -70,6 +76,12 @@ impl Default for VirtCsr {
             mimpid: 0,
             pmp_cfg: [0; 16],
             pmp_addr: [0; 64],
+            mcycle: 0,
+            minstret: 0,
+            mhpmcounter: [0; 29],
+            mcountinhibit: 0,
+            mhpmevent: [0; 29],
+            mcounteren: 0,
         }
     }
 }
@@ -128,6 +140,12 @@ impl RegisterContext<Csr> for VirtContext {
                 }
                 self.csr.pmp_addr[pmp_addr_idx]
             }
+            Csr::Mcycle => self.csr.mcycle,
+            Csr::Minstret => self.csr.minstret,
+            Csr::Mhpmcounter(n) => self.csr.mhpmcounter[n],
+            Csr::Mcountinhibit => self.csr.mcountinhibit,
+            Csr::Mhpmevent(n) => self.csr.mhpmevent[n],
+            Csr::Mcounteren => self.csr.mcounteren,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -179,6 +197,12 @@ impl RegisterContext<Csr> for VirtContext {
                 }
                 self.csr.pmp_addr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
             }
+            Csr::Mcycle => (),                    // Read-only 0
+            Csr::Minstret => (),                  // Read-only 0
+            Csr::Mhpmcounter(_counter_idx) => (), // Read-only 0
+            Csr::Mcountinhibit => (),             // Read-only 0
+            Csr::Mhpmevent(_event_idx) => (),     // Read-only 0
+            Csr::Mcounteren => (),                // Read-only 0
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
