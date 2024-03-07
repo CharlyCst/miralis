@@ -84,6 +84,10 @@ pub enum Csr {
     Mhpmevent(usize),
     /// Machine counter enable
     Mcounteren,
+    /// Machine environment configuration register
+    Menvcgf,
+    /// Machine security configuration register
+    Mseccfg,
     /// An unknown CSR
     Unknown,
 }
