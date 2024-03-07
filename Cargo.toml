@@ -18,6 +18,7 @@ members = [
     "payloads/csr_id",
     "payloads/pmp",
     "payloads/perf_monitor",
+    "payloads/menv_msec",
 
     # Crates
     "crates/mirage_abi",
