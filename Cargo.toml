@@ -17,6 +17,7 @@ members = [
     "payloads/mscratch",
     "payloads/csr_id",
     "payloads/pmp",
+    "payloads/perf_monitor",
 
     # Crates
     "crates/mirage_abi",
