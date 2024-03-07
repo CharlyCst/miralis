@@ -70,7 +70,7 @@ fn handle_trap(ctx: &mut VirtContext) {
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     log::trace!("  exits:   {}", ctx.nb_exits);
-    if ctx.nb_exits >= 200 {
+    if ctx.nb_exits >= 400 {
         log::error!("Trap counter reached limit: {}", ctx.nb_exits);
         Plat::exit_failure();
     }
