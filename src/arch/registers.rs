@@ -72,6 +72,18 @@ pub enum Csr {
     Pmpcfg(usize),
     /// PMP addr  
     Pmpaddr(usize),
+    /// Machine cycle counter
+    Mcycle,
+    /// Machine instructions-retired counter
+    Minstret,
+    /// Machine performance-monitoring counter
+    Mhpmcounter(usize),
+    /// Machine counter-inhibit register
+    Mcountinhibit,
+    /// Machine performance-monitoring event selector
+    Mhpmevent(usize),
+    /// Machine counter enable
+    Mcounteren,
     /// An unknown CSR
     Unknown,
 }
@@ -96,6 +108,8 @@ impl Csr {
         | (0b11 << 5) << 56);
 
     pub const PMP_ADDR_LEGAL_MASK: usize = !(0b1111111111 << 54);
+
+    pub const MCOUNTINHIBIT_LEGAL_MASK: usize = !(0b10);
 
     pub fn is_unknown(self) -> bool {
         match self {
