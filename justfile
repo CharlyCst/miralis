@@ -17,6 +17,7 @@ test:
 	cargo run --package runner -- --payload csr_ops
 	cargo run --package runner -- --payload csr_id
 	cargo run --package runner -- --payload pmp
+	cargo run --package runner -- --payload perf_monitor
 
 	# Checking formatting...
 	cargo fmt --all -- --check

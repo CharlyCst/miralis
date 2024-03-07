@@ -201,7 +201,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Minstret => self.csr.minstret = value,
             Csr::Mhpmcounter(counter_idx) => self.csr.mhpmcounter[counter_idx] = value,
             Csr::Mcountinhibit => self.csr.mcountinhibit = Csr::MCOUNTINHIBIT_LEGAL_MASK & value,
-            Csr::Mhpmevent(event_idx) => self.csr.mhpmcounter[event_idx] = value,
+            Csr::Mhpmevent(event_idx) => self.csr.mhpmevent[event_idx] = value,
             Csr::Mcounteren => self.csr.mcounteren = value,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
