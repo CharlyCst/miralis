@@ -61,6 +61,8 @@ pub struct VirtCsr {
     mcountinhibit: usize,
     mhpmevent: [usize; 29],
     mcounteren: usize,
+    menvcfg: usize,
+    mseccfg: usize,
 }
 
 impl Default for VirtCsr {
@@ -82,6 +84,8 @@ impl Default for VirtCsr {
             mcountinhibit: 0,
             mhpmevent: [0; 29],
             mcounteren: 0,
+            menvcfg: 0,
+            mseccfg: 0,
         }
     }
 }
@@ -146,6 +150,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcountinhibit => self.csr.mcountinhibit,
             Csr::Mhpmevent(n) => self.csr.mhpmevent[n],
             Csr::Mcounteren => self.csr.mcounteren,
+            Csr::Menvcgf => self.csr.menvcfg,
+            Csr::Mseccfg => self.csr.mseccfg,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -203,6 +209,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcountinhibit => (),             // Read-only 0
             Csr::Mhpmevent(_event_idx) => (),     // Read-only 0
             Csr::Mcounteren => (),                // Read-only 0
+            Csr::Menvcgf => self.csr.menvcfg = value,
+            Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

@@ -18,7 +18,8 @@ test:
 	cargo run --package runner -- --payload csr_id
 	cargo run --package runner -- --payload pmp
 	cargo run --package runner -- --payload perf_monitor
-
+	cargo run --package runner -- --payload menv_msec
+	
 	# Checking formatting...
 	cargo fmt --all -- --check
 
