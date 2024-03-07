@@ -141,7 +141,7 @@ fn decode_csr(csr: usize) -> Csr {
         0xB02 => Csr::Minstret,
         0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
         0x320 => Csr::Mcountinhibit,
-        0x323..=0x33F => Csr::Mhpmevent(csr - 0x320),
+        0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
         0x306 => Csr::Mcounteren,
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
