@@ -43,7 +43,7 @@ fn test_simple_regs() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test minstret
     unsafe {
@@ -56,7 +56,7 @@ fn test_simple_regs() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test mcountinhibit
     unsafe {
@@ -69,7 +69,7 @@ fn test_simple_regs() {
         );
     }
 
-    read_test(res, secret & !0b10);
+    read_test(res, 0);
 
     // Test mcounteren
     unsafe {
@@ -82,7 +82,7 @@ fn test_simple_regs() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 }
 
 fn test_some_counters_events() {
@@ -100,7 +100,7 @@ fn test_some_counters_events() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test mhpmcounter5
     unsafe {
@@ -113,7 +113,7 @@ fn test_some_counters_events() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test mhpmcounter7
     unsafe {
@@ -126,7 +126,7 @@ fn test_some_counters_events() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test mhpmevent3
     unsafe {
@@ -139,7 +139,7 @@ fn test_some_counters_events() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test mhpmevent5
     unsafe {
@@ -152,7 +152,7 @@ fn test_some_counters_events() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 
     // Test mhpmevent7
     unsafe {
@@ -165,7 +165,7 @@ fn test_some_counters_events() {
         );
     }
 
-    read_test(res, secret);
+    read_test(res, 0);
 }
 
 fn read_test(out_csr: usize, expected: usize) {
