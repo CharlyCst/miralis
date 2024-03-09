@@ -13,6 +13,7 @@ use crate::path::get_workspace_path;
 // ——————————————————————————— Config Definition ———————————————————————————— //
 
 #[derive(Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
     pub log: Log,
@@ -21,11 +22,13 @@ pub struct Config {
 }
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Log {
     pub level: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Debug {
     pub max_payload_exits: Option<usize>,
 }
