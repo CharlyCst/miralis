@@ -51,16 +51,17 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 }
 
 fn main_loop(mut ctx: VirtContext) -> ! {
+    let max_exit = debug::get_max_payload_exits();
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
-            handle_trap(&mut ctx);
+            handle_trap(&mut ctx, max_exit);
             log::trace!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext) {
+fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", Arch::read_mcause());
     log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
@@ -70,9 +71,11 @@ fn handle_trap(ctx: &mut VirtContext) {
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     log::trace!("  exits:   {}", ctx.nb_exits);
-    if ctx.nb_exits >= 400 {
-        log::error!("Trap counter reached limit: {}", ctx.nb_exits);
-        Plat::exit_failure();
+    if let Some(max_exit) = max_exit {
+        if ctx.nb_exits >= max_exit {
+            log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
+            Plat::exit_failure();
+        }
     }
 
     match Arch::read_mcause() {

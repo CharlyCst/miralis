@@ -16,11 +16,18 @@ use crate::path::get_workspace_path;
 pub struct Config {
     #[serde(default)]
     pub log: Log,
+    #[serde(default)]
+    pub debug: Debug,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct Log {
     pub level: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+pub struct Debug {
+    pub max_payload_exits: Option<usize>,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //
@@ -29,6 +36,7 @@ impl Config {
     pub fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = HashMap::new();
         envs.extend(self.log.build_envs());
+        envs.extend(self.debug.build_envs());
         envs
     }
 }
@@ -38,6 +46,19 @@ impl Log {
         let mut envs = HashMap::new();
         if let Some(level) = &self.level {
             envs.insert(String::from("MIRAGE_LOG_LEVEL"), level.clone());
+        }
+        envs
+    }
+}
+
+impl Debug {
+    fn build_envs(&self) -> HashMap<String, String> {
+        let mut envs = HashMap::new();
+        if let Some(max_payload_exits) = self.max_payload_exits {
+            envs.insert(
+                String::from("MIRAGE_DEBUG_MAX_PAYLOAD_EXITS"),
+                format!("{}", max_payload_exits),
+            );
         }
         envs
     }

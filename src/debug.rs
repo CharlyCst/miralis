@@ -2,6 +2,24 @@
 
 use crate::{_stack_bottom, _stack_top};
 
+// ——————————————————————————— Max Payload Exits ———————————————————————————— //
+
+/// Returns the maximum number of payload exits before panicking.
+///
+/// If the value returned is None, there is no maximum cap.
+///
+/// NOTE: For now we still need some basic runtime parsing, but once
+/// https://github.com/rust-lang/rust/pull/99322 gets merged we can convert this function to a
+/// constant.
+pub fn get_max_payload_exits() -> Option<usize> {
+    match option_env!("MIRAGE_DEBUG_MAX_PAYLOAD_EXITS") {
+        Some(env_var) => usize::from_str_radix(env_var, 10).ok(),
+        None => None,
+    }
+}
+
+// ———————————————————————————— Max Stack Usage ————————————————————————————— //
+
 /// A well known memory pattern
 ///
 /// This pattern can be used to fill unitialized memory, which might be useful for a variety of
