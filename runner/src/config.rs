@@ -9,6 +9,7 @@ use std::fs;
 use serde::Deserialize;
 
 use crate::path::get_workspace_path;
+use crate::Args;
 
 // ——————————————————————————— Config Definition ———————————————————————————— //
 
@@ -69,7 +70,7 @@ impl Debug {
 
 // ————————————————————————————— Config Loader —————————————————————————————— //
 
-pub fn read_config() -> Config {
+pub fn read_config(args: &Args) -> Config {
     // Try to read config
     let mut config_path = get_workspace_path();
     config_path.push("config.toml");
@@ -83,6 +84,12 @@ pub fn read_config() -> Config {
     };
 
     // Parse the config and returns it
-    let config = toml::from_str::<Config>(&config).expect("Failed to parse configuration");
+    let mut config = toml::from_str::<Config>(&config).expect("Failed to parse configuration");
+
+    // Override some aspect of the config, if required by the arguments
+    if let Some(max_exits) = args.max_exits {
+        config.debug.max_payload_exits = Some(max_exits);
+    }
+
     config
 }

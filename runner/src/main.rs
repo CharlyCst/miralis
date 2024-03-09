@@ -58,6 +58,9 @@ struct Args {
     verbose: bool,
     #[arg(short, long, default_value = "ecall")]
     payload: String,
+    #[arg(long)]
+    /// Maximum number of payload exits
+    max_exits: Option<usize>,
 }
 
 fn parse_args() -> Args {
@@ -188,7 +191,7 @@ fn main() {
 
     println!("Running Mirage with '{}' payload", &args.payload);
 
-    let cfg = config::read_config();
+    let cfg = config::read_config(&args);
 
     let mirage = build_target(Target::Mirage, &cfg);
     let payload = if is_known_payload(&args.payload) {
