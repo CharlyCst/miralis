@@ -56,4 +56,3 @@ fn read_test(out_csr: usize, expected: usize) {
 fn panic(_info: &PanicInfo) -> ! {
     failure();
 }
-
