@@ -95,8 +95,37 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             // Skip to next instruction
             ctx.pc += 4;
         }
-        _ => (), // Continue
+        cause@_ => {
+            // Save csr registers
+            ctx.csr.mcause = 0;
+            ctx.csr.mepc = 0;
+            ctx.csr.mtval = 0;
+            ctx.csr.mstatus = 0;
+
+            //Set new csr registers for the jump to OpenSbi
+       //     Arch::set_mcause();
+       //     Arch::set_mepc();
+       //     Arch::set_mtval();
+       //     Arch::set_mstatus();
+
+            ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler    
+        }
     }
+
+    /*
+       A trap should
+           - Jump to this trap handler
+           - Save values of registers into Virtual Context
+               - mepc
+               - mcause
+               - mtval
+               - mstatus
+           - Set new register values
+           - Jump to trap handler of OpenSbi
+           - mret will jump to mirage
+           - Set old register values
+           - Jump to mepc : pc = 0xFFFF
+    */
 }
 
 fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
@@ -152,6 +181,17 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             let tmp = ctx.get(csr);
             ctx.set(csr, tmp & !uimm);
             ctx.set(rd, tmp);
+        }
+        Instr::Mret => {
+            // Return the values to the registers
+       //     Arch::set_mcause(ctx.csr.mcause);
+       //     Arch::set_mepc(ctx.csr.mepc);
+       //     Arch::set_mtval(ctx.csr.mtval);
+       //     Arch::set_mstatus(ctx.csr.mstatus);
+
+            //Jump back to payload
+            ctx.pc = ctx.csr.mepc-4;
+
         }
         _ => todo!("Instruction not yet implemented: {:?}", instr),
     }

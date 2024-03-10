@@ -14,7 +14,7 @@ pub struct VirtContext {
     /// Program Counter
     pub(crate) pc: usize,
     /// Virtual Control and Status Registers
-    csr: VirtCsr,
+    pub(crate) csr: VirtCsr,
     /// Number of virtual PMPs
     nbr_pmps: usize,
     /// Hart ID
@@ -48,7 +48,7 @@ pub struct VirtCsr {
     misa: usize,
     mie: usize,
     mip: usize,
-    mtvec: usize,
+    pub mtvec: usize,
     mscratch: usize,
     mvendorid: usize,
     marchid: usize,
@@ -63,6 +63,10 @@ pub struct VirtCsr {
     mcounteren: usize,
     menvcfg: usize,
     mseccfg: usize,
+    pub mcause: usize,
+    pub mepc: usize,
+    pub mtval: usize,
+    pub mstatus: usize,
 }
 
 impl Default for VirtCsr {
@@ -86,6 +90,10 @@ impl Default for VirtCsr {
             mcounteren: 0,
             menvcfg: 0,
             mseccfg: 0,
+            mcause: 0,
+            mepc: 0,
+            mtval: 0,
+            mstatus: 0,
         }
     }
 }

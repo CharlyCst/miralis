@@ -46,6 +46,7 @@ pub enum Instr {
         rd: Register,
         uimm: usize,
     },
+    Mret,
     Unknown,
 }
 
