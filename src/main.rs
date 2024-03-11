@@ -97,6 +97,10 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
         }
         MCause::Breakpoint => {
             ctx.csr.mepc = ctx.pc;
+            // TODO : what other csr need to be saved? Save them during context switch
+            // mstatus
+            // mtval
+            // mtinst
 
             ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
         }
@@ -161,7 +165,8 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.set(rd, tmp);
         }
         Instr::Mret => {
-            //MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1
+            // Modify mstatus
+            // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1
             let mpie = 0b1 & (ctx.csr.mstatus >> 7);
 
             ctx.csr.mstatus = ctx.csr.mstatus | 0b1 << 7;
@@ -172,7 +177,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 39);
             ctx.csr.mstatus = ctx.csr.mstatus & !(0b11 << 11);
 
-            //Jump back to payload
+            // Jump back to payload
             ctx.pc = ctx.csr.mepc;
         }
         _ => todo!("Instruction not yet implemented: {:?}", instr),

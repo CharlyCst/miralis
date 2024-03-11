@@ -109,7 +109,7 @@ impl Architecture for Metal {
             x = in(reg) mcause
         )
     }
-    
+
     unsafe fn write_mtval(mtval: usize) {
         asm!(
             "csrw mtval, {x}",
