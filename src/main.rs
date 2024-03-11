@@ -95,7 +95,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             // Skip to next instruction
             ctx.pc += 4;
         }
-        MCause::Breakpoinnt => {
+        MCause::Breakpoint => {
             ctx.csr.mepc = ctx.pc;
 
             ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler

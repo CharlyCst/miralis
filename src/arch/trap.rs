@@ -11,7 +11,7 @@ pub enum MCause {
     InstrAddrMisaligned = 0,
     InstrAccessFault = 1,
     IllegalInstr = 2,
-    Breakpoinnt = 3,
+    Breakpoint = 3,
     LoadAddrMisaligned = 4,
     LoadAccessFault = 5,
     StoreMisaligned = 6,
