@@ -95,15 +95,13 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             // Skip to next instruction
             ctx.pc += 4;
         }
-        cause @ _ => {
-            // Save csr registers
-            ctx.csr.mcause = Arch::read_mcause_raw();
-            ctx.csr.mepc = Arch::read_mepc();
-            ctx.csr.mtval = Arch::read_mtval();
-            ctx.csr.mstatus = Arch::read_mstatus();
-            ctx.csr.mtinst = Arch::read_mtinst();
+        MCause::Breakpoinnt => {
+            ctx.csr.mepc = ctx.pc;
 
             ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
+        }
+        _ => {
+            // TODO : Need to match other traps
         }
     }
 }

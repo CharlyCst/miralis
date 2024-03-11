@@ -31,7 +31,6 @@ pub trait Architecture {
     unsafe fn write_misa(misa: usize);
     unsafe fn write_mstatus(mstatus: usize);
     unsafe fn write_mcause(mcause: usize);
-    unsafe fn write_mepc(mepc: usize);
     unsafe fn write_mtval(mtval: usize);
     unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize);
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
