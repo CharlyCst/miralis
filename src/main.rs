@@ -103,7 +103,6 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             ctx.csr.mstatus = Arch::read_mstatus();
             ctx.csr.mtinst = Arch::read_mtinst();
 
-
             ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
         }
     }
@@ -174,8 +173,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 
             ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 39);
             ctx.csr.mstatus = ctx.csr.mstatus & !(0b11 << 11);
-            
-            
+
             //Jump back to payload
             ctx.pc = ctx.csr.mepc;
         }
@@ -183,9 +181,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
     }
 }
 
-fn not_implemented_csr() {
-
-}
+fn not_implemented_csr() {}
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
