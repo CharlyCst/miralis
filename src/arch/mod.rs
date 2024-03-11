@@ -23,11 +23,16 @@ pub trait Architecture {
     fn read_misa() -> usize;
     fn read_mstatus() -> usize;
     fn read_mcause() -> MCause;
+    fn read_mcause_raw() -> usize;
     fn read_mepc() -> usize;
     fn read_mtval() -> usize;
+    fn read_mtinst() -> usize;
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_misa(misa: usize);
     unsafe fn write_mstatus(mstatus: usize);
+    unsafe fn write_mcause(mcause: usize);
+    unsafe fn write_mepc(mepc: usize);
+    unsafe fn write_mtval(mtval: usize);
     unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize);
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret() -> !;

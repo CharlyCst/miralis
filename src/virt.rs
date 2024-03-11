@@ -67,6 +67,7 @@ pub struct VirtCsr {
     pub mepc: usize,
     pub mtval: usize,
     pub mstatus: usize,
+    pub mtinst: usize,
 }
 
 impl Default for VirtCsr {
@@ -94,6 +95,7 @@ impl Default for VirtCsr {
             mepc: 0,
             mtval: 0,
             mstatus: 0,
+            mtinst: 0,
         }
     }
 }

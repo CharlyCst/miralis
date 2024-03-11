@@ -95,6 +95,7 @@ fn decode_system(raw: usize) -> Instr {
             0b000000000000 => Instr::Ecall,
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
+            0b001100000010 => Instr::Mret,
             _ => Instr::Unknown,
         };
     }

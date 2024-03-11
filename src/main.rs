@@ -95,37 +95,18 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             // Skip to next instruction
             ctx.pc += 4;
         }
-        cause@_ => {
+        cause @ _ => {
             // Save csr registers
-            ctx.csr.mcause = 0;
-            ctx.csr.mepc = 0;
-            ctx.csr.mtval = 0;
-            ctx.csr.mstatus = 0;
+            ctx.csr.mcause = Arch::read_mcause_raw();
+            ctx.csr.mepc = Arch::read_mepc();
+            ctx.csr.mtval = Arch::read_mtval();
+            ctx.csr.mstatus = Arch::read_mstatus();
+            ctx.csr.mtinst = Arch::read_mtinst();
 
-            //Set new csr registers for the jump to OpenSbi
-       //     Arch::set_mcause();
-       //     Arch::set_mepc();
-       //     Arch::set_mtval();
-       //     Arch::set_mstatus();
 
-            ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler    
+            ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
         }
     }
-
-    /*
-       A trap should
-           - Jump to this trap handler
-           - Save values of registers into Virtual Context
-               - mepc
-               - mcause
-               - mtval
-               - mstatus
-           - Set new register values
-           - Jump to trap handler of OpenSbi
-           - mret will jump to mirage
-           - Set old register values
-           - Jump to mepc : pc = 0xFFFF
-    */
 }
 
 fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
@@ -183,18 +164,27 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.set(rd, tmp);
         }
         Instr::Mret => {
-            // Return the values to the registers
-       //     Arch::set_mcause(ctx.csr.mcause);
-       //     Arch::set_mepc(ctx.csr.mepc);
-       //     Arch::set_mtval(ctx.csr.mtval);
-       //     Arch::set_mstatus(ctx.csr.mstatus);
+            //MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1
+            let mpie = 0b1 & (ctx.csr.mstatus >> 7);
 
+            ctx.csr.mstatus = ctx.csr.mstatus | 0b1 << 7;
+
+            ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 3);
+            ctx.csr.mstatus = ctx.csr.mstatus | mpie << 3;
+
+            ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 39);
+            ctx.csr.mstatus = ctx.csr.mstatus & !(0b11 << 11);
+            
+            
             //Jump back to payload
-            ctx.pc = ctx.csr.mepc-4;
-
+            ctx.pc = ctx.csr.mepc;
         }
         _ => todo!("Instruction not yet implemented: {:?}", instr),
     }
+}
+
+fn not_implemented_csr() {
+
 }
 
 #[panic_handler]

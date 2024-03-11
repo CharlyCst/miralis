@@ -49,6 +49,16 @@ impl Architecture for Metal {
         return MCause::new(mcause);
     }
 
+    fn read_mcause_raw() -> usize {
+        let mcause: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mcause",
+                x = out(reg) mcause);
+        }
+        return mcause;
+    }
+
     fn read_mepc() -> usize {
         let mepc: usize;
         unsafe {
@@ -69,6 +79,16 @@ impl Architecture for Metal {
         return mtval;
     }
 
+    fn read_mtinst() -> usize {
+        let mtinst: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mtinst",
+                x = out(reg) mtinst);
+        }
+        return mtinst;
+    }
+
     unsafe fn set_mpp(mode: Mode) {
         const MPP_MASK: usize = 0b11_usize << 11;
         let value = mode.to_bits() << 11;
@@ -80,6 +100,27 @@ impl Architecture for Metal {
         asm!(
             "csrw misa, {x}",
             x = in(reg) misa
+        )
+    }
+
+    unsafe fn write_mcause(mcause: usize) {
+        asm!(
+            "csrw mcause, {x}",
+            x = in(reg) mcause
+        )
+    }
+
+    unsafe fn write_mepc(mepc: usize) {
+        asm!(
+            "csrw mepc, {x}",
+            x = in(reg) mepc
+        )
+    }
+
+    unsafe fn write_mtval(mtval: usize) {
+        asm!(
+            "csrw mtval, {x}",
+            x = in(reg) mtval
         )
     }
 
