@@ -99,7 +99,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
         MCause::Breakpoint => {
             ctx.csr.mepc = ctx.pc;
 
-            //Modify mstatus : pewvious privilege mode is Machine = 3
+            //Modify mstatus : previous privilege mode is Machine = 3
             ctx.csr.mstatus = ctx.csr.mstatus | 0b11 << 11;
 
             ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
@@ -165,6 +165,9 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.set(rd, tmp);
         }
         Instr::Mret => {
+            if ctx.csr.mstatus >> 11 != 3 {
+                panic!("MRET is not going to M mode");
+            }
             // Modify mstatus
             // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1
             let mpie = 0b1 & (ctx.csr.mstatus >> 7);

@@ -90,7 +90,7 @@ pub enum Csr {
     Mseccfg,
     /// Ponter to configuration data structure
     Mconfgptr,
-    /// Machine exception delegation register 
+    /// Machine exception delegation register
     Medeleg,
     /// Machine interrupt delegation register
     Mideleg,
@@ -112,7 +112,7 @@ pub enum Csr {
     Dcsr,
     /// Debug PC
     Dpc,
-    /// Debug scratch register 0 
+    /// Debug scratch register 0
     Dscratch0,
     /// Debug scratch register 1
     Dscratch1,
