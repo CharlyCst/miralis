@@ -67,6 +67,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
     log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
+    //log::trace!("  mtinst:   0x{:x}", Arch::read_mtinst());
 
     // Keep track of the number of exit
     ctx.nb_exits += 1;
@@ -97,10 +98,9 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
         }
         MCause::Breakpoint => {
             ctx.csr.mepc = ctx.pc;
-            // TODO : what other csr need to be saved? Save them during context switch
-            // mstatus
-            // mtval
-            // mtinst
+
+            //Modify mstatus : pewvious privilege mode is Machine = 3
+            ctx.csr.mstatus = ctx.csr.mstatus | 0b11 << 11;
 
             ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
         }
