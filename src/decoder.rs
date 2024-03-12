@@ -1,5 +1,4 @@
 //! RISC-V instruction decoder
-
 use crate::arch::{Csr, Register};
 
 const OPCODE_MASK: usize = 0b1111111 << 0;
@@ -147,6 +146,7 @@ fn decode_csr(csr: usize) -> Csr {
         0x306 => Csr::Mcounteren,
         0x30a => Csr::Menvcgf,
         0x747 => Csr::Mseccfg,
+        0xF15 => Csr::Mconfgptr,
         0x302 => Csr::Medeleg,
         0x303 => Csr::Mideleg,
         0x34A => Csr::Mtinst,
@@ -158,7 +158,7 @@ fn decode_csr(csr: usize) -> Csr {
         0x7A8 => Csr::Mcontext,
         0x7B0 => Csr::Dcsr,
         0x7B1 => Csr::Dpc,
-        0x7B2 => Csr::Dscratch1,
+        0x7B2 => Csr::Dscratch0,
         0x7B3 => Csr::Dscratch1,
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
