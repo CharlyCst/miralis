@@ -147,6 +147,19 @@ fn decode_csr(csr: usize) -> Csr {
         0x306 => Csr::Mcounteren,
         0x30a => Csr::Menvcgf,
         0x747 => Csr::Mseccfg,
+        0x302 => Csr::Medeleg,
+        0x303 => Csr::Mideleg,
+        0x34A => Csr::Mtinst,
+        0x34B => Csr::Mtval2,
+        0x7A0 => Csr::Tselect,
+        0x7A1 => Csr::Tdata1,
+        0x7A2 => Csr::Tdata3,
+        0x7A3 => Csr::Tdata2,
+        0x7A8 => Csr::Mcontext,
+        0x7B0 => Csr::Dcsr,
+        0x7B1 => Csr::Dpc,
+        0x7B2 => Csr::Dscratch1,
+        0x7B3 => Csr::Dscratch1,
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
