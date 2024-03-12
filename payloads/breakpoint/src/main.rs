@@ -18,6 +18,7 @@ _start:
 );
 
 extern "C" fn entry() -> ! {
+
     unsafe {
         let handler = _raw_breakpoint_trap_handler as usize;
         // Let's rise an exception breakpoint directly
@@ -28,12 +29,22 @@ extern "C" fn entry() -> ! {
         );
     }
 
+    //Mret return : 
+    // check mstatus values
+
     panic!();
 }
 
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
     // TODO: check mPP, and others?
+    // Check mstatus : MPP = 3
+    unsafe{
+        asm!(
+            "mret",
+            "csrwi mtvec, 0"
+        )
+    }
     success();
 }
 
