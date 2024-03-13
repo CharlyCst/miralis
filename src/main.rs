@@ -126,7 +126,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
                 payload_trap_handler(ctx);
-                ctx.pc = ctx.pc-4;
+                ctx.pc = ctx.pc - 4;
                 return;
             }
             let tmp = ctx.get(csr);
@@ -137,7 +137,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
                 payload_trap_handler(ctx);
-                ctx.pc = ctx.pc-4;
+                ctx.pc = ctx.pc - 4;
                 return;
             }
             ctx.set(rd, ctx.get(csr));
@@ -147,7 +147,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
                 payload_trap_handler(ctx);
-                ctx.pc = ctx.pc-4;
+                ctx.pc = ctx.pc - 4;
                 return;
             }
             let tmp = ctx.get(csr);
@@ -158,7 +158,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
                 payload_trap_handler(ctx);
-                ctx.pc = ctx.pc-4;
+                ctx.pc = ctx.pc - 4;
                 return;
             }
             let tmp = ctx.get(csr);
@@ -169,7 +169,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
                 payload_trap_handler(ctx);
-                ctx.pc = ctx.pc-4;
+                ctx.pc = ctx.pc - 4;
                 return;
             }
             let tmp = ctx.get(csr);
