@@ -89,6 +89,16 @@ impl Architecture for Metal {
         return mtinst;
     }
 
+    fn read_mip() -> usize {
+        let mip: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mip",
+                x = out(reg) mip);
+        }
+        return mip;
+    }
+
     unsafe fn set_mpp(mode: Mode) {
         const MPP_MASK: usize = 0b11_usize << 11;
         let value = mode.to_bits() << 11;

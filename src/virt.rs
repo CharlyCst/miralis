@@ -47,7 +47,7 @@ impl VirtContext {
 pub struct VirtCsr {
     misa: usize,
     mie: usize,
-    mip: usize,
+    pub mip: usize,
     pub mtvec: usize,
     mscratch: usize,
     mvendorid: usize,
@@ -176,9 +176,9 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),
             Csr::Dscratch0 => todo!(),
             Csr::Dscratch1 => todo!(),
-            Csr::Mepc => todo!(),
-            Csr::Mcause => todo!(),
-            Csr::Mtval => todo!(),
+            Csr::Mepc => self.csr.mepc,
+            Csr::Mcause => self.csr.mcause,
+            Csr::Mtval => self.csr.mtval,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -252,9 +252,9 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),
             Csr::Dscratch0 => todo!(),
             Csr::Dscratch1 => todo!(),
-            Csr::Mepc => todo!(),
-            Csr::Mcause => todo!(),
-            Csr::Mtval => todo!(),
+            Csr::Mepc => self.csr.mepc = value,
+            Csr::Mcause => self.csr.mcause = value,
+            Csr::Mtval => self.csr.mtval = value,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

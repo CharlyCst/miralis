@@ -178,7 +178,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         }
         Instr::Mret => {
             if ctx.csr.mstatus >> 11 != 3 {
-                panic!("MRET is not going to M mode");
+                panic!("MRET is not going to M mode: {}", ctx.csr.mstatus);
             }
             // Modify mstatus
             // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
@@ -201,12 +201,16 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 
 fn payload_trap_handler(ctx: &mut VirtContext) {
     //We are now emulating a trap, registers need to be updated
+
+    // TODO : this should probably be done in the context switch assembly  : WHEN TRAPPING FROM INSIDE MIRAGE
     //mcause
     ctx.csr.mcause = Arch::read_mcause_raw();
     //mstatus
     ctx.csr.mstatus = Arch::read_mstatus();
     //mtval
     ctx.csr.mtval = Arch::read_mtval();
+    //mip
+    ctx.csr.mip = Arch::read_mip();
 
     ctx.csr.mepc = ctx.pc;
 
