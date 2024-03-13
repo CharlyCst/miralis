@@ -181,7 +181,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
                 panic!("MRET is not going to M mode");
             }
             // Modify mstatus
-            // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1
+            // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
             let mpie = 0b1 & (ctx.csr.mstatus >> 7);
 
             ctx.csr.mstatus = ctx.csr.mstatus | 0b1 << 7;
@@ -200,6 +200,14 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 }
 
 fn payload_trap_handler(ctx: &mut VirtContext) {
+    //We are now emulating a trap, registers need to be updated
+    //mcause
+    ctx.csr.mcause = Arch::read_mcause_raw();
+    //mstatus
+    ctx.csr.mstatus = Arch::read_mstatus();
+    //mtval
+    ctx.csr.mtval = Arch::read_mtval();
+
     ctx.csr.mepc = ctx.pc;
 
     //Modify mstatus : previous privilege mode is Machine = 3
