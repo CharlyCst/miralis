@@ -89,7 +89,7 @@ pub enum Csr {
     /// Machine security configuration register
     Mseccfg,
     /// Ponter to configuration data structure
-    Mconfgptr,
+    Mconfigptr,
     /// Machine exception delegation register
     Medeleg,
     /// Machine interrupt delegation register
@@ -116,6 +116,12 @@ pub enum Csr {
     Dscratch0,
     /// Debug scratch register 1
     Dscratch1,
+    /// Machine exception program counter
+    Mepc,
+    /// Machine trap cause
+    Mcause,
+    /// Machine bad address or instruction
+    Mtval,
     /// An unknown CSR
     Unknown,
 }

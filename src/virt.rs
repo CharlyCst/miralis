@@ -162,7 +162,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
-            Csr::Mconfgptr => todo!(),
+            Csr::Mconfigptr => todo!(),
             Csr::Medeleg => todo!(),
             Csr::Mideleg => todo!(),
             Csr::Mtinst => todo!(),
@@ -176,6 +176,9 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),
             Csr::Dscratch0 => todo!(),
             Csr::Dscratch1 => todo!(),
+            Csr::Mepc => todo!(),
+            Csr::Mcause => todo!(),
+            Csr::Mtval => todo!(),
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -235,7 +238,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => (),                // Read-only 0
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfgptr => todo!(),
+            Csr::Mconfigptr => todo!(),
             Csr::Medeleg => todo!(),
             Csr::Mideleg => todo!(),
             Csr::Mtinst => todo!(),
@@ -249,6 +252,9 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),
             Csr::Dscratch0 => todo!(),
             Csr::Dscratch1 => todo!(),
+            Csr::Mepc => todo!(),
+            Csr::Mcause => todo!(),
+            Csr::Mtval => todo!(),
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
