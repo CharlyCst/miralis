@@ -27,7 +27,7 @@ extern "C" fn entry() -> ! {
             in(reg) handler,
         );
     }
-    
+
     panic!();
 }
 

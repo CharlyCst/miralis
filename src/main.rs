@@ -97,12 +97,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             ctx.pc += 4;
         }
         MCause::Breakpoint => {
-            ctx.csr.mepc = ctx.pc;
-
-            //Modify mstatus : previous privilege mode is Machine = 3
-            ctx.csr.mstatus = ctx.csr.mstatus | 0b11 << 11;
-
-            ctx.pc = ctx.csr.mtvec //Go to OpenSbi trap handler
+            payload_trap_handler(ctx);
         }
         _ => {
             // TODO : Need to match other traps
@@ -119,7 +114,9 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         }
         Instr::Csrrw { csr, rd, rs1 } => {
             if csr.is_unknown() {
-                todo!("Unknown CSR");
+                //todo!("Unknown CSR");
+                payload_trap_handler(ctx);
+                return;
             }
             let tmp = ctx.get(csr);
             ctx.set(csr, ctx.get(rs1));
@@ -127,7 +124,10 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         }
         Instr::Csrrs { csr, rd, rs1 } => {
             if csr.is_unknown() {
-                todo!("Unknown CSR");
+                //todo!("Unknown CSR");
+                payload_trap_handler(ctx);
+                ctx.pc = ctx.pc-4;
+                return;
             }
             let tmp = ctx.get(csr);
             ctx.set(csr, tmp | ctx.get(rs1));
@@ -135,14 +135,20 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         }
         Instr::Csrrwi { csr, rd, uimm } => {
             if csr.is_unknown() {
-                todo!("Unknown CSR");
+                //todo!("Unknown CSR");
+                payload_trap_handler(ctx);
+                ctx.pc = ctx.pc-4;
+                return;
             }
             ctx.set(rd, ctx.get(csr));
             ctx.set(csr, *uimm);
         }
         Instr::Csrrsi { csr, rd, uimm } => {
             if csr.is_unknown() {
-                todo!("Unknown CSR");
+                //todo!("Unknown CSR");
+                payload_trap_handler(ctx);
+                ctx.pc = ctx.pc-4;
+                return;
             }
             let tmp = ctx.get(csr);
             ctx.set(csr, tmp | uimm);
@@ -150,7 +156,10 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         }
         Instr::Csrrc { csr, rd, rs1 } => {
             if csr.is_unknown() {
-                todo!("Unknown CSR");
+                //todo!("Unknown CSR");
+                payload_trap_handler(ctx);
+                ctx.pc = ctx.pc-4;
+                return;
             }
             let tmp = ctx.get(csr);
             ctx.set(csr, tmp & !ctx.get(rs1));
@@ -158,7 +167,10 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         }
         Instr::Csrrci { csr, rd, uimm } => {
             if csr.is_unknown() {
-                todo!("Unknown CSR");
+                //todo!("Unknown CSR");
+                payload_trap_handler(ctx);
+                ctx.pc = ctx.pc-4;
+                return;
             }
             let tmp = ctx.get(csr);
             ctx.set(csr, tmp & !uimm);
@@ -187,7 +199,14 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
     }
 }
 
-fn not_implemented_csr() {}
+fn payload_trap_handler(ctx: &mut VirtContext) {
+    ctx.csr.mepc = ctx.pc;
+
+    //Modify mstatus : previous privilege mode is Machine = 3
+    ctx.csr.mstatus = ctx.csr.mstatus | 0b11 << 11;
+
+    ctx.pc = ctx.csr.mtvec //Go to payload trap handler
+}
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
