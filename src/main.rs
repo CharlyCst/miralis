@@ -206,7 +206,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 fn payload_trap_handler(ctx: &mut VirtContext) {
     //We are now emulating a trap, registers need to be updated
 
-    // TODO : this should probably be done in the context switch assembly  : WHEN TRAPPING FROM INSIDE MIRAGE
+    // TODO : this should be done in the context switch assembly : it's ok for now because those registers are not modified by any code before
     //mcause
     ctx.csr.mcause = Arch::read_mcause_raw();
     //mstatus
