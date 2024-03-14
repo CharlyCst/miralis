@@ -177,8 +177,13 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.set(rd, tmp);
         }
         Instr::Mret => {
-            if ctx.csr.mstatus >> 11 != 3 {
-                panic!("MRET is not going to M mode: {}", ctx.csr.mstatus);
+            
+            if ((ctx.csr.mstatus >> 11) & 0b11) != 3 {
+                panic!(
+                    "MRET is not going to M mode: {} with MPP {}",
+                    ctx.csr.mstatus,
+                    ((ctx.csr.mstatus >> 11) & 0b11)
+                );
             }
             // Modify mstatus
             // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0

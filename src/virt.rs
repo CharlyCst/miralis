@@ -252,7 +252,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),
             Csr::Dscratch0 => todo!(),
             Csr::Dscratch1 => todo!(),
-            Csr::Mepc => self.csr.mepc = value,
+            Csr::Mepc => self.csr.mepc = value, //TODO : must contain a VALID ADDRESS
             Csr::Mcause => self.csr.mcause = value,
             Csr::Mtval => self.csr.mtval = value,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
