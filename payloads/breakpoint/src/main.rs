@@ -33,6 +33,7 @@ extern "C" fn entry() -> ! {
 
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
+    // TODO: check mPP, and others?
     success();
 }
 
