@@ -239,28 +239,28 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => todo!(),
-            Csr::Medeleg => todo!(),
-            Csr::Mideleg => todo!(),
-            Csr::Mtinst => todo!(),
-            Csr::Mtval2 => todo!(),
-            Csr::Tselect => todo!(),
-            Csr::Tdata1 => todo!(),
-            Csr::Tdata2 => todo!(),
-            Csr::Tdata3 => todo!(),
-            Csr::Mcontext => todo!(),
-            Csr::Dcsr => todo!(),
-            Csr::Dpc => todo!(),
-            Csr::Dscratch0 => todo!(),
-            Csr::Dscratch1 => todo!(),
+            Csr::Medeleg => todo!(), // TODO : This register should not exist in a system without S-mode
+            Csr::Mideleg => todo!(), // TODO : This register should not exist in a system without S-mode
+            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap
+            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval
+            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Mcontext => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION 
+            Csr::Dpc => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => {
-                if value > usize::MAX {
+                if value > usize::MAX { // TODO : must contain a valid address
                     self.csr.mepc = value
                 } else {
                     self.csr.mepc = usize::MAX
                 }
             } // Must contain a VALID ADDRESS
-            Csr::Mcause => self.csr.mcause = value,
-            Csr::Mtval => self.csr.mtval = value,
+            Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
+            Csr::Mtval => todo!(), // TODO : must contain a valid address and zero
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
