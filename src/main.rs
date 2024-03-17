@@ -69,8 +69,8 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
     //log::trace!("  mtinst:   0x{:x}", Arch::read_mtinst());
 
-    /*  
-        TODO : separate traps from the payload and mirage into 
+    /*
+        TODO : separate traps from the payload and mirage into
         two trap handlers.
     */
 
