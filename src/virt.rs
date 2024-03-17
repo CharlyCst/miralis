@@ -21,6 +21,8 @@ pub struct VirtContext {
     hart_id: usize,
     /// Number of exists to Mirage
     pub(crate) nb_exits: usize,
+    /// Identifier of this virtual context, can be used to differentiate virtual contexts
+    ctx_id : usize,
 }
 
 impl VirtContext {
@@ -38,6 +40,7 @@ impl VirtContext {
                 64 => 16,
                 _ => 0,
             },
+            ctx_id: 0,
         }
     }
 }
