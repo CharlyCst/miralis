@@ -65,18 +65,17 @@ fn main_loop(mut ctx: VirtContext) -> ! {
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, trap_info :&mut  TrapInfo ,max_exit: Option<usize>) {
+fn handle_trap(ctx: &mut VirtContext, trap_info: &mut TrapInfo, max_exit: Option<usize>) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", Arch::read_mcause());
     log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
     log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
-    //log::trace!("  mtinst:   0x{:x}", Arch::read_mtinst());
 
     if trap_info.from_mmode() {
-        //Trap comes from M mode : mirage 
+        //Trap comes from M mode : mirage
         handle_mirage_trap(ctx, trap_info);
-    }else{
+    } else {
         handle_payload_trap(ctx, trap_info);
     }
 
@@ -116,7 +115,7 @@ fn handle_trap(ctx: &mut VirtContext, trap_info :&mut  TrapInfo ,max_exit: Optio
     }
 }
 
-fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info :&mut  TrapInfo) {
+fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &mut TrapInfo) {
     match instr {
         Instr::Wfi => {
             // For now payloads only call WFI when panicking
@@ -237,20 +236,10 @@ fn payload_trap_handler(ctx: &mut VirtContext, trap_info: &TrapInfo) {
 }
 
 /// Handle the trap coming from the payload
-fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
-
-
-
-}
+fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {}
 
 /// Handle the trap coming from mirage
-fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
-
-
-
-} 
-
-
+fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {}
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
