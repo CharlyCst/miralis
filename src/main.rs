@@ -102,13 +102,13 @@ fn handle_trap(ctx: &mut VirtContext, trap_info :&mut  TrapInfo ,max_exit: Optio
             let instr = unsafe { Arch::get_raw_faulting_instr() };
             let instr = decode(instr);
             log::trace!("Faulting instruction: {:?}", instr);
-            emulate_instr(ctx, &instr);
+            emulate_instr(ctx, &instr, trap_info);
 
             // Skip to next instruction
             ctx.pc += 4;
         }
         MCause::Breakpoint => {
-            payload_trap_handler(ctx);
+            payload_trap_handler(ctx, trap_info);
         }
         _ => {
             // TODO : Need to match other traps
@@ -116,7 +116,7 @@ fn handle_trap(ctx: &mut VirtContext, trap_info :&mut  TrapInfo ,max_exit: Optio
     }
 }
 
-fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
+fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info :&mut  TrapInfo) {
     match instr {
         Instr::Wfi => {
             // For now payloads only call WFI when panicking
@@ -126,7 +126,8 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Csrrw { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                payload_trap_handler(ctx);
+                payload_trap_handler(ctx, trap_info);
+                ctx.pc = ctx.pc - 4;
                 return;
             }
             let tmp = ctx.get(csr);
@@ -136,7 +137,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Csrrs { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                payload_trap_handler(ctx);
+                payload_trap_handler(ctx, trap_info);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -147,7 +148,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Csrrwi { csr, rd, uimm } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                payload_trap_handler(ctx);
+                payload_trap_handler(ctx, trap_info);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -157,7 +158,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Csrrsi { csr, rd, uimm } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                payload_trap_handler(ctx);
+                payload_trap_handler(ctx, trap_info);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -168,7 +169,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Csrrc { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                payload_trap_handler(ctx);
+                payload_trap_handler(ctx, trap_info);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -179,7 +180,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
         Instr::Csrrci { csr, rd, uimm } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                payload_trap_handler(ctx);
+                payload_trap_handler(ctx, trap_info);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -214,7 +215,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
     }
 }
 
-fn payload_trap_handler(ctx: &mut VirtContext) {
+fn payload_trap_handler(ctx: &mut VirtContext, trap_info: &TrapInfo) {
     //We are now emulating a trap, registers need to be updated
 
     // TODO : this should be done in the context switch assembly : it's ok for now because those registers are not modified by any code before
