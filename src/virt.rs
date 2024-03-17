@@ -162,20 +162,20 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
-            Csr::Mconfigptr => todo!(),
-            Csr::Medeleg => todo!(),
-            Csr::Mideleg => todo!(),
-            Csr::Mtinst => todo!(),
-            Csr::Mtval2 => todo!(),
-            Csr::Tselect => todo!(),
-            Csr::Tdata1 => todo!(),
-            Csr::Tdata2 => todo!(),
-            Csr::Tdata3 => todo!(),
-            Csr::Mcontext => todo!(),
-            Csr::Dcsr => todo!(),
-            Csr::Dpc => todo!(),
-            Csr::Dscratch0 => todo!(),
-            Csr::Dscratch1 => todo!(),
+            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
+            Csr::Medeleg => todo!(), // TODO : normal read
+            Csr::Mideleg => todo!(), // TODO : normal read
+            Csr::Mtinst => todo!(), // TODO : normal read
+            Csr::Mtval2 => todo!(), // TODO : normal read
+            Csr::Tselect => todo!(), // TODO : normal read
+            Csr::Tdata1 => todo!(), // TODO : normal read
+            Csr::Tdata2 => todo!(), // TODO : normal read
+            Csr::Tdata3 => todo!(), // TODO : normal read
+            Csr::Mcontext => todo!(), // TODO : normal read
+            Csr::Dcsr => todo!(), // TODO : normal read
+            Csr::Dpc => todo!(), // TODO : normal read
+            Csr::Dscratch0 => todo!(), // TODO : normal read
+            Csr::Dscratch1 => todo!(), // TODO : normal read
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
@@ -238,7 +238,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => (),                // Read-only 0
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => todo!(),
+            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
             Csr::Medeleg => todo!(), // TODO : This register should not exist in a system without S-mode
             Csr::Mideleg => todo!(), // TODO : This register should not exist in a system without S-mode
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap
