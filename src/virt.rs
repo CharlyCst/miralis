@@ -1,6 +1,6 @@
 //! Firmware Virtualisation
 
-use crate::arch::{Arch, Architecture, Csr, Register};
+use crate::arch::{Arch, Architecture, Csr, MCause, Register};
 use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
@@ -278,5 +278,53 @@ where
 
     fn set(&mut self, register: &'a R, value: usize) {
         self.set(*register, value)
+    }
+}
+
+
+
+
+/// Contains all the information automatically written by the hardware during a trap
+#[repr(C)]
+pub struct TrapInfo {
+    pc : usize,
+    mepc : usize,
+    mstatus : usize, 
+    mcause : usize,
+    mip : usize,
+    mtval : usize,
+    mtval2 : usize,
+    mtinst : usize,
+}
+
+impl Default for TrapInfo{
+    fn default() -> TrapInfo{
+        TrapInfo{
+            pc : 0,
+            mepc : 0,
+            mstatus : 0,
+            mcause : 0,
+            mip : 0,
+            mtval : 0,
+            mtval2 : 0,
+            mtinst : 0,
+        }
+    }
+}
+
+impl TrapInfo {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Whether the trap comes from M mode
+    pub fn from_mmode(self) -> bool{ 
+        let mpp : usize = (self.mstatus >> 11) & 0b11;
+        return mpp == 3; // Mpp : 3 = M mode 
+    }
+    
+    /// Return the trap cause 
+    pub fn get_cause(self) -> MCause {
+        return MCause::new(self.mcause);
     }
 }

@@ -12,6 +12,7 @@ use core::panic::PanicInfo;
 
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
+use virt::TrapInfo;
 
 use crate::arch::{Csr, MCause, Register};
 use crate::decoder::{decode, Instr};
@@ -33,6 +34,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
     let mut ctx = VirtContext::new(hart_id);
+
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
@@ -52,16 +54,18 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
 fn main_loop(mut ctx: VirtContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
+    let mut trap_info = TrapInfo::new(); //TODO : fill this with the content of the hardware registers
+
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
-            handle_trap(&mut ctx, max_exit);
+            handle_trap(&mut ctx, &mut trap_info, max_exit);
             log::trace!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
+fn handle_trap(ctx: &mut VirtContext, trap_info :&mut  TrapInfo ,max_exit: Option<usize>) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", Arch::read_mcause());
     log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
@@ -69,10 +73,12 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
     //log::trace!("  mtinst:   0x{:x}", Arch::read_mtinst());
 
-    /*
-        TODO : separate traps from the payload and mirage into
-        two trap handlers.
-    */
+    if trap_info.from_mmode() {
+        //Trap comes from M mode : mirage 
+        handle_mirage_trap(ctx, trap_info);
+    }else{
+        handle_payload_trap(ctx, trap_info);
+    }
 
     // Keep track of the number of exit
     ctx.nb_exits += 1;
@@ -228,6 +234,22 @@ fn payload_trap_handler(ctx: &mut VirtContext) {
 
     ctx.pc = ctx.csr.mtvec //Go to payload trap handler
 }
+
+/// Handle the trap coming from the payload
+fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+
+
+
+}
+
+/// Handle the trap coming from mirage
+fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+
+
+
+} 
+
+
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
