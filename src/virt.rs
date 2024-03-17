@@ -163,19 +163,19 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
             Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
-            Csr::Medeleg => todo!(), // TODO : normal read
-            Csr::Mideleg => todo!(), // TODO : normal read
-            Csr::Mtinst => todo!(), // TODO : normal read
-            Csr::Mtval2 => todo!(), // TODO : normal read
-            Csr::Tselect => todo!(), // TODO : normal read
-            Csr::Tdata1 => todo!(), // TODO : normal read
-            Csr::Tdata2 => todo!(), // TODO : normal read
-            Csr::Tdata3 => todo!(), // TODO : normal read
-            Csr::Mcontext => todo!(), // TODO : normal read
-            Csr::Dcsr => todo!(), // TODO : normal read
-            Csr::Dpc => todo!(), // TODO : normal read
-            Csr::Dscratch0 => todo!(), // TODO : normal read
-            Csr::Dscratch1 => todo!(), // TODO : normal read
+            Csr::Medeleg => todo!(),    // TODO : normal read
+            Csr::Mideleg => todo!(),    // TODO : normal read
+            Csr::Mtinst => todo!(),     // TODO : normal read
+            Csr::Mtval2 => todo!(),     // TODO : normal read
+            Csr::Tselect => todo!(),    // TODO : normal read
+            Csr::Tdata1 => todo!(),     // TODO : normal read
+            Csr::Tdata2 => todo!(),     // TODO : normal read
+            Csr::Tdata3 => todo!(),     // TODO : normal read
+            Csr::Mcontext => todo!(),   // TODO : normal read
+            Csr::Dcsr => todo!(),       // TODO : normal read
+            Csr::Dpc => todo!(),        // TODO : normal read
+            Csr::Dscratch0 => todo!(),  // TODO : normal read
+            Csr::Dscratch1 => todo!(),  // TODO : normal read
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
@@ -248,19 +248,20 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mcontext => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dcsr => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION 
-            Csr::Dpc => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(),   // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => {
-                if value > usize::MAX { // TODO : must contain a valid address
+                if value > usize::MAX {
+                    // TODO : must contain a valid address
                     self.csr.mepc = value
                 } else {
                     self.csr.mepc = usize::MAX
                 }
             } // Must contain a VALID ADDRESS
             Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
-            Csr::Mtval => todo!(), // TODO : must contain a valid address and zero
+            Csr::Mtval => todo!(),  // TODO : must contain a valid address and zero
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

@@ -148,11 +148,17 @@ fn decode_csr(csr: usize) -> Csr {
         0x747 => Csr::Mseccfg,
         0xF15 => Csr::Mconfigptr,
         0x302 => {
-            log::info!("Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode", csr);
+            log::info!(
+                "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
+                csr
+            );
             Csr::Unknown
         }
         0x303 => {
-            log::info!("Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode", csr);
+            log::info!(
+                "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
+                csr
+            );
             Csr::Unknown
         }
         0x34A => Csr::Mtinst,
