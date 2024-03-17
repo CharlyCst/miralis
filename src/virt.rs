@@ -283,6 +283,7 @@ where
 
 /// Contains all the information automatically written by the hardware during a trap
 #[repr(C)]
+#[derive(Clone, Copy, Debug)]
 pub struct TrapInfo {
     pc: usize,
     mepc: usize,

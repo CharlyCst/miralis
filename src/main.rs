@@ -54,7 +54,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
 fn main_loop(mut ctx: VirtContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
-    let mut trap_info = TrapInfo::new(); //TODO : fill this with the content of the hardware registers
+    let mut trap_info = TrapInfo::new(); //TODO : fill this with the content of the hardware registers during the context switch
 
     loop {
         unsafe {
@@ -78,6 +78,10 @@ fn handle_trap(ctx: &mut VirtContext, trap_info: &mut TrapInfo, max_exit: Option
     } else {
         handle_payload_trap(ctx, trap_info);
     }
+
+    /*
+        TODO : the code below should not be present, it should be in the 'handle_payload_trap' function
+    */
 
     // Keep track of the number of exit
     ctx.nb_exits += 1;
@@ -236,10 +240,14 @@ fn emulate_jump_trap_handler(ctx: &mut VirtContext, trap_info: &TrapInfo) {
 }
 
 /// Handle the trap coming from the payload
-fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {}
+fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+    log::trace!("Payload trap handler entered");
+}
 
 /// Handle the trap coming from mirage
-fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {}
+fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+    log::trace!("Mirage trap handler entered");
+}
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
