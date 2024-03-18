@@ -88,6 +88,40 @@ pub enum Csr {
     Menvcgf,
     /// Machine security configuration register
     Mseccfg,
+    /// Ponter to configuration data structure
+    Mconfigptr,
+    /// Machine exception delegation register
+    Medeleg,
+    /// Machine interrupt delegation register
+    Mideleg,
+    /// Machine trap instruction (transformed)
+    Mtinst,
+    /// Machine bad guest physical address
+    Mtval2,
+    /// Debug/Trace trigger register select
+    Tselect,
+    /// First Debug/Trace trigger data register
+    Tdata1,
+    /// Second Debug/Trace trigger data register
+    Tdata2,
+    /// Third Debug/Trace trigger data register
+    Tdata3,
+    /// Machine-mode context register
+    Mcontext,
+    /// Debug control and status register
+    Dcsr,
+    /// Debug PC
+    Dpc,
+    /// Debug scratch register 0
+    Dscratch0,
+    /// Debug scratch register 1
+    Dscratch1,
+    /// Machine exception program counter
+    Mepc,
+    /// Machine trap cause
+    Mcause,
+    /// Machine bad address or instruction
+    Mtval,
     /// An unknown CSR
     Unknown,
 }

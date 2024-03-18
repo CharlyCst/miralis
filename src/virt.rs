@@ -63,6 +63,9 @@ pub struct VirtCsr {
     mcounteren: usize,
     menvcfg: usize,
     mseccfg: usize,
+    mcause: usize,
+    mepc: usize,
+    mtval: usize,
 }
 
 impl Default for VirtCsr {
@@ -86,6 +89,9 @@ impl Default for VirtCsr {
             mcounteren: 0,
             menvcfg: 0,
             mseccfg: 0,
+            mcause: 0,
+            mepc: 0,
+            mtval: 0,
         }
     }
 }
@@ -152,6 +158,23 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
+            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
+            Csr::Medeleg => todo!(),    // TODO : normal read
+            Csr::Mideleg => todo!(),    // TODO : normal read
+            Csr::Mtinst => todo!(),     // TODO : normal read
+            Csr::Mtval2 => todo!(),     // TODO : normal read
+            Csr::Tselect => todo!(),    // TODO : normal read
+            Csr::Tdata1 => todo!(),     // TODO : normal read
+            Csr::Tdata2 => todo!(),     // TODO : normal read
+            Csr::Tdata3 => todo!(),     // TODO : normal read
+            Csr::Mcontext => todo!(),   // TODO : normal read
+            Csr::Dcsr => todo!(),       // TODO : normal read
+            Csr::Dpc => todo!(),        // TODO : normal read
+            Csr::Dscratch0 => todo!(),  // TODO : normal read
+            Csr::Dscratch1 => todo!(),  // TODO : normal read
+            Csr::Mepc => self.csr.mepc,
+            Csr::Mcause => self.csr.mcause,
+            Csr::Mtval => self.csr.mtval,
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -211,6 +234,23 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => (),                // Read-only 0
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
+            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
+            Csr::Medeleg => todo!(), // TODO : This register should not exist in a system without S-mode
+            Csr::Mideleg => todo!(), // TODO : This register should not exist in a system without S-mode
+            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap
+            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval
+            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Mcontext => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(),   // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Mepc => todo!(),   // TODO : must contain a valid address
+            Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
+            Csr::Mtval => todo!(),  // TODO : must contain a valid address and zero
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

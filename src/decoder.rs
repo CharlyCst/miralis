@@ -46,6 +46,7 @@ pub enum Instr {
         rd: Register,
         uimm: usize,
     },
+    Mret,
     Unknown,
 }
 
@@ -94,6 +95,7 @@ fn decode_system(raw: usize) -> Instr {
             0b000000000000 => Instr::Ecall,
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
+            0b001100000010 => Instr::Mret,
             _ => Instr::Unknown,
         };
     }
@@ -145,6 +147,23 @@ fn decode_csr(csr: usize) -> Csr {
         0x306 => Csr::Mcounteren,
         0x30a => Csr::Menvcgf,
         0x747 => Csr::Mseccfg,
+        0xF15 => Csr::Mconfigptr,
+        0x302 => Csr::Medeleg,
+        0x303 => Csr::Mideleg,
+        0x34A => Csr::Mtinst,
+        0x34B => Csr::Mtval2,
+        0x7A0 => Csr::Tselect,
+        0x7A1 => Csr::Tdata1,
+        0x7A2 => Csr::Tdata3,
+        0x7A3 => Csr::Tdata2,
+        0x7A8 => Csr::Mcontext,
+        0x7B0 => Csr::Dcsr,
+        0x7B1 => Csr::Dpc,
+        0x7B2 => Csr::Dscratch0,
+        0x7B3 => Csr::Dscratch1,
+        0x342 => Csr::Mcause,
+        0x341 => Csr::Mepc,
+        0x343 => Csr::Mtval,
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
