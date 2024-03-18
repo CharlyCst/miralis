@@ -63,7 +63,6 @@ fn main_loop(mut ctx: VirtContext) -> ! {
         trap_info: &mut trap_info,
     };
 
-
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut info);

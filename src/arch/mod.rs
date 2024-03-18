@@ -37,7 +37,7 @@ pub trait Architecture {
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret() -> !;
     unsafe fn ecall();
-    unsafe fn enter_virt_firmware(info : &mut InfoForContextSwitch);
+    unsafe fn enter_virt_firmware(info: &mut InfoForContextSwitch);
 
     /// Return the faulting instruction.
     ///

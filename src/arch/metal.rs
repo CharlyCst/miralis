@@ -188,7 +188,7 @@ impl Architecture for Metal {
         instr as usize
     }
 
-    unsafe fn enter_virt_firmware(info : &mut InfoForContextSwitch) {
+    unsafe fn enter_virt_firmware(info: &mut InfoForContextSwitch) {
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
