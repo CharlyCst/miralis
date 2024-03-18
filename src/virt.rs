@@ -253,12 +253,13 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => {
-                if value > usize::MAX {
+                todo!();
+                /*if value > usize::MAX {
                     // TODO : must contain a valid address
                     self.csr.mepc = value
                 } else {
                     self.csr.mepc = usize::MAX
-                }
+                }*/
             } // Must contain a VALID ADDRESS
             Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
             Csr::Mtval => todo!(),  // TODO : must contain a valid address and zero
