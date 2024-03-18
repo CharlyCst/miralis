@@ -8,11 +8,13 @@ mod logger;
 mod platform;
 mod virt;
 
+use core::mem;
 use core::panic::PanicInfo;
+use core::ptr::addr_of_mut;
 
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
-use virt::TrapInfo;
+use virt::{InfoForContextSwitch, TrapInfo};
 
 use crate::arch::{Csr, MCause, Register};
 use crate::decoder::{decode, Instr};
@@ -56,9 +58,15 @@ fn main_loop(mut ctx: VirtContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
     let mut trap_info = TrapInfo::new(); //TODO : fill this with the content of the hardware registers during the context switch
 
+    let mut info: InfoForContextSwitch = InfoForContextSwitch {
+        ctx: &mut ctx,
+        trap_info: &mut trap_info,
+    };
+
+
     loop {
         unsafe {
-            Arch::enter_virt_firmware(&mut ctx);
+            Arch::enter_virt_firmware(&mut info);
             handle_trap(&mut ctx, &mut trap_info, max_exit);
             log::trace!("{:x?}", &ctx);
         }
@@ -72,13 +80,13 @@ fn handle_trap(ctx: &mut VirtContext, trap_info: &mut TrapInfo, max_exit: Option
     log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
 
-    if trap_info.from_mmode() { // TODO : This is always false for now
+    if trap_info.from_mmode() {
+        // TODO : This is always false for now
         //Trap comes from M mode : mirage
         handle_mirage_trap(ctx, trap_info);
     } else {
         handle_payload_trap(ctx, trap_info, max_exit);
     }
-
 }
 
 fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
@@ -239,7 +247,6 @@ fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo, max_exit: Op
             // TODO : Need to match other traps
         }
     }
-
 }
 
 /// Handle the trap coming from mirage

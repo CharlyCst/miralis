@@ -252,7 +252,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Mepc => todo!(), // TODO : must contain a valid address
+            Csr::Mepc => todo!(),   // TODO : must contain a valid address
             Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
             Csr::Mtval => todo!(),  // TODO : must contain a valid address and zero
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
@@ -319,4 +319,10 @@ impl TrapInfo {
     pub fn get_cause(self) -> MCause {
         return MCause::new(self.mcause);
     }
+}
+
+#[repr(C)]
+pub struct InfoForContextSwitch {
+    pub ctx: *mut VirtContext,
+    pub trap_info: *mut TrapInfo,
 }

@@ -4,7 +4,7 @@ use core::arch::{asm, global_asm};
 use core::ptr;
 
 use super::{Architecture, MCause, Mode};
-use crate::virt::VirtContext;
+use crate::virt::{InfoForContextSwitch, TrapInfo, VirtContext};
 use crate::{_stack_bottom, _stack_top, main};
 
 /// Bare metal RISC-V runtime.
@@ -188,7 +188,7 @@ impl Architecture for Metal {
         instr as usize
     }
 
-    unsafe fn enter_virt_firmware(ctx: &mut VirtContext) {
+    unsafe fn enter_virt_firmware(info : &mut InfoForContextSwitch) {
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
@@ -204,7 +204,7 @@ impl Architecture for Metal {
             "ld x9, (8*4)(sp)",
             // Clobber all other registers, so that the compiler automatically
             // saves and restores the ones it needs
-            inout("x31") ctx => _,
+            inout("x31") info => _,
             out("x1") _,
             out("x5") _,
             out("x6") _,
@@ -294,7 +294,8 @@ global_asm!(
 .align 4
 .global _enter_virt_firmware
 _enter_virt_firmware:
-    csrw mscratch, x31        // Save context in mscratch
+    csrw mscratch, x31        // Save info in mscratch
+    ld x31, (0)(x31)          // Load context into x31
     sd x30, (0)(sp)           // Store return address
     sd sp,(8*0)(x31)          // Store host stack
     ld x1,(8+8*32)(x31)       // Read payload PC
@@ -342,7 +343,8 @@ global_asm!(
 .align 4
 .global _raw_trap_handler
 _raw_trap_handler:
-    csrrw x31, mscratch, x31 // Restore context by swapping x31 and mscratch
+    csrrw x31, mscratch, x31 // Restore info by swapping x31 and mscratch
+    ld x31,   (0)(x31)       // Load context into x31
     sd x0,(8+8*0)(x31)       // Save all general purpose registers
     sd x1,(8+8*1)(x31)
     sd x2,(8+8*2)(x31)
