@@ -4,7 +4,7 @@ use core::arch::{asm, global_asm};
 use core::ptr;
 
 use super::{Architecture, MCause, Mode};
-use crate::virt::{InfoForContextSwitch, TrapInfo, VirtContext};
+use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
 
 /// Bare metal RISC-V runtime.
@@ -188,7 +188,7 @@ impl Architecture for Metal {
         instr as usize
     }
 
-    unsafe fn enter_virt_firmware(info: &mut InfoForContextSwitch) {
+    unsafe fn enter_virt_firmware(ctx: &mut VirtContext) {
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
@@ -204,7 +204,7 @@ impl Architecture for Metal {
             "ld x9, (8*4)(sp)",
             // Clobber all other registers, so that the compiler automatically
             // saves and restores the ones it needs
-            inout("x31") info => _,
+            inout("x31") ctx => _,
             out("x1") _,
             out("x5") _,
             out("x6") _,
@@ -294,8 +294,7 @@ global_asm!(
 .align 4
 .global _enter_virt_firmware
 _enter_virt_firmware:
-    csrw mscratch, x31        // Save info in mscratch
-    ld x31, (0)(x31)          // Load context into x31
+    csrw mscratch, x31        // Save context in mscratch
     sd x30, (0)(sp)           // Store return address
     sd sp,(8*0)(x31)          // Store host stack
     ld x1,(8+8*32)(x31)       // Read payload PC
@@ -343,8 +342,7 @@ global_asm!(
 .align 4
 .global _raw_trap_handler
 _raw_trap_handler:
-    csrrw x31, mscratch, x31 // Restore info by swapping x31 and mscratch
-    ld x31,   (0)(x31)       // Load context into x31
+    csrrw x31, mscratch, x31 // Restore context by swapping x31 and mscratch
     sd x0,(8+8*0)(x31)       // Save all general purpose registers
     sd x1,(8+8*1)(x31)
     sd x2,(8+8*2)(x31)
@@ -378,8 +376,18 @@ _raw_trap_handler:
     sd x30,(8+8*30)(x31)
     csrr x30, mscratch    // Restore x31 into x30 from mscratch
     sd x30,(8+8*31)(x31)  // Save x31 (whose value is stored in x30)
-    csrr x30, mepc        // Read payload PC
-    sd x30, (8+8*32)(x31) // Save the PC
+
+    csrr x30, mepc        // Fill the TrapInfo : Read mepc
+    sd x30, (8+8*32+8+8*0)(x31) // Save mepc
+    csrr x30, mstatus        // Fill the TrapInfo :  Read mstatus
+    sd x30, (8+8*32+8+8*1)(x31) // Save mstatus
+    csrr x30, mcause        // Fill the TrapInfo :  Read mcause
+    sd x30, (8+8*32+8+8*2)(x31) // Save mcause
+    csrr x30, mip        // Fill the TrapInfo : Read mip
+    sd x30, (8+8*32+8+8*3)(x31) // Save mip
+    csrr x30, mtval        // Fill the TrapInfo : Read mtval
+    sd x30, (8+8*32+8+8*4)(x31) // Save mtval
+
     ld sp,(8*0)(x31)      // Restore host stack
     ld x30,(sp)           // Load return address from stack
     jr x30                // Return

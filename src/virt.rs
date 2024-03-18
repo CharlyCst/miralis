@@ -13,6 +13,8 @@ pub struct VirtContext {
     regs: [usize; 32],
     /// Program Counter
     pub(crate) pc: usize,
+    /// Information on the trap that ocurred, used to handle traps
+    pub(crate) trap_info: TrapInfo,
     /// Virtual Control and Status Registers
     pub(crate) csr: VirtCsr,
     /// Number of virtual PMPs
@@ -30,6 +32,7 @@ impl VirtContext {
             regs: Default::default(),
             csr: Default::default(),
             pc: 0,
+            trap_info: Default::default(),
             nb_exits: 0,
             hart_id,
             nbr_pmps: match Plat::get_nb_pmp() {
@@ -279,36 +282,27 @@ where
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct TrapInfo {
-    pc: usize,
-    mepc: usize,
-    mstatus: usize,
-    mcause: usize,
-    mip: usize,
-    mtval: usize,
-    mtval2: usize,
-    mtinst: usize,
+    // mtval2 and mtinst only exist with the hypervisor extension
+    pub mepc: usize,
+    pub mstatus: usize,
+    pub mcause: usize,
+    pub mip: usize,
+    pub mtval: usize,
 }
 
 impl Default for TrapInfo {
     fn default() -> TrapInfo {
         TrapInfo {
-            pc: 0,
             mepc: 0,
             mstatus: 0,
             mcause: 0,
             mip: 0,
             mtval: 0,
-            mtval2: 0,
-            mtinst: 0,
         }
     }
 }
 
 impl TrapInfo {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     /// Whether the trap comes from M mode
     pub fn from_mmode(self) -> bool {
         let mpp: usize = (self.mstatus >> 11) & 0b11;
@@ -319,10 +313,4 @@ impl TrapInfo {
     pub fn get_cause(self) -> MCause {
         return MCause::new(self.mcause);
     }
-}
-
-#[repr(C)]
-pub struct InfoForContextSwitch {
-    pub ctx: *mut VirtContext,
-    pub trap_info: *mut TrapInfo,
 }

@@ -11,7 +11,7 @@ mod trap;
 pub use registers::{Csr, Register};
 pub use trap::MCause;
 
-use crate::virt::{InfoForContextSwitch, TrapInfo, VirtContext};
+use crate::virt::VirtContext;
 
 /// Export the current architecture.
 /// For now, only bare-metal is supported
@@ -37,7 +37,7 @@ pub trait Architecture {
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret() -> !;
     unsafe fn ecall();
-    unsafe fn enter_virt_firmware(info: &mut InfoForContextSwitch);
+    unsafe fn enter_virt_firmware(ctx: &mut VirtContext);
 
     /// Return the faulting instruction.
     ///

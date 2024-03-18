@@ -8,13 +8,10 @@ mod logger;
 mod platform;
 mod virt;
 
-use core::mem;
 use core::panic::PanicInfo;
-use core::ptr::addr_of_mut;
 
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
-use virt::{InfoForContextSwitch, TrapInfo};
 
 use crate::arch::{Csr, MCause, Register};
 use crate::decoder::{decode, Instr};
@@ -56,39 +53,32 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
 fn main_loop(mut ctx: VirtContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
-    let mut trap_info = TrapInfo::new(); //TODO : fill this with the content of the hardware registers during the context switch
-
-    let mut info: InfoForContextSwitch = InfoForContextSwitch {
-        ctx: &mut ctx,
-        trap_info: &mut trap_info,
-    };
 
     loop {
         unsafe {
-            Arch::enter_virt_firmware(&mut info);
-            handle_trap(&mut ctx, &mut trap_info, max_exit);
+            Arch::enter_virt_firmware(&mut ctx);
+            handle_trap(&mut ctx, max_exit);
             log::trace!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, trap_info: &mut TrapInfo, max_exit: Option<usize>) {
+fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", Arch::read_mcause());
     log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
     log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
 
-    if trap_info.from_mmode() {
-        // TODO : This is always false for now
+    if ctx.trap_info.from_mmode() {
         //Trap comes from M mode : mirage
-        handle_mirage_trap(ctx, trap_info);
+        handle_mirage_trap(ctx);
     } else {
-        handle_payload_trap(ctx, trap_info, max_exit);
+        handle_payload_trap(ctx, max_exit);
     }
 }
 
-fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
+fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
     match instr {
         Instr::Wfi => {
             // For now payloads only call WFI when panicking
@@ -98,7 +88,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
         Instr::Csrrw { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                emulate_jump_trap_handler(ctx, trap_info);
+                emulate_jump_trap_handler(ctx);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -109,7 +99,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
         Instr::Csrrs { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                emulate_jump_trap_handler(ctx, trap_info);
+                emulate_jump_trap_handler(ctx);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -120,7 +110,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
         Instr::Csrrwi { csr, rd, uimm } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                emulate_jump_trap_handler(ctx, trap_info);
+                emulate_jump_trap_handler(ctx);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -130,7 +120,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
         Instr::Csrrsi { csr, rd, uimm } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                emulate_jump_trap_handler(ctx, trap_info);
+                emulate_jump_trap_handler(ctx);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -141,7 +131,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
         Instr::Csrrc { csr, rd, rs1 } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                emulate_jump_trap_handler(ctx, trap_info);
+                emulate_jump_trap_handler(ctx);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -152,7 +142,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
         Instr::Csrrci { csr, rd, uimm } => {
             if csr.is_unknown() {
                 //todo!("Unknown CSR");
-                emulate_jump_trap_handler(ctx, trap_info);
+                emulate_jump_trap_handler(ctx);
                 ctx.pc = ctx.pc - 4;
                 return;
             }
@@ -187,21 +177,21 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
     }
 }
 
-fn emulate_jump_trap_handler(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+fn emulate_jump_trap_handler(ctx: &mut VirtContext) {
     //We are now emulating a trap, registers need to be updated
 
-    // TODO : this should be done in the context switch assembly : it's ok for now because those registers are not modified by any code before
     //mcause
-    ctx.csr.mcause = Arch::read_mcause_raw();
+    ctx.csr.mcause = ctx.trap_info.mcause;
     //mstatus
-    ctx.csr.mstatus = Arch::read_mstatus();
+    ctx.csr.mstatus = ctx.trap_info.mstatus;
     //mtval
-    ctx.csr.mtval = Arch::read_mtval();
+    ctx.csr.mtval = ctx.trap_info.mtval;
     //mip
-    ctx.csr.mip = Arch::read_mip();
+    ctx.csr.mip = ctx.trap_info.mip;
+    //mepc
+    ctx.csr.mepc = ctx.trap_info.mepc;
 
-    ctx.csr.mepc = ctx.pc;
-
+    ctx.pc = ctx.trap_info.mepc;
     //Modify mstatus : previous privilege mode is Machine = 3
     ctx.csr.mstatus = ctx.csr.mstatus | 0b11 << 11;
 
@@ -209,8 +199,10 @@ fn emulate_jump_trap_handler(ctx: &mut VirtContext, trap_info: &TrapInfo) {
 }
 
 /// Handle the trap coming from the payload
-fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo, max_exit: Option<usize>) {
+fn handle_payload_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("Payload trap handler entered");
+
+    ctx.pc = ctx.trap_info.mepc;
 
     // Keep track of the number of exit
     ctx.nb_exits += 1;
@@ -234,13 +226,13 @@ fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo, max_exit: Op
             let instr = unsafe { Arch::get_raw_faulting_instr() };
             let instr = decode(instr);
             log::trace!("Faulting instruction: {:?}", instr);
-            emulate_instr(ctx, &instr, trap_info);
+            emulate_instr(ctx, &instr);
 
             // Skip to next instruction
             ctx.pc += 4;
         }
         MCause::Breakpoint => {
-            emulate_jump_trap_handler(ctx, trap_info);
+            emulate_jump_trap_handler(ctx);
         }
         _ => {
             // TODO : Need to match other traps
@@ -249,7 +241,7 @@ fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo, max_exit: Op
 }
 
 /// Handle the trap coming from mirage
-fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+fn handle_mirage_trap(ctx: &mut VirtContext) {
     log::trace!("Mirage trap handler entered");
     todo!();
 }
