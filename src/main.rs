@@ -72,54 +72,16 @@ fn handle_trap(ctx: &mut VirtContext, trap_info: &mut TrapInfo, max_exit: Option
     log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
     log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
 
-    if trap_info.from_mmode() {
+    if trap_info.from_mmode() { // TODO : This is always false for now
         //Trap comes from M mode : mirage
         handle_mirage_trap(ctx, trap_info);
     } else {
-        handle_payload_trap(ctx, trap_info);
+        handle_payload_trap(ctx, trap_info, max_exit);
     }
 
-    /*
-        TODO : the code below should not be present, it should be in the 'handle_payload_trap' function
-    */
-
-    // Keep track of the number of exit
-    ctx.nb_exits += 1;
-    log::trace!("  exits:   {}", ctx.nb_exits);
-    if let Some(max_exit) = max_exit {
-        if ctx.nb_exits >= max_exit {
-            log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
-            Plat::exit_failure();
-        }
-    }
-
-    match Arch::read_mcause() {
-        MCause::EcallFromMMode | MCause::EcallFromUMode => {
-            // For now we just exit successfuly
-            log::info!("Success!");
-            log::info!("Number of payload exits: {}", ctx.nb_exits);
-            unsafe { debug::log_stack_usage() };
-            Plat::exit_success();
-        }
-        MCause::IllegalInstr => {
-            let instr = unsafe { Arch::get_raw_faulting_instr() };
-            let instr = decode(instr);
-            log::trace!("Faulting instruction: {:?}", instr);
-            emulate_instr(ctx, &instr, trap_info);
-
-            // Skip to next instruction
-            ctx.pc += 4;
-        }
-        MCause::Breakpoint => {
-            emulate_jump_trap_handler(ctx, trap_info);
-        }
-        _ => {
-            // TODO : Need to match other traps
-        }
-    }
 }
 
-fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &mut TrapInfo) {
+fn emulate_instr(ctx: &mut VirtContext, instr: &Instr, trap_info: &TrapInfo) {
     match instr {
         Instr::Wfi => {
             // For now payloads only call WFI when panicking
@@ -240,13 +202,50 @@ fn emulate_jump_trap_handler(ctx: &mut VirtContext, trap_info: &TrapInfo) {
 }
 
 /// Handle the trap coming from the payload
-fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
+fn handle_payload_trap(ctx: &mut VirtContext, trap_info: &TrapInfo, max_exit: Option<usize>) {
     log::trace!("Payload trap handler entered");
+
+    // Keep track of the number of exit
+    ctx.nb_exits += 1;
+    log::trace!("  exits:   {}", ctx.nb_exits);
+    if let Some(max_exit) = max_exit {
+        if ctx.nb_exits >= max_exit {
+            log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
+            Plat::exit_failure();
+        }
+    }
+
+    match Arch::read_mcause() {
+        MCause::EcallFromMMode | MCause::EcallFromUMode => {
+            // For now we just exit successfuly
+            log::info!("Success!");
+            log::info!("Number of payload exits: {}", ctx.nb_exits);
+            unsafe { debug::log_stack_usage() };
+            Plat::exit_success();
+        }
+        MCause::IllegalInstr => {
+            let instr = unsafe { Arch::get_raw_faulting_instr() };
+            let instr = decode(instr);
+            log::trace!("Faulting instruction: {:?}", instr);
+            emulate_instr(ctx, &instr, trap_info);
+
+            // Skip to next instruction
+            ctx.pc += 4;
+        }
+        MCause::Breakpoint => {
+            emulate_jump_trap_handler(ctx, trap_info);
+        }
+        _ => {
+            // TODO : Need to match other traps
+        }
+    }
+
 }
 
 /// Handle the trap coming from mirage
 fn handle_mirage_trap(ctx: &mut VirtContext, trap_info: &TrapInfo) {
     log::trace!("Mirage trap handler entered");
+    todo!();
 }
 
 #[panic_handler]
