@@ -181,7 +181,7 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
 
 fn emulate_jump_trap_handler(ctx: &mut VirtContext) {
     //We are now emulating a trap, registers need to be updated
-
+    log::trace!("Emulating jump to trap handler");
     //mcause
     ctx.csr.mcause = ctx.trap_info.mcause;
     //mstatus
