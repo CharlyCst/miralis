@@ -194,21 +194,42 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
-
+                let mut new_value = self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,2,3
+                let mpp = (value >> 11) & 0b11;
+                if mpp == 0 || mpp == 1 || mpp == 3 {
+                    // Legal values
+                    new_value = new_value & !(0b11 << 11); // clear MPP
+                    new_value = new_value & (mpp << 11); // set new MPP
+                }
                 // SXL : 34 : read-only : MX-LEN = 64
+                let mxl : usize = 2;
+                new_value = new_value & !(0b11 << 34); // clear SXL
+                new_value = new_value & (mxl << 34); // set new SXL
                 // UXL : 32 : read-only : MX-LEN = 64
+                new_value = new_value & !(0b11 << 32); // clear UXL
+                new_value = new_value & (mxl << 32); // set new UXL
+
                 // MPRV : 17 : write anything
                 // MBE : 37 : write anything
                 // SBE : 36 : read-only 0 (NO S-MODE)
+                new_value = new_value & !(0b1 << 36); // clear SBE
                 // UBE : 6 : write anything
                 // TVM : 20 : read-only 0 (NO S-MODE)
+                new_value = new_value & !(0b1 << 20); // clear TVM
                 // TW : 21 : write anything
                 // TSR : 22 : read-only 0 (NO S-MODE)
+                new_value = new_value & !(0b11 << 22); // clear TSR
                 // FS : 13 : read-only 0 (NO S-MODE, F extension)
+                new_value = new_value & !(0b11 << 13); // clear TSR
                 // VS : 9 : read-only 0 (v registers)
+                new_value = new_value & !(0b11 << 9); // clear TSR
                 // XS : 15 : read-only 0 (NO FS nor VS)
+                new_value = new_value & !(0b11 << 15); // clear TSR
                 // SD : 63 : read-only 0 (if NO FS/VS/XS)
+                new_value = new_value & !(0b1 << 63); // clear TSR
+
+                self.csr.mstatus = new_value;
             }
             Csr::Misa => {
                 // TODO: handle misa emulation properly
