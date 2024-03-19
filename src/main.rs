@@ -234,8 +234,13 @@ fn handle_payload_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
         MCause::Breakpoint => {
             emulate_jump_trap_handler(ctx);
         }
-        _ => {
+        cause @ _ if cause.is_interrupt() => {
+            // TODO : Interrupts are not yet supported
+            todo!("Interrupts are not yet implemented");
+        }
+        cause @ _ => {
             // TODO : Need to match other traps
+            todo!("Other traps are not yet implemented");
         }
     }
 }

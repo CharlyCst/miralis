@@ -71,6 +71,8 @@ pub struct VirtCsr {
     pub mtval: usize,
     pub mstatus: usize,
     pub mtinst: usize,
+    mconfigptr: usize,
+    tselect: usize,
 }
 
 impl Default for VirtCsr {
@@ -99,6 +101,8 @@ impl Default for VirtCsr {
             mtval: 0,
             mstatus: 0,
             mtinst: 0,
+            mconfigptr : 0,
+            tselect: 0,
         }
     }
 }
@@ -165,20 +169,20 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
-            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
-            Csr::Medeleg => todo!(),    // TODO : normal read
-            Csr::Mideleg => todo!(),    // TODO : normal read
-            Csr::Mtinst => todo!(),     // TODO : normal read
-            Csr::Mtval2 => todo!(),     // TODO : normal read
-            Csr::Tselect => todo!(),    // TODO : normal read
-            Csr::Tdata1 => todo!(),     // TODO : normal read
-            Csr::Tdata2 => todo!(),     // TODO : normal read
-            Csr::Tdata3 => todo!(),     // TODO : normal read
-            Csr::Mcontext => todo!(),   // TODO : normal read
-            Csr::Dcsr => todo!(),       // TODO : normal read
-            Csr::Dpc => todo!(),        // TODO : normal read
-            Csr::Dscratch0 => todo!(),  // TODO : normal read
-            Csr::Dscratch1 => todo!(),  // TODO : normal read
+            Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
+            Csr::Medeleg => todo!(),    // Does not exist in a system without S-mode
+            Csr::Mideleg => todo!(),    // Does not exist in a system without S-mode
+            Csr::Mtinst => todo!(),     // Does not exist in a system without hypervisor extension
+            Csr::Mtval2 => todo!(),     // Does not exist in a system without hypervisor extension
+            Csr::Tselect => self.csr.tselect,    // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata1 => todo!(),     // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata2 => todo!(),     // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata3 => todo!(),     // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Mcontext => todo!(),   // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(),       // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dpc => todo!(),        // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dscratch0 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dscratch1 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
@@ -202,7 +206,7 @@ impl RegisterContext<Csr> for VirtContext {
             }
             Csr::Mie => self.csr.mie = value,
             Csr::Mip => {
-                // TODO: handle misa emulation properly
+                // TODO: handle mip emulation properly
                 if value != 0 {
                     // We only support resetting mip for now
                     panic!("mip emulation is not yet implemented");
@@ -241,12 +245,12 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => (),                // Read-only 0
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
+            Csr::Mconfigptr => (), // Read-only
             Csr::Medeleg => todo!(), // TODO : This register should not exist in a system without S-mode
             Csr::Mideleg => todo!(), // TODO : This register should not exist in a system without S-mode
-            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap
-            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval
-            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
+            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, , this register should not exist in a system without hypervisor extension
+            Csr::Tselect => (), // Read-only 0 when no triggers are implemented
             Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
@@ -255,9 +259,25 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Mepc => todo!(),   // TODO : must contain a valid address
-            Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
-            Csr::Mtval => todo!(),  // TODO : must contain a valid address and zero
+            Csr::Mepc => {
+                if value > Plat::get_max_valid_address() {
+                    return;
+                }
+                self.csr.mepc = value
+            }
+            Csr::Mcause => {
+                let cause = MCause::new(value);
+                if cause.is_interrupt() {
+                    // TODO : does not support interrupts
+                    todo!("Interrupts are not supported");
+                }
+                match cause {
+                    // Can only contain supported exception codes
+                    MCause::UnknownException => todo!("Unsupported exception code"),
+                    _ => self.csr.mcause = value,
+                }
+            }
+            Csr::Mtval => (), // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

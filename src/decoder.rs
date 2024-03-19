@@ -161,8 +161,20 @@ fn decode_csr(csr: usize) -> Csr {
             );
             Csr::Unknown
         }
-        0x34A => Csr::Mtinst,
-        0x34B => Csr::Mtval2,
+        0x34A => {
+            log::info!(
+                "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
+                csr
+            );
+            Csr::Unknown
+        }
+        0x34B => {
+            log::info!(
+                "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
+                csr
+            );
+            Csr::Unknown
+        }
         0x7A0 => Csr::Tselect,
         0x7A1 => Csr::Tdata1,
         0x7A2 => Csr::Tdata3,
