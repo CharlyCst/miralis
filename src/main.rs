@@ -159,7 +159,10 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
                 );
             }
             // Modify mstatus
-            // MPV = 0, MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
+            // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
+            //ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 39);
+
+            // MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
             let mpie = 0b1 & (ctx.csr.mstatus >> 7);
 
             ctx.csr.mstatus = ctx.csr.mstatus | 0b1 << 7;
@@ -167,7 +170,6 @@ fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
             ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 3);
             ctx.csr.mstatus = ctx.csr.mstatus | mpie << 3;
 
-            ctx.csr.mstatus = ctx.csr.mstatus & !(0b1 << 39);
             ctx.csr.mstatus = ctx.csr.mstatus & !(0b11 << 11);
 
             // Jump back to payload
@@ -238,7 +240,7 @@ fn handle_payload_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             // TODO : Interrupts are not yet supported
             todo!("Interrupts are not yet implemented");
         }
-        cause @ _ => {
+        _ => {
             // TODO : Need to match other traps
             todo!("Other traps are not yet implemented");
         }

@@ -60,12 +60,10 @@ impl Platform for VirtPlatform {
     fn get_nb_pmp() -> usize {
         return 16;
     }
-    
-    fn get_max_valid_address() -> usize {
-        return usize::MAX; 
-    }
 
-    
+    fn get_max_valid_address() -> usize {
+        return usize::MAX;
+    }
 }
 
 fn exit_qemu(success: bool) -> ! {

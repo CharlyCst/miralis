@@ -28,27 +28,8 @@ extern "C" fn entry() -> ! {
         );
     }
 
-    panic!();
-}
-
-/// This function should be called from the raw trap handler
-extern "C" fn trap_handler() {
-    // Test here
-
-    //mcause = breakpoint
-    let bp_code: usize = 0x3;
+    // TEST HERE
     let mut res: usize;
-    unsafe {
-        asm!(
-            "csrr {0}, mcause",
-            out(reg) res,
-        );
-    }
-
-    read_test(res, bp_code);
-
-    //mstatus MPP = M-mode
-    let mpp_code: usize = 0x3;
     unsafe {
         asm!(
             "csrr {0}, mstatus",
@@ -56,8 +37,22 @@ extern "C" fn trap_handler() {
         );
     }
 
-    read_test((res >> 11) & 0b11, mpp_code);
+    // MPP = 0
+    read_test((res >> 11) & 0b11, 0);
+    // MPIE = 1
+    read_test((res >> 7) & 0b1, 1);
+    // MPRV = 0
+    read_test((res >> 17) & 0b1, 0);
+
     success();
+}
+
+/// This function should be called from the raw trap handler
+extern "C" fn trap_handler() {
+    unsafe {
+        asm!("mret",);
+    }
+    panic!();
 }
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //

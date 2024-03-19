@@ -178,6 +178,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 
 [[package]]
+name = "mcause"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
+]
+
+[[package]]
+name = "mconfigptr"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -185,6 +199,13 @@ checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 
 [[package]]
 name = "menv_msec"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
+]
+
+[[package]]
+name = "mepc"
 version = "0.1.0"
 dependencies = [
  "mirage_abi",
@@ -202,6 +223,13 @@ dependencies = [
 [[package]]
 name = "mirage_abi"
 version = "0.1.0"
+
+[[package]]
+name = "mret"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
+]
 
 [[package]]
 name = "mscratch"
@@ -350,6 +378,13 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "winnow",
+]
+
+[[package]]
+name = "tselect"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
 ]
 
 [[package]]

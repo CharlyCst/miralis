@@ -19,6 +19,12 @@ test:
 	cargo run --package runner -- --max-exits 200 --payload pmp
 	cargo run --package runner -- --max-exits 200 --payload perf_monitor
 	cargo run --package runner -- --max-exits 200 --payload menv_msec
+	cargo run --package runner -- --max-exits 200 --payload breakpoint
+	cargo run --package runner -- --max-exits 200 --payload mepc
+	cargo run --package runner -- --max-exits 200 --payload mcause
+	cargo run --package runner -- --max-exits 200 --payload mconfigptr
+	cargo run --package runner -- --max-exits 200 --payload tselect
+	cargo run --package runner -- --max-exits 200 --payload mret
 	
 	# Checking formatting...
 	cargo fmt --all -- --check
