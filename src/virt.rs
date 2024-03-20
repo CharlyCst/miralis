@@ -1,6 +1,6 @@
 //! Firmware Virtualisation
 
-use crate::arch::{Arch, Architecture, Csr, Register};
+use crate::arch::{Arch, Architecture, Csr, Register, TrapInfo};
 use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
@@ -13,6 +13,8 @@ pub struct VirtContext {
     regs: [usize; 32],
     /// Program Counter
     pub(crate) pc: usize,
+    /// Information on the trap that ocurred, used to handle traps
+    pub(crate) trap_info: TrapInfo,
     /// Virtual Control and Status Registers
     csr: VirtCsr,
     /// Number of virtual PMPs
@@ -30,6 +32,7 @@ impl VirtContext {
             regs: Default::default(),
             csr: Default::default(),
             pc: 0,
+            trap_info: Default::default(),
             nb_exits: 0,
             hart_id,
             nbr_pmps: match Plat::get_nb_pmp() {

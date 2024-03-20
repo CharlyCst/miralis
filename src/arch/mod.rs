@@ -9,7 +9,7 @@ mod registers;
 mod trap;
 
 pub use registers::{Csr, Register};
-pub use trap::MCause;
+pub use trap::{MCause, TrapInfo};
 
 use crate::virt::VirtContext;
 
@@ -22,9 +22,6 @@ pub trait Architecture {
     fn init();
     fn read_misa() -> usize;
     fn read_mstatus() -> usize;
-    fn read_mcause() -> MCause;
-    fn read_mepc() -> usize;
-    fn read_mtval() -> usize;
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_misa(misa: usize);
     unsafe fn write_mstatus(mstatus: usize);
@@ -34,14 +31,11 @@ pub trait Architecture {
     unsafe fn ecall();
     unsafe fn enter_virt_firmware(ctx: &mut VirtContext);
 
-    /// Return the faulting instruction.
+    /// Return the faulting instruction at the provided exception PC.
     ///
-    /// Assumptions:
-    /// - The last trap is an illegal instruction trap (thus the instruction might be stored into
-    ///   mtval)
-    /// - The value of mepc has not been  modified since last trap, as this function might need to
-    ///   read memory at mepc.
-    unsafe fn get_raw_faulting_instr() -> usize;
+    /// SAFETY:
+    /// The trap info must correspond to a valid payload trap info, no further checks are performed.
+    unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize;
 }
 
 /// Privilege modes
