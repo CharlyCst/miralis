@@ -77,6 +77,39 @@ impl MCause {
     }
 }
 
+// ——————————————————————————————— Trap Info ———————————————————————————————— //
+
+/// Contains all the information automatically written by the hardware during a trap
+#[repr(C)]
+#[derive(Clone, Debug)]
+pub struct TrapInfo {
+    // mtval2 and mtinst only exist with the hypervisor extension
+    pub mepc: usize,
+    pub mstatus: usize,
+    pub mcause: usize,
+    pub mip: usize,
+    pub mtval: usize,
+}
+
+impl Default for TrapInfo {
+    fn default() -> TrapInfo {
+        TrapInfo {
+            mepc: 0,
+            mstatus: 0,
+            mcause: 0,
+            mip: 0,
+            mtval: 0,
+        }
+    }
+}
+
+impl TrapInfo {
+    /// Return the trap cause
+    pub fn get_cause(&self) -> MCause {
+        return MCause::new(self.mcause);
+    }
+}
+
 // ———————————————————————————————— Display ————————————————————————————————— //
 
 impl fmt::Debug for MCause {

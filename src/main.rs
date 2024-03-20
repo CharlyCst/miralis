@@ -63,10 +63,10 @@ fn main_loop(mut ctx: VirtContext) -> ! {
 
 fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("Trapped!");
-    log::trace!("  mcause:  {:?}", Arch::read_mcause());
-    log::trace!("  mstatus: 0x{:x}", Arch::read_mstatus());
-    log::trace!("  mepc:    0x{:x}", Arch::read_mepc());
-    log::trace!("  mtval:   0x{:x}", Arch::read_mtval());
+    log::trace!("  mcause:  {:?}", ctx.trap_info.mcause);
+    log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);
+    log::trace!("  mepc:    0x{:x}", ctx.trap_info.mepc);
+    log::trace!("  mtval:   0x{:x}", ctx.trap_info.mtval);
 
     // Keep track of the number of exit
     ctx.nb_exits += 1;
@@ -78,7 +78,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
         }
     }
 
-    match Arch::read_mcause() {
+    match ctx.trap_info.get_cause() {
         MCause::EcallFromMMode | MCause::EcallFromUMode => {
             // For now we just exit successfuly
             log::info!("Success!");
@@ -87,7 +87,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
             Plat::exit_success();
         }
         MCause::IllegalInstr => {
-            let instr = unsafe { Arch::get_raw_faulting_instr() };
+            let instr = unsafe { Arch::get_raw_faulting_instr(&ctx.trap_info) };
             let instr = decode(instr);
             log::trace!("Faulting instruction: {:?}", instr);
             emulate_instr(ctx, &instr);
