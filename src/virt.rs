@@ -335,7 +335,45 @@ impl RegisterContext<Csr> for VirtContext {
     fn set(&mut self, register: Csr, value: usize) {
         match register {
             Csr::Mhartid => (), // Read-only
-            Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Mstatus => {
+                // TODO: create some constant values
+                let mut new_value = self.csr.mstatus;
+                // MPP : 11 : write legal : 0,1,2,3
+                let mpp = (value >> 11) & 0b11;
+                if mpp == 0 || mpp == 1 || mpp == 3 {
+                    // Legal values
+                    new_value = new_value & !(0b11 << 11); // clear MPP
+                    new_value = new_value & (mpp << 11); // set new MPP
+                }
+                // SXL : 34 : read-only : MX-LEN = 64
+                let mxl: usize = 2;
+                new_value = new_value & !(0b11 << 34); // clear SXL
+                new_value = new_value & (mxl << 34); // set new SXL
+                                                     // UXL : 32 : read-only : MX-LEN = 64
+                new_value = new_value & !(0b11 << 32); // clear UXL
+                new_value = new_value & (mxl << 32); // set new UXL
+
+                // MPRV : 17 : write anything
+                // MBE : 37 : write anything
+                // SBE : 36 : read-only 0 (NO S-MODE)
+                new_value = new_value & !(0b1 << 36); // clear SBE
+                                                      // UBE : 6 : write anything
+                                                      // TVM : 20 : read-only 0 (NO S-MODE)
+                new_value = new_value & !(0b1 << 20); // clear TVM
+                                                      // TW : 21 : write anything
+                                                      // TSR : 22 : read-only 0 (NO S-MODE)
+                new_value = new_value & !(0b11 << 22); // clear TSR
+                                                       // FS : 13 : read-only 0 (NO S-MODE, F extension)
+                new_value = new_value & !(0b11 << 13); // clear TSR
+                                                       // VS : 9 : read-only 0 (v registers)
+                new_value = new_value & !(0b11 << 9); // clear TSR
+                                                      // XS : 15 : read-only 0 (NO FS nor VS)
+                new_value = new_value & !(0b11 << 15); // clear TSR
+                                                       // SD : 63 : read-only 0 (if NO FS/VS/XS)
+                new_value = new_value & !(0b1 << 63); // clear TSR
+
+                self.csr.mstatus = new_value;
+            }
             Csr::Misa => {
                 // TODO: handle misa emulation properly
                 if value != Arch::read_misa() {
@@ -401,9 +439,25 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Mepc => todo!(),   // TODO : must contain a valid address
-            Csr::Mcause => todo!(), // TODO : can only contain supported exception codes
-            Csr::Mtval => todo!(),  // TODO : must contain a valid address and zero
+            Csr::Mepc => {
+                if value > Plat::get_max_valid_address() {
+                    return;
+                }
+                self.csr.mepc = value
+            }
+            Csr::Mcause => {
+                let cause = MCause::new(value);
+                if cause.is_interrupt() {
+                    // TODO : does not support interrupts
+                    return;
+                }
+                match cause {
+                    // Can only contain supported exception codes
+                    MCause::UnknownException => (),
+                    _ => self.csr.mcause = value,
+                }
+            }
+            Csr::Mtval => (), // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
