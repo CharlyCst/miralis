@@ -20,6 +20,8 @@ pub struct Config {
     pub log: Log,
     #[serde(default)]
     pub debug: Debug,
+    #[serde(default)]
+    pub platform: Platform,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -34,6 +36,12 @@ pub struct Debug {
     pub max_payload_exits: Option<usize>,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Platform {
+    pub s_mode: Option<bool>,
+}
+
 // ————————————————————————— Environment Variables —————————————————————————— //
 
 impl Config {
@@ -41,6 +49,7 @@ impl Config {
         let mut envs = HashMap::new();
         envs.extend(self.log.build_envs());
         envs.extend(self.debug.build_envs());
+        envs.extend(self.platform.build_envs());
         envs
     }
 }
@@ -62,6 +71,19 @@ impl Debug {
             envs.insert(
                 String::from("MIRAGE_DEBUG_MAX_PAYLOAD_EXITS"),
                 format!("{}", max_payload_exits),
+            );
+        }
+        envs
+    }
+}
+
+impl Platform {
+    fn build_envs(&self) -> HashMap<String, String> {
+        let mut envs = HashMap::new();
+        if let Some(s_mode) = self.s_mode {
+            envs.insert(
+                String::from("MIRAGE_PLATFORM_S_MODE"),
+                format!("{}", s_mode),
             );
         }
         envs

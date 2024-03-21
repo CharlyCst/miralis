@@ -4,6 +4,7 @@ use core::fmt;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
+use crate::config::is_enabled;
 use crate::logger;
 
 /// Export the current platform.
@@ -24,6 +25,8 @@ pub trait Platform {
 
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;
+
+    const HAS_S_MODE: bool = is_enabled!("MIRAGE_PLATFORM_S_MODE");
 }
 
 pub fn init() {

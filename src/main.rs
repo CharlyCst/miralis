@@ -9,6 +9,7 @@
 #![cfg_attr(not(test), no_main)]
 
 mod arch;
+mod config;
 mod debug;
 mod decoder;
 mod logger;
@@ -18,7 +19,7 @@ mod virt;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
-use crate::arch::{Csr, Register};
+use crate::arch::{misa, Csr, Register};
 use crate::virt::{RegisterContext, VirtContext};
 
 // Defined in the linker script
@@ -31,6 +32,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     init();
     log::info!("Hello, world!");
     log::info!("Hart ID: {}", hart_id);
+    log::info!("misa:    0x{:x}", Arch::read_misa());
+    log::info!("vmisa:   0x{:x}", Arch::read_misa() & !misa::DISABLED);
     log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
     log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
@@ -47,7 +50,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
-        ctx.set(Csr::Misa, Arch::read_misa());
+        ctx.set(Csr::Misa, Arch::read_misa() & !misa::DISABLED);
         ctx.pc = payload_addr;
     }
 
