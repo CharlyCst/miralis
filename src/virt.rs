@@ -184,14 +184,14 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => todo!("CSR not yet implemented"),
             Csr::Misa => {
-                // TODO: handle misa emulation properly
-                if value != Arch::read_misa() {
-                    // For now we panic if the payload tries to update misa. In the future we will
-                    // most likely have a mask of minimal features required by Mirage and pass the
-                    // changes through.
-                    panic!("misa emulation is not yet implemented");
-                }
-                self.csr.misa = value;
+                
+                // misa shows the extensions available : we cannot have more than possible in hardware
+                let arch_misa: usize = Arch::read_misa();
+                let mirage_misa: usize = 0x2 << 62; // Features required by Mirage : MXLEN = 2
+                let change_filter: usize = 0x00000000003FFFFFF; // Filters the values that can be modified by the payload      
+                let mut new_misa: usize = (value & arch_misa & change_filter) | mirage_misa ;
+
+                self.csr.misa = new_misa;
             }
             Csr::Mie => self.csr.mie = value,
             Csr::Mip => {
