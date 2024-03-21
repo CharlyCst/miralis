@@ -50,15 +50,19 @@ impl Platform for VirtPlatform {
 
     fn load_payload() -> usize {
         // We directly load the payload from QEMU, nothing to do here.
-        return PAYLOAD_ADDR;
+        PAYLOAD_ADDR
     }
 
     fn payload_stack_address() -> usize {
-        return PAYLOAD_STACK;
+        PAYLOAD_STACK
     }
 
     fn get_nb_pmp() -> usize {
         16
+    }
+
+    fn get_max_valid_address() -> usize {
+        usize::MAX
     }
 }
 
