@@ -13,8 +13,7 @@ use core::panic::PanicInfo;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
-use crate::arch::{Csr, MCause, Register};
-use crate::decoder::{decode, Instr};
+use crate::arch::{Csr, Register};
 use crate::virt::{RegisterContext, VirtContext};
 
 // Defined in the linker script
@@ -33,6 +32,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
     let mut ctx = VirtContext::new(hart_id);
+
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
@@ -52,6 +52,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
 fn main_loop(mut ctx: VirtContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
+
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
@@ -67,94 +68,27 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);
     log::trace!("  mepc:    0x{:x}", ctx.trap_info.mepc);
     log::trace!("  mtval:   0x{:x}", ctx.trap_info.mtval);
+    log::trace!("  exits:   {}", ctx.nb_exits + 1);
 
-    // Keep track of the number of exit
-    ctx.nb_exits += 1;
-    log::trace!("  exits:   {}", ctx.nb_exits);
     if let Some(max_exit) = max_exit {
-        if ctx.nb_exits >= max_exit {
+        if ctx.nb_exits + 1 >= max_exit {
             log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
             Plat::exit_failure();
         }
     }
 
-    match ctx.trap_info.get_cause() {
-        MCause::EcallFromMMode | MCause::EcallFromUMode => {
-            // For now we just exit successfuly
-            log::info!("Success!");
-            log::info!("Number of payload exits: {}", ctx.nb_exits);
-            unsafe { debug::log_stack_usage() };
-            Plat::exit_success();
-        }
-        MCause::IllegalInstr => {
-            let instr = unsafe { Arch::get_raw_faulting_instr(&ctx.trap_info) };
-            let instr = decode(instr);
-            log::trace!("Faulting instruction: {:?}", instr);
-            emulate_instr(ctx, &instr);
-
-            // Skip to next instruction
-            ctx.pc += 4;
-        }
-        _ => (), // Continue
+    if ctx.trap_info.from_mmode() {
+        //Trap comes from M mode : mirage
+        handle_mirage_trap(ctx);
+    } else {
+        ctx.handle_payload_trap();
     }
 }
 
-fn emulate_instr(ctx: &mut VirtContext, instr: &Instr) {
-    match instr {
-        Instr::Wfi => {
-            // For now payloads only call WFI when panicking
-            log::error!("Payload panicked!");
-            Plat::exit_failure();
-        }
-        Instr::Csrrw { csr, rd, rs1 } => {
-            if csr.is_unknown() {
-                todo!("Unknown CSR");
-            }
-            let tmp = ctx.get(csr);
-            ctx.set(csr, ctx.get(rs1));
-            ctx.set(rd, tmp);
-        }
-        Instr::Csrrs { csr, rd, rs1 } => {
-            if csr.is_unknown() {
-                todo!("Unknown CSR");
-            }
-            let tmp = ctx.get(csr);
-            ctx.set(csr, tmp | ctx.get(rs1));
-            ctx.set(rd, tmp);
-        }
-        Instr::Csrrwi { csr, rd, uimm } => {
-            if csr.is_unknown() {
-                todo!("Unknown CSR");
-            }
-            ctx.set(rd, ctx.get(csr));
-            ctx.set(csr, *uimm);
-        }
-        Instr::Csrrsi { csr, rd, uimm } => {
-            if csr.is_unknown() {
-                todo!("Unknown CSR");
-            }
-            let tmp = ctx.get(csr);
-            ctx.set(csr, tmp | uimm);
-            ctx.set(rd, tmp);
-        }
-        Instr::Csrrc { csr, rd, rs1 } => {
-            if csr.is_unknown() {
-                todo!("Unknown CSR");
-            }
-            let tmp = ctx.get(csr);
-            ctx.set(csr, tmp & !ctx.get(rs1));
-            ctx.set(rd, tmp);
-        }
-        Instr::Csrrci { csr, rd, uimm } => {
-            if csr.is_unknown() {
-                todo!("Unknown CSR");
-            }
-            let tmp = ctx.get(csr);
-            ctx.set(csr, tmp & !uimm);
-            ctx.set(rd, tmp);
-        }
-        _ => todo!("Instruction not yet implemented: {:?}", instr),
-    }
+/// Handle the trap coming from mirage
+fn handle_mirage_trap(_ctx: &mut VirtContext) {
+    log::trace!("Mirage trap handler entered");
+    todo!();
 }
 
 #[panic_handler]

@@ -1,6 +1,8 @@
 //! Firmware Virtualisation
 
-use crate::arch::{Arch, Architecture, Csr, Register, TrapInfo};
+use crate::arch::{Arch, Architecture, Csr, MCause, Register, TrapInfo};
+use crate::debug;
+use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
@@ -69,6 +71,10 @@ pub struct VirtCsr {
     mcause: usize,
     mepc: usize,
     mtval: usize,
+    pub mstatus: usize,
+    pub mtinst: usize,
+    mconfigptr: usize,
+    tselect: usize,
 }
 
 impl Default for VirtCsr {
@@ -95,6 +101,150 @@ impl Default for VirtCsr {
             mcause: 0,
             mepc: 0,
             mtval: 0,
+            mstatus: 0,
+            mtinst: 0,
+            mconfigptr: 0,
+            tselect: 0,
+        }
+    }
+}
+
+// —————————————————————————— Handle Payload Traps —————————————————————————— //
+
+impl VirtContext {
+    fn emulate_instr(&mut self, instr: &Instr) {
+        match instr {
+            Instr::Wfi => {
+                // For now payloads only call WFI when panicking
+                log::error!("Payload panicked!");
+                Plat::exit_failure();
+            }
+            Instr::Csrrw { csr, .. }
+            | Instr::Csrrs { csr, .. }
+            | Instr::Csrrc { csr, .. }
+            | Instr::Csrrwi { csr, .. }
+            | Instr::Csrrsi { csr, .. }
+            | Instr::Csrrci { csr, .. }
+                if csr.is_unknown() =>
+            {
+                self.emulate_jump_trap_handler();
+            }
+            Instr::Csrrw { csr, rd, rs1 } => {
+                let tmp = self.get(csr);
+                self.set(csr, self.get(rs1));
+                self.set(rd, tmp);
+                self.pc += 4;
+            }
+            Instr::Csrrs { csr, rd, rs1 } => {
+                let tmp = self.get(csr);
+                self.set(csr, tmp | self.get(rs1));
+                self.set(rd, tmp);
+                self.pc += 4;
+            }
+            Instr::Csrrwi { csr, rd, uimm } => {
+                self.set(rd, self.get(csr));
+                self.set(csr, *uimm);
+                self.pc += 4;
+            }
+            Instr::Csrrsi { csr, rd, uimm } => {
+                let tmp = self.get(csr);
+                self.set(csr, tmp | uimm);
+                self.set(rd, tmp);
+                self.pc += 4;
+            }
+            Instr::Csrrc { csr, rd, rs1 } => {
+                let tmp = self.get(csr);
+                self.set(csr, tmp & !self.get(rs1));
+                self.set(rd, tmp);
+                self.pc += 4;
+            }
+            Instr::Csrrci { csr, rd, uimm } => {
+                let tmp = self.get(csr);
+                self.set(csr, tmp & !uimm);
+                self.set(rd, tmp);
+                self.pc += 4;
+            }
+            Instr::Mret => {
+                if ((self.csr.mstatus >> 11) & 0b11) != 3 {
+                    panic!(
+                        "MRET is not going to M mode: {} with MPP {}",
+                        self.csr.mstatus,
+                        ((self.csr.mstatus >> 11) & 0b11)
+                    );
+                }
+                // Modify mstatus
+                // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
+                // self.csr.mstatus = self.csr.mstatus & !(0b1 << 39);
+
+                // MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
+                let mpie = 0b1 & (self.csr.mstatus >> 7);
+
+                // TODO: create some constants to make it easier to understand what is going on
+                // here
+                self.csr.mstatus = self.csr.mstatus | 0b1 << 7;
+                self.csr.mstatus = self.csr.mstatus & !(0b1 << 3);
+                self.csr.mstatus = self.csr.mstatus | mpie << 3;
+                self.csr.mstatus = self.csr.mstatus & !(0b11 << 11);
+
+                // Jump back to payload
+                self.pc = self.csr.mepc;
+            }
+            _ => todo!("Instruction not yet implemented: {:?}", instr),
+        }
+    }
+
+    fn emulate_jump_trap_handler(&mut self) {
+        // We are now emulating a trap, registers need to be updated
+        log::trace!("Emulating jump to trap handler");
+        self.csr.mcause = self.trap_info.mcause;
+        self.csr.mstatus = self.trap_info.mstatus; // TODO: are we leaking information from Mirage?
+        self.csr.mtval = self.trap_info.mtval;
+        self.csr.mip = self.trap_info.mip;
+        self.csr.mepc = self.trap_info.mepc;
+
+        // Modify mstatus: previous privilege mode is Machine = 3
+        self.csr.mstatus = self.csr.mstatus | 0b11 << 11;
+
+        // Go to payload trap handler
+        assert!(
+            self.csr.mtvec & 0b11 == 0,
+            "Only direct mode is supported for mtvec"
+        );
+        self.pc = self.csr.mtvec
+    }
+
+    /// Handle the trap coming from the payload
+    pub fn handle_payload_trap(&mut self) {
+        // Keep track of the number of exit
+        self.nb_exits += 1;
+
+        let cause = self.trap_info.get_cause();
+        match cause {
+            MCause::EcallFromMMode | MCause::EcallFromUMode => {
+                // For now we just exit successfuly
+                log::info!("Success!");
+                log::info!("Number of payload exits: {}", self.nb_exits);
+                unsafe { debug::log_stack_usage() };
+                Plat::exit_success();
+            }
+            MCause::IllegalInstr => {
+                let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                let instr = decode(instr);
+                log::trace!("Faulting instruction: {:?}", instr);
+                self.emulate_instr(&instr);
+            }
+            MCause::Breakpoint => {
+                self.emulate_jump_trap_handler();
+            }
+            _ => {
+                if cause.is_interrupt() {
+                    // TODO : Interrupts are not yet supported
+                    todo!("Interrupts are not yet implemented");
+                } else {
+                    // TODO : Need to match other traps
+                    todo!("Other traps are not yet implemented");
+                }
+            }
         }
     }
 }
@@ -126,7 +276,7 @@ impl RegisterContext<Csr> for VirtContext {
     fn get(&self, register: Csr) -> usize {
         match register {
             Csr::Mhartid => self.hart_id,
-            Csr::Mstatus => todo!("CSR not yet implemented"),
+            Csr::Mstatus => self.csr.mstatus,
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
             Csr::Mip => self.csr.mip,
@@ -161,20 +311,20 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
-            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
-            Csr::Medeleg => todo!(),    // TODO : normal read
-            Csr::Mideleg => todo!(),    // TODO : normal read
-            Csr::Mtinst => todo!(),     // TODO : normal read
-            Csr::Mtval2 => todo!(),     // TODO : normal read
-            Csr::Tselect => todo!(),    // TODO : normal read
-            Csr::Tdata1 => todo!(),     // TODO : normal read
-            Csr::Tdata2 => todo!(),     // TODO : normal read
-            Csr::Tdata3 => todo!(),     // TODO : normal read
-            Csr::Mcontext => todo!(),   // TODO : normal read
-            Csr::Dcsr => todo!(),       // TODO : normal read
-            Csr::Dpc => todo!(),        // TODO : normal read
-            Csr::Dscratch0 => todo!(),  // TODO : normal read
-            Csr::Dscratch1 => todo!(),  // TODO : normal read
+            Csr::Medeleg => todo!(),                // TODO : normal read
+            Csr::Mideleg => todo!(),                // TODO : normal read
+            Csr::Mtinst => todo!(),                 // TODO : normal read
+            Csr::Mtval2 => todo!(),                 // TODO : normal read
+            Csr::Tdata1 => todo!(),                 // TODO : normal read
+            Csr::Tdata2 => todo!(),                 // TODO : normal read
+            Csr::Tdata3 => todo!(),                 // TODO : normal read
+            Csr::Mcontext => todo!(),               // TODO : normal read
+            Csr::Dcsr => todo!(),                   // TODO : normal read
+            Csr::Dpc => todo!(),                    // TODO : normal read
+            Csr::Dscratch0 => todo!(),              // TODO : normal read
+            Csr::Dscratch1 => todo!(),              // TODO : normal read
+            Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
+            Csr::Tselect => self.csr.tselect,       // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
@@ -198,7 +348,7 @@ impl RegisterContext<Csr> for VirtContext {
             }
             Csr::Mie => self.csr.mie = value,
             Csr::Mip => {
-                // TODO: handle misa emulation properly
+                // TODO: handle mip emulation properly
                 if value != 0 {
                     // We only support resetting mip for now
                     panic!("mip emulation is not yet implemented");
@@ -237,12 +387,12 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => (),                // Read-only 0
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => todo!(), // TODO : Read-only, can be read-only 0
+            Csr::Mconfigptr => (),     // Read-only
             Csr::Medeleg => todo!(), // TODO : This register should not exist in a system without S-mode
             Csr::Mideleg => todo!(), // TODO : This register should not exist in a system without S-mode
-            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap
-            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval
-            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
+            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
+            Csr::Tselect => (),     // Read-only 0 when no triggers are implemented
             Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
