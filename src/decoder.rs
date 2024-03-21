@@ -1,5 +1,4 @@
 //! RISC-V instruction decoder
-
 use crate::arch::{Csr, Register};
 
 const OPCODE_MASK: usize = 0b1111111 << 0;
@@ -148,10 +147,54 @@ fn decode_csr(csr: usize) -> Csr {
         0x30a => Csr::Menvcgf,
         0x747 => Csr::Mseccfg,
         0xF15 => Csr::Mconfigptr,
-        0x302 => Csr::Medeleg,
-        0x303 => Csr::Mideleg,
-        0x34A => Csr::Mtinst,
-        0x34B => Csr::Mtval2,
+        0x302 => {
+            log::info!(
+                "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
+                csr
+            );
+            // TODO: add support for platform misa
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Medeleg
+            }
+        }
+        0x303 => {
+            log::info!(
+                "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
+                csr
+            );
+            // TODO: add support for platform misa
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Mideleg
+            }
+        }
+        0x34A => {
+            log::info!(
+                "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
+                csr
+            );
+            // TODO: add support for platform misa
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Mtinst
+            }
+        }
+        0x34B => {
+            log::info!(
+                "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
+                csr
+            );
+            // TODO: add support for platform misa
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Mtval2
+            }
+        }
         0x7A0 => Csr::Tselect,
         0x7A1 => Csr::Tdata1,
         0x7A2 => Csr::Tdata3,
