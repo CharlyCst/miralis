@@ -20,6 +20,11 @@ members = [
     "payloads/perf_monitor",
     "payloads/menv_msec",
     "payloads/breakpoint",
+    "payloads/mepc",
+    "payloads/mcause",
+    "payloads/mconfigptr",
+    "payloads/tselect",
+    "payloads/mret",
 
     # Crates
     "crates/mirage_abi",
