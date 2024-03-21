@@ -184,12 +184,20 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => todo!("CSR not yet implemented"),
             Csr::Misa => {
-                
                 // misa shows the extensions available : we cannot have more than possible in hardware
                 let arch_misa: usize = Arch::read_misa();
-                let mirage_misa: usize = 0x2 << 62; // Features required by Mirage : MXLEN = 2
-                let change_filter: usize = 0x00000000003FFFFFF; // Filters the values that can be modified by the payload      
-                let mut new_misa: usize = (value & arch_misa & change_filter) | mirage_misa ;
+                let mut config_misa: usize = 0x00000000000000000; // Features required by the payload
+
+                config_misa = config_misa
+                    | match get_payload_s_mode() {
+                        None => 0b0,
+                        Some(b) => (if b { 0b1 } else { 0b0 }) << 18,
+                    };
+
+                let mirage_misa: usize = 0x2 << 62; // Features required by Mirage : MXLEN = 2 => 64 bits
+                let change_filter: usize = 0x00000000003FFFFFF; // Filters the values that can be modified by the payload
+                let mut new_misa: usize =
+                    ((value | config_misa) & arch_misa & change_filter) | mirage_misa;
 
                 self.csr.misa = new_misa;
             }
@@ -268,5 +276,15 @@ where
 
     fn set(&mut self, register: &'a R, value: usize) {
         self.set(*register, value)
+    }
+}
+
+pub fn get_payload_s_mode() -> Option<bool> {
+    match option_env!("MIRAGE_PAYLOAD_S_MODE") {
+        Some(env_var) => match env_var.parse() {
+            Ok(b) => Some(b),
+            Err(_) => None,
+        },
+        None => None,
     }
 }
