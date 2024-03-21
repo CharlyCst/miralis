@@ -358,7 +358,7 @@ impl RegisterContext<Csr> for VirtContext {
                 if mpp == 0 || mpp == 1 || mpp == 3 {
                     // Legal values
                     new_value = new_value & !(0b11 << 11); // clear MPP
-                    new_value = new_value & (mpp << 11); // set new MPP
+                    new_value = new_value | (mpp << 11); // set new MPP
                 }
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
@@ -366,7 +366,7 @@ impl RegisterContext<Csr> for VirtContext {
                 new_value = new_value & (mxl << 34); // set new SXL
                                                      // UXL : 32 : read-only : MX-LEN = 64
                 new_value = new_value & !(0b11 << 32); // clear UXL
-                new_value = new_value & (mxl << 32); // set new UXL
+                new_value = new_value | (mxl << 32); // set new UXL
 
                 // MPRV : 17 : write anything
                 // MBE : 37 : write anything
