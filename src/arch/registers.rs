@@ -68,9 +68,9 @@ pub enum Csr {
     Marchid,
     /// Machine Implementation ID
     Mimpid,
-    /// PMP config  
+    /// PMP config
     Pmpcfg(usize),
-    /// PMP addr  
+    /// PMP addr
     Pmpaddr(usize),
     /// Machine cycle counter
     Mcycle,
