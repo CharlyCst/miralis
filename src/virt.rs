@@ -194,6 +194,7 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
+                log::trace!("writing on mstatus : 0x{:x}",value);
                 let mut new_value = self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,2,3
                 let mpp = (value >> 11) & 0b11;
@@ -361,13 +362,13 @@ impl Default for TrapInfo {
 
 impl TrapInfo {
     /// Whether the trap comes from M mode
-    pub fn from_mmode(self) -> bool {
+    pub fn from_mmode(&self) -> bool {
         let mpp: usize = (self.mstatus >> 11) & 0b11;
         return mpp == 3; // Mpp : 3 = M mode
     }
 
     /// Return the trap cause
-    pub fn get_cause(self) -> MCause {
+    pub fn get_cause(&self) -> MCause {
         return MCause::new(self.mcause);
     }
 }
