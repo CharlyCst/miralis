@@ -1,27 +1,16 @@
 #![no_std]
 #![no_main]
 
-use core::arch::{asm, global_asm};
-use core::panic::PanicInfo;
-use core::usize;
+use core::arch::asm;
 
-use mirage_abi::{failure, success};
+use mirage_abi::{setup_payload, success};
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _start
-_start:
-    j {entry}
-"#,
-    entry = sym entry,
-);
+setup_payload!(main);
 
 /// The fixed immediate for instructions with hard-coded immediate.
 const IMMEDIATE: usize = 27;
 
-extern "C" fn entry() -> ! {
+fn main() -> ! {
     let regs = [
         (0, 0, 0),
         (1, 2, 3),
@@ -183,9 +172,4 @@ unsafe fn csrrci(csr: usize, rd: usize) -> (usize, usize) {
     );
 
     (csr, rd)
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
 }

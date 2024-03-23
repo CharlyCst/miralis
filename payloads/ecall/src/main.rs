@@ -2,9 +2,8 @@
 #![no_main]
 
 use core::arch::global_asm;
-use core::panic::PanicInfo;
 
-use mirage_abi::failure;
+use mirage_abi::payload_panic;
 
 global_asm!(
     r#"
@@ -18,7 +17,4 @@ _start:
 "#,
 );
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
-}
+payload_panic!();
