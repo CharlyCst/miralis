@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mirage_abi = { path = "../../crates/mirage_abi" }
+mirage_abi = { path = "../../crates/abi" }

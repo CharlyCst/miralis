@@ -1,7 +1,6 @@
 [package]
-name = "mscratch"
+name = "mirage_core"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mirage_abi = { path = "../../crates/abi" }

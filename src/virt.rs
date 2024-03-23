@@ -1,6 +1,6 @@
 //! Firmware Virtualisation
 
-use mirage_abi::{MIRAGE_ABI_EID, MIRAGE_ABI_FAILURE_FID, MIRAGE_ABI_SUCCESS_FID};
+use mirage_core::abi;
 
 use crate::arch::{Arch, Architecture, Csr, MCause, Register, TrapInfo};
 use crate::debug;
@@ -220,17 +220,17 @@ impl VirtContext {
 
         let cause = self.trap_info.get_cause();
         match cause {
-            MCause::EcallFromUMode if self.get(Register::X17) == MIRAGE_ABI_EID => {
+            MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRAGE_EID => {
                 let fid = self.get(Register::X16);
                 match fid {
-                    MIRAGE_ABI_FAILURE_FID => {
+                    abi::MIRAGE_FAILURE_FID => {
                         log::error!("Payload panicked!");
                         log::error!("  pc:    0x{:x}", self.pc);
                         log::error!("  exits: {}", self.nb_exits);
                         unsafe { debug::log_stack_usage() };
                         Plat::exit_failure();
                     }
-                    MIRAGE_ABI_SUCCESS_FID => {
+                    abi::MIRAGE_SUCCESS_FID => {
                         log::info!("Success!");
                         log::info!("Number of payload exits: {}", self.nb_exits);
                         unsafe { debug::log_stack_usage() };
