@@ -1,24 +1,13 @@
 #![no_std]
 #![no_main]
 
-use core::arch::{asm, global_asm};
-use core::panic::PanicInfo;
-use core::usize;
+use core::arch::asm;
 
-use mirage_abi::{failure, success};
+use mirage_abi::{setup_payload, success};
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _start
-_start:
-    j {entry}
-"#,
-    entry = sym entry,
-);
+setup_payload!(main);
 
-extern "C" fn entry() -> ! {
+fn main() -> ! {
     let csrs = ["mvendorid", "marchid", "mimpid", "mhartid"];
 
     for csr in csrs {
@@ -66,9 +55,4 @@ fn test_csr_id(csr_name: &str) -> (usize, usize) {
 
 fn read_test(out_csr: usize, expected: usize) {
     assert_eq!(out_csr, expected);
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
 }

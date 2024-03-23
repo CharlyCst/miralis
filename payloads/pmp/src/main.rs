@@ -1,24 +1,13 @@
 #![no_std]
 #![no_main]
 
-use core::arch::{asm, global_asm};
-use core::panic::PanicInfo;
-use core::usize;
+use core::arch::asm;
 
-use mirage_abi::{failure, success};
+use mirage_abi::{setup_payload, success};
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _start
-_start:
-    j {entry}
-"#,
-    entry = sym entry,
-);
+setup_payload!(main);
 
-extern "C" fn entry() -> ! {
+fn main() -> ! {
     // For now we expose 0 PMPs to the payload, because QEMU supports only 16 PMPs.
     // So we ensure that indeed no PMPs are exposed.
     test_0_pmp();
@@ -144,9 +133,4 @@ fn test_16_pmp() {
 
 fn read_test(out_csr: usize, expected: usize) {
     assert_eq!(out_csr, expected);
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
 }

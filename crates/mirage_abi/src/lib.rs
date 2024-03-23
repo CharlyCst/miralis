@@ -41,6 +41,50 @@ pub fn failure() -> ! {
     }
 }
 
+// ————————————————————————————— Payload Setup —————————————————————————————— //
+
+/// Configure the payload entry point and panic handler.
+///
+/// This macro prepares all the boiler plate required by Mirage's payloads.
+#[macro_export]
+macro_rules! setup_payload {
+    ($path:path) => {
+        // The assembly entry point
+        core::arch::global_asm!(
+            r#"
+            .text
+            .align 4
+            .global _start
+            _start:
+                j {entry}
+            "#,
+            entry = sym _payload_start,
+        );
+
+        pub extern "C" fn _payload_start() -> ! {
+            // Validate the signature of the entry point.
+            let f: fn() -> ! = $path;
+            f();
+        }
+
+        // Also include the panic handler
+        $crate::payload_panic!();
+    };
+}
+
+/// Configure a panic handler for a Mirage payload.
+///
+/// The handler uses the Mirage ABI to gracefully exit with an error.
+#[macro_export]
+macro_rules! payload_panic {
+    () => {
+        #[panic_handler]
+        fn panic(_info: &core::panic::PanicInfo) -> ! {
+            $crate::failure();
+        }
+    };
+}
+
 // ————————————————————————————————— Utils —————————————————————————————————— //
 
 #[inline]
