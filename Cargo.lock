@@ -216,6 +216,7 @@ name = "mirage"
 version = "0.1.0"
 dependencies = [
  "log",
+ "mirage_abi",
  "spin",
  "uart_16550",
 ]

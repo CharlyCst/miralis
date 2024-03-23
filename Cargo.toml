@@ -7,6 +7,7 @@ edition = "2021"
 uart_16550 = "0.3.0"
 spin = "0.5.2"
 log = "0.4.17"
+mirage_abi = { path = "crates/mirage_abi" }
 
 [workspace]
 members = [

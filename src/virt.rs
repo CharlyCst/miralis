@@ -1,5 +1,7 @@
 //! Firmware Virtualisation
 
+use mirage_abi::{MIRAGE_ABI_EID, MIRAGE_ABI_FAILURE_FID, MIRAGE_ABI_SUCCESS_FID};
+
 use crate::arch::{Arch, Architecture, Csr, MCause, Register, TrapInfo};
 use crate::debug;
 use crate::decoder::{decode, Instr};
@@ -115,9 +117,7 @@ impl VirtContext {
     fn emulate_instr(&mut self, instr: &Instr) {
         match instr {
             Instr::Wfi => {
-                // For now payloads only call WFI when panicking
-                log::error!("Payload panicked!");
-                Plat::exit_failure();
+                todo!("wfi is not yet supported");
             }
             Instr::Csrrw { csr, .. }
             | Instr::Csrrs { csr, .. }
@@ -220,12 +220,27 @@ impl VirtContext {
 
         let cause = self.trap_info.get_cause();
         match cause {
-            MCause::EcallFromMMode | MCause::EcallFromUMode => {
-                // For now we just exit successfuly
-                log::info!("Success!");
-                log::info!("Number of payload exits: {}", self.nb_exits);
-                unsafe { debug::log_stack_usage() };
-                Plat::exit_success();
+            MCause::EcallFromUMode if self.get(Register::X17) == MIRAGE_ABI_EID => {
+                let fid = self.get(Register::X16);
+                match fid {
+                    MIRAGE_ABI_FAILURE_FID => {
+                        log::error!("Payload panicked!");
+                        log::error!("  pc:    0x{:x}", self.pc);
+                        log::error!("  exits: {}", self.nb_exits);
+                        unsafe { debug::log_stack_usage() };
+                        Plat::exit_failure();
+                    }
+                    MIRAGE_ABI_SUCCESS_FID => {
+                        log::info!("Success!");
+                        log::info!("Number of payload exits: {}", self.nb_exits);
+                        unsafe { debug::log_stack_usage() };
+                        Plat::exit_success();
+                    }
+                    _ => panic!("Invalid Mirage FID: 0x{:x}", fid),
+                }
+            }
+            MCause::EcallFromUMode => {
+                todo!("ecall is not yet supported for EID other than Mirage ABI");
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };

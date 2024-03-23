@@ -12,6 +12,8 @@ global_asm!(
 .align 4
 .global _start
 _start:
+    li a6, 1           // Mirage ABI FID: success
+    li a7, 0x08475bcd  // Mirage ABI EID
     ecall
 "#,
 );
