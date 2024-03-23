@@ -56,15 +56,28 @@ macro_rules! setup_payload {
             .align 4
             .global _start
             _start:
+                // Load the stack pointer and jump into main
+                ld sp, __stack_top
                 j {entry}
+
+                // Store the address of the stack in memory
+                // That way it can be loaded as an absolute value
+                __stack_top:
+                    .dword {stack_top}
             "#,
             entry = sym _payload_start,
+            stack_top = sym _stack_top,
         );
 
         pub extern "C" fn _payload_start() -> ! {
             // Validate the signature of the entry point.
             let f: fn() -> ! = $path;
             f();
+        }
+
+        // Defined in the linker script
+        extern "C" {
+            pub(crate) static _stack_top: u8;
         }
 
         // Also include the panic handler

@@ -19,9 +19,6 @@ pub trait Platform {
     /// Load the payload (virtual M-mode software) and return its address.
     fn load_payload() -> usize;
 
-    /// Return the initial payload stack address.
-    fn payload_stack_address() -> usize;
-
     /// Return the number of PMPs of the platform.
     fn get_nb_pmp() -> usize;
 
