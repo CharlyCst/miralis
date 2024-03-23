@@ -1,5 +1,12 @@
-#![no_std]
-#![no_main]
+//! Mirage entry point
+//!
+//! The main function is called directly after platform specific minimal setup (such as
+//! configuration of the stack).
+
+// Mark the crate as no_std and no_main, but only when not running tests.
+// We need both std and main to be able to run tests in user-space on the host architecture.
+#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(test), no_main)]
 
 mod arch;
 mod debug;
@@ -7,8 +14,6 @@ mod decoder;
 mod logger;
 mod platform;
 mod virt;
-
-use core::panic::PanicInfo;
 
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
@@ -91,7 +96,8 @@ fn handle_mirage_trap(_ctx: &mut VirtContext) {
 }
 
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+#[cfg(not(test))]
+fn panic(info: &core::panic::PanicInfo) -> ! {
     log::error!("Panicked at {:#?} ", info);
     unsafe { debug::log_stack_usage() };
     Plat::exit_failure();

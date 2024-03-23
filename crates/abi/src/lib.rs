@@ -10,20 +10,13 @@
 use core::arch::asm;
 use core::hint;
 
-// ———————————————————————————— ABI Definitions ————————————————————————————— //
-
-/// Mirage SBI Extension ID.
-pub const MIRAGE_ABI_EID: usize = 0x08475bcd;
-/// Exit with an error.
-pub const MIRAGE_ABI_FAILURE_FID: usize = 0;
-/// Exit successfully.
-pub const MIRAGE_ABI_SUCCESS_FID: usize = 1;
+use mirage_core::abi;
 
 // ———————————————————————————— Client Functions ———————————————————————————— //
 
 /// Ask Mirage to exit with a success error code.
 pub fn success() -> ! {
-    unsafe { mirage_ecall(MIRAGE_ABI_SUCCESS_FID).ok() };
+    unsafe { mirage_ecall(abi::MIRAGE_SUCCESS_FID).ok() };
 
     // Loop forever, this should never happen as Mirage will terminate the execution before.
     loop {
@@ -33,7 +26,7 @@ pub fn success() -> ! {
 
 /// Ask Mirage to exit with a failure error code.
 pub fn failure() -> ! {
-    unsafe { mirage_ecall(MIRAGE_ABI_FAILURE_FID).ok() };
+    unsafe { mirage_ecall(abi::MIRAGE_FAILURE_FID).ok() };
 
     // Loop forever, this should never happen as Mirage will terminate the execution before.
     loop {
@@ -108,7 +101,7 @@ unsafe fn mirage_ecall(fid: usize) -> Result<usize, usize> {
     asm!(
         "ecall",
         in("a6") fid,
-        in("a7") MIRAGE_ABI_EID,
+        in("a7") abi::MIRAGE_EID,
         out("a0") error,
         out("a1") value,
     );

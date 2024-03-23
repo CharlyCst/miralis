@@ -4,6 +4,8 @@
 //! future, we could emulate RISC-V instructions to enable running the monitor in user space, which
 //! would be very helpful for testing purpose.
 
+mod host;
+#[cfg(not(feature = "host"))]
 mod metal;
 mod registers;
 mod trap;
@@ -13,9 +15,17 @@ pub use trap::{MCause, TrapInfo};
 
 use crate::virt::VirtContext;
 
-/// Export the current architecture.
-/// For now, only bare-metal is supported
-pub type Arch = metal::Metal;
+// —————————————————————————— Select Architecture ——————————————————————————— //
+
+/// Risc-V bare-metal M-mode architecture.
+#[cfg(not(feature = "host"))]
+pub type Arch = metal::MetalArch;
+
+/// Host architecture, running in userspace.
+#[cfg(feature = "host")]
+pub type Arch = host::HostArch;
+
+// ———————————————————————— Architecture Definition ————————————————————————— //
 
 /// Architecture abstraction layer.
 pub trait Architecture {

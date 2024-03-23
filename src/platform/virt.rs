@@ -1,8 +1,7 @@
 //! QEMU Virt board
 
-use core::arch::asm;
-use core::fmt;
 use core::fmt::Write;
+use core::{fmt, ptr};
 
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
@@ -65,11 +64,8 @@ fn exit_qemu(success: bool) -> ! {
     let code = if success { 0x5555 } else { (1 << 16) | 0x3333 };
 
     unsafe {
-        asm! {
-            "sw {code}, 0({address})",
-            code = in(reg) code,
-            address = in(reg) TEST_MMIO_ADDRESS,
-        }
+        let mmio_addr = TEST_MMIO_ADDRESS as *mut i32;
+        ptr::write_volatile(mmio_addr, code);
     }
 
     // Loop forever if shutdown failed

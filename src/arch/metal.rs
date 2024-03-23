@@ -8,9 +8,9 @@ use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
 
 /// Bare metal RISC-V runtime.
-pub struct Metal {}
+pub struct MetalArch {}
 
-impl Architecture for Metal {
+impl Architecture for MetalArch {
     fn init() {
         // Set trap handler
         let handler = _raw_trap_handler as usize;
