@@ -40,7 +40,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::write_pmpaddr(0, usize::MAX);
 
         // Configure the payload context
-        ctx.set(Register::X2, Plat::payload_stack_address());
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
         ctx.set(Csr::Misa, Arch::read_misa());

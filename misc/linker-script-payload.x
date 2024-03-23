@@ -33,9 +33,6 @@ SECTIONS
 
 
   /* Then we allocate some stack space */
-  /* TODO: Mirage does not know how to find the payload stack for now
-   * We should update the mirage_abi configure the stack properly on entry.
-   */
   .stack : ALIGN(0x1000)
    {
       . = ALIGN(8);
