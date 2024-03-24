@@ -392,19 +392,16 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {
-                self.csr.misa = value;
 
                 let arch_misa: usize = Arch::read_misa(); // misa shows the extensions available : we cannot have more than possible in hardware
 
-                let mut config_misa: usize = 0x0; // Features required by the payload
-
+                let mut config_misa: usize = 0x0; // Features available for payload
                 config_misa = config_misa
                     | match get_payload_s_mode() {
                         None => 0b0,
                         Some(b) => (if b { 0b0 } else { 0b1 }) << 18, //Mark the ones that are not available by config
                     };
                 config_misa = !config_misa;
-
 
                 let mirage_misa: usize = 0x8000000000000000; // Features required by Mirage : MXLEN = 2 => 64 bits
 
