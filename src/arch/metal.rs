@@ -3,7 +3,7 @@
 use core::arch::{asm, global_asm};
 use core::ptr;
 
-use super::{Architecture, MCause, Mode};
+use super::{Architecture, MCause, Mode, TrapInfo};
 use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
 
@@ -37,36 +37,6 @@ impl Architecture for Metal {
                 x = out(reg) mstatus);
         }
         return mstatus;
-    }
-
-    fn read_mcause() -> MCause {
-        let mcause: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, mcause",
-                x = out(reg) mcause);
-        }
-        return MCause::new(mcause);
-    }
-
-    fn read_mepc() -> usize {
-        let mepc: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, mepc",
-                x = out(reg) mepc);
-        }
-        return mepc;
-    }
-
-    fn read_mtval() -> usize {
-        let mtval: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, mtval",
-                x = out(reg) mtval);
-        }
-        return mtval;
     }
 
     unsafe fn set_mpp(mode: Mode) {
@@ -128,15 +98,18 @@ impl Architecture for Metal {
         asm!("ecall")
     }
 
-    unsafe fn get_raw_faulting_instr() -> usize {
+    unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
+        assert!(
+            trap_info.mcause == MCause::IllegalInstr as usize,
+            "Trying to read faulting instruction but trap is not an illegal instruction"
+        );
+
         // First, try mtval and check if it contains an instruction
-        let mtval = Self::read_mtval();
-        if mtval != 0 {
-            return mtval;
+        if trap_info.mtval != 0 {
+            return trap_info.mtval;
         }
 
-        let epc = Self::read_mepc();
-        let instr_ptr = epc as *const u32;
+        let instr_ptr = trap_info.mepc as *const u32;
 
         // With compressed instruction extention ("C") instructions can be misaligned.
         // TODO: add support for 16 bits instructions
@@ -332,8 +305,19 @@ _raw_trap_handler:
     sd x30,(8+8*30)(x31)
     csrr x30, mscratch    // Restore x31 into x30 from mscratch
     sd x30,(8+8*31)(x31)  // Save x31 (whose value is stored in x30)
-    csrr x30, mepc        // Read payload PC
-    sd x30, (8+8*32)(x31) // Save the PC
+
+    csrr x30, mepc              // Read payload PC
+    sd x30, (8+8*32)(x31)       // Save the PC
+    sd x30, (8+8*32+8+8*0)(x31) // Save mepc
+    csrr x30, mstatus           // Fill the TrapInfo :  Read mstatus
+    sd x30, (8+8*32+8+8*1)(x31) // Save mstatus
+    csrr x30, mcause            // Fill the TrapInfo :  Read mcause
+    sd x30, (8+8*32+8+8*2)(x31) // Save mcause
+    csrr x30, mip               // Fill the TrapInfo : Read mip
+    sd x30, (8+8*32+8+8*3)(x31) // Save mip
+    csrr x30, mtval             // Fill the TrapInfo : Read mtval
+    sd x30, (8+8*32+8+8*4)(x31) // Save mtval
+
     ld sp,(8*0)(x31)      // Restore host stack
     ld x30,(sp)           // Load return address from stack
     jr x30                // Return

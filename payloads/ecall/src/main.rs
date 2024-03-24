@@ -2,9 +2,8 @@
 #![no_main]
 
 use core::arch::global_asm;
-use core::panic::PanicInfo;
 
-use mirage_abi::failure;
+use mirage_abi::payload_panic;
 
 global_asm!(
     r#"
@@ -12,11 +11,10 @@ global_asm!(
 .align 4
 .global _start
 _start:
+    li a6, 1           // Mirage ABI FID: success
+    li a7, 0x08475bcd  // Mirage ABI EID
     ecall
 "#,
 );
 
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
-}
+payload_panic!();

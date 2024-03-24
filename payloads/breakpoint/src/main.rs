@@ -2,22 +2,12 @@
 #![no_main]
 
 use core::arch::{asm, global_asm};
-use core::panic::PanicInfo;
 
-use mirage_abi::{failure, success};
+use mirage_abi::{setup_payload, success};
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _start
-_start:
-    j {entry}
-"#,
-    entry = sym entry,
-);
+setup_payload!(main);
 
-extern "C" fn entry() -> ! {
+fn main() -> ! {
     unsafe {
         let handler = _raw_breakpoint_trap_handler as usize;
         // Let's rise an exception breakpoint directly
@@ -33,7 +23,30 @@ extern "C" fn entry() -> ! {
 
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
-    // TODO: check mPP, and others?
+    // Test here
+
+    // mcause = breakpoint
+    let bp_code: usize = 0x3;
+    let mut res: usize;
+    unsafe {
+        asm!(
+            "csrr {0}, mcause",
+            out(reg) res,
+        );
+    }
+
+    read_test(res, bp_code);
+
+    //mstatus MPP = M-mode
+    let mpp_code: usize = 0x3;
+    unsafe {
+        asm!(
+            "csrr {0}, mstatus",
+            out(reg) res,
+        );
+    }
+
+    read_test((res >> 11) & 0b11, mpp_code);
     success();
 }
 
@@ -54,9 +67,6 @@ extern "C" {
     fn _raw_breakpoint_trap_handler();
 }
 
-// ————————————————————————————— Panic Handler —————————————————————————————— //
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
+fn read_test(out_csr: usize, expected: usize) {
+    assert_eq!(out_csr, expected);
 }

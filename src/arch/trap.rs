@@ -75,6 +75,77 @@ impl MCause {
             }
         }
     }
+
+    pub fn is_interrupt(self) -> bool {
+        match self {
+            // Interrupts
+            MCause::UserSoftInt => true,
+            MCause::SupervisorSoftInt => true,
+            MCause::MachineSoftInt => true,
+            MCause::UserTimerInt => true,
+            MCause::SupervisorTimerInt => true,
+            MCause::MachineTimerInt => true,
+            MCause::UserExternalInt => true,
+            MCause::SupervisorExternalInt => true,
+            MCause::MachineExternalInt => true,
+            MCause::UnknownInt => true,
+            // Traps
+            MCause::InstrAddrMisaligned => false,
+            MCause::InstrAccessFault => false,
+            MCause::IllegalInstr => false,
+            MCause::Breakpoint => false,
+            MCause::LoadAddrMisaligned => false,
+            MCause::LoadAccessFault => false,
+            MCause::StoreMisaligned => false,
+            MCause::StoreAccessFault => false,
+            MCause::EcallFromUMode => false,
+            MCause::EcallFromSMode => false,
+            MCause::EcallFromMMode => false,
+            MCause::InstrPageFault => false,
+            MCause::LoadPageFault => false,
+            MCause::StorePageFault => false,
+            MCause::UnknownException => false,
+        }
+    }
+}
+
+// ——————————————————————————————— Trap Info ———————————————————————————————— //
+
+/// Contains all the information automatically written by the hardware during a trap
+#[repr(C)]
+#[derive(Clone, Debug)]
+pub struct TrapInfo {
+    // mtval2 and mtinst only exist with the hypervisor extension
+    pub mepc: usize,
+    pub mstatus: usize,
+    pub mcause: usize,
+    pub mip: usize,
+    pub mtval: usize,
+}
+
+impl Default for TrapInfo {
+    fn default() -> TrapInfo {
+        TrapInfo {
+            mepc: 0,
+            mstatus: 0,
+            mcause: 0,
+            mip: 0,
+            mtval: 0,
+        }
+    }
+}
+
+impl TrapInfo {
+    /// Whether the trap comes from M mode
+    pub fn from_mmode(&self) -> bool {
+        let mpp: usize = (self.mstatus >> 11) & 0b11;
+        return mpp == 3; // Mpp : 3 = M mode
+    }
+
+    /// Return the trap cause
+    pub fn get_cause(&self) -> MCause {
+        return MCause::new(self.mcause);
+    }
 }
 
 // ———————————————————————————————— Display ————————————————————————————————— //

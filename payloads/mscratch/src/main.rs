@@ -1,24 +1,13 @@
 #![no_std]
 #![no_main]
 
-use core::arch::{asm, global_asm};
-use core::panic::PanicInfo;
-use core::usize;
+use core::arch::asm;
 
-use mirage_abi::{failure, success};
+use mirage_abi::{setup_payload, success};
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _start
-_start:
-    j {entry}
-"#,
-    entry = sym entry,
-);
+setup_payload!(main);
 
-extern "C" fn entry() -> ! {
+fn main() -> ! {
     let secret: usize = 0x42;
     let res: usize;
     unsafe {
@@ -36,9 +25,4 @@ extern "C" fn entry() -> ! {
     }
 
     panic!();
-}
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    failure();
 }

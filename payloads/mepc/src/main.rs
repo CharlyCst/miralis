@@ -13,8 +13,8 @@ fn main() -> ! {
     unsafe {
         asm!(
             "li {0}, 0x42",
-            "csrw mscratch, {0}",
-            "csrr {1}, mscratch",
+            "csrw mepc, {0}",
+            "csrr {1}, mepc",
             in(reg) secret,
             out(reg) res,
         );
