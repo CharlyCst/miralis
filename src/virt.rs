@@ -351,8 +351,6 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
-
-
                 // TODO: create some constant values
                 let mut new_value = self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,2,3
@@ -392,7 +390,6 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {
-
                 let arch_misa: usize = Arch::read_misa(); // misa shows the extensions available : we cannot have more than possible in hardware
 
                 let mut config_misa: usize = 0x0; // Features available for payload
