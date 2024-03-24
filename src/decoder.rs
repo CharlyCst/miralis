@@ -4,7 +4,7 @@ use crate::arch::{Csr, Register};
 const OPCODE_MASK: usize = 0b1111111 << 0;
 
 /// A RISC-V instruction.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Instr {
     Ecall,
     Ebreak,
@@ -211,5 +211,31 @@ fn decode_csr(csr: usize) -> Csr {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
         }
+    }
+}
+
+// ————————————————————————————————— Tests —————————————————————————————————— //
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Decodes a few basic instructions, just to check the bare minimum functionalities.
+    ///
+    /// Here is an handy tool to double check:
+    /// https://luplab.gitlab.io/rvcodecjs/
+    #[test]
+    fn simple_decode() {
+        assert_eq!(decode(0x10500073), Instr::Wfi);
+        assert_eq!(decode(0x00000073), Instr::Ecall);
+        assert_eq!(decode(0x30200073), Instr::Mret);
+        assert_eq!(
+            decode(0x34071473),
+            Instr::Csrrw {
+                csr: Csr::Mscratch,
+                rd: Register::X8,
+                rs1: Register::X14
+            }
+        );
     }
 }
