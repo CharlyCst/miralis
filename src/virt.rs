@@ -350,7 +350,9 @@ impl RegisterContext<Csr> for VirtContext {
     fn set(&mut self, register: Csr, value: usize) {
         match register {
             Csr::Mhartid => (), // Read-only
-            Csr::Mstatus => {
+            Csr::Mstatus => { //TODO : review all of mstatus emulation : some bit operations are wrong
+
+
                 // TODO: create some constant values
                 let mut new_value = self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,2,3
@@ -390,20 +392,25 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {
-                // misa shows the extensions available : we cannot have more than possible in hardware
-                let arch_misa: usize = Arch::read_misa();
-                let mut config_misa: usize = 0x00000000000000000; // Features required by the payload
+                self.csr.misa = value;
+
+                let arch_misa: usize = Arch::read_misa(); // misa shows the extensions available : we cannot have more than possible in hardware
+
+                let mut config_misa: usize = 0x0; // Features required by the payload
 
                 config_misa = config_misa
                     | match get_payload_s_mode() {
                         None => 0b0,
-                        Some(b) => (if b { 0b1 } else { 0b0 }) << 18,
+                        Some(b) => (if b { 0b0 } else { 0b1 }) << 18, //Mark the ones that are not available by config
                     };
+                config_misa = !config_misa;
 
-                let mirage_misa: usize = 0x2 << 62; // Features required by Mirage : MXLEN = 2 => 64 bits
-                let change_filter: usize = 0x00000000003FFFFFF; // Filters the values that can be modified by the payload
+
+                let mirage_misa: usize = 0x8000000000000000; // Features required by Mirage : MXLEN = 2 => 64 bits
+
+                let change_filter: usize = 0x0000000003FFFFFF; // Filters the values that can be modified by the payload
                 let mut new_misa: usize =
-                    ((value | config_misa) & arch_misa & change_filter) | mirage_misa;
+                    (value & config_misa & arch_misa & change_filter) | mirage_misa;
 
                 self.csr.misa = new_misa;
             }
