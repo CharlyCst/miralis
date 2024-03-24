@@ -46,7 +46,7 @@ impl Register {
 }
 
 /// A RISC-V Control and Status Register (CSR).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Csr {
     /// Machine Hart ID
     Mhartid,
