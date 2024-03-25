@@ -363,7 +363,7 @@ impl RegisterContext<Csr> for VirtContext {
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
                 new_value = new_value & !(0b11 << 34); // clear SXL
-                new_value = new_value | (mxl << 34); // set new SXL
+                new_value = new_value & (mxl << 34); // set new SXL
                                                      // UXL : 32 : read-only : MX-LEN = 64
                 new_value = new_value & !(0b11 << 32); // clear UXL
                 new_value = new_value | (mxl << 32); // set new UXL
@@ -403,9 +403,9 @@ impl RegisterContext<Csr> for VirtContext {
                 let mirage_misa: usize = 0x8000000000000000; // Features required by Mirage : MXLEN = 2 => 64 bits
 
                 let change_filter: usize = 0x0000000003FFFFFF; // Filters the values that can be modified by the payload
-                let mut new_misa: usize =
-                    (value & config_misa & arch_misa & change_filter) | mirage_misa;
-
+                let mut new_misa: usize = (value & config_misa & arch_misa & change_filter) | mirage_misa;
+                
+                new_misa = value;
                 self.csr.misa = new_misa;
             }
             Csr::Mie => self.csr.mie = value,
