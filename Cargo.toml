@@ -26,6 +26,7 @@ members = [
     "payloads/mconfigptr",
     "payloads/tselect",
     "payloads/mret",
+    "payloads/misa",
 
     # Crates
     "crates/mirage_abi",

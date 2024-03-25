@@ -403,10 +403,9 @@ impl RegisterContext<Csr> for VirtContext {
                 let mirage_misa: usize = 0x8000000000000000; // Features required by Mirage : MXLEN = 2 => 64 bits
 
                 let change_filter: usize = 0x0000000003FFFFFF; // Filters the values that can be modified by the payload
-                let mut new_misa: usize =
+                let new_misa: usize =
                     (value & config_misa & arch_misa & change_filter) | mirage_misa;
 
-                new_misa = value;
                 self.csr.misa = new_misa;
             }
             Csr::Mie => self.csr.mie = value,
