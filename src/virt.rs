@@ -343,6 +343,19 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
+            //Supervisor-level CSRs
+            Csr::Sstatus => todo!(),
+            Csr::Sie => todo!(),
+            Csr::Stvec => todo!(),
+            Csr::Scounteren => todo!(),
+            Csr::Senvcfg => todo!(),
+            Csr::Sscratch => todo!(),
+            Csr::Sepc => todo!(),
+            Csr::Scause => todo!(),
+            Csr::Stval => todo!(),
+            Csr::Sip => todo!(),
+            Csr::Satp => todo!(),
+            Csr::Scontext => todo!(),
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -351,6 +364,7 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
+                todo!("Correct Mstatus emulation with S-mode");
                 // TODO: create some constant values
                 let mut new_value = self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,2,3
@@ -482,6 +496,19 @@ impl RegisterContext<Csr> for VirtContext {
                 }
             }
             Csr::Mtval => (), // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
+            //Supervisor-level CSRs
+            Csr::Sstatus => todo!(),
+            Csr::Sie => todo!(),
+            Csr::Stvec => todo!(),
+            Csr::Scounteren => todo!(),
+            Csr::Senvcfg => todo!(),
+            Csr::Sscratch => todo!(),
+            Csr::Sepc => todo!(),
+            Csr::Scause => todo!(),
+            Csr::Stval => todo!(),
+            Csr::Sip => todo!(),
+            Csr::Satp => todo!(),
+            Csr::Scontext => todo!(),
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

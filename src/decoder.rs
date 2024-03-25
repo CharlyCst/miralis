@@ -207,6 +207,91 @@ fn decode_csr(csr: usize) -> Csr {
         0x342 => Csr::Mcause,
         0x341 => Csr::Mepc,
         0x343 => Csr::Mtval,
+        // Supervisor-level CSRs
+        0x100 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Sstatus
+            }
+        }
+        0x104 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Sie
+            }
+        }
+        0x105 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Stvec
+            }
+        }
+        0x106 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Scounteren
+            }
+        }
+        0x10A => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Senvcfg
+            }
+        }
+        0x140 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Sscratch
+            }
+        }
+        0x141 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Sepc
+            }
+        }
+        0x142 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Scause
+            }
+        }
+        0x143 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Stval
+            }
+        }
+        0x144 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Sip
+            }
+        }
+        0x180 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Satp
+            }
+        }
+        0x5A8 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Scontext
+            }
+        }
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
