@@ -2,7 +2,7 @@
 
 use mirage_core::abi;
 
-use crate::arch::{Arch, Architecture, Csr, MCause, Register, TrapInfo};
+use crate::arch::{misa, Arch, Architecture, Csr, MCause, Register, TrapInfo};
 use crate::debug;
 use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
@@ -404,23 +404,12 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {
-                let arch_misa: usize = Arch::read_misa(); // misa shows the extensions available : we cannot have more than possible in hardware
-
-                let mut config_misa: usize = 0x0; // Features available for payload
-                config_misa = config_misa
-                    | match get_payload_s_mode() {
-                        None => 0b0,
-                        Some(b) => (if b { 0b0 } else { 0b1 }) << 18, //Mark the ones that are not available by config
-                    };
-                config_misa = !config_misa;
-
-                let mirage_misa: usize = 0x8000000000000000; // Features required by Mirage : MXLEN = 2 => 64 bits
-
-                let change_filter: usize = 0x0000000003FFFFFF; // Filters the values that can be modified by the payload
-                let new_misa: usize =
-                    (value & config_misa & arch_misa & change_filter) | mirage_misa;
-
-                self.csr.misa = new_misa;
+                // misa shows the extensions available : we cannot have more than possible in hardware
+                let arch_misa: usize = Arch::read_misa();
+                // Filters the values that can be modified by the payload
+                let change_filter: usize = 0x0000000003FFFFFF;
+                // Update misa to a legal value
+                self.csr.misa = (value & arch_misa & change_filter & !misa::DISABLED) | misa::MXL;
             }
             Csr::Mie => self.csr.mie = value,
             Csr::Mip => {

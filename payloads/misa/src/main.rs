@@ -8,11 +8,11 @@ use mirage_abi::{setup_payload, success};
 setup_payload!(main);
 
 fn main() -> ! {
-    let secret1: usize = 0x800000000014112d;
+    let secret1: usize = 0x8000000000141129;
     let mut res: usize;
     unsafe {
         asm!(
-            "li {0}, 0x800000000014112d",
+            "li {0}, 0x8000000000141129",
             "csrw misa, {0}",
             "csrr {1}, misa",
             in(reg) secret1,
@@ -36,7 +36,7 @@ fn main() -> ! {
 
     unsafe {
         asm!(
-            "li {0}, 0x000000000014112d",
+            "li {0}, 0x0000000000141129",
             "csrw misa, {0}",
             "csrr {1}, misa",
             in(reg) secret1,
