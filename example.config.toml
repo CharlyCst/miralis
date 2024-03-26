@@ -11,3 +11,8 @@ level = "info"
 # Maximum number of payload exits before terminating.
 # No maximum cap if not present
 max_payload_exits = 400
+
+[platform]
+# Enable upport for S_mode
+# Default to true
+s_mode = true

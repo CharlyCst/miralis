@@ -2,7 +2,7 @@
 
 use mirage_core::abi;
 
-use crate::arch::{Arch, Architecture, Csr, MCause, Register, TrapInfo};
+use crate::arch::{misa, Arch, Architecture, Csr, MCause, Register, TrapInfo};
 use crate::debug;
 use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
@@ -358,7 +358,7 @@ impl RegisterContext<Csr> for VirtContext {
                 if mpp == 0 || mpp == 1 || mpp == 3 {
                     // Legal values
                     new_value = new_value & !(0b11 << 11); // clear MPP
-                    new_value = new_value & (mpp << 11); // set new MPP
+                    new_value = new_value | (mpp << 11); // set new MPP
                 }
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
@@ -366,7 +366,7 @@ impl RegisterContext<Csr> for VirtContext {
                 new_value = new_value & (mxl << 34); // set new SXL
                                                      // UXL : 32 : read-only : MX-LEN = 64
                 new_value = new_value & !(0b11 << 32); // clear UXL
-                new_value = new_value & (mxl << 32); // set new UXL
+                new_value = new_value | (mxl << 32); // set new UXL
 
                 // MPRV : 17 : write anything
                 // MBE : 37 : write anything
@@ -390,14 +390,12 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {
-                // TODO: handle misa emulation properly
-                if value != Arch::read_misa() {
-                    // For now we panic if the payload tries to update misa. In the future we will
-                    // most likely have a mask of minimal features required by Mirage and pass the
-                    // changes through.
-                    panic!("misa emulation is not yet implemented");
-                }
-                self.csr.misa = value;
+                // misa shows the extensions available : we cannot have more than possible in hardware
+                let arch_misa: usize = Arch::read_misa();
+                // Filters the values that can be modified by the payload
+                let change_filter: usize = 0x0000000003FFFFFF;
+                // Update misa to a legal value
+                self.csr.misa = (value & arch_misa & change_filter & !misa::DISABLED) | misa::MXL;
             }
             Csr::Mie => self.csr.mie = value,
             Csr::Mip => {

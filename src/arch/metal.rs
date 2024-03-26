@@ -228,6 +228,7 @@ _enter_virt_firmware:
     sd sp,(8*0)(x31)          // Store host stack
     ld x1,(8+8*32)(x31)       // Read payload PC
     csrw mepc,x1              // Restore payload PC in mepc
+    // TODO: load payload misa
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
     ld x3,(8+8*3)(x31)
@@ -305,6 +306,8 @@ _raw_trap_handler:
     sd x30,(8+8*30)(x31)
     csrr x30, mscratch    // Restore x31 into x30 from mscratch
     sd x30,(8+8*31)(x31)  // Save x31 (whose value is stored in x30)
+
+    // TODO: restore host misa
 
     csrr x30, mepc              // Read payload PC
     sd x30, (8+8*32)(x31)       // Save the PC
