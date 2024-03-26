@@ -77,6 +77,18 @@ pub struct VirtCsr {
     pub mtinst: usize,
     mconfigptr: usize,
     tselect: usize,
+    sstatus: usize,
+    sie: usize,
+    stvec: usize,
+    scounteren: usize,
+    senvcfg: usize,
+    sscratch: usize,
+    sepc: usize,
+    scause: usize,
+    stval: usize,
+    sip: usize,
+    satp: usize,
+    scontext: usize,
 }
 
 impl Default for VirtCsr {
@@ -107,6 +119,18 @@ impl Default for VirtCsr {
             mtinst: 0,
             mconfigptr: 0,
             tselect: 0,
+            sstatus: 0,
+            sie: 0,
+            stvec: 0,
+            scounteren: 0,
+            senvcfg: 0,
+            sscratch: 0,
+            sepc: 0,
+            scause: 0,
+            stval: 0,
+            sip: 0,
+            satp: 0,
+            scontext: 0,
         }
     }
 }
@@ -356,6 +380,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Sip => todo!(),
             Csr::Satp => todo!(),
             Csr::Scontext => todo!(),
+            // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
@@ -486,18 +511,42 @@ impl RegisterContext<Csr> for VirtContext {
             }
             Csr::Mtval => (), // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
-            Csr::Sstatus => todo!(),
-            Csr::Sie => todo!(),
-            Csr::Stvec => todo!(),
-            Csr::Scounteren => todo!(),
-            Csr::Senvcfg => todo!(),
-            Csr::Sscratch => todo!(),
-            Csr::Sepc => todo!(),
-            Csr::Scause => todo!(),
-            Csr::Stval => todo!(),
-            Csr::Sip => todo!(),
-            Csr::Satp => todo!(),
-            Csr::Scontext => todo!(),
+            Csr::Sstatus => todo!("SSTATUS CSR : special encoding"),
+            Csr::Sie => self.csr.sie = value,
+            Csr::Stvec => self.csr.stvec = value,
+            Csr::Scounteren => (), // Read-only 0
+            Csr::Senvcfg => self.csr.senvcfg = value,
+            Csr::Sscratch => self.csr.sscratch = value,
+            Csr::Sepc => {
+                if value > Plat::get_max_valid_address() {
+                    return;
+                }
+                self.csr.sepc = value
+            }
+            Csr::Scause => {
+                let cause = MCause::new(value);
+                if cause.is_interrupt() {
+                    // TODO : does not support interrupts
+                    return;
+                }
+                match cause {
+                    // Can only contain supported exception codes
+                    MCause::UnknownException => (),
+                    _ => self.csr.scause = value,
+                }
+            }
+            Csr::Stval => (),
+            Csr::Sip => {
+                // TODO: handle sip emulation properly
+                if value != 0 {
+                    // We only support resetting sip for now
+                    panic!("sip emulation is not yet implemented");
+                }
+                self.csr.sip = value;
+            }
+            Csr::Satp => todo!("SATP CSR : SPECIAL ENCODING"),
+            Csr::Scontext => todo!("No information in the specification"),
+            // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }

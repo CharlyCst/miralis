@@ -152,8 +152,7 @@ fn decode_csr(csr: usize) -> Csr {
                 "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
                 csr
             );
-            // TODO: add support for platform misa
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Medeleg
@@ -164,8 +163,7 @@ fn decode_csr(csr: usize) -> Csr {
                 "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
                 csr
             );
-            // TODO: add support for platform misa
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Mideleg
@@ -209,35 +207,35 @@ fn decode_csr(csr: usize) -> Csr {
         0x343 => Csr::Mtval,
         // Supervisor-level CSRs
         0x100 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Sstatus
             }
         }
         0x104 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Sie
             }
         }
         0x105 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Stvec
             }
         }
         0x106 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Scounteren
             }
         }
         0x10A => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Senvcfg
@@ -251,42 +249,42 @@ fn decode_csr(csr: usize) -> Csr {
             }
         }
         0x141 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Sepc
             }
         }
         0x142 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Scause
             }
         }
         0x143 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Stval
             }
         }
         0x144 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Sip
             }
         }
         0x180 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Satp
             }
         }
         0x5A8 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Scontext
