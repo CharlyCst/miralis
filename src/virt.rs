@@ -319,7 +319,7 @@ impl RegisterContext<Csr> for VirtContext {
     fn get(&self, register: Csr) -> usize {
         match register {
             Csr::Mhartid => self.hart_id,
-            Csr::Mstatus => self.csr.mstatus,
+            Csr::Mstatus => self.csr.mstatus & 0x8000003F007FFFEA,
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
             Csr::Mip => self.csr.mip,
@@ -372,7 +372,10 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
-            Csr::Sstatus => self.csr.sstatus,
+            Csr::Sstatus => {
+                let mstatus: usize = self.get(Csr::Mstatus);
+                return mstatus & 0x80000003000DE763;
+            }
             Csr::Sie => self.csr.sie,
             Csr::Stvec => self.csr.stvec,
             Csr::Scounteren => self.csr.scounteren,
@@ -393,8 +396,9 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
+                
                 // TODO: create some constant values
-                let mut new_value = value;//self.csr.mstatus;
+                let mut new_value = value & 0x8000003F007FFFEA;//self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,3
                 let mpp = (value >> 11) & 0b11;
                 if mpp == 0 || mpp == 1 || mpp == 3 {
@@ -407,8 +411,10 @@ impl RegisterContext<Csr> for VirtContext {
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
                 new_value = new_value & !(0b11 << 34); // clear SXL
-                new_value = new_value & (mxl << 34); // set new SXL : read-only 0 if no S-mode
-                                                     // UXL : 32 : read-only : MX-LEN = 64
+                if Plat::HAS_S_MODE {
+                    new_value = new_value & (mxl << 34); // set new SXL : read-only 0 if no S-mode    
+                }
+                // UXL : 32 : read-only : MX-LEN = 64
                 new_value = new_value & !(0b11 << 32); // clear UXL
                 new_value = new_value | (mxl << 32); // set new UXL
 
@@ -417,7 +423,9 @@ impl RegisterContext<Csr> for VirtContext {
                 let mbe: usize = (self.csr.mstatus >> 37) & 0b1;
                 // SBE : 36 : equals MBE
                 new_value = new_value & !(0b1 << 36); // clear SBE
-                new_value = new_value | (mbe << 36); // set SBE = MBE : read-only 0 if no S-Mode
+                if Plat::HAS_S_MODE {
+                    new_value = new_value | (mbe << 36); // set SBE = MBE : read-only 0 if no S-Mode
+                }
                                                      // UBE : 6 : equals MBE
                 new_value = new_value & !(0b1 << 6); // clear UBE
                 new_value = new_value | (mbe << 6); // set UBE = MBE
@@ -425,26 +433,31 @@ impl RegisterContext<Csr> for VirtContext {
                 // TVM : 20 : read-only 0 (NO S-MODE)
                 let tvm : usize = (value >> 20) & 0b1;
                 new_value = new_value & !(0b1 << 20); // clear TVM
-                new_value = new_value | (tvm << 20); // clear TVM
-                
+                if Plat::HAS_S_MODE {
+                    new_value = new_value | (tvm << 20); // clear TVM
+                }
                                                       // TW : 21 : write anything
                 // TSR : 22 : read-only 0 (NO S-MODE)
                 let tsr: usize = (value >> 22) & 0b1;
                 new_value = new_value & !(0b11 << 22); // clear TSR
-                new_value = new_value | (tsr << 22); // setTSR
-
+                if Plat::HAS_S_MODE {
+                    new_value = new_value | (tsr << 22); // setTSR
+                }
                 // FS : 13 : read-only 0 (NO S-MODE, F extension)
                 let fs: usize = (value >> 13) & 0b11;
                 new_value = new_value & !(0b11 << 13); // clear FS
-                new_value = new_value | (fs << 13); // set FS
+                if Plat::HAS_S_MODE {
+                    new_value = new_value | (fs << 13); // set FS
+                }
                                                     // VS : 9 : read-only 0 (v registers)
                 new_value = new_value & !(0b11 << 9); // clear VS
                                                       // XS : 15 : read-only 0 (NO FS nor VS)
                 new_value = new_value & !(0b11 << 15); // clear XS
                                                        // SD : 63 : read-only 0 (if NO FS/VS/XS)
                 new_value = new_value & !(0b1 << 63); // clear SD
-                new_value = new_value | (if fs != 0 {0b1} else {0b0} << 63); // set SD
-
+                if Plat::HAS_S_MODE {
+                    new_value = new_value | (if fs != 0 {0b1} else {0b0} << 63); // set SD
+                }
 
                 self.csr.mstatus = new_value;
             }
@@ -456,8 +469,8 @@ impl RegisterContext<Csr> for VirtContext {
                 // Update misa to a legal value
                 self.csr.misa = (value & arch_misa & change_filter & !misa::DISABLED) | misa::MXL;
             }
-            Csr::Mie => self.csr.mie = value,
-            Csr::Mip => {
+            Csr::Mie => (), // Read-only 0 : interrupts are not yet supported : self.csr.mie = value,
+            Csr::Mip => { // Only reset possible : interrupts are not yet supported
                 // TODO: handle mip emulation properly
                 if value != 0 {
                     // We only support resetting mip for now
@@ -531,9 +544,8 @@ impl RegisterContext<Csr> for VirtContext {
             }
             Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
-            Csr::Sstatus => {
-                todo!("sstatus emulation no yet complete");
-                self.csr.sstatus = value;
+            Csr::Sstatus => {                
+                self.set(Csr::Mstatus,value & 0x80000003000DE763);
             }
             Csr::Sie => self.csr.sie = value,
             Csr::Stvec => self.csr.stvec = value,
