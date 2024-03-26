@@ -193,13 +193,13 @@ impl VirtContext {
                 self.pc += 4;
             }
             Instr::Mret => {
-                /*if ((self.csr.mstatus >> 11) & 0b11) != 3 {
+                if ((self.csr.mstatus >> 11) & 0b11) != 3 {
                     panic!(
                         "MRET is not going to M mode: {} with MPP {}",
                         self.csr.mstatus,
                         ((self.csr.mstatus >> 11) & 0b11)
                     );
-                }*/
+                }
                 // Modify mstatus
                 // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
                 // self.csr.mstatus = self.csr.mstatus & !(0b1 << 39);
@@ -225,7 +225,7 @@ impl VirtContext {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus;  // TODO: are we leaking information from Mirage?
+        self.csr.mstatus = self.trap_info.mstatus; // TODO: are we leaking information from Mirage?
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mip = self.trap_info.mip;
         self.csr.mepc = self.trap_info.mepc;
@@ -416,11 +416,11 @@ impl RegisterContext<Csr> for VirtContext {
                 // SBE : 36 : equals MBE
                 new_value = new_value & !(0b1 << 36); // clear SBE
                 new_value = new_value | (mbe << 36); // set SBE = MBE
-                // UBE : 6 : equals MBE
+                                                     // UBE : 6 : equals MBE
                 new_value = new_value & !(0b1 << 6); // clear UBE
                 new_value = new_value | (mbe << 6); // set UBE = MBE
-                                                      
-                                                      // TVM : 20 : read-only 0 (NO S-MODE)
+
+                // TVM : 20 : read-only 0 (NO S-MODE)
                 new_value = new_value & !(0b1 << 20); // clear TVM
                                                       // TW : 21 : write anything
                                                       // TSR : 22 : read-only 0 (NO S-MODE)
@@ -430,7 +430,7 @@ impl RegisterContext<Csr> for VirtContext {
                 let fs: usize = (value >> 13) & 0b11;
                 new_value = new_value & !(0b11 << 13); // clear FS
                 new_value = new_value | (fs << 13); // set FS
-                // VS : 9 : read-only 0 (v registers)
+                                                    // VS : 9 : read-only 0 (v registers)
                 new_value = new_value & !(0b11 << 9); // clear VS
                                                       // XS : 15 : read-only 0 (NO FS nor VS)
                 new_value = new_value & !(0b11 << 15); // clear XS
