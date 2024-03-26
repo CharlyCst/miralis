@@ -1,5 +1,5 @@
 //! RISC-V instruction decoder
-use crate::arch::{Csr, Register};
+use crate::{arch::{Csr, Register}, platform::{Plat, Platform}};
 
 const OPCODE_MASK: usize = 0b1111111 << 0;
 
@@ -148,22 +148,22 @@ fn decode_csr(csr: usize) -> Csr {
         0x747 => Csr::Mseccfg,
         0xF15 => Csr::Mconfigptr,
         0x302 => {
-            log::info!(
-                "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
-                csr
-            );
             if !Plat::HAS_S_MODE {
+                log::info!(
+                    "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
+                    csr
+                );
                 Csr::Unknown
             } else {
                 Csr::Medeleg
             }
         }
         0x303 => {
-            log::info!(
-                "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
-                csr
-            );
             if !Plat::HAS_S_MODE {
+                log::info!(
+                    "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
+                    csr
+                );
                 Csr::Unknown
             } else {
                 Csr::Mideleg
@@ -193,15 +193,53 @@ fn decode_csr(csr: usize) -> Csr {
                 Csr::Mtval2
             }
         }
-        0x7A0 => Csr::Tselect,
-        0x7A1 => Csr::Tdata1,
-        0x7A2 => Csr::Tdata3,
-        0x7A3 => Csr::Tdata2,
-        0x7A8 => Csr::Mcontext,
-        0x7B0 => Csr::Dcsr,
-        0x7B1 => Csr::Dpc,
-        0x7B2 => Csr::Dscratch0,
-        0x7B3 => Csr::Dscratch1,
+        0x7A0 => {
+            if true {
+                Csr::Unknown
+            } else {
+                Csr::Tselect
+            }
+        }
+        0x7A1 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Tdata1
+        }}
+        0x7A2 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Tdata2
+        }}
+        0x7A3 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Tdata3
+        }}
+        0x7A8 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Mcontext
+        }}
+        0x7B0 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Dcsr
+        }}
+        0x7B1 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Dpc
+        }}
+        0x7B2 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Dscratch0
+        }}
+        0x7B3 => {if true {
+            Csr::Unknown
+        } else {
+            Csr::Dscratch1
+        }}
         0x342 => Csr::Mcause,
         0x341 => Csr::Mepc,
         0x343 => Csr::Mtval,
@@ -242,7 +280,7 @@ fn decode_csr(csr: usize) -> Csr {
             }
         }
         0x140 => {
-            if true {
+            if !Plat::HAS_S_MODE {
                 Csr::Unknown
             } else {
                 Csr::Sscratch

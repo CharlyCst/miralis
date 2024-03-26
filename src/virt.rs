@@ -89,6 +89,8 @@ pub struct VirtCsr {
     sip: usize,
     satp: usize,
     scontext: usize,
+    medeleg: usize,
+    mideleg: usize,
 }
 
 impl Default for VirtCsr {
@@ -131,6 +133,8 @@ impl Default for VirtCsr {
             sip: 0,
             satp: 0,
             scontext: 0,
+            medeleg: 0,
+            mideleg: 0,
         }
     }
 }
@@ -189,13 +193,13 @@ impl VirtContext {
                 self.pc += 4;
             }
             Instr::Mret => {
-                if ((self.csr.mstatus >> 11) & 0b11) != 3 {
+                /*if ((self.csr.mstatus >> 11) & 0b11) != 3 {
                     panic!(
                         "MRET is not going to M mode: {} with MPP {}",
                         self.csr.mstatus,
                         ((self.csr.mstatus >> 11) & 0b11)
                     );
-                }
+                }*/
                 // Modify mstatus
                 // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
                 // self.csr.mstatus = self.csr.mstatus & !(0b1 << 39);
@@ -221,7 +225,7 @@ impl VirtContext {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus; // TODO: are we leaking information from Mirage?
+        self.csr.mstatus = self.trap_info.mstatus;  // TODO: are we leaking information from Mirage?
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mip = self.trap_info.mip;
         self.csr.mepc = self.trap_info.mepc;
@@ -350,36 +354,36 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
-            Csr::Medeleg => todo!(),                // TODO : normal read
-            Csr::Mideleg => todo!(),                // TODO : normal read
-            Csr::Mtinst => todo!(),                 // TODO : normal read
-            Csr::Mtval2 => todo!(),                 // TODO : normal read
-            Csr::Tdata1 => todo!(),                 // TODO : normal read
-            Csr::Tdata2 => todo!(),                 // TODO : normal read
-            Csr::Tdata3 => todo!(),                 // TODO : normal read
-            Csr::Mcontext => todo!(),               // TODO : normal read
-            Csr::Dcsr => todo!(),                   // TODO : normal read
-            Csr::Dpc => todo!(),                    // TODO : normal read
-            Csr::Dscratch0 => todo!(),              // TODO : normal read
-            Csr::Dscratch1 => todo!(),              // TODO : normal read
+            Csr::Medeleg => self.csr.medeleg, // TODO : normal read
+            Csr::Mideleg => self.csr.mideleg, // TODO : normal read
+            Csr::Mtinst => todo!(),           // TODO : normal read
+            Csr::Mtval2 => todo!(),           // TODO : normal read
+            Csr::Tdata1 => todo!(),           // TODO : normal read
+            Csr::Tdata2 => todo!(),           // TODO : normal read
+            Csr::Tdata3 => todo!(),           // TODO : normal read
+            Csr::Mcontext => todo!(),         // TODO : normal read
+            Csr::Dcsr => todo!(),             // TODO : normal read
+            Csr::Dpc => todo!(),              // TODO : normal read
+            Csr::Dscratch0 => todo!(),        // TODO : normal read
+            Csr::Dscratch1 => todo!(),        // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
-            Csr::Tselect => self.csr.tselect,       // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tselect => self.csr.tselect, // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
-            Csr::Sstatus => todo!(),
-            Csr::Sie => todo!(),
-            Csr::Stvec => todo!(),
-            Csr::Scounteren => todo!(),
-            Csr::Senvcfg => todo!(),
-            Csr::Sscratch => todo!(),
-            Csr::Sepc => todo!(),
-            Csr::Scause => todo!(),
-            Csr::Stval => todo!(),
-            Csr::Sip => todo!(),
-            Csr::Satp => todo!(),
-            Csr::Scontext => todo!(),
+            Csr::Sstatus => self.csr.sstatus,
+            Csr::Sie => self.csr.sie,
+            Csr::Stvec => self.csr.stvec,
+            Csr::Scounteren => self.csr.scounteren,
+            Csr::Senvcfg => self.csr.senvcfg,
+            Csr::Sscratch => self.csr.sscratch,
+            Csr::Sepc => self.csr.sepc,
+            Csr::Scause => self.csr.scause,
+            Csr::Stval => self.csr.stval,
+            Csr::Sip => self.csr.sip,
+            Csr::Satp => self.csr.satp,
+            Csr::Scontext => self.csr.scontext,
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
@@ -389,7 +393,6 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
-                todo!("Correct Mstatus emulation with S-mode");
                 // TODO: create some constant values
                 let mut new_value = self.csr.mstatus;
                 // MPP : 11 : write legal : 0,1,2,3
@@ -409,22 +412,30 @@ impl RegisterContext<Csr> for VirtContext {
 
                 // MPRV : 17 : write anything
                 // MBE : 37 : write anything
-                // SBE : 36 : read-only 0 (NO S-MODE)
+                let mbe: usize = (self.csr.mstatus >> 37) & 0b1;
+                // SBE : 36 : equals MBE
                 new_value = new_value & !(0b1 << 36); // clear SBE
-                                                      // UBE : 6 : write anything
+                new_value = new_value | (mbe << 36); // set SBE = MBE
+                // UBE : 6 : equals MBE
+                new_value = new_value & !(0b1 << 6); // clear UBE
+                new_value = new_value | (mbe << 6); // set UBE = MBE
+                                                      
                                                       // TVM : 20 : read-only 0 (NO S-MODE)
                 new_value = new_value & !(0b1 << 20); // clear TVM
                                                       // TW : 21 : write anything
                                                       // TSR : 22 : read-only 0 (NO S-MODE)
                 new_value = new_value & !(0b11 << 22); // clear TSR
-                                                       // FS : 13 : read-only 0 (NO S-MODE, F extension)
-                new_value = new_value & !(0b11 << 13); // clear TSR
-                                                       // VS : 9 : read-only 0 (v registers)
-                new_value = new_value & !(0b11 << 9); // clear TSR
+
+                // FS : 13 : read-only 0 (NO S-MODE, F extension)
+                let fs: usize = (value >> 13) & 0b11;
+                new_value = new_value & !(0b11 << 13); // clear FS
+                new_value = new_value | (fs << 13); // set FS
+                // VS : 9 : read-only 0 (v registers)
+                new_value = new_value & !(0b11 << 9); // clear VS
                                                       // XS : 15 : read-only 0 (NO FS nor VS)
-                new_value = new_value & !(0b11 << 15); // clear TSR
+                new_value = new_value & !(0b11 << 15); // clear XS
                                                        // SD : 63 : read-only 0 (if NO FS/VS/XS)
-                new_value = new_value & !(0b1 << 63); // clear TSR
+                new_value = new_value & !(0b1 << 63); // clear SD
 
                 self.csr.mstatus = new_value;
             }
@@ -478,8 +489,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),     // Read-only
-            Csr::Medeleg => todo!(), // TODO : This register should not exist in a system without S-mode
-            Csr::Mideleg => todo!(), // TODO : This register should not exist in a system without S-mode
+            Csr::Medeleg => (), // TODO : This register should not exist in a system without S-mode
+            Csr::Mideleg => (), // TODO : This register should not exist in a system without S-mode
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => (),     // Read-only 0 when no triggers are implemented
@@ -509,9 +520,12 @@ impl RegisterContext<Csr> for VirtContext {
                     _ => self.csr.mcause = value,
                 }
             }
-            Csr::Mtval => (), // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
+            Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
-            Csr::Sstatus => todo!("SSTATUS CSR : special encoding"),
+            Csr::Sstatus => {
+                todo!("sstatus emulation no yet complete");
+                self.csr.sstatus = value;
+            }
             Csr::Sie => self.csr.sie = value,
             Csr::Stvec => self.csr.stvec = value,
             Csr::Scounteren => (), // Read-only 0
@@ -535,7 +549,7 @@ impl RegisterContext<Csr> for VirtContext {
                     _ => self.csr.scause = value,
                 }
             }
-            Csr::Stval => (),
+            Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
                 // TODO: handle sip emulation properly
                 if value != 0 {
@@ -544,7 +558,9 @@ impl RegisterContext<Csr> for VirtContext {
                 }
                 self.csr.sip = value;
             }
-            Csr::Satp => todo!("SATP CSR : SPECIAL ENCODING"),
+            Csr::Satp => {
+                self.csr.satp = value & 0x00000FFFFFFFFFFF;
+            }
             Csr::Scontext => todo!("No information in the specification"),
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
