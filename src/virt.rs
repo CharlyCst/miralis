@@ -76,7 +76,6 @@ pub struct VirtCsr {
     pub mstatus: usize,
     pub mtinst: usize,
     mconfigptr: usize,
-    tselect: usize,
     sie: usize,
     stvec: usize,
     scounteren: usize,
@@ -119,7 +118,6 @@ impl Default for VirtCsr {
             mstatus: 0,
             mtinst: 0,
             mconfigptr: 0,
-            tselect: 0,
             sie: 0,
             stvec: 0,
             scounteren: 0,
@@ -134,6 +132,92 @@ impl Default for VirtCsr {
             medeleg: 0,
             mideleg: 0,
         }
+    }
+}
+
+impl VirtCsr {
+    /// Constant to filter out WPRI fields of mstatus
+    pub const MSTATUS_FILTER: usize = 0x8000003F007FFFEA; // Todo : depends on the extensions available : Hypervisor, etc...
+    /// Constant to filter out WPRI fields of sstatus
+    pub const SSTATUS_FILTER: usize = 0x80000003000DE763;
+    /// Constant to filter out non-writable fields of the misa csr
+    pub const MISA_CHANGE_FILTER: usize = 0x0000000003FFFFFF;
+    /// Constant to filter out non-writable fields of the satp csr
+    pub const SATP_CHANGE_FILTER: usize = 0x00000FFFFFFFFFFF;
+
+    // Mstatus fields constants
+    /// SIE
+    pub const SIE_OFFSET: usize = 1;
+    pub const SIE_FILTER: usize = 0b1;
+    /// MIE
+    pub const MIE_OFFSET: usize = 3;
+    pub const MIE_FILTER: usize = 0b1;
+    /// SPIE
+    pub const SPIE_OFFSET: usize = 5;
+    pub const SPIE_FILTER: usize = 0b1;
+    /// UBE
+    pub const UBE_OFFSET: usize = 6;
+    pub const UBE_FILTER: usize = 0b1;
+    /// MPIE
+    pub const MPIE_OFFSET: usize = 7;
+    pub const MPIE_FILTER: usize = 0b1;
+    /// SPP
+    pub const SPP_OFFSET: usize = 8;
+    pub const SPP_FILTER: usize = 0b1;
+    /// VS
+    pub const VS_OFFSET: usize = 9;
+    pub const VS_FILTER: usize = 0b11;
+    /// MPP
+    pub const MPP_OFFSET: usize = 11;
+    pub const MPP_FILTER: usize = 0b11;
+    /// FS
+    pub const FS_OFFSET: usize = 13;
+    pub const FS_FILTER: usize = 0b11;
+    /// XS
+    pub const XS_OFFSET: usize = 15;
+    pub const XS_FILTER: usize = 0b11;
+    /// MPRV
+    pub const MPRV_OFFSET: usize = 17;
+    pub const MPRV_FILTER: usize = 0b1;
+    /// SUM
+    pub const SUM_OFFSET: usize = 18;
+    pub const SUM_FILTER: usize = 0b1;
+    /// MXR
+    pub const MXR_OFFSET: usize = 19;
+    pub const MXR_FILTER: usize = 0b1;
+    /// TVM
+    pub const TVM_OFFSET: usize = 20;
+    pub const TVM_FILTER: usize = 0b1;
+    /// TW
+    pub const TW_OFFSET: usize = 21;
+    pub const TW_FILTER: usize = 0b1;
+    /// TSR
+    pub const TSR_OFFSET: usize = 22;
+    pub const TSR_FILTER: usize = 0b1;
+    /// UXL
+    pub const UXL_OFFSET: usize = 32;
+    pub const UXL_FILTER: usize = 0b11;
+    /// SXL
+    pub const SXL_OFFSET: usize = 34;
+    pub const SXL_FILTER: usize = 0b11;
+    /// SBE
+    pub const SBE_OFFSET: usize = 36;
+    pub const SBE_FILTER: usize = 0b1;
+    /// MBE
+    pub const MBE_OFFSET: usize = 37;
+    pub const MBE_FILTER: usize = 0b1;
+    /// MPV
+    pub const MPV_OFFSET: usize = 39;
+    pub const MPV_FILTER: usize = 0b1;
+    /// SD
+    pub const SD_OFFSET: usize = 63;
+    pub const SD_FILTER: usize = 0b1;
+
+    pub fn set_mstatus_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
+        //Clear field
+        *csr = *csr & !(filter << offset);
+        //Set field
+        *csr = *csr | (value << offset);
     }
 }
 
@@ -191,26 +275,45 @@ impl VirtContext {
                 self.pc += 4;
             }
             Instr::Mret => {
-                if ((self.csr.mstatus >> 11) & 0b11) != 3 {
+                if ((self.csr.mstatus >> VirtCsr::MPP_OFFSET) & VirtCsr::MPP_FILTER) != 3 {
                     panic!(
                         "MRET is not going to M mode: {} with MPP {}",
                         self.csr.mstatus,
-                        ((self.csr.mstatus >> 11) & 0b11)
+                        ((self.csr.mstatus >> VirtCsr::MPP_OFFSET) & VirtCsr::MPP_FILTER)
                     );
                 }
                 // Modify mstatus
                 // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
-                // self.csr.mstatus = self.csr.mstatus & !(0b1 << 39);
+                if false {
+                    VirtCsr::set_mstatus_field(
+                        &mut self.csr.mstatus,
+                        VirtCsr::MPV_OFFSET,
+                        VirtCsr::MPV_FILTER,
+                        0,
+                    );
+                }
 
                 // MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
-                let mpie = 0b1 & (self.csr.mstatus >> 7);
+                let mpie = VirtCsr::MPIE_FILTER & (self.csr.mstatus >> VirtCsr::MPIE_OFFSET);
 
-                // TODO: create some constants to make it easier to understand what is going on
-                // here
-                self.csr.mstatus = self.csr.mstatus | 0b1 << 7;
-                self.csr.mstatus = self.csr.mstatus & !(0b1 << 3);
-                self.csr.mstatus = self.csr.mstatus | mpie << 3;
-                self.csr.mstatus = self.csr.mstatus & !(0b11 << 11);
+                VirtCsr::set_mstatus_field(
+                    &mut self.csr.mstatus,
+                    VirtCsr::MPIE_OFFSET,
+                    VirtCsr::MPIE_FILTER,
+                    1,
+                );
+                VirtCsr::set_mstatus_field(
+                    &mut self.csr.mstatus,
+                    VirtCsr::MIE_OFFSET,
+                    VirtCsr::MIE_FILTER,
+                    mpie,
+                );
+                VirtCsr::set_mstatus_field(
+                    &mut self.csr.mstatus,
+                    VirtCsr::MPP_OFFSET,
+                    VirtCsr::MPP_FILTER,
+                    0,
+                );
 
                 // Jump back to payload
                 self.pc = self.csr.mepc;
@@ -223,7 +326,7 @@ impl VirtContext {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus; // TODO: are we leaking information from Mirage?
+        self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mip = self.trap_info.mip;
         self.csr.mepc = self.trap_info.mepc;
@@ -267,6 +370,9 @@ impl VirtContext {
             }
             MCause::EcallFromUMode => {
                 todo!("ecall is not yet supported for EID other than Mirage ABI");
+            }
+            MCause::EcallFromSMode => {
+                todo!("ecall from smode is not yet supported")
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
@@ -317,7 +423,7 @@ impl RegisterContext<Csr> for VirtContext {
     fn get(&self, register: Csr) -> usize {
         match register {
             Csr::Mhartid => self.hart_id,
-            Csr::Mstatus => self.csr.mstatus & 0x8000003F007FFFEA,
+            Csr::Mstatus => self.csr.mstatus & VirtCsr::MSTATUS_FILTER,
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
             Csr::Mip => self.csr.mip,
@@ -365,14 +471,14 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dscratch0 => todo!(),              // TODO : normal read
             Csr::Dscratch1 => todo!(),              // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
-            Csr::Tselect => self.csr.tselect,       // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION : read
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
             Csr::Sstatus => {
                 let mstatus: usize = self.get(Csr::Mstatus);
-                return mstatus & 0x80000003000DE763;
+                return mstatus & VirtCsr::SSTATUS_FILTER;
             }
             Csr::Sie => self.csr.sie,
             Csr::Stvec => self.csr.stvec,
@@ -395,77 +501,121 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
                 // TODO: create some constant values
-                let mut new_value = value & 0x8000003F007FFFEA; //self.csr.mstatus;
-                                                                // MPP : 11 : write legal : 0,1,3
+                let mut new_value = value & VirtCsr::MSTATUS_FILTER; //self.csr.mstatus;
+                                                                     // MPP : 11 : write legal : 0,1,3
                 let mpp = (value >> 11) & 0b11;
-                if mpp == 0 || mpp == 1 || mpp == 3 {
-                    // Legal values
-                    new_value = new_value & !(0b11 << 11); // clear MPP
-                    new_value = new_value | (mpp << 11); // set new MPP
-                } else {
-                    new_value = new_value & !(0b11 << 11); // clear MPP
-                }
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::MPP_OFFSET,
+                    VirtCsr::MPP_FILTER,
+                    if mpp == 0 || mpp == 1 || mpp == 3 {
+                        mpp
+                    } else {
+                        0
+                    },
+                );
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
-                new_value = new_value & !(0b11 << 34); // clear SXL
-                if Plat::HAS_S_MODE {
-                    new_value = new_value & (mxl << 34); // set new SXL : read-only 0 if no S-mode
-                }
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::SXL_OFFSET,
+                    VirtCsr::SXL_FILTER,
+                    if Plat::HAS_S_MODE { mxl } else { 0 },
+                );
                 // UXL : 32 : read-only : MX-LEN = 64
-                new_value = new_value & !(0b11 << 32); // clear UXL
-                new_value = new_value | (mxl << 32); // set new UXL
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::UXL_OFFSET,
+                    VirtCsr::UXL_FILTER,
+                    mxl,
+                );
 
                 // MPRV : 17 : write anything
                 // MBE : 37 : write anything
-                let mbe: usize = (self.csr.mstatus >> 37) & 0b1;
+                let mbe: usize = (self.csr.mstatus >> VirtCsr::MBE_OFFSET) & VirtCsr::MBE_FILTER;
                 // SBE : 36 : equals MBE
-                new_value = new_value & !(0b1 << 36); // clear SBE
-                if Plat::HAS_S_MODE {
-                    new_value = new_value | (mbe << 36); // set SBE = MBE : read-only 0 if no S-Mode
-                }
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::SBE_OFFSET,
+                    VirtCsr::SBE_FILTER,
+                    if Plat::HAS_S_MODE { mbe } else { 0 },
+                );
                 // UBE : 6 : equals MBE
-                new_value = new_value & !(0b1 << 6); // clear UBE
-                new_value = new_value | (mbe << 6); // set UBE = MBE
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::UBE_OFFSET,
+                    VirtCsr::UBE_FILTER,
+                    mbe,
+                );
 
                 // TVM : 20 : read-only 0 (NO S-MODE)
-                let tvm: usize = (value >> 20) & 0b1;
                 new_value = new_value & !(0b1 << 20); // clear TVM
-                if Plat::HAS_S_MODE {
-                    new_value = new_value | (tvm << 20); // clear TVM
+                if !Plat::HAS_S_MODE {
+                    VirtCsr::set_mstatus_field(
+                        &mut new_value,
+                        VirtCsr::TVM_OFFSET,
+                        VirtCsr::TVM_FILTER,
+                        0,
+                    );
                 }
                 // TW : 21 : write anything
                 // TSR : 22 : read-only 0 (NO S-MODE)
-                let tsr: usize = (value >> 22) & 0b1;
-                new_value = new_value & !(0b11 << 22); // clear TSR
-                if Plat::HAS_S_MODE {
-                    new_value = new_value | (tsr << 22); // setTSR
+                if !Plat::HAS_S_MODE {
+                    VirtCsr::set_mstatus_field(
+                        &mut new_value,
+                        VirtCsr::TSR_OFFSET,
+                        VirtCsr::TSR_FILTER,
+                        0,
+                    );
                 }
                 // FS : 13 : read-only 0 (NO S-MODE, F extension)
-                let fs: usize = (value >> 13) & 0b11;
-                new_value = new_value & !(0b11 << 13); // clear FS
-                if Plat::HAS_S_MODE {
-                    new_value = new_value | (fs << 13); // set FS
+                if !Plat::HAS_S_MODE {
+                    VirtCsr::set_mstatus_field(
+                        &mut new_value,
+                        VirtCsr::FS_OFFSET,
+                        VirtCsr::FS_FILTER,
+                        0,
+                    );
                 }
                 // VS : 9 : read-only 0 (v registers)
-                new_value = new_value & !(0b11 << 9); // clear VS
-                                                      // XS : 15 : read-only 0 (NO FS nor VS)
-                new_value = new_value & !(0b11 << 15); // clear XS
-                                                       // SD : 63 : read-only 0 (if NO FS/VS/XS)
-                new_value = new_value & !(0b1 << 63); // clear SD
-                if Plat::HAS_S_MODE {
-                    new_value = new_value | (if fs != 0 { 0b1 } else { 0b0 } << 63);
-                    // set SD
-                }
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::VS_OFFSET,
+                    VirtCsr::VS_FILTER,
+                    0,
+                );
+                // XS : 15 : read-only 0 (NO FS nor VS)
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::XS_OFFSET,
+                    VirtCsr::XS_FILTER,
+                    0,
+                );
+                // SD : 63 : read-only 0 (if NO FS/VS/XS)
+                VirtCsr::set_mstatus_field(
+                    &mut new_value,
+                    VirtCsr::SD_OFFSET,
+                    VirtCsr::SD_FILTER,
+                    if Plat::HAS_S_MODE {
+                        let fs: usize = (value >> VirtCsr::FS_OFFSET) & VirtCsr::FS_FILTER;
+                        if fs != 0 {
+                            0b1
+                        } else {
+                            0b0
+                        }
+                    } else {
+                        0
+                    },
+                );
 
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {
                 // misa shows the extensions available : we cannot have more than possible in hardware
                 let arch_misa: usize = Arch::read_misa();
-                // Filters the values that can be modified by the payload
-                let change_filter: usize = 0x0000000003FFFFFF;
                 // Update misa to a legal value
-                self.csr.misa = (value & arch_misa & change_filter & !misa::DISABLED) | misa::MXL;
+                self.csr.misa =
+                    (value & arch_misa & VirtCsr::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
             }
             Csr::Mie => (), // Read-only 0 : interrupts are not yet supported : self.csr.mie = value,
             Csr::Mip => {
@@ -514,7 +664,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mideleg => (),        // Read-only 0 : do not delegate interrupts
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
-            Csr::Tselect => (),     // Read-only 0 when no triggers are implemented
+            Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented
             Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
@@ -544,7 +694,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
             Csr::Sstatus => {
-                self.set(Csr::Mstatus, value & 0x80000003000DE763);
+                self.set(Csr::Mstatus, value & VirtCsr::SSTATUS_FILTER);
             }
             Csr::Sie => self.csr.sie = value,
             Csr::Stvec => self.csr.stvec = value,
@@ -579,7 +729,7 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.sip = value;
             }
             Csr::Satp => {
-                self.csr.satp = value & 0x00000FFFFFFFFFFF;
+                self.csr.satp = value & VirtCsr::SATP_CHANGE_FILTER;
             }
             Csr::Scontext => todo!("No information in the specification"),
             // Unknown
