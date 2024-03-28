@@ -77,7 +77,6 @@ pub struct VirtCsr {
     pub mtinst: usize,
     mconfigptr: usize,
     tselect: usize,
-    sstatus: usize,
     sie: usize,
     stvec: usize,
     scounteren: usize,
@@ -121,7 +120,6 @@ impl Default for VirtCsr {
             mtinst: 0,
             mconfigptr: 0,
             tselect: 0,
-            sstatus: 0,
             sie: 0,
             stvec: 0,
             scounteren: 0,
@@ -354,20 +352,20 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren,
             Csr::Menvcgf => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
-            Csr::Medeleg => self.csr.medeleg, // TODO : normal read
-            Csr::Mideleg => self.csr.mideleg, // TODO : normal read
-            Csr::Mtinst => todo!(),           // TODO : normal read
-            Csr::Mtval2 => todo!(),           // TODO : normal read
-            Csr::Tdata1 => todo!(),           // TODO : normal read
-            Csr::Tdata2 => todo!(),           // TODO : normal read
-            Csr::Tdata3 => todo!(),           // TODO : normal read
-            Csr::Mcontext => todo!(),         // TODO : normal read
-            Csr::Dcsr => todo!(),             // TODO : normal read
-            Csr::Dpc => todo!(),              // TODO : normal read
-            Csr::Dscratch0 => todo!(),        // TODO : normal read
-            Csr::Dscratch1 => todo!(),        // TODO : normal read
+            Csr::Medeleg => self.csr.medeleg,
+            Csr::Mideleg => self.csr.mideleg,
+            Csr::Mtinst => todo!(),                 // TODO : normal read
+            Csr::Mtval2 => todo!(),                 // TODO : normal read
+            Csr::Tdata1 => todo!(),                 // TODO : normal read
+            Csr::Tdata2 => todo!(),                 // TODO : normal read
+            Csr::Tdata3 => todo!(),                 // TODO : normal read
+            Csr::Mcontext => todo!(),               // TODO : normal read
+            Csr::Dcsr => todo!(),                   // TODO : normal read
+            Csr::Dpc => todo!(),                    // TODO : normal read
+            Csr::Dscratch0 => todo!(),              // TODO : normal read
+            Csr::Dscratch1 => todo!(),              // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
-            Csr::Tselect => self.csr.tselect, // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tselect => self.csr.tselect,       // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
@@ -396,23 +394,22 @@ impl RegisterContext<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
-                
                 // TODO: create some constant values
-                let mut new_value = value & 0x8000003F007FFFEA;//self.csr.mstatus;
-                // MPP : 11 : write legal : 0,1,3
+                let mut new_value = value & 0x8000003F007FFFEA; //self.csr.mstatus;
+                                                                // MPP : 11 : write legal : 0,1,3
                 let mpp = (value >> 11) & 0b11;
                 if mpp == 0 || mpp == 1 || mpp == 3 {
                     // Legal values
                     new_value = new_value & !(0b11 << 11); // clear MPP
                     new_value = new_value | (mpp << 11); // set new MPP
-                }else{
+                } else {
                     new_value = new_value & !(0b11 << 11); // clear MPP
                 }
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
                 new_value = new_value & !(0b11 << 34); // clear SXL
                 if Plat::HAS_S_MODE {
-                    new_value = new_value & (mxl << 34); // set new SXL : read-only 0 if no S-mode    
+                    new_value = new_value & (mxl << 34); // set new SXL : read-only 0 if no S-mode
                 }
                 // UXL : 32 : read-only : MX-LEN = 64
                 new_value = new_value & !(0b11 << 32); // clear UXL
@@ -426,17 +423,17 @@ impl RegisterContext<Csr> for VirtContext {
                 if Plat::HAS_S_MODE {
                     new_value = new_value | (mbe << 36); // set SBE = MBE : read-only 0 if no S-Mode
                 }
-                                                     // UBE : 6 : equals MBE
+                // UBE : 6 : equals MBE
                 new_value = new_value & !(0b1 << 6); // clear UBE
                 new_value = new_value | (mbe << 6); // set UBE = MBE
 
                 // TVM : 20 : read-only 0 (NO S-MODE)
-                let tvm : usize = (value >> 20) & 0b1;
+                let tvm: usize = (value >> 20) & 0b1;
                 new_value = new_value & !(0b1 << 20); // clear TVM
                 if Plat::HAS_S_MODE {
                     new_value = new_value | (tvm << 20); // clear TVM
                 }
-                                                      // TW : 21 : write anything
+                // TW : 21 : write anything
                 // TSR : 22 : read-only 0 (NO S-MODE)
                 let tsr: usize = (value >> 22) & 0b1;
                 new_value = new_value & !(0b11 << 22); // clear TSR
@@ -449,14 +446,15 @@ impl RegisterContext<Csr> for VirtContext {
                 if Plat::HAS_S_MODE {
                     new_value = new_value | (fs << 13); // set FS
                 }
-                                                    // VS : 9 : read-only 0 (v registers)
+                // VS : 9 : read-only 0 (v registers)
                 new_value = new_value & !(0b11 << 9); // clear VS
                                                       // XS : 15 : read-only 0 (NO FS nor VS)
                 new_value = new_value & !(0b11 << 15); // clear XS
                                                        // SD : 63 : read-only 0 (if NO FS/VS/XS)
                 new_value = new_value & !(0b1 << 63); // clear SD
                 if Plat::HAS_S_MODE {
-                    new_value = new_value | (if fs != 0 {0b1} else {0b0} << 63); // set SD
+                    new_value = new_value | (if fs != 0 { 0b1 } else { 0b0 } << 63);
+                    // set SD
                 }
 
                 self.csr.mstatus = new_value;
@@ -470,7 +468,8 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.misa = (value & arch_misa & change_filter & !misa::DISABLED) | misa::MXL;
             }
             Csr::Mie => (), // Read-only 0 : interrupts are not yet supported : self.csr.mie = value,
-            Csr::Mip => { // Only reset possible : interrupts are not yet supported
+            Csr::Mip => {
+                // Only reset possible : interrupts are not yet supported
                 // TODO: handle mip emulation properly
                 if value != 0 {
                     // We only support resetting mip for now
@@ -511,8 +510,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),     // Read-only
-            Csr::Medeleg => (), // TODO : This register should not exist in a system without S-mode
-            Csr::Mideleg => (), // TODO : This register should not exist in a system without S-mode
+            Csr::Medeleg => (),        // Read-only 0 : do not delegate exceptions
+            Csr::Mideleg => (),        // Read-only 0 : do not delegate interrupts
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => (),     // Read-only 0 when no triggers are implemented
@@ -544,8 +543,8 @@ impl RegisterContext<Csr> for VirtContext {
             }
             Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
-            Csr::Sstatus => {                
-                self.set(Csr::Mstatus,value & 0x80000003000DE763);
+            Csr::Sstatus => {
+                self.set(Csr::Mstatus, value & 0x80000003000DE763);
             }
             Csr::Sie => self.csr.sie = value,
             Csr::Stvec => self.csr.stvec = value,
@@ -601,15 +600,5 @@ where
 
     fn set(&mut self, register: &'a R, value: usize) {
         self.set(*register, value)
-    }
-}
-
-pub fn get_payload_s_mode() -> Option<bool> {
-    match option_env!("MIRAGE_PAYLOAD_S_MODE") {
-        Some(env_var) => match env_var.parse() {
-            Ok(b) => Some(b),
-            Err(_) => None,
-        },
-        None => None,
     }
 }
