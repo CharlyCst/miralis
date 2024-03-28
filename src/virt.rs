@@ -471,7 +471,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Dscratch0 => todo!(),              // TODO : normal read
             Csr::Dscratch1 => todo!(),              // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
-            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION : read
+            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION : read debug-mode specification
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
