@@ -8,7 +8,7 @@ use mirage_abi::{setup_payload, success};
 setup_payload!(main);
 
 fn main() -> ! {
-    let secret1: usize = 0x8000000000141129;
+    let secret1: usize = 0x8000000000141101;
     let mut res: usize;
     unsafe {
         asm!(

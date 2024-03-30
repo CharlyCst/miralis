@@ -114,7 +114,10 @@ pub mod misa {
         // By default we disable compressed instructions for now, because emulation and the
         // decoded assume 4 bytes instructions.
         // We also disable H mode, because we don't provide support for it right now.
-        let mut disabled = C | H;
+        // In addition, we disable floating points because we encountered some issues with those
+        // and they will require special handling when context switching from the OS (checking the
+        // mstatus.FS bits).
+        let mut disabled = C | D | F | H | Q;
         // For the rest we look up the configuration
         if !Plat::HAS_S_MODE {
             disabled |= S;

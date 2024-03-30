@@ -47,6 +47,9 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
 
+        // Configure misa to execute with expected features
+        Arch::write_misa(Arch::read_misa() & !misa::DISABLED);
+
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
