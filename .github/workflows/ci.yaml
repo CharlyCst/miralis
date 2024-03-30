@@ -11,16 +11,16 @@ env:
 
 jobs:
   Mirage:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       RUSTFLAGS: --deny warnings
     steps:
     - uses: actions/checkout@v4
-    - uses: extractions/setup-just@v1 # Install `just`
+    - uses: extractions/setup-just@v2 # Install `just`
     - name: Setup Toolchain
       run: just install-toolchain
     - name: Download QEMU
-      run: sudo apt-get install qemu-system-riscv64
+      run: sudo apt-get update && sudo apt-get install qemu-system-riscv64
     - name: Test
       run: just test
 
