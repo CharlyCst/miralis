@@ -48,6 +48,8 @@ impl Register {
 /// A RISC-V Control and Status Register (CSR).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Csr {
+    /// Machine mode CSRs
+
     /// Machine Hart ID
     Mhartid,
     /// Machine Status
@@ -122,6 +124,34 @@ pub enum Csr {
     Mcause,
     /// Machine bad address or instruction
     Mtval,
+
+    /// Supervisor mode CSRs
+
+    /// Supervisor status register
+    Sstatus,
+    /// Supervisor interrupt-enable register
+    Sie,
+    /// Supervisor trap handler base address
+    Stvec,
+    /// Supervisor counter enable
+    Scounteren,
+    /// Supervisor environment configuration register
+    Senvcfg,
+    /// Scratch register for supervisor trap handlers
+    Sscratch,
+    /// Supervisor exception program counter
+    Sepc,
+    /// Supervisor trap cause
+    Scause,
+    /// Supervisor bad address or instruction
+    Stval,
+    /// Supervisor interrupt pending
+    Sip,
+    /// Supervisor address translation and protection
+    Satp,
+    /// Supervisor-mode context register
+    Scontext,
+
     /// An unknown CSR
     Unknown,
 }
