@@ -126,6 +126,89 @@ pub mod misa {
     };
 }
 
+// ————————————————————————————— Machine Status ————————————————————————————— //
+
+/// Constants for the Machine Status (mstatus) CSR.
+#[allow(unused)]
+pub mod mstatus {
+    /// Constant to filter out WPRI fields of mstatus
+    pub const MSTATUS_FILTER: usize = 0x8000003F007FFFEA; // Todo : depends on the extensions available : Hypervisor, etc...
+    /// Constant to filter out WPRI fields of sstatus
+    pub const SSTATUS_FILTER: usize = 0x80000003000DE763;
+    /// Constant to filter out non-writable fields of the misa csr
+    pub const MISA_CHANGE_FILTER: usize = 0x0000000003FFFFFF;
+    /// Constant to filter out non-writable fields of the satp csr
+    pub const SATP_CHANGE_FILTER: usize = 0x00000FFFFFFFFFFF;
+
+    // Mstatus fields constants
+    /// SIE
+    pub const SIE_OFFSET: usize = 1;
+    pub const SIE_FILTER: usize = 0b1;
+    /// MIE
+    pub const MIE_OFFSET: usize = 3;
+    pub const MIE_FILTER: usize = 0b1;
+    /// SPIE
+    pub const SPIE_OFFSET: usize = 5;
+    pub const SPIE_FILTER: usize = 0b1;
+    /// UBE
+    pub const UBE_OFFSET: usize = 6;
+    pub const UBE_FILTER: usize = 0b1;
+    /// MPIE
+    pub const MPIE_OFFSET: usize = 7;
+    pub const MPIE_FILTER: usize = 0b1;
+    /// SPP
+    pub const SPP_OFFSET: usize = 8;
+    pub const SPP_FILTER: usize = 0b1;
+    /// VS
+    pub const VS_OFFSET: usize = 9;
+    pub const VS_FILTER: usize = 0b11;
+    /// MPP
+    pub const MPP_OFFSET: usize = 11;
+    pub const MPP_FILTER: usize = 0b11;
+    /// FS
+    pub const FS_OFFSET: usize = 13;
+    pub const FS_FILTER: usize = 0b11;
+    /// XS
+    pub const XS_OFFSET: usize = 15;
+    pub const XS_FILTER: usize = 0b11;
+    /// MPRV
+    pub const MPRV_OFFSET: usize = 17;
+    pub const MPRV_FILTER: usize = 0b1;
+    /// SUM
+    pub const SUM_OFFSET: usize = 18;
+    pub const SUM_FILTER: usize = 0b1;
+    /// MXR
+    pub const MXR_OFFSET: usize = 19;
+    pub const MXR_FILTER: usize = 0b1;
+    /// TVM
+    pub const TVM_OFFSET: usize = 20;
+    pub const TVM_FILTER: usize = 0b1;
+    /// TW
+    pub const TW_OFFSET: usize = 21;
+    pub const TW_FILTER: usize = 0b1;
+    /// TSR
+    pub const TSR_OFFSET: usize = 22;
+    pub const TSR_FILTER: usize = 0b1;
+    /// UXL
+    pub const UXL_OFFSET: usize = 32;
+    pub const UXL_FILTER: usize = 0b11;
+    /// SXL
+    pub const SXL_OFFSET: usize = 34;
+    pub const SXL_FILTER: usize = 0b11;
+    /// SBE
+    pub const SBE_OFFSET: usize = 36;
+    pub const SBE_FILTER: usize = 0b1;
+    /// MBE
+    pub const MBE_OFFSET: usize = 37;
+    pub const MBE_FILTER: usize = 0b1;
+    /// MPV
+    pub const MPV_OFFSET: usize = 39;
+    pub const MPV_FILTER: usize = 0b1;
+    /// SD
+    pub const SD_OFFSET: usize = 63;
+    pub const SD_FILTER: usize = 0b1;
+}
+
 // —————————————————————————————————— PMP ——————————————————————————————————— //
 
 /// PMP Configuration

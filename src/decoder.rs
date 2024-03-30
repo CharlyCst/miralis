@@ -1,5 +1,6 @@
 //! RISC-V instruction decoder
 use crate::arch::{Csr, Register};
+use crate::platform::{Plat, Platform};
 
 const OPCODE_MASK: usize = 0b1111111 << 0;
 
@@ -148,24 +149,22 @@ fn decode_csr(csr: usize) -> Csr {
         0x747 => Csr::Mseccfg,
         0xF15 => Csr::Mconfigptr,
         0x302 => {
-            log::info!(
-                "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
-                csr
-            );
-            // TODO: add support for platform misa
-            if true {
+            if !Plat::HAS_S_MODE {
+                log::info!(
+                    "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
+                    csr
+                );
                 Csr::Unknown
             } else {
                 Csr::Medeleg
             }
         }
         0x303 => {
-            log::info!(
-                "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
-                csr
-            );
-            // TODO: add support for platform misa
-            if true {
+            if !Plat::HAS_S_MODE {
+                log::info!(
+                    "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
+                    csr
+                );
                 Csr::Unknown
             } else {
                 Csr::Mideleg
@@ -261,6 +260,91 @@ fn decode_csr(csr: usize) -> Csr {
         0x342 => Csr::Mcause,
         0x341 => Csr::Mepc,
         0x343 => Csr::Mtval,
+        // Supervisor-level CSRs
+        0x100 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Sstatus
+            }
+        }
+        0x104 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Sie
+            }
+        }
+        0x105 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Stvec
+            }
+        }
+        0x106 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Scounteren
+            }
+        }
+        0x10A => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Senvcfg
+            }
+        }
+        0x140 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Sscratch
+            }
+        }
+        0x141 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Sepc
+            }
+        }
+        0x142 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Scause
+            }
+        }
+        0x143 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Stval
+            }
+        }
+        0x144 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Sip
+            }
+        }
+        0x180 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Satp
+            }
+        }
+        0x5A8 => {
+            if !Plat::HAS_S_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Scontext
+            }
+        }
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
