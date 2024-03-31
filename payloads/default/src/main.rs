@@ -8,6 +8,8 @@ use mirage_abi::{setup_payload, success};
 setup_payload!(main);
 
 fn main() -> ! {
+    log::info!("Hello from default payload!");
+
     let secret: usize = 0x42;
     let res: usize;
     unsafe {

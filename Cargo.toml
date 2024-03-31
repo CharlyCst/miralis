@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 uart_16550 = "0.3.0"
 spin = "0.5.2"
-log = "0.4.17"
+log = { workspace = true }
 mirage_core = { path = "crates/core" }
 
 [features]
@@ -43,3 +43,6 @@ members = [
     # Tooling
     "runner",
 ]
+
+[workspace.dependencies]
+log = "0.4.17"

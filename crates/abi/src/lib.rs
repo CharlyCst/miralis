@@ -12,6 +12,10 @@ use core::hint;
 
 use mirage_core::abi;
 
+pub mod logger;
+
+pub use log;
+
 // ———————————————————————————— Client Functions ———————————————————————————— //
 
 /// Ask Mirage to exit with a success error code.
@@ -65,6 +69,10 @@ macro_rules! setup_payload {
         pub extern "C" fn _payload_start() -> ! {
             // Validate the signature of the entry point.
             let f: fn() -> ! = $path;
+
+            // Initialize logger
+            $crate::logger::init();
+
             f();
         }
 
@@ -85,7 +93,8 @@ macro_rules! setup_payload {
 macro_rules! payload_panic {
     () => {
         #[panic_handler]
-        fn panic(_info: &core::panic::PanicInfo) -> ! {
+        fn panic(info: &core::panic::PanicInfo) -> ! {
+            $crate::log::error!("Payload: {:#?} ", info);
             $crate::failure();
         }
     };

@@ -20,4 +20,15 @@ pub mod abi {
     pub const MIRAGE_FAILURE_FID: usize = 0;
     /// Exit successfully.
     pub const MIRAGE_SUCCESS_FID: usize = 1;
+    /// Logging interface.
+    pub const MIRAGE_LOG_FID: usize = 2;
+
+    /// Log level constants, with the same semantic as the `log` crate.
+    pub mod log {
+        pub const MIRAGE_ERROR: usize = 1;
+        pub const MIRAGE_WARN: usize = 2;
+        pub const MIRAGE_INFO: usize = 3;
+        pub const MIRAGE_DEBUG: usize = 4;
+        pub const MIRAGE_TRACE: usize = 5;
+    }
 }
