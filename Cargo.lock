@@ -133,6 +133,7 @@ dependencies = [
 name = "default"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mirage_abi",
 ]
 
@@ -225,6 +226,7 @@ dependencies = [
 name = "mirage_abi"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mirage_core",
 ]
 

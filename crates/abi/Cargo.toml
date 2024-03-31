@@ -5,3 +5,4 @@ edition = "2021"
 
 [dependencies]
 mirage_core = { path = "../core" }
+log = { workspace = true }
