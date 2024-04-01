@@ -35,3 +35,7 @@ The payload can be selected as an additional argument to `just run`.
 Valid payloads are either names of payloads under the `./payloads/` directory, or paths to external firmware images.
 
 The log level can be adjusted using a `config.toml` file. See `example.config.toml` for reference.
+
+## Contributing
+
+See [docs/readme.md](./docs/readme.md).
