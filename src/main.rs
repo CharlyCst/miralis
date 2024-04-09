@@ -20,7 +20,7 @@ use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
-use crate::virt::{RegisterContext, VirtContext};
+use crate::virt::{RegisterContext, Runner, VirtContext};
 
 // Defined in the linker script
 extern "C" {
@@ -41,6 +41,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let payload_addr = Plat::load_payload();
     let mut ctx = VirtContext::new(hart_id);
 
+    
+    let mut guest_ctx = VirtContext::new(hart_id);
+    let mut mirage_ctx = VirtContext::new(hart_id);
+    let mut runner = Runner::Firmware;
+
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
@@ -57,22 +62,22 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         ctx.pc = payload_addr;
     }
 
-    main_loop(ctx);
+    main_loop(ctx, &mut runner);
 }
 
-fn main_loop(mut ctx: VirtContext) -> ! {
+fn main_loop(mut ctx: VirtContext, mut runner : &mut Runner) -> ! {
     let max_exit = debug::get_max_payload_exits();
 
     loop {
         unsafe {
             Arch::enter_virt_firmware(&mut ctx);
-            handle_trap(&mut ctx, max_exit);
+            handle_trap(&mut ctx, max_exit, runner);
             log::trace!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
+fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>, mut runner : &mut Runner) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", ctx.trap_info.mcause);
     log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);
@@ -87,12 +92,26 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
         }
     }
 
-    if ctx.trap_info.from_mmode() {
-        //Trap comes from M mode : mirage
-        handle_mirage_trap(ctx);
-    } else {
-        ctx.handle_payload_trap();
+    ctx.set_runner(*runner);
+    
+    match *runner{
+        Runner::Firmware => {
+            if ctx.trap_info.from_mmode() {
+                //Trap comes from M mode : mirage
+                handle_mirage_trap(ctx);
+            } else {
+                ctx.handle_payload_trap();
+            }
+        }
+        Runner::OS => {
+            // Trap comes from the guest OS : need to context switch and jump into the trap handler of the guest firmware
+            //ctx.emulate_jump_trap_handler()
+            //*runner = Runner::Firmware;
+        }
+        Runner::None => todo!(),
     }
+
+    
 }
 
 /// Handle the trap coming from mirage

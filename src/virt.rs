@@ -27,10 +27,12 @@ pub struct VirtContext {
     hart_id: usize,
     /// Number of exists to Mirage
     pub(crate) nb_exits: usize,
+
+    pub runner : Runner,
 }
 
 impl VirtContext {
-    pub fn new(hart_id: usize) -> Self {
+    pub fn new(hart_id: usize, ) -> Self {
         VirtContext {
             host_stack: 0,
             regs: Default::default(),
@@ -45,7 +47,12 @@ impl VirtContext {
                 64 => 16,
                 _ => 0,
             },
+            runner : Runner::None,
         }
+    }
+
+    pub fn set_runner(mut self ,r : Runner) {
+        self.runner = r;
     }
 }
 
@@ -198,12 +205,20 @@ impl VirtContext {
                 self.pc += 4;
             }
             Instr::Mret => {
-                if ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER) != 3 {
-                    panic!(
-                        "MRET is not going to M mode: {} with MPP {}",
-                        self.csr.mstatus,
-                        ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER)
-                    );
+                match (self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER {
+                    3 => {
+                        // Mret is jumping back to machine mode, do nothing
+                    }
+                    1 => {
+                        // Mret is jumping to supervisor mode, we need to do a context switchsla
+                    }
+                    _ => {
+                        panic!(
+                            "MRET is not going to M mode: {} with MPP {}",
+                            self.csr.mstatus,
+                            ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER)
+                        );
+                    }
                 }
                 // Modify mstatus
                 // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
@@ -266,7 +281,7 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self) {
+    pub fn handle_payload_trap(&mut self,) {
         // Keep track of the number of exit
         self.nb_exits += 1;
 
@@ -674,4 +689,12 @@ where
     fn set(&mut self, register: &'a R, value: usize) {
         self.set(*register, value)
     }
+}
+
+
+#[derive(Debug)]
+pub enum Runner{
+    Firmware,
+    OS,
+    None,
 }
