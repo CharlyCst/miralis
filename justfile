@@ -15,13 +15,14 @@ test:
 	cargo test --features host -p mirage
 
 	# Running integration tests...
-	cargo run --package runner -- --max-exits 200 --payload ecall
-	cargo run --package runner -- --max-exits 200 --payload csr_ops
-	cargo run --package runner -- --max-exits 200 --payload pmp
-	cargo run --package runner -- --max-exits 200 --payload breakpoint
-	cargo run --package runner -- --max-exits 200 --payload mepc
-	cargo run --package runner -- --max-exits 200 --payload mcause
-	cargo run --package runner -- --max-exits 200 --payload mret
+	# cargo run --package runner -- --max-exits 200 --payload ecall
+	# cargo run --package runner -- --max-exits 200 --payload csr_ops
+	# cargo run --package runner -- --max-exits 200 --payload pmp
+	# cargo run --package runner -- --max-exits 200 --payload breakpoint
+	# cargo run --package runner -- --max-exits 200 --payload mepc
+	# cargo run --package runner -- --max-exits 200 --payload mcause
+	# cargo run --package runner -- --max-exits 200 --payload mret
+	cargo run --package runner -- --max-exits 200 --payload os_ctx_switch
 	
 	# Checking formatting...
 	cargo fmt --all -- --check

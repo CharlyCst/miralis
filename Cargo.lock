@@ -222,6 +222,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "os_ctx_switch"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
+]
+
+[[package]]
 name = "pmp"
 version = "0.1.0"
 dependencies = [

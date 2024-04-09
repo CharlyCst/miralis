@@ -20,7 +20,7 @@ use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
-use crate::virt::{RegisterContext, VirtContext};
+use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
 
 // Defined in the linker script
 extern "C" {
@@ -47,9 +47,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
         Arch::write_pmpaddr(0, usize::MAX);
 
-        // Configure misa to execute with expected features
-        Arch::write_misa(Arch::read_misa() & !misa::DISABLED);
-
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
@@ -65,7 +62,7 @@ fn main_loop(mut ctx: VirtContext) -> ! {
 
     loop {
         unsafe {
-            Arch::enter_virt_firmware(&mut ctx);
+            Arch::run_vcpu(&mut ctx);
             handle_trap(&mut ctx, max_exit);
             log::trace!("{:x?}", &ctx);
         }
@@ -79,6 +76,7 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("  mepc:    0x{:x}", ctx.trap_info.mepc);
     log::trace!("  mtval:   0x{:x}", ctx.trap_info.mtval);
     log::trace!("  exits:   {}", ctx.nb_exits + 1);
+    log::trace!("  mode:    {:?}", ctx.mode);
 
     if let Some(max_exit) = max_exit {
         if ctx.nb_exits + 1 >= max_exit {
@@ -88,17 +86,51 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     }
 
     if ctx.trap_info.from_mmode() {
-        //Trap comes from M mode : mirage
+        // Trap comes from M mode: Mirage
         handle_mirage_trap(ctx);
-    } else {
-        ctx.handle_payload_trap();
+        return;
+    }
+
+    // Perform emulation
+    let exec_mode = ctx.mode.to_exec_mode();
+    match exec_mode {
+        ExecutionMode::Firmware => handle_firmware_trap(ctx),
+        ExecutionMode::Payload => handle_os_trap(ctx),
+    }
+
+    // Check for execution mode change
+    match (exec_mode, ctx.mode.to_exec_mode()) {
+        (ExecutionMode::Firmware, ExecutionMode::Payload) => {
+            log::debug!("Execution mode: Firmware -> Payload");
+            unsafe { Arch::switch_from_firmware_to_payload(ctx) };
+        }
+        (ExecutionMode::Payload, ExecutionMode::Firmware) => {
+            log::debug!("Execution mode: Payload -> Firmware");
+            unsafe { Arch::switch_from_payload_to_firmware(ctx) };
+        }
+        _ => {} // No execution mode transition
     }
 }
 
+fn handle_firmware_trap(ctx: &mut VirtContext) {
+    ctx.handle_payload_trap();
+}
+
+fn handle_os_trap(ctx: &mut VirtContext) {
+    ctx.nb_exits += 1;
+    ctx.emulate_jump_trap_handler();
+}
+
 /// Handle the trap coming from mirage
-fn handle_mirage_trap(_ctx: &mut VirtContext) {
-    log::trace!("Mirage trap handler entered");
-    todo!();
+fn handle_mirage_trap(ctx: &mut VirtContext) {
+    let trap = &ctx.trap_info;
+    log::error!("Unexpected trap while executing Mirage");
+    log::error!("  cause:   {} ({:?})", trap.mcause, trap.get_cause());
+    log::error!("  mepc:    0x{:x}", trap.mepc);
+    log::error!("  mtval:   0x{:x}", trap.mtval);
+    log::error!("  mstatus: 0x{:x}", trap.mstatus);
+    log::error!("  mip:     0x{:x}", trap.mip);
+    todo!("Mirage trap handler entered");
 }
 
 #[panic_handler]

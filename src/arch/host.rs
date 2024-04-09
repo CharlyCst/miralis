@@ -30,10 +30,6 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn write_misa(_misa: usize) {
-        todo!()
-    }
-
     unsafe fn write_mstatus(_mstatus: usize) {
         todo!()
     }
@@ -54,11 +50,23 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn enter_virt_firmware(_ctx: &mut crate::virt::VirtContext) {
+    unsafe fn run_vcpu(_ctx: &mut crate::virt::VirtContext) {
         todo!()
     }
 
     unsafe fn get_raw_faulting_instr(_trap_info: &super::TrapInfo) -> usize {
+        todo!()
+    }
+
+    fn read_mtvec() -> usize {
+        todo!()
+    }
+
+    unsafe fn switch_from_firmware_to_payload(_ctx: &mut crate::virt::VirtContext) {
+        todo!()
+    }
+
+    unsafe fn switch_from_payload_to_firmware(_ctx: &mut crate::virt::VirtContext) {
         todo!()
     }
 }

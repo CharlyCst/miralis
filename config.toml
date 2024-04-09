@@ -1,0 +1,11 @@
+[log]
+# level = "info"
+level = "trace"
+# level = "debug"
+
+[debug]
+# max_payload_exits = 400
+
+[platform]
+s_mode = true
+# nb_pmp = 8
