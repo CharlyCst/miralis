@@ -46,13 +46,6 @@ impl Architecture for MetalArch {
         Self::write_mstatus((mstatus & !MPP_MASK) | value)
     }
 
-    unsafe fn write_misa(misa: usize) {
-        asm!(
-            "csrw misa, {x}",
-            x = in(reg) misa
-        )
-    }
-
     unsafe fn write_mstatus(mstatus: usize) {
         asm!(
             "csrw mstatus, {x}",
