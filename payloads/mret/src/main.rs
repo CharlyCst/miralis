@@ -23,13 +23,13 @@ fn main() -> ! {
         );
     }
 
-    // MPP = 3
-    read_test((mstatus >> 11) & 0b11, 3);
-    // MPIE = 1
-    read_test((mstatus >> 7) & 0b1, 1);
-    // MPRV = 0
-    read_test((mstatus >> 17) & 0b1, 0);
+    let mpp = (mstatus >> 11) & 0b11;
+    let mpie = (mstatus >> 7) & 0b1;
+    let mprv = (mstatus >> 17) & 0b1;
 
+    assert_eq!(mpp, 3, "Invalid MPP: {}, expected 3", mpp);
+    assert_eq!(mpie, 1, "Invalid MPIE: {}, expected 1", mpie);
+    assert_eq!(mprv, 0, "Invalid MPRV: {}, expected 0", mprv);
     assert_eq!(
         t6, 0x42,
         "Trap handler did not properly update the value in t6"
@@ -56,8 +56,4 @@ _raw_breakpoint_trap_handler:
 
 extern "C" {
     fn _raw_breakpoint_trap_handler();
-}
-
-fn read_test(out_csr: usize, expected: usize) {
-    assert_eq!(out_csr, expected);
 }
