@@ -30,10 +30,6 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn write_misa(_misa: usize) {
-        todo!()
-    }
-
     unsafe fn write_mstatus(_mstatus: usize) {
         todo!()
     }
