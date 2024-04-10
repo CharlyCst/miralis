@@ -61,4 +61,12 @@ impl Architecture for HostArch {
     unsafe fn get_raw_faulting_instr(_trap_info: &super::TrapInfo) -> usize {
         todo!()
     }
+    
+    fn read_pmpcfg(idx: usize) -> usize {
+        todo!()
+    }
+    
+    fn read_pmpaddr(idx: usize) -> usize {
+        todo!()
+    }
 }

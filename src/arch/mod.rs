@@ -32,6 +32,8 @@ pub trait Architecture {
     fn init();
     fn read_misa() -> usize;
     fn read_mstatus() -> usize;
+    fn read_pmpcfg(idx: usize) -> usize;
+    fn read_pmpaddr(idx: usize) -> usize;
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_misa(misa: usize);
     unsafe fn write_mstatus(mstatus: usize);

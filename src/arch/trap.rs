@@ -113,7 +113,7 @@ impl MCause {
 
 /// Contains all the information automatically written by the hardware during a trap
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct TrapInfo {
     // mtval2 and mtinst only exist with the hypervisor extension
     pub mepc: usize,

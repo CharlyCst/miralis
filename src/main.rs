@@ -39,9 +39,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
-    let mut ctx = VirtContext::new(hart_id);
+    let mut temp_ctx = VirtContext::new(hart_id);
 
-    
     let mut guest_ctx = VirtContext::new(hart_id);
     let mut mirage_ctx = VirtContext::new(hart_id);
     let mut runner = Runner::Firmware;
@@ -55,63 +54,107 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Configure misa to execute with expected features
         Arch::write_misa(Arch::read_misa() & !misa::DISABLED);
 
+        //Set the mirage context to the correct configuration
+        mirage_ctx.set(Csr::Mstatus, Arch::read_mstatus());
+        mirage_ctx.set(Csr::Pmpcfg(0), Arch::read_pmpcfg(0));
+        mirage_ctx.set(Csr::Pmpaddr(0), Arch::read_pmpaddr(0));
+        mirage_ctx.set(Csr::Misa, Arch::read_misa());
+
         // Configure the payload context
-        ctx.set(Register::X10, hart_id);
-        ctx.set(Register::X11, device_tree_blob_addr);
-        ctx.set(Csr::Misa, Arch::read_misa() & !misa::DISABLED);
-        ctx.pc = payload_addr;
+        guest_ctx.set(Register::X10, hart_id);
+        guest_ctx.set(Register::X11, device_tree_blob_addr);
+        guest_ctx.set(Csr::Misa, Arch::read_misa() & !misa::DISABLED);
+        guest_ctx.pc = payload_addr;
     }
 
-    main_loop(ctx, &mut runner);
+    temp_ctx = guest_ctx;
+
+    main_loop(temp_ctx, guest_ctx, mirage_ctx, &mut runner);
 }
 
-fn main_loop(mut ctx: VirtContext, mut runner : &mut Runner) -> ! {
+fn main_loop(
+    mut temp_ctx: VirtContext,
+    mut guest_ctx: VirtContext,
+    mut mirage_ctx: VirtContext,
+    mut runner: &mut Runner,
+) -> ! {
     let max_exit = debug::get_max_payload_exits();
 
     loop {
         unsafe {
-            Arch::enter_virt_firmware(&mut ctx);
-            handle_trap(&mut ctx, max_exit, runner);
-            log::trace!("{:x?}", &ctx);
+            Arch::enter_virt_firmware(&mut temp_ctx);
+            handle_trap(
+                &mut temp_ctx,
+                &mut guest_ctx,
+                &mut mirage_ctx,
+                max_exit,
+                runner,
+            );
+            log::trace!("{:x?}", &temp_ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>, mut runner : &mut Runner) {
+fn handle_trap(
+    temp_ctx: &mut VirtContext,
+    guest_ctx: &mut VirtContext,
+    mirage_ctx: &mut VirtContext,
+    max_exit: Option<usize>,
+    mut runner: &mut Runner,
+) {
     log::trace!("Trapped!");
-    log::trace!("  mcause:  {:?}", ctx.trap_info.mcause);
-    log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);
-    log::trace!("  mepc:    0x{:x}", ctx.trap_info.mepc);
-    log::trace!("  mtval:   0x{:x}", ctx.trap_info.mtval);
-    log::trace!("  exits:   {}", ctx.nb_exits + 1);
+    log::trace!("  mcause:  {:?}", temp_ctx.trap_info.mcause);
+    log::trace!("  mstatus: 0x{:x}", temp_ctx.trap_info.mstatus);
+    log::trace!("  mepc:    0x{:x}", temp_ctx.trap_info.mepc);
+    log::trace!("  mtval:   0x{:x}", temp_ctx.trap_info.mtval);
+    log::trace!("  exits:   {}", temp_ctx.nb_exits + 1);
 
     if let Some(max_exit) = max_exit {
-        if ctx.nb_exits + 1 >= max_exit {
-            log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
+        if temp_ctx.nb_exits + 1 >= max_exit {
+            log::error!("Reached maximum number of exits: {}", temp_ctx.nb_exits);
             Plat::exit_failure();
         }
     }
 
-    ctx.set_runner(*runner);
-    
-    match *runner{
+    match *runner {
         Runner::Firmware => {
-            if ctx.trap_info.from_mmode() {
+            if temp_ctx.trap_info.from_mmode() {
                 //Trap comes from M mode : mirage
-                handle_mirage_trap(ctx);
+                handle_mirage_trap(temp_ctx);
             } else {
-                ctx.handle_payload_trap();
+                // TODO : should only save regs 0-32 and pc
+                *guest_ctx = *temp_ctx; // Save incomming information into the guest context
+
+                guest_ctx.handle_payload_trap(runner); // Emulate
+
+                match *runner {
+                    Runner::Firmware => {
+                        *temp_ctx = *guest_ctx; // TODO : should only load regs 0-32 and pc into temp
+                    }
+                    Runner::OS => {        
+                        *mirage_ctx = *temp_ctx; // TODO : load all non-guest CSRs into mirage ctx
+                        *temp_ctx = *guest_ctx; // TODO : load ALL guest regs into temp
+                        
+                        todo!("MRET into S Mode is not yet implemented")
+                    },
+                }
             }
         }
         Runner::OS => {
             // Trap comes from the guest OS : need to context switch and jump into the trap handler of the guest firmware
-            //ctx.emulate_jump_trap_handler()
-            //*runner = Runner::Firmware;
-        }
-        Runner::None => todo!(),
-    }
+            *runner = Runner::Firmware;
+            
+            *guest_ctx = *temp_ctx; // Save information from guest into 'guest_ctx'
+            // TODO : Load mirage ctx into hardware
 
-    
+            guest_ctx.handle_payload_trap(runner);
+
+            *temp_ctx = *guest_ctx; // TODO : should only load regs 0-32 and pc into temp
+
+
+            todo!("OS TRAPS ARE NOT YET HANDLED");
+        }
+    }
 }
 
 /// Handle the trap coming from mirage

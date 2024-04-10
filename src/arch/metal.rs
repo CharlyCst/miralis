@@ -38,6 +38,36 @@ impl Architecture for MetalArch {
         }
         return mstatus;
     }
+    
+    fn read_pmpcfg(idx: usize) -> usize {
+        let pmpcfg: usize;
+        match idx {
+            0 => {
+                unsafe {
+                    asm!(
+                        "csrr {x}, pmpcfg0",
+                        x = out(reg) pmpcfg);
+                }
+            }
+            _ => todo!("pmpcfg{} not yet implemented", idx),
+        }
+        return pmpcfg;
+    }
+    
+    fn read_pmpaddr(idx: usize) -> usize {
+        let pmpaddr: usize;
+        match idx {
+            0 => {
+                unsafe {
+                    asm!(
+                        "csrr {x}, pmpaddr0",
+                        x = out(reg) pmpaddr);
+                }
+            }
+            _ => todo!("pmpaddr{} not yet implemented", idx),
+        }
+        return pmpaddr;
+    }
 
     unsafe fn set_mpp(mode: Mode) {
         const MPP_MASK: usize = 0b11_usize << 11;

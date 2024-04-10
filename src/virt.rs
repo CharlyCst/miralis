@@ -8,7 +8,7 @@ use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, Copy ,Clone)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
@@ -27,12 +27,10 @@ pub struct VirtContext {
     hart_id: usize,
     /// Number of exists to Mirage
     pub(crate) nb_exits: usize,
-
-    pub runner : Runner,
 }
 
 impl VirtContext {
-    pub fn new(hart_id: usize, ) -> Self {
+    pub fn new(hart_id: usize) -> Self {
         VirtContext {
             host_stack: 0,
             regs: Default::default(),
@@ -47,17 +45,12 @@ impl VirtContext {
                 64 => 16,
                 _ => 0,
             },
-            runner : Runner::None,
         }
-    }
-
-    pub fn set_runner(mut self ,r : Runner) {
-        self.runner = r;
     }
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct VirtCsr {
     misa: usize,
     mie: usize,
@@ -154,7 +147,7 @@ impl VirtCsr {
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
 
 impl VirtContext {
-    fn emulate_instr(&mut self, instr: &Instr) {
+    fn emulate_instr(&mut self, instr: &Instr, runner: &mut Runner) {
         match instr {
             Instr::Wfi => {
                 todo!("wfi is not yet supported");
@@ -210,7 +203,8 @@ impl VirtContext {
                         // Mret is jumping back to machine mode, do nothing
                     }
                     1 => {
-                        // Mret is jumping to supervisor mode, we need to do a context switchsla
+                        // Mret is jumping to supervisor mode, the runner is the guest OS 
+                        *runner = Runner::OS;
                     }
                     _ => {
                         panic!(
@@ -281,7 +275,7 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self,) {
+    pub fn handle_payload_trap(&mut self, runner: &mut Runner) {
         // Keep track of the number of exit
         self.nb_exits += 1;
 
@@ -316,7 +310,7 @@ impl VirtContext {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_instr(&instr);
+                self.emulate_instr(&instr, runner);
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
@@ -691,10 +685,8 @@ where
     }
 }
 
-
 #[derive(Debug)]
-pub enum Runner{
+pub enum Runner {
     Firmware,
     OS,
-    None,
 }
