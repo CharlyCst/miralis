@@ -76,7 +76,7 @@ fn main_loop(
     mut temp_ctx: VirtContext,
     mut guest_ctx: VirtContext,
     mut mirage_ctx: VirtContext,
-    mut runner: &mut Runner,
+    runner: &mut Runner,
 ) -> ! {
     let max_exit = debug::get_max_payload_exits();
 
@@ -100,7 +100,7 @@ fn handle_trap(
     guest_ctx: &mut VirtContext,
     mirage_ctx: &mut VirtContext,
     max_exit: Option<usize>,
-    mut runner: &mut Runner,
+    runner: &mut Runner,
 ) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", temp_ctx.trap_info.mcause);
@@ -131,28 +131,29 @@ fn handle_trap(
                     Runner::Firmware => {
                         *temp_ctx = *guest_ctx; // TODO : should only load regs 0-32 and pc into temp
                     }
-                    Runner::OS => {        
+                    Runner::OS => {
+                        todo!("MRET into S Mode is not yet implemented");
+
                         *mirage_ctx = *temp_ctx; // TODO : load all non-guest CSRs into mirage ctx
                         *temp_ctx = *guest_ctx; // TODO : load ALL guest regs into temp
                         
-                        todo!("MRET into S Mode is not yet implemented")
                     },
                 }
             }
         }
         Runner::OS => {
+
+            todo!("OS TRAPS ARE NOT YET HANDLED");
             // Trap comes from the guest OS : need to context switch and jump into the trap handler of the guest firmware
             *runner = Runner::Firmware;
             
-            *guest_ctx = *temp_ctx; // Save information from guest into 'guest_ctx'
+            *guest_ctx = *temp_ctx; // Save ALL information from guest into 'guest_ctx'
             // TODO : Load mirage ctx into hardware
 
             guest_ctx.handle_payload_trap(runner);
 
             *temp_ctx = *guest_ctx; // TODO : should only load regs 0-32 and pc into temp
 
-
-            todo!("OS TRAPS ARE NOT YET HANDLED");
         }
     }
 }
