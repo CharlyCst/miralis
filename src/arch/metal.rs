@@ -258,6 +258,11 @@ _enter_virt_firmware:
     sd sp,(8*0)(x31)          // Store host stack
     ld x1,(8+8*32)(x31)       // Read payload PC
     csrw mepc,x1              // Restore payload PC in mepc
+
+    // TODO : load all used CSRs from context 
+    // ld x1,(8+8*32)(x31)       // Read payload PC
+    // csrw mepc,x1              // Restore payload PC in mepc
+
     // TODO: load payload misa
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
@@ -290,6 +295,7 @@ _enter_virt_firmware:
     ld x29,(8+8*29)(x31)
     ld x30,(8+8*30)(x31)
     ld x31,(8+8*31)(x31)
+
     mret                      // Jump into firmware
 "#,
 );
@@ -350,6 +356,10 @@ _raw_trap_handler:
     sd x30, (8+8*32+8+8*3)(x31) // Save mip
     csrr x30, mtval             // Fill the TrapInfo : Read mtval
     sd x30, (8+8*32+8+8*4)(x31) // Save mtval
+
+    // TODO : save all used CSRs into context
+    // csrr x30, mepc              // Read payload PC
+    // sd x30, (8+8*32)(x31)       // Save the PC
 
     ld sp,(8*0)(x31)      // Restore host stack
     ld x30,(sp)           // Load return address from stack

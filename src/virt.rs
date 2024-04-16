@@ -20,7 +20,7 @@ pub struct VirtContext {
     /// Information on the trap that ocurred, used to handle traps
     pub(crate) trap_info: TrapInfo,
     /// Virtual Control and Status Registers
-    csr: VirtCsr,
+    pub csr: VirtCsr,
     /// Number of virtual PMPs
     nbr_pmps: usize,
     /// Hart ID
@@ -47,12 +47,28 @@ impl VirtContext {
             },
         }
     }
+
+    pub fn copy_simple_regs(ctx : &mut VirtContext, other : &mut VirtContext){
+        for r in 0..32{
+            ctx.regs[r] = (*other).regs[r];
+        }
+        ctx.pc = (*other).pc;
+    }
+    
+    pub fn copy_csr_regs(ctx : &mut VirtContext, other : &mut VirtContext){
+    
+    }
+    
+    pub fn complete_copy(ctx : &mut VirtContext, other : &mut VirtContext){
+        *ctx = *other;
+    }
+
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
 #[derive(Debug, Copy, Clone)]
 pub struct VirtCsr {
-    misa: usize,
+    pub misa: usize,
     mie: usize,
     mip: usize,
     mtvec: usize,
@@ -60,8 +76,8 @@ pub struct VirtCsr {
     mvendorid: usize,
     marchid: usize,
     mimpid: usize,
-    pmp_cfg: [usize; 16],
-    pmp_addr: [usize; 64],
+    pub pmp_cfg: [usize; 16],
+    pub pmp_addr: [usize; 64],
     mcycle: usize,
     minstret: usize,
     mhpmcounter: [usize; 29],

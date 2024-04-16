@@ -67,7 +67,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         guest_ctx.pc = payload_addr;
     }
 
-    temp_ctx = guest_ctx;
+    VirtContext::complete_copy(&mut temp_ctx, &mut guest_ctx);
 
     main_loop(temp_ctx, guest_ctx, mirage_ctx, &mut runner);
 }
@@ -122,40 +122,45 @@ fn handle_trap(
                 //Trap comes from M mode : mirage
                 handle_mirage_trap(temp_ctx);
             } else {
-                // TODO : should only save regs 0-32 and pc
-                *guest_ctx = *temp_ctx; // Save incomming information into the guest context
-
-                guest_ctx.handle_payload_trap(runner); // Emulate
-
-                match *runner {
-                    Runner::Firmware => {
-                        *temp_ctx = *guest_ctx; // TODO : should only load regs 0-32 and pc into temp
-                    }
-                    Runner::OS => {
-                        todo!("MRET into S Mode is not yet implemented");
-
-                        *mirage_ctx = *temp_ctx; // TODO : load all non-guest CSRs into mirage ctx
-                        *temp_ctx = *guest_ctx; // TODO : load ALL guest regs into temp
-                        
-                    },
-                }
+                VirtContext::copy_simple_regs(guest_ctx, temp_ctx);
+                
+                emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
             }
         }
         Runner::OS => {
-
-            todo!("OS TRAPS ARE NOT YET HANDLED");
             // Trap comes from the guest OS : need to context switch and jump into the trap handler of the guest firmware
             *runner = Runner::Firmware;
+            VirtContext::complete_copy(guest_ctx, temp_ctx);
+
+            VirtContext::copy_simple_regs(temp_ctx,  mirage_ctx);
             
-            *guest_ctx = *temp_ctx; // Save ALL information from guest into 'guest_ctx'
-            // TODO : Load mirage ctx into hardware
-
-            guest_ctx.handle_payload_trap(runner);
-
-            *temp_ctx = *guest_ctx; // TODO : should only load regs 0-32 and pc into temp
-
+            emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
         }
     }
+}
+
+fn emulate_and_setup_trap_return(runner: &mut Runner, temp_ctx: &mut VirtContext, mirage_ctx: &mut VirtContext, guest_ctx: &mut VirtContext){
+    
+    log::trace!("Function entered");
+
+    guest_ctx.trap_info = temp_ctx.trap_info;
+    guest_ctx.handle_payload_trap(runner);
+
+
+    log::trace!("trap handled");
+
+    match *runner {
+        Runner::Firmware => {
+            VirtContext::copy_simple_regs(temp_ctx, guest_ctx);
+        }
+        Runner::OS => {
+            VirtContext::copy_simple_regs(mirage_ctx, temp_ctx);
+            VirtContext::complete_copy(temp_ctx, guest_ctx);
+        },
+    }
+
+    
+    log::trace!("function finished");
 }
 
 /// Handle the trap coming from mirage
@@ -163,6 +168,9 @@ fn handle_mirage_trap(_ctx: &mut VirtContext) {
     log::trace!("Mirage trap handler entered");
     todo!();
 }
+
+
+
 
 #[panic_handler]
 #[cfg(not(test))]
