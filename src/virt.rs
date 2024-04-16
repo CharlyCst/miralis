@@ -56,11 +56,12 @@ impl VirtContext {
     }
     
     pub fn copy_csr_regs(ctx : &mut VirtContext, other : &mut VirtContext){
-    
+        ctx.csr = other.csr;
     }
     
     pub fn complete_copy(ctx : &mut VirtContext, other : &mut VirtContext){
-        *ctx = *other;
+        VirtContext::copy_simple_regs(ctx,other);
+        VirtContext::copy_csr_regs(ctx,other);
     }
 
 }
