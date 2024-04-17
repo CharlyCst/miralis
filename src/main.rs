@@ -123,7 +123,7 @@ fn handle_trap(
                 handle_mirage_trap(temp_ctx);
             } else {
                 VirtContext::copy_simple_regs(guest_ctx, temp_ctx);
-                
+
                 emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
             }
         }
@@ -132,20 +132,29 @@ fn handle_trap(
             *runner = Runner::Firmware;
             VirtContext::complete_copy(guest_ctx, temp_ctx);
 
-            VirtContext::copy_simple_regs(temp_ctx,  mirage_ctx);
-            
+            VirtContext::copy_simple_regs(temp_ctx, mirage_ctx);
+
             emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
         }
     }
 }
 
-fn emulate_and_setup_trap_return(runner: &mut Runner, temp_ctx: &mut VirtContext, mirage_ctx: &mut VirtContext, guest_ctx: &mut VirtContext){
-    
+fn emulate_and_setup_trap_return(
+    runner: &mut Runner,
+    temp_ctx: &mut VirtContext,
+    mirage_ctx: &mut VirtContext,
+    guest_ctx: &mut VirtContext,
+) {
     log::trace!("Function entered");
 
     guest_ctx.trap_info = temp_ctx.trap_info;
-    guest_ctx.handle_payload_trap(runner);
-
+    match *runner {
+        Runner::Firmware => guest_ctx.handle_payload_trap(runner),
+        Runner::OS => {
+            *runner = Runner::Firmware;
+            guest_ctx.emulate_jump_trap_handler()
+        }
+    }
 
     log::trace!("trap handled");
 
@@ -156,10 +165,9 @@ fn emulate_and_setup_trap_return(runner: &mut Runner, temp_ctx: &mut VirtContext
         Runner::OS => {
             VirtContext::copy_simple_regs(mirage_ctx, temp_ctx);
             VirtContext::complete_copy(temp_ctx, guest_ctx);
-        },
+        }
     }
 
-    
     log::trace!("function finished");
 }
 
@@ -168,9 +176,6 @@ fn handle_mirage_trap(_ctx: &mut VirtContext) {
     log::trace!("Mirage trap handler entered");
     todo!();
 }
-
-
-
 
 #[panic_handler]
 #[cfg(not(test))]

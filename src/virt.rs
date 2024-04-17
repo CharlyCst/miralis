@@ -8,7 +8,7 @@ use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
 
 /// The context of a virtual firmware.
-#[derive(Debug, Copy ,Clone)]
+#[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
@@ -48,22 +48,21 @@ impl VirtContext {
         }
     }
 
-    pub fn copy_simple_regs(ctx : &mut VirtContext, other : &mut VirtContext){
-        for r in 0..32{
+    pub fn copy_simple_regs(ctx: &mut VirtContext, other: &mut VirtContext) {
+        for r in 0..32 {
             ctx.regs[r] = (*other).regs[r];
         }
         ctx.pc = (*other).pc;
     }
-    
-    pub fn copy_csr_regs(ctx : &mut VirtContext, other : &mut VirtContext){
+
+    pub fn copy_csr_regs(ctx: &mut VirtContext, other: &mut VirtContext) {
         ctx.csr = other.csr;
     }
-    
-    pub fn complete_copy(ctx : &mut VirtContext, other : &mut VirtContext){
-        VirtContext::copy_simple_regs(ctx,other);
-        VirtContext::copy_csr_regs(ctx,other);
-    }
 
+    pub fn complete_copy(ctx: &mut VirtContext, other: &mut VirtContext) {
+        VirtContext::copy_simple_regs(ctx, other);
+        VirtContext::copy_csr_regs(ctx, other);
+    }
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
@@ -220,7 +219,7 @@ impl VirtContext {
                         // Mret is jumping back to machine mode, do nothing
                     }
                     1 => {
-                        // Mret is jumping to supervisor mode, the runner is the guest OS 
+                        // Mret is jumping to supervisor mode, the runner is the guest OS
                         *runner = Runner::OS;
                     }
                     _ => {
@@ -271,7 +270,7 @@ impl VirtContext {
         }
     }
 
-    fn emulate_jump_trap_handler(&mut self) {
+    pub fn emulate_jump_trap_handler(&mut self) {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
