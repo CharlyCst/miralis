@@ -67,22 +67,19 @@ impl VirtContext {
 
 /// Control and Status Registers (CSR) for a virtual firmware.
 #[derive(Debug, Copy, Clone)]
+#[repr(C)]
 pub struct VirtCsr {
     pub misa: usize,
     mie: usize,
     mip: usize,
     mtvec: usize,
-    mscratch: usize,
     mvendorid: usize,
     marchid: usize,
     mimpid: usize,
-    pub pmp_cfg: [usize; 16],
-    pub pmp_addr: [usize; 64],
     mcycle: usize,
     minstret: usize,
-    mhpmcounter: [usize; 29],
+    mscratch: usize,
     mcountinhibit: usize,
-    mhpmevent: [usize; 29],
     mcounteren: usize,
     menvcfg: usize,
     mseccfg: usize,
@@ -105,6 +102,10 @@ pub struct VirtCsr {
     scontext: usize,
     medeleg: usize,
     mideleg: usize,
+    pub pmp_cfg: [usize; 16],
+    pub pmp_addr: [usize; 64],
+    mhpmcounter: [usize; 29],
+    mhpmevent: [usize; 29],
 }
 
 impl Default for VirtCsr {
@@ -118,13 +119,9 @@ impl Default for VirtCsr {
             mvendorid: 0,
             marchid: 0,
             mimpid: 0,
-            pmp_cfg: [0; 16],
-            pmp_addr: [0; 64],
             mcycle: 0,
             minstret: 0,
-            mhpmcounter: [0; 29],
             mcountinhibit: 0,
-            mhpmevent: [0; 29],
             mcounteren: 0,
             menvcfg: 0,
             mseccfg: 0,
@@ -147,6 +144,10 @@ impl Default for VirtCsr {
             scontext: 0,
             medeleg: 0,
             mideleg: 0,
+            pmp_cfg: [0; 16],
+            pmp_addr: [0; 64],
+            mhpmcounter: [0; 29],
+            mhpmevent: [0; 29],
         }
     }
 }

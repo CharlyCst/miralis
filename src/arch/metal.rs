@@ -15,7 +15,7 @@ impl Architecture for MetalArch {
         // Set trap handler
         let handler = _raw_trap_handler as usize;
         unsafe { write_mtvec(handler) };
-        let mtvec = read_mtvec();
+        let mtvec = Self::read_mtvec();
         assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 
@@ -187,6 +187,18 @@ impl Architecture for MetalArch {
             out("x30") _,
         );
     }
+
+    fn read_mtvec() -> usize {
+        let mtvec: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mtvec",
+                x = out(reg) mtvec
+            )
+        }
+        return mtvec;
+    }
+
 }
 
 unsafe fn write_mtvec(value: usize) {
@@ -196,16 +208,7 @@ unsafe fn write_mtvec(value: usize) {
     )
 }
 
-fn read_mtvec() -> usize {
-    let mtvec: usize;
-    unsafe {
-        asm!(
-            "csrr {x}, mtvec",
-            x = out(reg) mtvec
-        )
-    }
-    return mtvec;
-}
+
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
@@ -255,9 +258,74 @@ _enter_virt_firmware:
     ld x1,(8+8*32)(x31)       // Read payload PC
     csrw mepc,x1              // Restore payload PC in mepc
 
-    // TODO : load all used CSRs from context 
-    // ld x1,(8+8*32)(x31)       // Read payload PC
-    // csrw mepc,x1              // Restore payload PC in mepc
+    // TODO : load all CSRs from context 
+    ld x1,(8+8*32+8+8*5+8*0)(x31)      
+    csrw misa,x1 
+    ld x1,(8+8*32+8+8*5+8*1)(x31)      
+    csrw mie,x1 
+    ld x1,(8+8*32+8+8*5+8*2)(x31)      
+    csrw mip,x1 
+    ld x1,(8+8*32+8+8*5+8*3)(x31)      
+    csrw mtvec,x1 
+    ld x1,(8+8*32+8+8*5+8*4)(x31)      
+   // csrw mvendorid,x1     READ-ONLY
+    ld x1,(8+8*32+8+8*5+8*5)(x31)      
+   // csrw marchid,x1       READ-ONLY
+    ld x1,(8+8*32+8+8*5+8*6)(x31)      
+   // csrw mimpid,x1        READ-ONLY
+    ld x1,(8+8*32+8+8*5+8*7)(x31)      
+    csrw mcycle,x1 
+    ld x1,(8+8*32+8+8*5+8*8)(x31)      
+    csrw minstret,x1 
+    ld x1,(8+8*32+8+8*5+8*9)(x31)      
+    //csrw mscratch,x1 
+    ld x1,(8+8*32+8+8*5+8*10)(x31)      
+  //  csrw mcountinhibit,x1 
+    ld x1,(8+8*32+8+8*5+8*11)(x31)      
+    csrw mcounteren,x1 
+    ld x1,(8+8*32+8+8*5+8*12)(x31)      
+  //  csrw menvcfg,x1 
+    ld x1,(8+8*32+8+8*5+8*13)(x31)      
+  //  csrw mseccfg,x1 
+    ld x1,(8+8*32+8+8*5+8*14)(x31)      
+    csrw mcause,x1 
+    ld x1,(8+8*32+8+8*5+8*15)(x31)      
+    //csrw mepc,x1
+    ld x1,(8+8*32+8+8*5+8*16)(x31)      
+    csrw mtval,x1
+    ld x1,(8+8*32+8+8*5+8*17)(x31)      
+    csrw mstatus,x1
+    ld x1,(8+8*32+8+8*5+8*18)(x31)      
+  //  csrw mtinst,x1
+    ld x1,(8+8*32+8+8*5+8*19)(x31)      
+  //  csrw mconfigptr,x1
+    ld x1,(8+8*32+8+8*5+8*20)(x31)      
+    csrw sie,x1
+    ld x1,(8+8*32+8+8*5+8*21)(x31)      
+    csrw stvec,x1
+    ld x1,(8+8*32+8+8*5+8*22)(x31)      
+    csrw scounteren,x1
+    ld x1,(8+8*32+8+8*5+8*23)(x31)      
+   // csrw senvcfg,x1
+    ld x1,(8+8*32+8+8*5+8*24)(x31)      
+    csrw sscratch,x1
+    ld x1,(8+8*32+8+8*5+8*25)(x31)      
+    csrw sepc,x1
+    ld x1,(8+8*32+8+8*5+8*26)(x31)      
+    csrw scause,x1
+    ld x1,(8+8*32+8+8*5+8*27)(x31)      
+    csrw stval,x1
+    ld x1,(8+8*32+8+8*5+8*28)(x31)      
+    csrw sip,x1
+    ld x1,(8+8*32+8+8*5+8*29)(x31)      
+    csrw satp,x1
+    ld x1,(8+8*32+8+8*5+8*30)(x31)      
+   // csrw scontext,x1
+    ld x1,(8+8*32+8+8*5+8*31)(x31)      
+    csrw medeleg,x1
+    ld x1,(8+8*32+8+8*5+8*32)(x31)      
+    csrw mideleg,x1
+    
 
     // TODO: load payload misa
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
@@ -341,6 +409,76 @@ _raw_trap_handler:
 
     // TODO: restore host misa
 
+    
+    csrr x30, misa           
+    sd x30, (8+8*32+8+8*5+8*0)(x31)  
+    csrr x30, mie   
+    sd x30, (8+8*32+8+8*5+8*1)(x31)  
+    csrr x30, mip   
+    sd x30, (8+8*32+8+8*5+8*2)(x31) 
+    csrr x30, mtvec   
+    sd x30, (8+8*32+8+8*5+8*3)(x31) 
+    csrr x30, mvendorid   
+    sd x30, (8+8*32+8+8*5+8*4)(x31)
+    csrr x30, marchid   
+    sd x30, (8+8*32+8+8*5+8*5)(x31)
+    csrr x30, mimpid   
+    sd x30, (8+8*32+8+8*5+8*6)(x31)
+    csrr x30, mcycle   
+    sd x30, (8+8*32+8+8*5+8*7)(x31)
+    csrr x30, minstret   
+    sd x30, (8+8*32+8+8*5+8*8)(x31)
+    csrr x30, mscratch   
+    sd x30, (8+8*32+8+8*5+8*9)(x31)
+   // csrr x30, mcountinhibit  TODO 
+   // sd x30, (8+8*32+8+8*5+8*10)(x31)
+    csrr x30, mcounteren   
+    sd x30, (8+8*32+8+8*5+8*11)(x31)
+  //  csrr x30, menvcfg    TODO
+  //  sd x30, (8+8*32+8+8*5+8*12)(x31)
+   // csrr x30, mseccfg     TODO
+   // sd x30, (8+8*32+8+8*5+8*13)(x31)
+    csrr x30, mcause   
+    sd x30, (8+8*32+8+8*5+8*14)(x31)
+    csrr x30, mepc   
+    sd x30, (8+8*32+8+8*5+8*15)(x31)
+    csrr x30, mtval   
+    sd x30, (8+8*32+8+8*5+8*16)(x31)
+    csrr x30, mstatus   
+    sd x30, (8+8*32+8+8*5+8*17)(x31)
+    //csrr x30, mtinst   
+   // sd x30, (8+8*32+8+8*5+8*18)(x31)
+   // csrr x30, mconfigptr      TODO
+   // sd x30, (8+8*32+8+8*5+8*19)(x31)
+    csrr x30, sie   
+    sd x30, (8+8*32+8+8*5+8*20)(x31)
+    csrr x30, stvec   
+    sd x30, (8+8*32+8+8*5+8*21)(x31)
+    csrr x30, scounteren   
+    sd x30, (8+8*32+8+8*5+8*22)(x31)
+   // csrr x30, senvcfg   TODO
+   // sd x30, (8+8*32+8+8*5+8*23)(x31)
+    csrr x30, sscratch   
+    sd x30, (8+8*32+8+8*5+8*24)(x31)
+    csrr x30, sepc   
+    sd x30, (8+8*32+8+8*5+8*25)(x31)
+    csrr x30, scause   
+    sd x30, (8+8*32+8+8*5+8*26)(x31)
+    csrr x30, stval   
+    sd x30, (8+8*32+8+8*5+8*27)(x31)
+    csrr x30, sip   
+    sd x30, (8+8*32+8+8*5+8*28)(x31)
+    csrr x30, satp   
+    sd x30, (8+8*32+8+8*5+8*29)(x31)
+   // csrr x30, scontext   TODO
+   // sd x30, (8+8*32+8+8*5+8*30)(x31)
+    csrr x30, medeleg   
+    sd x30, (8+8*32+8+8*5+8*31)(x31)
+    csrr x30, mideleg   
+    sd x30, (8+8*32+8+8*5+8*32)(x31)
+    
+
+
     csrr x30, mepc              // Read payload PC
     sd x30, (8+8*32)(x31)       // Save the PC
     sd x30, (8+8*32+8+8*0)(x31) // Save mepc
@@ -353,9 +491,6 @@ _raw_trap_handler:
     csrr x30, mtval             // Fill the TrapInfo : Read mtval
     sd x30, (8+8*32+8+8*4)(x31) // Save mtval
 
-    // TODO : save all used CSRs into context
-    // csrr x30, mepc              // Read payload PC
-    // sd x30, (8+8*32)(x31)       // Save the PC
 
     ld sp,(8*0)(x31)      // Restore host stack
     ld x30,(sp)           // Load return address from stack

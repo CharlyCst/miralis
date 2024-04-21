@@ -54,11 +54,14 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Configure misa to execute with expected features
         Arch::write_misa(Arch::read_misa() & !misa::DISABLED);
 
+        // TODO : I do not think these writes are working
+
         //Set the mirage context to the correct configuration
         mirage_ctx.set(Csr::Mstatus, Arch::read_mstatus());
         mirage_ctx.set(Csr::Pmpcfg(0), Arch::read_pmpcfg(0));
         mirage_ctx.set(Csr::Pmpaddr(0), Arch::read_pmpaddr(0));
         mirage_ctx.set(Csr::Misa, Arch::read_misa());
+        mirage_ctx.set(Csr::Mtvec, Arch::read_mtvec());
 
         // Configure the payload context
         guest_ctx.set(Register::X10, hart_id);
@@ -67,7 +70,17 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         guest_ctx.pc = payload_addr;
     }
 
-    VirtContext::complete_copy(&mut temp_ctx, &mut guest_ctx);
+    log::trace!("  guest: {:x?}", guest_ctx);
+    log::trace!("  mirage: {:x?}", mirage_ctx);
+    log::trace!("  temp: {:x?}", temp_ctx);
+
+
+    VirtContext::copy_csr_regs(&mut temp_ctx, &mut mirage_ctx);
+    VirtContext::copy_simple_regs(&mut temp_ctx, &mut guest_ctx);
+
+    log::trace!("  guest: {:x?}", guest_ctx);
+    log::trace!("  mirage: {:x?}", mirage_ctx);
+    log::trace!("  temp: {:x?}", temp_ctx);
 
     main_loop(temp_ctx, guest_ctx, mirage_ctx, &mut runner);
 }
@@ -82,6 +95,7 @@ fn main_loop(
 
     loop {
         unsafe {
+            log::trace!("ENTERING FIRMWARE");
             Arch::enter_virt_firmware(&mut temp_ctx);
             handle_trap(
                 &mut temp_ctx,
@@ -109,6 +123,9 @@ fn handle_trap(
     log::trace!("  mtval:   0x{:x}", temp_ctx.trap_info.mtval);
     log::trace!("  exits:   {}", temp_ctx.nb_exits + 1);
 
+
+    log::trace!("  temp: {:x?}", temp_ctx);
+
     if let Some(max_exit) = max_exit {
         if temp_ctx.nb_exits + 1 >= max_exit {
             log::error!("Reached maximum number of exits: {}", temp_ctx.nb_exits);
@@ -132,7 +149,7 @@ fn handle_trap(
             *runner = Runner::Firmware;
             VirtContext::complete_copy(guest_ctx, temp_ctx);
 
-            VirtContext::copy_simple_regs(temp_ctx, mirage_ctx);
+            VirtContext::copy_csr_regs(temp_ctx, mirage_ctx);
 
             emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
         }
@@ -163,7 +180,7 @@ fn emulate_and_setup_trap_return(
             VirtContext::copy_simple_regs(temp_ctx, guest_ctx);
         }
         Runner::OS => {
-            VirtContext::copy_simple_regs(mirage_ctx, temp_ctx);
+            VirtContext::copy_csr_regs(mirage_ctx, temp_ctx);
             VirtContext::complete_copy(temp_ctx, guest_ctx);
         }
     }
