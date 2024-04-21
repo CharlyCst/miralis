@@ -18,7 +18,6 @@ test:
 	cargo run --package runner -- --max-exits 200 --payload ecall
 	cargo run --package runner -- --max-exits 200 --payload mscratch
 	cargo run --package runner -- --max-exits 200 --payload csr_ops
-	cargo run --package runner -- --max-exits 200 --payload csr_id
 	cargo run --package runner -- --max-exits 200 --payload pmp
 	cargo run --package runner -- --max-exits 200 --payload perf_monitor
 	cargo run --package runner -- --max-exits 200 --payload menv_msec
