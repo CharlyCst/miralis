@@ -7,11 +7,24 @@ use mirage_abi::{setup_payload, success};
 
 setup_payload!(main);
 
+fn main() -> ! {
+    log::debug!("Testing CSR operations");
+    test_csr_op();
+    log::debug!("Testing CSR ID registers");
+    test_csr_id();
+    log::debug!("Done!");
+    success();
+}
+
+// ————————————————————————————— CSR Operations ————————————————————————————— //
+
 /// The fixed immediate for instructions with hard-coded immediate.
 const IMMEDIATE: usize = 27;
 
-fn main() -> ! {
-    let regs = [
+/// Test the CSR registers operations (csrrw, csrrs, csrrc, csrrwi, csrrsi, csrrci).
+fn test_csr_op() {
+    // List of vallues to try the CSR operations with
+    let regs = &[
         (0, 0, 0),
         (1, 2, 3),
         (1, 2, 4),
@@ -19,38 +32,38 @@ fn main() -> ! {
         (usize::MAX, 0, usize::MAX),
         (1234567, 7890123, 567890),
     ];
-
-    test_csr_op(&regs);
-    success();
-}
-
-fn test_csr_op(regs: &[(usize, usize, usize)]) {
     // CSRRW
+    log::trace!("Testing CSSRW");
     for (in_rd, in_rs1, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrw(*in_csr, *in_rd, *in_rs1) };
         check_csrrw(*in_rs1, *in_csr, out_csr, out_rd);
     }
     // CSRRS
+    log::trace!("Testing CSSRS");
     for (in_rd, in_rs1, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrs(*in_csr, *in_rd, *in_rs1) };
         check_csrrs(*in_rs1, *in_csr, out_csr, out_rd);
     }
+    // CSRRC
+    log::trace!("Testing CSSRC");
+    for (in_rd, in_rs1, in_csr) in regs {
+        let (out_csr, out_rd) = unsafe { csrrc(*in_csr, *in_rd, *in_rs1) };
+        check_csrrc(*in_rs1, *in_csr, out_csr, out_rd);
+    }
     // CSRRWI
+    log::trace!("Testing CSSRWI");
     for (in_rd, _, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrwi(*in_csr, *in_rd) };
         check_csrrwi(*in_csr, out_csr, out_rd);
     }
     // CSRRSI
+    log::trace!("Testing CSSRSI");
     for (in_rd, _, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrsi(*in_csr, *in_rd) };
         check_csrrsi(*in_csr, out_csr, out_rd);
     }
-    // CSRRC
-    for (in_rd, in_rs1, in_csr) in regs {
-        let (out_csr, out_rd) = unsafe { csrrc(*in_csr, *in_rd, *in_rs1) };
-        check_csrrc(*in_rs1, *in_csr, out_csr, out_rd);
-    }
     // CSRRCI
+    log::trace!("Testing CSSRCI");
     for (in_rd, _, in_csr) in regs {
         let (out_csr, out_rd) = unsafe { csrrci(*in_csr, *in_rd) };
         check_csrrci(*in_csr, out_csr, out_rd);
@@ -172,4 +185,44 @@ unsafe fn csrrci(csr: usize, rd: usize) -> (usize, usize) {
     );
 
     (csr, rd)
+}
+
+// ———————————————————————————— CSR ID registers ———————————————————————————— //
+
+/// Test CSR ID registers
+///
+/// For now, they should all be zero.
+fn test_csr_id() {
+    let mut res: usize;
+    unsafe {
+        asm!(
+            "csrr {0}, mvendorid",
+            out(reg) res
+        );
+    };
+    assert_eq!(res, 0, "Invalid mvendorid");
+
+    unsafe {
+        asm!(
+            "csrr {0}, marchid",
+            out(reg) res
+        );
+    };
+    assert_eq!(res, 0, "Invalid marchid");
+
+    unsafe {
+        asm!(
+            "csrr {0}, mimpid",
+            out(reg) res
+        );
+    };
+    assert_eq!(res, 0, "Invalid mimpid");
+
+    unsafe {
+        asm!(
+            "csrr {0}, mhartid",
+            out(reg) res
+        );
+    };
+    assert_eq!(res, 0, "Invalid mhartid");
 }
