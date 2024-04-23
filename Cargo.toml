@@ -24,7 +24,6 @@ members = [
     "payloads/csr_ops",
     "payloads/default",
     "payloads/ecall",
-    "payloads/mscratch",
     "payloads/pmp",
     "payloads/perf_monitor",
     "payloads/menv_msec",

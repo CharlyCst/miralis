@@ -8,12 +8,32 @@ use mirage_abi::{setup_payload, success};
 setup_payload!(main);
 
 fn main() -> ! {
+    log::debug!("Testing mscratch register");
+    test_mscratch();
     log::debug!("Testing CSR operations");
     test_csr_op();
     log::debug!("Testing CSR ID registers");
     test_csr_id();
     log::debug!("Done!");
     success();
+}
+
+// ———————————————————————————— Simple Mscratch ————————————————————————————— //
+
+/// Test the mscratch register with a simple read and write
+fn test_mscratch() {
+    let res: usize;
+    unsafe {
+        asm!(
+            "li {0}, 0x42",
+            "csrw mscratch, {0}",
+            "csrr {1}, mscratch",
+            out(reg) _,
+            out(reg) res,
+        );
+    }
+
+    assert_eq!(res, 0x42);
 }
 
 // ————————————————————————————— CSR Operations ————————————————————————————— //
