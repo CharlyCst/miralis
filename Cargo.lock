@@ -180,13 +180,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mconfigptr"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

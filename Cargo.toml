@@ -29,7 +29,6 @@ members = [
     "payloads/breakpoint",
     "payloads/mepc",
     "payloads/mcause",
-    "payloads/mconfigptr",
     "payloads/mret",
 
     # Crates
