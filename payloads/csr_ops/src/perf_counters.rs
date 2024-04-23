@@ -1,24 +1,13 @@
-#![no_std]
-#![no_main]
-
 use core::arch::asm;
 
-use mirage_abi::{setup_payload, success};
-
-setup_payload!(main);
-
-fn main() -> ! {
+pub fn test_perf_counters() {
     // For now we expose 0 performance counters to the payload, but we might expose more in the
     // future.
     test_simple_regs();
-
     test_some_counters_events();
-
-    success();
 }
 
 fn test_simple_regs() {
-    let secret: usize = 0x42;
     let mut res: usize;
 
     // Test mcycle
@@ -27,12 +16,11 @@ fn test_simple_regs() {
             "li {0}, 0x42",
             "csrw mcycle, {0}",
             "csrr {1}, mcycle",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
-
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test minstret
     unsafe {
@@ -40,12 +28,11 @@ fn test_simple_regs() {
             "li {0}, 0x42",
             "csrw minstret, {0}",
             "csrr {1}, minstret",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
-
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mcountinhibit
     unsafe {
@@ -53,12 +40,11 @@ fn test_simple_regs() {
             "li {0}, 0x42",
             "csrw mcountinhibit, {0}",
             "csrr {1}, mcountinhibit",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
-
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mcounteren
     unsafe {
@@ -66,16 +52,14 @@ fn test_simple_regs() {
             "li {0}, 0x42",
             "csrw mcounteren, {0}",
             "csrr {1}, mcounteren",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
-
-    read_test(res, 0);
+    assert_eq!(res, 0);
 }
 
 fn test_some_counters_events() {
-    let secret: usize = 0x42;
     let mut res: usize;
 
     // Test mhpmcounter3
@@ -84,12 +68,12 @@ fn test_some_counters_events() {
             "li {0}, 0x42",
             "csrw mhpmcounter3, {0}",
             "csrr {1}, mhpmcounter3",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
 
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mhpmcounter5
     unsafe {
@@ -97,12 +81,12 @@ fn test_some_counters_events() {
             "li {0}, 0x42",
             "csrw mhpmcounter5, {0}",
             "csrr {1}, mhpmcounter5",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
 
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mhpmcounter7
     unsafe {
@@ -110,12 +94,12 @@ fn test_some_counters_events() {
             "li {0}, 0x42",
             "csrw mhpmcounter7, {0}",
             "csrr {1}, mhpmcounter7",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
 
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mhpmevent3
     unsafe {
@@ -123,12 +107,12 @@ fn test_some_counters_events() {
             "li {0}, 0x42",
             "csrw mhpmevent3, {0}",
             "csrr {1}, mhpmevent3",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
 
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mhpmevent5
     unsafe {
@@ -136,12 +120,12 @@ fn test_some_counters_events() {
             "li {0}, 0x42",
             "csrw mhpmevent5, {0}",
             "csrr {1}, mhpmevent5",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
 
-    read_test(res, 0);
+    assert_eq!(res, 0);
 
     // Test mhpmevent7
     unsafe {
@@ -149,14 +133,10 @@ fn test_some_counters_events() {
             "li {0}, 0x42",
             "csrw mhpmevent7, {0}",
             "csrr {1}, mhpmevent7",
-            in(reg) secret,
+            out(reg) _,
             out(reg) res,
         );
     }
 
-    read_test(res, 0);
-}
-
-fn read_test(out_csr: usize, expected: usize) {
-    assert_eq!(out_csr, expected);
+    assert_eq!(res, 0);
 }

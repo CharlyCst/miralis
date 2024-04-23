@@ -25,7 +25,6 @@ members = [
     "payloads/default",
     "payloads/ecall",
     "payloads/pmp",
-    "payloads/perf_monitor",
     "payloads/menv_msec",
     "payloads/breakpoint",
     "payloads/mepc",

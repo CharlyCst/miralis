@@ -236,13 +236,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "perf_monitor"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
-
-[[package]]
 name = "pmp"
 version = "0.1.0"
 dependencies = [
