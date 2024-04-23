@@ -21,6 +21,8 @@ fn main() -> ! {
     test_misa();
     log::debug!("Testing mconfigptr register");
     test_mconfigptr();
+    log::debug!("Testing menvcfg registers");
+    test_menvcfg();
     log::debug!("Testing performance counters");
     test_perf_counters();
     log::debug!("Done!");
@@ -309,4 +311,32 @@ fn test_mconfigptr() {
         );
     }
     assert_eq!(res, 0, "mconfigptr should be initialized to zero");
+}
+
+// —————————————————— Machine Environment Config registers —————————————————— //
+
+fn test_menvcfg() {
+    const VALUE: usize = 0x42;
+    let mut res: usize;
+    unsafe {
+        asm!(
+            "li {0}, 0x42",
+            "csrw menvcfg, {0}",
+            "csrr {1}, menvcfg",
+            out(reg) _,
+            out(reg) res,
+        );
+    }
+    assert_eq!(res, VALUE);
+
+    unsafe {
+        asm!(
+            "li {0}, 0x42",
+            "csrw mseccfg, {0}",
+            "csrr {1}, mseccfg",
+            out(reg) _,
+            out(reg) res,
+        );
+    }
+    assert_eq!(res, VALUE);
 }
