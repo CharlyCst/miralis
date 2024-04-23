@@ -5,6 +5,9 @@ use core::arch::asm;
 
 use mirage_abi::{setup_payload, success};
 
+mod perf_counters;
+use perf_counters::test_perf_counters;
+
 setup_payload!(main);
 
 fn main() -> ! {
@@ -16,6 +19,8 @@ fn main() -> ! {
     test_csr_id();
     log::debug!("Testing misa register");
     test_misa();
+    log::debug!("Testing performance counters");
+    test_perf_counters();
     log::debug!("Done!");
     success();
 }
