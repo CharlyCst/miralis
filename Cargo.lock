@@ -229,13 +229,6 @@ name = "mirage_core"
 version = "0.1.0"
 
 [[package]]
-name = "misa"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
-
-[[package]]
 name = "mret"
 version = "0.1.0"
 dependencies = [

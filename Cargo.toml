@@ -32,7 +32,6 @@ members = [
     "payloads/mcause",
     "payloads/mconfigptr",
     "payloads/mret",
-    "payloads/misa",
 
     # Crates
     "crates/abi",
