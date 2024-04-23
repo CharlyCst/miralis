@@ -19,6 +19,8 @@ fn main() -> ! {
     test_csr_id();
     log::debug!("Testing misa register");
     test_misa();
+    log::debug!("Testing mconfigptr register");
+    test_mconfigptr();
     log::debug!("Testing performance counters");
     test_perf_counters();
     log::debug!("Done!");
@@ -291,4 +293,20 @@ fn test_misa() {
         );
     }
     assert_eq!(res, MISA, "Could clean upper misa bit");
+}
+
+// ————————————————— Machine Configuration Pointer register ————————————————— //
+
+/// Should read 0 initially
+///
+/// This might change in the future for some platforms.
+fn test_mconfigptr() {
+    let res: usize;
+    unsafe {
+        asm!(
+            "csrr {0}, mconfigptr",
+            out(reg) res,
+        );
+    }
+    assert_eq!(res, 0, "mconfigptr should be initialized to zero");
 }
