@@ -16,7 +16,8 @@ mod logger;
 mod platform;
 mod virt;
 
-use arch::{pmpcfg, Arch, Architecture};
+use arch::pmp::pmpcfg;
+use arch::{Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
@@ -44,7 +45,10 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
-        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
+        Arch::write_pmpcfg(
+            0,
+            (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) as usize,
+        );
         Arch::write_pmpaddr(0, usize::MAX);
 
         // Configure the payload context

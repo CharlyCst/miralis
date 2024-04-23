@@ -7,6 +7,7 @@
 mod host;
 #[cfg(not(feature = "host"))]
 mod metal;
+pub mod pmp;
 mod registers;
 mod trap;
 
@@ -217,31 +218,4 @@ pub mod mstatus {
     /// SD
     pub const SD_OFFSET: usize = 63;
     pub const SD_FILTER: usize = 0b1;
-}
-
-// —————————————————————————————————— PMP ——————————————————————————————————— //
-
-/// PMP Configuration
-///
-/// Hold constants for the pmpcfg CSRs.
-#[allow(unused)]
-pub mod pmpcfg {
-    /// Read access
-    pub const R: usize = 0b00000001;
-    /// Write access
-    pub const W: usize = 0b00000010;
-    /// Execute access
-    pub const X: usize = 0b00000100;
-
-    /// Region is not active
-    pub const OFF: usize = 0b00000000;
-    /// Address is Top Of Range (TOP)
-    pub const TOR: usize = 0b00001000;
-    /// Naturally aligned four-byte region
-    pub const NA4: usize = 0b00010000;
-    /// Naturally aligned power of two
-    pub const NAPOT: usize = 0b00011000;
-
-    /// Locked
-    pub const L: usize = 0b10000000;
 }
