@@ -14,6 +14,8 @@ fn main() -> ! {
     test_csr_op();
     log::debug!("Testing CSR ID registers");
     test_csr_id();
+    log::debug!("Testing misa register");
+    test_misa();
     log::debug!("Done!");
     success();
 }
@@ -245,4 +247,43 @@ fn test_csr_id() {
         );
     };
     assert_eq!(res, 0, "Invalid mhartid");
+}
+
+// —————————————————————————— Machine ISA register —————————————————————————— //
+
+fn test_misa() {
+    const MISA: usize = 0x8000000000141101;
+    let mut res: usize;
+    unsafe {
+        asm!(
+            "li {0}, 0x8000000000141129",
+            "csrw misa, {0}",
+            "csrr {1}, misa",
+            out(reg) _,
+            out(reg) res,
+        );
+    }
+    assert_eq!(res, MISA, "Unexpected misa");
+
+    unsafe {
+        asm!(
+            "li {0}, 0x800000000FFFFFFF",
+            "csrw misa, {0}",
+            "csrr {1}, misa",
+            out(reg) _,
+            out(reg) res,
+        );
+    }
+    assert_eq!(res, MISA, "Could write misa bits that should be zero");
+
+    unsafe {
+        asm!(
+            "li {0}, 0x0000000000141129",
+            "csrw misa, {0}",
+            "csrr {1}, misa",
+            out(reg) _,
+            out(reg) res,
+        );
+    }
+    assert_eq!(res, MISA, "Could clean upper misa bit");
 }

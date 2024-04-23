@@ -25,7 +25,6 @@ test:
 	cargo run --package runner -- --max-exits 200 --payload mcause
 	cargo run --package runner -- --max-exits 200 --payload mconfigptr
 	cargo run --package runner -- --max-exits 200 --payload mret
-	cargo run --package runner -- --max-exits 200 --payload misa
 	
 	# Checking formatting...
 	cargo fmt --all -- --check
