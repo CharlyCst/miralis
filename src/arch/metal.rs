@@ -198,7 +198,6 @@ impl Architecture for MetalArch {
         }
         return mtvec;
     }
-
 }
 
 unsafe fn write_mtvec(value: usize) {
@@ -207,8 +206,6 @@ unsafe fn write_mtvec(value: usize) {
         x = in(reg) value
     )
 }
-
-
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
@@ -326,6 +323,10 @@ _enter_virt_firmware:
     ld x1,(8+8*32+8+8*5+8*32)(x31)      
     csrw mideleg,x1
     
+    ld x1,(8+8*32+8+8*5+8*33+8*0)(x31)
+    csrw pmpcfg0, x1
+    ld x1,(8+8*32+8+8*5+8*33+8*16+8*0)(x31)
+    csrw pmpaddr0, x1
 
     // TODO: load payload misa
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
@@ -477,7 +478,10 @@ _raw_trap_handler:
     csrr x30, mideleg   
     sd x30, (8+8*32+8+8*5+8*32)(x31)
     
-
+    csrr x30, pmpcfg0   
+    sd x30, (8+8*32+8+8*5+8*33+8*0)(x31)
+    csrr x30, pmpaddr0   
+    sd x30, (8+8*32+8+8*5+8*33+8*16+8*0)(x31)
 
     csrr x30, mepc              // Read payload PC
     sd x30, (8+8*32)(x31)       // Save the PC

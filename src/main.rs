@@ -58,8 +58,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
         //Set the mirage context to the correct configuration
         mirage_ctx.set(Csr::Mstatus, Arch::read_mstatus());
-        mirage_ctx.set(Csr::Pmpcfg(0), Arch::read_pmpcfg(0));
-        mirage_ctx.set(Csr::Pmpaddr(0), Arch::read_pmpaddr(0));
+        //mirage_ctx.set(Csr::Pmpcfg(0), Arch::read_pmpcfg(0));
+        mirage_ctx.csr.pmp_cfg[0] = pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR;
+        //mirage_ctx.set(Csr::Pmpaddr(0), Arch::read_pmpaddr(0));
+        mirage_ctx.csr.pmp_addr[0] = usize::MAX;
+
         mirage_ctx.set(Csr::Misa, Arch::read_misa());
         mirage_ctx.set(Csr::Mtvec, Arch::read_mtvec());
 
@@ -73,7 +76,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::trace!("  guest: {:x?}", guest_ctx);
     log::trace!("  mirage: {:x?}", mirage_ctx);
     log::trace!("  temp: {:x?}", temp_ctx);
-
 
     VirtContext::copy_csr_regs(&mut temp_ctx, &mut mirage_ctx);
     VirtContext::copy_simple_regs(&mut temp_ctx, &mut guest_ctx);
@@ -104,7 +106,7 @@ fn main_loop(
                 max_exit,
                 runner,
             );
-            log::trace!("{:x?}", &temp_ctx);
+            log::trace!("temp post trap : {:x?}", &temp_ctx);
         }
     }
 }
@@ -122,7 +124,7 @@ fn handle_trap(
     log::trace!("  mepc:    0x{:x}", temp_ctx.trap_info.mepc);
     log::trace!("  mtval:   0x{:x}", temp_ctx.trap_info.mtval);
     log::trace!("  exits:   {}", temp_ctx.nb_exits + 1);
-
+    log::trace!("  runner:  {:?}", *runner );
 
     log::trace!("  temp: {:x?}", temp_ctx);
 
@@ -145,11 +147,12 @@ fn handle_trap(
             }
         }
         Runner::OS => {
+            log::debug!("trap is from OS");
             // Trap comes from the guest OS : need to context switch and jump into the trap handler of the guest firmware
-            *runner = Runner::Firmware;
             VirtContext::complete_copy(guest_ctx, temp_ctx);
-
             VirtContext::copy_csr_regs(temp_ctx, mirage_ctx);
+
+            log::trace!("  guest: {:x?}", guest_ctx);
 
             emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
         }
@@ -165,28 +168,43 @@ fn emulate_and_setup_trap_return(
     log::trace!("Function entered");
 
     guest_ctx.trap_info = temp_ctx.trap_info;
+    log::trace!("  guest: {:x?}", guest_ctx);
     match *runner {
         Runner::Firmware => guest_ctx.handle_payload_trap(runner),
         Runner::OS => {
-            *runner = Runner::Firmware;
-            guest_ctx.emulate_jump_trap_handler()
+            log::debug!("Jump into firmware trap_handler");
+            guest_ctx.emulate_jump_trap_handler(runner);
+            guest_ctx.nb_exits += 1;
         }
     }
+
+    temp_ctx.nb_exits = guest_ctx.nb_exits;
 
     log::trace!("trap handled");
 
     match *runner {
         Runner::Firmware => {
+            log::debug!("post trap : firmware");
             VirtContext::copy_simple_regs(temp_ctx, guest_ctx);
         }
         Runner::OS => {
+            log::debug!("post trap : OS");
             VirtContext::copy_csr_regs(mirage_ctx, temp_ctx);
             VirtContext::complete_copy(temp_ctx, guest_ctx);
+
+            log::trace!("  guest: {:x?}", guest_ctx);
+            log::trace!("  mirage: {:x?}", mirage_ctx);
+            log::trace!("  temp: {:x?}", temp_ctx);
+
+           // todo!("jump to S-mode fails");
         }
     }
 
+    log::trace!("guest post trap handle: {:x?}", guest_ctx);
+    log::debug!("mstatus post copy : 0x{:x}", temp_ctx.csr.mstatus);
+
     log::trace!("function finished");
-}
+} 
 
 /// Handle the trap coming from mirage
 fn handle_mirage_trap(_ctx: &mut VirtContext) {

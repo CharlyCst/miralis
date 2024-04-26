@@ -69,7 +69,7 @@ impl Architecture for HostArch {
     fn read_pmpaddr(idx: usize) -> usize {
         todo!()
     }
-    
+
     fn read_mtvec() -> usize {
         todo!()
     }
