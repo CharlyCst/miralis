@@ -35,6 +35,7 @@ members = [
     "payloads/mconfigptr",
     "payloads/mret",
     "payloads/misa",
+    "payloads/os_ctx_switch",
 
     # Crates
     "crates/abi",

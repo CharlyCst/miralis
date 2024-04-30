@@ -8,13 +8,6 @@ use mirage_abi::{setup_payload, success};
 setup_payload!(main);
 
 fn main() -> ! {
-
-    // Setup some values                : firmware
-    // Jump into OS function with mret  : firmware -> OS
-    // Modify registers                 : OS
-    // OS exception with ebreak/ecall   : OS -> firmware
-    // Check values                     : firmware
-
     let mut mstatus: usize;
     let mut t6: usize;
     unsafe {
