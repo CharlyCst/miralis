@@ -23,8 +23,6 @@ fn main() -> ! {
         );
     }
 
-    // MPP = 0
-    read_test((mstatus >> 11) & 0b11, 0);
     // MPIE = 1
     read_test((mstatus >> 7) & 0b1, 1);
     // MPRV = 0

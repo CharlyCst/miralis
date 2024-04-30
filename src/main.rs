@@ -124,7 +124,7 @@ fn handle_trap(
     log::trace!("  mepc:    0x{:x}", temp_ctx.trap_info.mepc);
     log::trace!("  mtval:   0x{:x}", temp_ctx.trap_info.mtval);
     log::trace!("  exits:   {}", temp_ctx.nb_exits + 1);
-    log::trace!("  runner:  {:?}", *runner );
+    log::trace!("  runner:  {:?}", *runner);
 
     log::trace!("  temp: {:x?}", temp_ctx);
 
@@ -196,7 +196,7 @@ fn emulate_and_setup_trap_return(
             log::trace!("  mirage: {:x?}", mirage_ctx);
             log::trace!("  temp: {:x?}", temp_ctx);
 
-           // todo!("jump to S-mode fails");
+            // todo!("jump to S-mode fails");
         }
     }
 
@@ -204,7 +204,7 @@ fn emulate_and_setup_trap_return(
     log::debug!("mstatus post copy : 0x{:x}", temp_ctx.csr.mstatus);
 
     log::trace!("function finished");
-} 
+}
 
 /// Handle the trap coming from mirage
 fn handle_mirage_trap(_ctx: &mut VirtContext) {

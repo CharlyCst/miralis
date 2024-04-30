@@ -70,9 +70,8 @@ impl VirtContext {
 
         ctx.csr.mtvec = old_mtvec; // Do not change mtvec
         ctx.csr.pmp_addr[0] = old_pmp_addr0;
-        ctx.csr.pmp_cfg[0] = old_pmp_cfg0; 
+        ctx.csr.pmp_cfg[0] = old_pmp_cfg0;
         ctx.csr.mscratch = old_mscratch;
-
     }
 }
 
@@ -235,7 +234,7 @@ impl VirtContext {
                         log::debug!("mret to s-mode");
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         *runner = Runner::OS;
-                        
+
                         VirtCsr::set_mstatus_field(
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
@@ -262,7 +261,7 @@ impl VirtContext {
                     );
                 }
 
-                // MPP = 0, MIE= MPIE, MPIE = 1, MPRV = 0
+                //MIE= MPIE, MPIE = 1, MPRV = 0
                 let mpie = mstatus::MPIE_FILTER & (self.csr.mstatus >> mstatus::MPIE_OFFSET);
 
                 VirtCsr::set_mstatus_field(
@@ -277,13 +276,6 @@ impl VirtContext {
                     mstatus::MIE_FILTER,
                     mpie,
                 );
-                /*
-                VirtCsr::set_mstatus_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MPP_OFFSET,
-                    mstatus::MPP_FILTER,
-                    0,
-                );*/
 
                 // Jump back to payload
                 self.pc = self.csr.mepc;
@@ -302,7 +294,7 @@ impl VirtContext {
         self.csr.mepc = self.trap_info.mepc;
 
         // Modify mstatus: previous privilege mode is Machine = 3
-        match runner{
+        match runner {
             Runner::Firmware => {
                 VirtCsr::set_mstatus_field(
                     &mut self.csr.mstatus,
@@ -310,7 +302,7 @@ impl VirtContext {
                     mstatus::MPP_FILTER,
                     0b11,
                 );
-            },
+            }
             Runner::OS => {
                 VirtCsr::set_mstatus_field(
                     &mut self.csr.mstatus,
@@ -319,7 +311,7 @@ impl VirtContext {
                     0b01,
                 );
                 *runner = Runner::Firmware;
-            },
+            }
         }
 
         // Go to payload trap handler
@@ -647,12 +639,12 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mcounteren => (),                // Read-only 0
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => (),     // Read-only
+            Csr::Mconfigptr => (), // Read-only
             Csr::Medeleg => {
                 //TODO : some values need to be read-only 0
                 self.csr.medeleg = value;
-            }  ,        // Read-only 0 : do not delegate exceptions
-            Csr::Mideleg => (),        // Read-only 0 : do not delegate interrupts
+            } // Read-only 0 : do not delegate exceptions
+            Csr::Mideleg => (),    // Read-only 0 : do not delegate interrupts
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented
