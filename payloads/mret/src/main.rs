@@ -8,7 +8,6 @@ use mirage_abi::{setup_payload, success};
 setup_payload!(main);
 
 fn main() -> ! {
-
     // Setup some values                : firmware
     // Jump into OS function with mret  : firmware -> OS
     // Modify registers                 : OS
@@ -29,7 +28,7 @@ fn main() -> ! {
             out("t6") t6,        // The handler writes a secret value in t6
         );
     }
-    
+
     assert_eq!(
         t6, 0x42,
         "Trap handler did not properly update the value in t6"
