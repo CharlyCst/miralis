@@ -57,7 +57,6 @@ global_asm!(
 _raw_fake_trap_handler:
     csrr t4, mepc  // Read EPC
     addi t4, t4, 4 // Increment return pointer
-    csrw mepc, t4  // Write it back
     jr t4
 "#,
 );
