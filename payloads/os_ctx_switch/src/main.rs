@@ -20,9 +20,9 @@ fn main() -> ! {
         let trap: usize = _raw_trap_handler as usize;
         let fake: usize = _raw_fake_trap_handler as usize;
         // Let's rise an exception breakpoint directly
-        
+
         let value = 0b1 << 11;
-        
+
         asm!(
             "csrw mtvec, {3}",   // Write mtvec with fake trap handler
 
@@ -32,7 +32,7 @@ fn main() -> ! {
             "csrw mtvec, {1}",   // Write mtvec with trap handler
             "csrw mstatus, {2}", // Write MPP of mstatus to S-mode
             "csrw mepc, {0}",   // Write MEPC
-            
+
             "mret",            // Jump to OS
 
             in(reg) os,
@@ -47,7 +47,6 @@ fn main() -> ! {
 
     success();
 }
-
 
 global_asm!(
     r#"
