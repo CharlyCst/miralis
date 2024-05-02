@@ -15,6 +15,7 @@ fn main() -> ! {
     // Check values                     : firmware
 
     let mut t6: usize;
+    let mut scause: usize;
     unsafe {
         let os: usize = _raw_os as usize;
         let trap: usize = _raw_trap_handler as usize;
@@ -35,15 +36,19 @@ fn main() -> ! {
 
             "mret",            // Jump to OS
 
+            "csrr {4},scause ",
+
             in(reg) os,
             in(reg) trap,
             in(reg) value,
             in(reg) fake,
+            out(reg) scause,
             out("t6") t6,
         );
     }
 
     assert_eq!(t6, 0x42, "OS did not properly update the value in t6");
+    assert_eq!(scause, 0x42, "OS did not properly update the value in t6");
 
     success();
 }
@@ -79,7 +84,8 @@ global_asm!(
 .global _raw_os
 _raw_os:
     li t6, 0x42    // Store a secret value into t6 before jumping to firmware
-    ebreak
+    csrw scause, t6     
+    ebreak  
 "#,
 );
 
