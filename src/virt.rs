@@ -230,8 +230,20 @@ impl VirtContext {
                         log::debug!("mret to m-mode");
                         // Mret is jumping back to machine mode, do nothing
                     }
-                    1 => {
-                        log::debug!("mret to s-mode");
+                    1 if Plat::HAS_S_MODE => {
+                        log::debug!("mret to s-mode with MPP");
+                        // Mret is jumping to supervisor mode, the runner is the guest OS
+                        *runner = Runner::OS;
+
+                        VirtCsr::set_mstatus_field(
+                            &mut self.csr.mstatus,
+                            mstatus::MPRV_OFFSET,
+                            mstatus::MPRV_FILTER,
+                            0,
+                        );
+                    }
+                    0 => {
+                        log::debug!("mret to u-mode with MPP");
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         *runner = Runner::OS;
 
@@ -244,7 +256,7 @@ impl VirtContext {
                     }
                     _ => {
                         panic!(
-                            "MRET is not going to M/S mode: {} with MPP {}",
+                            "MRET is not going to M/S/U mode: {} with MPP {}",
                             self.csr.mstatus,
                             ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER)
                         );
