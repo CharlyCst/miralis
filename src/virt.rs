@@ -68,9 +68,9 @@ impl VirtContext {
         self.copy_simple_regs_from(other);
         self.copy_csr_regs_from(other);
 
-        self.csr.mtvec = old_mtvec; // Do not change mtvec
-        self.csr.pmp_addr[0] = old_pmp_addr0; // Do not change pmps
-        self.csr.pmp_cfg[0] = old_pmp_cfg0; // Do not change pmps
+        self.csr.mtvec = old_mtvec; // Do not change mtvec : contains mirage trap_handler
+        self.csr.pmp_addr[0] = old_pmp_addr0; // Do not change pmps : contains mirage pmp configuration
+        self.csr.pmp_cfg[0] = old_pmp_cfg0; // Do not change pmps : contains mirage pmp configuration
         self.csr.mscratch = old_mscratch; // Do not change mscratch : contains address to virtual context
     }
 }
