@@ -62,14 +62,6 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    fn read_pmpcfg(idx: usize) -> usize {
-        todo!()
-    }
-
-    fn read_pmpaddr(idx: usize) -> usize {
-        todo!()
-    }
-
     fn read_mtvec() -> usize {
         todo!()
     }

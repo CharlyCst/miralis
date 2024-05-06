@@ -39,32 +39,6 @@ impl Architecture for MetalArch {
         return mstatus;
     }
 
-    fn read_pmpcfg(idx: usize) -> usize {
-        let pmpcfg: usize;
-        match idx {
-            0 => unsafe {
-                asm!(
-                        "csrr {x}, pmpcfg0",
-                        x = out(reg) pmpcfg);
-            },
-            _ => todo!("pmpcfg{} not yet implemented", idx),
-        }
-        return pmpcfg;
-    }
-
-    fn read_pmpaddr(idx: usize) -> usize {
-        let pmpaddr: usize;
-        match idx {
-            0 => unsafe {
-                asm!(
-                        "csrr {x}, pmpaddr0",
-                        x = out(reg) pmpaddr);
-            },
-            _ => todo!("pmpaddr{} not yet implemented", idx),
-        }
-        return pmpaddr;
-    }
-
     unsafe fn set_mpp(mode: Mode) {
         const MPP_MASK: usize = 0b11_usize << 11;
         let value = mode.to_bits() << 11;
@@ -255,7 +229,6 @@ _enter_virt_firmware:
     ld x1,(8+8*32)(x31)       // Read payload PC
     csrw mepc,x1              // Restore payload PC in mepc
 
-    // TODO : load all CSRs from context 
     ld x1,(8+8*32+8+8*5+8*0)(x31)      
     csrw misa,x1 
     ld x1,(8+8*32+8+8*5+8*1)(x31)      
@@ -328,7 +301,6 @@ _enter_virt_firmware:
     ld x1,(8+8*32+8+8*5+8*33+8*16+8*0)(x31)
     csrw pmpaddr0, x1
 
-    // TODO: load payload misa
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
     ld x3,(8+8*3)(x31)
@@ -407,9 +379,6 @@ _raw_trap_handler:
     sd x30,(8+8*30)(x31)
     csrr x30, mscratch    // Restore x31 into x30 from mscratch
     sd x30,(8+8*31)(x31)  // Save x31 (whose value is stored in x30)
-
-    // TODO: restore host misa
-
     
     csrr x30, misa           
     sd x30, (8+8*32+8+8*5+8*0)(x31)  

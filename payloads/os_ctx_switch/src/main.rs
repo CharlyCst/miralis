@@ -15,55 +15,53 @@ fn main() -> ! {
     // Check values                     : firmware
 
     let mut t6: usize;
-    let mut scause: usize;
+    let mut sscratch: usize;
+    let mut mstatus: usize;
     unsafe {
         let os: usize = _raw_os as usize;
         let trap: usize = _raw_trap_handler as usize;
-        let fake: usize = _raw_fake_trap_handler as usize;
         // Let's rise an exception breakpoint directly
 
         let value = 0b1 << 11;
 
         asm!(
-            "csrw mtvec, {3}",   // Write mtvec with fake trap handler
+           // "csrw mtvec, {3}",   // Write mtvec with fake trap handler
 
-            "ebreak",   //Jump to fake trap handler
+            //"ebreak",   //Jump to fake trap handler
 
-            "addi t4, t4, 20",
+            "auipc t4, 0", //0
+            "addi t4, t4, 24", //4
             "csrw mtvec, {1}",   // Write mtvec with trap handler
             "csrw mstatus, {2}", // Write MPP of mstatus to S-mode
             "csrw mepc, {0}",   // Write MEPC
 
             "mret",            // Jump to OS
 
-            "csrr {4},scause ",
+            "csrr {3}, sscratch ",
+            "csrr {4}, mstatus ",
 
             in(reg) os,
             in(reg) trap,
             in(reg) value,
-            in(reg) fake,
-            out(reg) scause,
+            out(reg) sscratch,
+            out(reg) mstatus,
             out("t6") t6,
         );
     }
 
     assert_eq!(t6, 0x42, "OS did not properly update the value in t6");
-    assert_eq!(scause, 0x42, "OS did not properly update the value in t6");
+    assert_eq!(
+        sscratch, 0x42,
+        "OS did not properly update the value in sscratch"
+    );
+    assert_eq!(
+        (mstatus >> 11) & 0b11,
+        0b01,
+        "OS did not properly update the value in t6"
+    );
 
     success();
 }
-
-global_asm!(
-    r#"
-.text
-.align 4
-.global _raw_fake_trap_handler
-_raw_fake_trap_handler:
-    csrr t4, mepc  // Read EPC
-    addi t4, t4, 4 // Increment return pointer
-    jr t4
-"#,
-);
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
 global_asm!(
@@ -84,7 +82,7 @@ global_asm!(
 .global _raw_os
 _raw_os:
     li t6, 0x42    // Store a secret value into t6 before jumping to firmware
-    csrw scause, t6     
+    csrw sscratch, t6     
     ebreak  
 "#,
 );
