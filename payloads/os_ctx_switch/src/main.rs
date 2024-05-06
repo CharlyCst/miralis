@@ -20,17 +20,12 @@ fn main() -> ! {
     unsafe {
         let os: usize = _raw_os as usize;
         let trap: usize = _raw_trap_handler as usize;
-        // Let's rise an exception breakpoint directly
 
         let value = 0b1 << 11;
 
         asm!(
-           // "csrw mtvec, {3}",   // Write mtvec with fake trap handler
-
-            //"ebreak",   //Jump to fake trap handler
-
-            "auipc t4, 0", //0
-            "addi t4, t4, 24", //4
+            "auipc t4, 0",
+            "addi t4, t4, 24",
             "csrw mtvec, {1}",   // Write mtvec with trap handler
             "csrw mstatus, {2}", // Write MPP of mstatus to S-mode
             "csrw mepc, {0}",   // Write MEPC
@@ -57,7 +52,7 @@ fn main() -> ! {
     assert_eq!(
         (mstatus >> 11) & 0b11,
         0b01,
-        "OS did not properly update the value in t6"
+        "Check that mstatus MPP is still in S-mode"
     );
 
     success();
@@ -82,7 +77,7 @@ global_asm!(
 .global _raw_os
 _raw_os:
     li t6, 0x42    // Store a secret value into t6 before jumping to firmware
-    csrw sscratch, t6     
+    csrw sscratch, t6     // Store a secret value into sscratch before jumping to firmware
     ebreak  
 "#,
 );

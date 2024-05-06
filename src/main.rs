@@ -158,7 +158,6 @@ fn emulate_and_setup_trap_return(
     mirage_ctx: &mut VirtContext,
     guest_ctx: &mut VirtContext,
 ) {
-
     guest_ctx.trap_info = temp_ctx.trap_info.clone(); // Copy the trap information from the hardware context
     match *runner {
         Runner::Firmware => guest_ctx.handle_payload_trap(runner), // Firmware trap needs to be emualted
@@ -179,7 +178,6 @@ fn emulate_and_setup_trap_return(
             // The execution must continue into the OS
             mirage_ctx.copy_csr_regs_from(temp_ctx); // Mirage context needs to be saved
             temp_ctx.complete_copy_from(guest_ctx); // The whole guest goes into hardware for OS execution
-
         }
     }
 }
