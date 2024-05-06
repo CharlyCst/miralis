@@ -39,28 +39,24 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
-    let mut temp_ctx = VirtContext::new(hart_id);
+    let mut temp_ctx = VirtContext::new(hart_id); // Virtual context used to copy from and to hardware
 
-    let mut guest_ctx = VirtContext::new(hart_id);
-    let mut mirage_ctx = VirtContext::new(hart_id);
-    let mut runner = Runner::Firmware;
+    let mut guest_ctx = VirtContext::new(hart_id); // Virtual context of the guest : Virtualized Firmware and Guest OS
+    let mut mirage_ctx = VirtContext::new(hart_id); // Virtual context of Mirage
+    let mut runner = Runner::Firmware; // The runner indicates who is running on the hardware
 
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
-        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR);
-        Arch::write_pmpaddr(0, usize::MAX);
+        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR); // TODO: I do not think these writes are working
+        Arch::write_pmpaddr(0, usize::MAX); // TODO: I do not think these writes are working
 
         // Configure misa to execute with expected features
-        Arch::write_misa(Arch::read_misa() & !misa::DISABLED);
-
-        // TODO: I do not think these writes are working
+        Arch::write_misa(Arch::read_misa() & !misa::DISABLED); // TODO: I do not think these writes are working
 
         //Set the mirage context to the correct configuration
         mirage_ctx.set(Csr::Mstatus, Arch::read_mstatus());
-        //mirage_ctx.set(Csr::Pmpcfg(0), Arch::read_pmpcfg(0));
         mirage_ctx.csr.pmp_cfg[0] = pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR;
-        //mirage_ctx.set(Csr::Pmpaddr(0), Arch::read_pmpaddr(0));
         mirage_ctx.csr.pmp_addr[0] = usize::MAX;
 
         mirage_ctx.set(Csr::Misa, Arch::read_misa());
@@ -77,8 +73,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::trace!("  mirage: {:x?}", mirage_ctx);
     log::trace!("  temp: {:x?}", temp_ctx);
 
-    (&mut temp_ctx).copy_csr_regs_from(&mirage_ctx);
-    (&mut temp_ctx).copy_simple_regs_from(&guest_ctx);
+    (&mut temp_ctx).copy_csr_regs_from(&mirage_ctx); // Copy the configuration registers from mirage
+    (&mut temp_ctx).copy_simple_regs_from(&guest_ctx); // Copy the payload context from guest
 
     log::trace!("  guest: {:x?}", guest_ctx);
     log::trace!("  mirage: {:x?}", mirage_ctx);
@@ -97,7 +93,6 @@ fn main_loop(
 
     loop {
         unsafe {
-            log::trace!("ENTERING FIRMWARE");
             Arch::enter_virt_firmware(&mut temp_ctx);
             handle_trap(
                 &mut temp_ctx,
@@ -106,7 +101,6 @@ fn main_loop(
                 max_exit,
                 runner,
             );
-            log::trace!("temp post trap : {:x?}", &temp_ctx);
         }
     }
 }
@@ -137,6 +131,7 @@ fn handle_trap(
 
     match *runner {
         Runner::Firmware => {
+            // Firmware trap : can come from emulated firmware or mirage (emulation code could trap)
             if temp_ctx.trap_info.from_mmode() {
                 //Trap comes from M mode: mirage
                 handle_mirage_trap(temp_ctx);
@@ -147,12 +142,10 @@ fn handle_trap(
             }
         }
         Runner::OS => {
-            log::debug!("trap is from OS");
             // Trap comes from the guest OS : need to context switch and jump into the trap handler of the guest firmware
-            guest_ctx.complete_copy_from(temp_ctx);
-            temp_ctx.copy_csr_regs_from(mirage_ctx);
-
-            log::trace!("  guest: {:x?}", guest_ctx);
+            // This means the OS requires M-mode priviledges : these must be handled by the virtualized firmware
+            guest_ctx.complete_copy_from(temp_ctx); // The context in the hardware was the guest : copy into the guest_ctx
+            temp_ctx.copy_csr_regs_from(mirage_ctx); // Once the guest is saved, the mirage context for emulation is setup
 
             emulate_and_setup_trap_return(runner, temp_ctx, mirage_ctx, guest_ctx);
         }
@@ -165,49 +158,35 @@ fn emulate_and_setup_trap_return(
     mirage_ctx: &mut VirtContext,
     guest_ctx: &mut VirtContext,
 ) {
-    log::trace!("Function entered");
 
-    guest_ctx.trap_info = temp_ctx.trap_info.clone();
-    log::trace!("  guest: {:x?}", guest_ctx);
+    guest_ctx.trap_info = temp_ctx.trap_info.clone(); // Copy the trap information from the hardware context
     match *runner {
-        Runner::Firmware => guest_ctx.handle_payload_trap(runner),
+        Runner::Firmware => guest_ctx.handle_payload_trap(runner), // Firmware trap needs to be emualted
         Runner::OS => {
-            log::debug!("Jump into firmware trap_handler");
-            guest_ctx.emulate_jump_trap_handler(runner);
+            guest_ctx.emulate_jump_trap_handler(runner); // We must only forward the trap form the OS into the firmware
             guest_ctx.nb_exits += 1;
         }
     }
 
     temp_ctx.nb_exits = guest_ctx.nb_exits;
 
-    log::trace!("trap handled");
-
     match *runner {
         Runner::Firmware => {
-            log::debug!("post trap : firmware");
-            temp_ctx.copy_simple_regs_from(guest_ctx);
+            // The execution must continue into the Firmware
+            temp_ctx.copy_simple_regs_from(guest_ctx); // Mirage context is in temp, only thing needed is guest context
         }
         Runner::OS => {
-            log::debug!("post trap : OS");
-            mirage_ctx.copy_csr_regs_from(temp_ctx);
-            temp_ctx.complete_copy_from(guest_ctx);
+            // The execution must continue into the OS
+            mirage_ctx.copy_csr_regs_from(temp_ctx); // Mirage context needs to be saved
+            temp_ctx.complete_copy_from(guest_ctx); // The whole guest goes into hardware for OS execution
 
-            log::trace!("  guest: {:x?}", guest_ctx);
-            log::trace!("  mirage: {:x?}", mirage_ctx);
-            log::trace!("  temp: {:x?}", temp_ctx);
         }
     }
-
-    log::trace!("guest post trap handle: {:x?}", guest_ctx);
-    log::debug!("mstatus post copy : 0x{:x}", temp_ctx.csr.mstatus);
-
-    log::trace!("function finished");
 }
 
 /// Handle the trap coming from mirage
 fn handle_mirage_trap(_ctx: &mut VirtContext) {
-    log::trace!("Mirage trap handler entered");
-    todo!();
+    todo!("Mirage trap handler entered");
 }
 
 #[panic_handler]
