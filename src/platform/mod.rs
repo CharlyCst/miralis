@@ -4,8 +4,7 @@ use core::fmt;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
-use crate::config::is_enabled;
-use crate::logger;
+use crate::{config, logger};
 
 /// Export the current platform.
 /// For now, only QEMU's Virt board is supported
@@ -26,7 +25,7 @@ pub trait Platform {
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;
 
-    const HAS_S_MODE: bool = is_enabled!("MIRAGE_PLATFORM_S_MODE");
+    const HAS_S_MODE: bool = config::HAS_S_MODE;
 }
 
 pub fn init() {

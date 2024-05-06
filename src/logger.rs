@@ -1,10 +1,10 @@
 //! Structured logging implementation
 
-use core::option_env;
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use log::{Level, LevelFilter, Metadata, Record};
 
+use crate::config;
 use crate::platform::{Plat, Platform};
 
 // ————————————————————————————————— Logger ————————————————————————————————— //
@@ -37,7 +37,7 @@ impl Logger {
     const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Info;
 
     const fn new_from_env() -> Self {
-        let log_level = match option_env!("MIRAGE_LOG_LEVEL") {
+        let log_level = match config::LOG_LEVEL {
             Some(s) => match s.as_bytes() {
                 b"trace" => LevelFilter::Trace,
                 b"debug" => LevelFilter::Debug,
