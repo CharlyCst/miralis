@@ -1,6 +1,6 @@
 //! Debug utils for Mirage
 
-use crate::{_stack_bottom, _stack_top};
+use crate::{_stack_bottom, _stack_top, config};
 
 // ——————————————————————————— Max Payload Exits ———————————————————————————— //
 
@@ -12,7 +12,7 @@ use crate::{_stack_bottom, _stack_top};
 /// https://github.com/rust-lang/rust/pull/99322 gets merged we can convert this function to a
 /// constant.
 pub fn get_max_payload_exits() -> Option<usize> {
-    match option_env!("MIRAGE_DEBUG_MAX_PAYLOAD_EXITS") {
+    match config::MAX_PAYLOAD_EXIT {
         Some(env_var) => usize::from_str_radix(env_var, 10).ok(),
         None => None,
     }
