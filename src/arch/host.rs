@@ -58,6 +58,10 @@ impl Architecture for HostArch {
         todo!()
     }
 
+    unsafe fn enter_virt_os(_ctx: &mut crate::virt::VirtContext) {
+        todo!()
+    }
+
     unsafe fn get_raw_faulting_instr(_trap_info: &super::TrapInfo) -> usize {
         todo!()
     }

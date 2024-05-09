@@ -47,32 +47,6 @@ impl VirtContext {
             },
         }
     }
-
-    pub fn copy_simple_regs_from(&mut self, other: &VirtContext) {
-        for r in 0..32 {
-            self.regs[r] = (*other).regs[r];
-        }
-        self.pc = (*other).pc;
-    }
-
-    pub fn copy_csr_regs_from(&mut self, other: &VirtContext) {
-        self.csr = other.csr.clone();
-    }
-
-    pub fn complete_copy_from(&mut self, other: &VirtContext) {
-        let old_mtvec = self.csr.mtvec;
-        let old_pmp_addr0 = self.csr.pmp_addr[0];
-        let old_pmp_cfg0 = self.csr.pmp_cfg[0];
-        let old_mscratch = self.csr.mscratch;
-
-        self.copy_simple_regs_from(other);
-        self.copy_csr_regs_from(other);
-
-        self.csr.mtvec = old_mtvec; // Do not change mtvec : contains mirage trap_handler
-        self.csr.pmp_addr[0] = old_pmp_addr0; // Do not change pmps : contains mirage pmp configuration
-        self.csr.pmp_cfg[0] = old_pmp_cfg0; // Do not change pmps : contains mirage pmp configuration
-        self.csr.mscratch = old_mscratch; // Do not change mscratch : contains address to virtual context
-    }
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
@@ -244,7 +218,7 @@ impl VirtContext {
                     }
                     0 => {
                         log::debug!("mret to u-mode with MPP");
-                        // Mret is jumping to supervisor mode, the runner is the guest OS
+                        // Mret is jumping to user mode, the runner is the guest OS
                         *runner = Runner::OS;
 
                         VirtCsr::set_mstatus_field(
@@ -305,9 +279,9 @@ impl VirtContext {
         self.csr.mip = self.trap_info.mip;
         self.csr.mepc = self.trap_info.mepc;
 
-        // Modify mstatus: previous privilege mode is Machine = 3
         match runner {
             Runner::Firmware => {
+                // Modify mstatus: previous privilege mode is machine = 3
                 VirtCsr::set_mstatus_field(
                     &mut self.csr.mstatus,
                     mstatus::MPP_OFFSET,
@@ -316,13 +290,7 @@ impl VirtContext {
                 );
             }
             Runner::OS => {
-                VirtCsr::set_mstatus_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MPP_OFFSET,
-                    mstatus::MPP_FILTER,
-                    0b01,
-                );
-                *runner = Runner::Firmware;
+                // No need to modify mstatus : MPP is correct
             }
         }
 
