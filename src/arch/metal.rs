@@ -123,7 +123,10 @@ impl Architecture for MetalArch {
         unsafe {
             write_mtvec(handler);
         }
-        log::debug!("enter_virt_firmware : mtvec check : {:x}", Self::read_mtvec());
+        log::debug!(
+            "enter_virt_firmware : mtvec check : {:x}",
+            Self::read_mtvec()
+        );
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
@@ -214,7 +217,7 @@ impl Architecture for MetalArch {
             "ld x3, (8*7)(sp)",
             "csrw mip, x3",
             "ld x3, (8*8)(sp)",
-            "csrw mscratch, x3", 
+            "csrw mscratch, x3",
             "ld x3, (8*9)(sp)",
             "csrw mstatus, x3",
             "ld x3, (8*10)(sp)",
@@ -262,7 +265,6 @@ impl Architecture for MetalArch {
         unsafe {
             write_mtvec(handler);
         }
-
     }
 
     fn read_mtvec() -> usize {

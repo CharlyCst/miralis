@@ -72,7 +72,7 @@ fn main_loop(mut ctx: VirtContext, runner: &mut Runner) -> ! {
                 Runner::OS => Arch::enter_virt_os(&mut ctx),
             }
             handle_trap(&mut ctx, max_exit, runner);
-            log::trace!("ctx : {:x?}", ctx );
+            log::trace!("ctx : {:x?}", ctx);
         }
     }
 }
