@@ -166,6 +166,12 @@ impl Architecture for MetalArch {
             out("x29") _,
             out("x30") _,
         );
+
+        // TODO : mirage trap handler should go here
+        let handler = _raw_trap_handler_firmware as usize;
+        unsafe {
+            write_mtvec(handler);
+        }
     }
 
     unsafe fn enter_virt_os(ctx: &mut VirtContext) {
@@ -251,6 +257,7 @@ impl Architecture for MetalArch {
             out("x30") _,
         );
 
+        // TODO : mirage trap handler should go here
         let handler = _raw_trap_handler_firmware as usize;
         unsafe {
             write_mtvec(handler);
