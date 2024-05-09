@@ -64,6 +64,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 fn main_loop(mut ctx: VirtContext, runner: &mut Runner) -> ! {
     let max_exit = debug::get_max_payload_exits();
 
+    log::debug!("starting loop");
     loop {
         unsafe {
             match *runner {
@@ -71,6 +72,7 @@ fn main_loop(mut ctx: VirtContext, runner: &mut Runner) -> ! {
                 Runner::OS => Arch::enter_virt_os(&mut ctx),
             }
             handle_trap(&mut ctx, max_exit, runner);
+            log::trace!("ctx : {:x?}", ctx );
         }
     }
 }
@@ -108,17 +110,19 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>, runner: &mut Runn
 }
 
 fn handle_firmware_trap(ctx: &mut VirtContext, runner: &mut Runner) {
+    log::debug!("handle_firmware_trap");
     ctx.handle_payload_trap(runner);
 }
 
 fn handle_os_trap(ctx: &mut VirtContext, runner: &mut Runner) {
+    log::debug!("handle_os_trap");
     ctx.nb_exits += 1;
     ctx.emulate_jump_trap_handler(runner);
     *runner = Runner::Firmware;
 }
 
 /// Handle the trap coming from mirage
-fn handle_mirage_trap(_ctx: &mut VirtContext, runner: &mut Runner) {
+fn handle_mirage_trap(_ctx: &mut VirtContext, _runner: &mut Runner) {
     todo!("Mirage trap handler entered");
 }
 

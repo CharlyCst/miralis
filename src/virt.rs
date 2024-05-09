@@ -230,7 +230,7 @@ impl VirtContext {
                     }
                     _ => {
                         panic!(
-                            "MRET is not going to M/S/U mode: {} with MPP {}",
+                            "MRET is not going to M/S/U mode: {} with MPP {:x}",
                             self.csr.mstatus,
                             ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER)
                         );

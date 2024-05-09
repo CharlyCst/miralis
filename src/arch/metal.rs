@@ -118,10 +118,12 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn enter_virt_firmware(ctx: &mut VirtContext) {
+        log::debug!("enter_virt_firmware");
         let handler = _raw_trap_handler_firmware as usize;
         unsafe {
             write_mtvec(handler);
         }
+        log::debug!("enter_virt_firmware : mtvec check : {:x}", Self::read_mtvec());
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
@@ -167,23 +169,58 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn enter_virt_os(ctx: &mut VirtContext) {
+        log::debug!("enter_virt_os");
         let handler = _raw_trap_handler_os as usize;
         unsafe {
             write_mtvec(handler);
         }
+        log::debug!("enter_virt_os : mtvec check : {:x}", Self::read_mtvec());
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
             "sd x4, (8*2)(sp)",
             "sd x8, (8*3)(sp)",
             "sd x9, (8*4)(sp)",
+            // We need to save some CSR
+            "csrr x3, mtvec",
+            "sd x3, (8*5)(sp)",
+            "csrr x3, mie",
+            "sd x3, (8*6)(sp)",
+            "csrr x3, mip ",
+            "sd x3, (8*7)(sp)",
+            "csrr x3, mscratch",
+            "sd x3, (8*8)(sp)",
+            "csrr x3, mstatus ",
+            "sd x3, (8*9)(sp)",
+            "csrr x3, medeleg ",
+            "sd x3, (8*10)(sp)",
+            "csrr x3, mideleg ",
+            "sd x3, (8*11)(sp)",
+
             // Jump into context switch code
             "jal x30, _enter_virt_os",
+
+            //Restore CSR
+            "ld x3, (8*5)(sp)",
+            "csrw mtvec, x3",
+            "ld x3, (8*6)(sp)",
+            "csrw mie, x3",
+            "ld x3, (8*7)(sp)",
+            "csrw mip, x3",
+            "ld x3, (8*8)(sp)",
+            "csrw mscratch, x3", 
+            "ld x3, (8*9)(sp)",
+            "csrw mstatus, x3",
+            "ld x3, (8*10)(sp)",
+            "csrw medeleg, x3",
+            "ld x3, (8*11)(sp)",
+            "csrw mideleg, x3",
             // Restore registers
             "ld x3, (8*1)(sp)",
             "ld x4, (8*2)(sp)",
             "ld x8, (8*3)(sp)",
             "ld x9, (8*4)(sp)",
+
             // Clobber all other registers, so that the compiler automatically
             // saves and restores the ones it needs
             inout("x31") ctx => _,
@@ -213,6 +250,12 @@ impl Architecture for MetalArch {
             out("x29") _,
             out("x30") _,
         );
+
+        let handler = _raw_trap_handler_firmware as usize;
+        unsafe {
+            write_mtvec(handler);
+        }
+
     }
 
     fn read_mtvec() -> usize {
@@ -336,27 +379,27 @@ _enter_virt_os:
     csrw mie,x1 
     ld x1,(8+8*32+8+8*5+8*2)(x31)      
     csrw mip,x1 
-    ld x1,(8+8*32+8+8*5+8*3)(x31)      
-    csrw mtvec,x1 
-    ld x1,(8+8*32+8+8*5+8*4)(x31)      
+    //ld x1,(8+8*32+8+8*5+8*3)(x31)      
+    // csrw mtvec,x1 
+    //ld x1,(8+8*32+8+8*5+8*4)(x31)      
    // csrw mvendorid,x1     READ-ONLY
-    ld x1,(8+8*32+8+8*5+8*5)(x31)      
+    //ld x1,(8+8*32+8+8*5+8*5)(x31)      
    // csrw marchid,x1       READ-ONLY
-    ld x1,(8+8*32+8+8*5+8*6)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*6)(x31)      
    // csrw mimpid,x1        READ-ONLY
     ld x1,(8+8*32+8+8*5+8*7)(x31)      
     csrw mcycle,x1 
     ld x1,(8+8*32+8+8*5+8*8)(x31)      
     csrw minstret,x1 
-    ld x1,(8+8*32+8+8*5+8*9)(x31)      
+    //ld x1,(8+8*32+8+8*5+8*9)(x31)      
     //csrw mscratch,x1 
-    ld x1,(8+8*32+8+8*5+8*10)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*10)(x31)      
   //  csrw mcountinhibit,x1 
     ld x1,(8+8*32+8+8*5+8*11)(x31)      
     csrw mcounteren,x1 
-    ld x1,(8+8*32+8+8*5+8*12)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*12)(x31)      
   //  csrw menvcfg,x1 
-    ld x1,(8+8*32+8+8*5+8*13)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*13)(x31)      
   //  csrw mseccfg,x1 
     ld x1,(8+8*32+8+8*5+8*14)(x31)      
     csrw mcause,x1 
@@ -366,9 +409,9 @@ _enter_virt_os:
     csrw mtval,x1
     ld x1,(8+8*32+8+8*5+8*17)(x31)      
     csrw mstatus,x1
-    ld x1,(8+8*32+8+8*5+8*18)(x31)      
+  //  ld x1,(8+8*32+8+8*5+8*18)(x31)      
   //  csrw mtinst,x1
-    ld x1,(8+8*32+8+8*5+8*19)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*19)(x31)      
   //  csrw mconfigptr,x1
     ld x1,(8+8*32+8+8*5+8*20)(x31)      
     csrw sie,x1
@@ -376,7 +419,7 @@ _enter_virt_os:
     csrw stvec,x1
     ld x1,(8+8*32+8+8*5+8*22)(x31)      
     csrw scounteren,x1
-    ld x1,(8+8*32+8+8*5+8*23)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*23)(x31)      
    // csrw senvcfg,x1
     ld x1,(8+8*32+8+8*5+8*24)(x31)      
     csrw sscratch,x1
@@ -390,18 +433,13 @@ _enter_virt_os:
     csrw sip,x1
     ld x1,(8+8*32+8+8*5+8*29)(x31)      
     csrw satp,x1
-    ld x1,(8+8*32+8+8*5+8*30)(x31)      
+   // ld x1,(8+8*32+8+8*5+8*30)(x31)      
    // csrw scontext,x1
     ld x1,(8+8*32+8+8*5+8*31)(x31)      
     csrw medeleg,x1
     ld x1,(8+8*32+8+8*5+8*32)(x31)      
     csrw mideleg,x1
     
-    ld x1,(8+8*32+8+8*5+8*33+8*0)(x31)
-    csrw pmpcfg0, x1
-    ld x1,(8+8*32+8+8*5+8*33+8*16+8*0)(x31)
-    csrw pmpaddr0, x1
-
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
     ld x3,(8+8*3)(x31)
@@ -548,8 +586,8 @@ _raw_trap_handler_os:
     sd x30, (8+8*32+8+8*5+8*1)(x31)  
     csrr x30, mip   
     sd x30, (8+8*32+8+8*5+8*2)(x31) 
-    csrr x30, mtvec   
-    sd x30, (8+8*32+8+8*5+8*3)(x31) 
+    //csrr x30, mtvec   
+    //sd x30, (8+8*32+8+8*5+8*3)(x31) 
     csrr x30, mvendorid   
     sd x30, (8+8*32+8+8*5+8*4)(x31)
     csrr x30, marchid   
@@ -560,8 +598,8 @@ _raw_trap_handler_os:
     sd x30, (8+8*32+8+8*5+8*7)(x31)
     csrr x30, minstret   
     sd x30, (8+8*32+8+8*5+8*8)(x31)
-    csrr x30, mscratch   
-    sd x30, (8+8*32+8+8*5+8*9)(x31)
+    //csrr x30, mscratch   
+    //sd x30, (8+8*32+8+8*5+8*9)(x31)
    // csrr x30, mcountinhibit  TODO 
    // sd x30, (8+8*32+8+8*5+8*10)(x31)
     csrr x30, mcounteren   
@@ -608,11 +646,6 @@ _raw_trap_handler_os:
     sd x30, (8+8*32+8+8*5+8*31)(x31)
     csrr x30, mideleg   
     sd x30, (8+8*32+8+8*5+8*32)(x31)
-    
-    csrr x30, pmpcfg0   
-    sd x30, (8+8*32+8+8*5+8*33+8*0)(x31)
-    csrr x30, pmpaddr0   
-    sd x30, (8+8*32+8+8*5+8*33+8*16+8*0)(x31)
 
     csrr x30, mepc              // Read payload PC
     sd x30, (8+8*32)(x31)       // Save the PC
