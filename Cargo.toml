@@ -29,7 +29,6 @@ members = [
     "payloads/mepc",
     "payloads/mcause",
     "payloads/mret",
-    "payloads/misa",
     "payloads/os_ctx_switch",
 
     # Crates
