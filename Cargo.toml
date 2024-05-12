@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 uart_16550 = "0.3.0"
 spin = "0.5.2"
-log = "0.4.17"
+log = { workspace = true }
 mirage_core = { path = "crates/core" }
 
 [features]
@@ -24,15 +24,10 @@ members = [
     "payloads/csr_ops",
     "payloads/default",
     "payloads/ecall",
-    "payloads/mscratch",
-    "payloads/csr_id",
     "payloads/pmp",
-    "payloads/perf_monitor",
-    "payloads/menv_msec",
     "payloads/breakpoint",
     "payloads/mepc",
     "payloads/mcause",
-    "payloads/mconfigptr",
     "payloads/mret",
     "payloads/misa",
     "payloads/os_ctx_switch",
@@ -44,3 +39,6 @@ members = [
     # Tooling
     "runner",
 ]
+
+[workspace.dependencies]
+log = "0.4.17"

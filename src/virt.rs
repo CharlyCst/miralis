@@ -325,6 +325,34 @@ impl VirtContext {
                         unsafe { debug::log_stack_usage() };
                         Plat::exit_success();
                     }
+                    abi::MIRAGE_LOG_FID => {
+                        let log_level = self.get(Register::X10);
+                        let addr = self.get(Register::X11);
+                        let size = self.get(Register::X12);
+
+                        // TODO: add proper validation that this memory range belongs to the
+                        // payload
+                        let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, size) };
+                        let message = match core::str::from_utf8(bytes) {
+                            Ok(msg) => msg,
+                            Err(_) => "note: invalid message, not utf-8",
+                        };
+                        match log_level {
+                            abi::log::MIRAGE_ERROR => log::error!("> {}", message),
+                            abi::log::MIRAGE_WARN => log::warn!("> {}", message),
+                            abi::log::MIRAGE_INFO => log::info!("> {}", message),
+                            abi::log::MIRAGE_DEBUG => log::debug!("> {}", message),
+                            abi::log::MIRAGE_TRACE => log::trace!("> {}", message),
+                            _ => {
+                                log::info!("Mirage log SBI call with invalid level: {}", log_level)
+                            }
+                        }
+
+                        // For now we don't return error code or the lenght written
+                        self.set(Register::X10, 0);
+                        self.set(Register::X11, 0);
+                        self.pc += 4;
+                    }
                     _ => panic!("Invalid Mirage FID: 0x{:x}", fid),
                 }
             }

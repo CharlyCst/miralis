@@ -116,16 +116,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
-name = "csr_id"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
-
-[[package]]
 name = "csr_ops"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mirage_abi",
 ]
 
@@ -133,6 +127,7 @@ dependencies = [
 name = "default"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mirage_abi",
 ]
 
@@ -185,24 +180,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "mconfigptr"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
-
-[[package]]
-name = "menv_msec"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
 
 [[package]]
 name = "mepc"
@@ -225,19 +206,13 @@ dependencies = [
 name = "mirage_abi"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mirage_core",
 ]
 
 [[package]]
 name = "mirage_core"
 version = "0.1.0"
-
-[[package]]
-name = "misa"
-version = "0.1.0"
-dependencies = [
- "mirage_abi",
-]
 
 [[package]]
 name = "mret"
