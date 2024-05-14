@@ -4,9 +4,8 @@
 pub mod csrs;
 pub mod logger;
 
-pub use log; 
-
 use csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
+pub use log;
 
 //The following three constants assume 16 PMP entries.
 pub const PMP_ENTRIES: usize = 16;
@@ -14,7 +13,7 @@ pub const PMP_CFG_ENTRIES: usize = 2;
 //The number of PMP entries used to protect for instance memory mapped CSRs related to interrupts,
 //in this case, 1 entry for SiFive CLINT (the highest priority entry)
 //pub const FROZEN_PMP_ENTRIES: usize = 1;
-pub const FROZEN_PMP_ENTRIES: usize = 0; 
+pub const FROZEN_PMP_ENTRIES: usize = 0;
 
 const PMP_CFG: usize = 0;
 const PMP_ADDR: usize = 1;
@@ -134,7 +133,9 @@ pub fn pmp_write_compute(
 
     if (region_size & (region_size - 1)) == 0 {
         log_2_region_size = compute_log2(region_size);
-        if (log_2_region_size > 0) && ((region_addr >> 2) & ((1 << (log_2_region_size - 2)) - 1) == 0) {
+        if (log_2_region_size > 0)
+            && ((region_addr >> 2) & ((1 << (log_2_region_size - 2)) - 1) == 0)
+        {
             pmp_write_response.addressing_mode = PMPAddressingMode::NAPOT;
         }
     }

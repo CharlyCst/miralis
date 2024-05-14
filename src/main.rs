@@ -16,11 +16,13 @@ mod logger;
 mod platform;
 mod virt;
 
+use core::arch::asm;
+
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
-use crate::virt::{RegisterContext, Runner, VirtContext, VirtCsr};
+use crate::virt::{RegisterContext, Runner, VirtContext};
 
 // Defined in the linker script
 extern "C" {
@@ -45,13 +47,30 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
-        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR); 
-        Arch::write_pmpaddr(0, usize::MAX); 
+        // Setup 4 PMPs for mirage
+        Arch::write_pmpcfg(
+            0,
+            (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR)
+                | (pmpcfg::TOR) << 8
+                | 0x0 << 16
+                | 0x0 << 24,
+        );
+        // 0 to 0x80000000          : empty
+        // 0x80000000 to 0x80100000 : mirage
+        // 0x80100000 to MAX_USIZE  : free
+        Arch::write_pmpaddr(0, 0x80000000);
+        Arch::write_pmpaddr(1, 0x80100000);
+        Arch::write_pmpaddr(2, 0);
+        Arch::write_pmpaddr(3, 0);
+
+        Arch::write_pmpcfg(2, (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) << 56);
+        Arch::write_pmpaddr(Plat::get_nb_pmp() - 1, usize::MAX);
+
+        Arch::flush_with_sfence();
 
         // Configure misa to execute with expected features
         Arch::write_misa(Arch::read_misa() & !misa::DISABLED); // Misa is read-only in Qemu
 
-        // Setup 4 PMPs for mirage
         ctx.set_pmp_values(8, 4); // Give 8 PMPs to the firmware
 
         // Configure the payload context

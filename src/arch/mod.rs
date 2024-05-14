@@ -42,6 +42,7 @@ pub trait Architecture {
     unsafe fn ecall();
     unsafe fn enter_virt_firmware(ctx: &mut VirtContext);
     unsafe fn enter_virt_os(ctx: &mut VirtContext);
+    unsafe fn flush_with_sfence();
 
     /// Return the faulting instruction at the provided exception PC.
     ///

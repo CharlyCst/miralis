@@ -69,4 +69,8 @@ impl Architecture for HostArch {
     fn read_mtvec() -> usize {
         todo!()
     }
+    
+    unsafe fn flush_with_sfence() {
+        todo!()
+    }
 }

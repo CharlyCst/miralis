@@ -1,5 +1,7 @@
 //! Firmware Virtualisation
 
+use core::arch::asm;
+
 use mirage_core::abi;
 
 use crate::arch::{misa, mstatus, Arch, Architecture, Csr, MCause, Register, TrapInfo};
@@ -46,7 +48,7 @@ impl VirtContext {
         }
     }
 
-    pub fn set_pmp_values(&mut self, nbr_pmps: usize, pmp_offset: usize){
+    pub fn set_pmp_values(&mut self, nbr_pmps: usize, pmp_offset: usize) {
         self.pmp_offset = pmp_offset;
         self.nbr_pmps = nbr_pmps;
     }
@@ -148,16 +150,14 @@ impl VirtCsr {
     }
 
     pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize {
-
         if pmp_csr_idx == nbr_valid_pmps / 8 {
             // We are in the correct csr to filter out
-            let to_filter_out: usize = ((nbr_valid_pmps/8) + 1)*8 - nbr_valid_pmps; 
+            let to_filter_out: usize = ((nbr_valid_pmps / 8) + 1) * 8 - nbr_valid_pmps;
 
-            return !0b0 >> (to_filter_out*8);
+            return !0b0 >> (to_filter_out * 8);
         }
         return !0b0;
     }
-
 }
 
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
@@ -280,6 +280,12 @@ impl VirtContext {
 
                 // Jump back to payload
                 self.pc = self.csr.mepc;
+            }
+            Instr::Vfencevma => {
+                unsafe {
+                    Arch::flush_with_sfence();
+                    self.pc += 4;
+                }
             }
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
@@ -444,7 +450,8 @@ impl RegisterContext<Csr> for VirtContext {
                     // This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmp_cfg[pmp_cfg_idx] & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx,self.nbr_pmps)
+                self.csr.pmp_cfg[pmp_cfg_idx]
+                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nbr_pmps)
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= self.nbr_pmps {
@@ -645,7 +652,9 @@ impl RegisterContext<Csr> for VirtContext {
                     // This PMP is not emulated, ignore changes
                     return;
                 }
-                self.csr.pmp_cfg[pmp_cfg_idx] = Csr::PMP_CFG_LEGAL_MASK & value & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx,self.nbr_pmps);
+                self.csr.pmp_cfg[pmp_cfg_idx] = Csr::PMP_CFG_LEGAL_MASK
+                    & value
+                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nbr_pmps);
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= self.nbr_pmps {

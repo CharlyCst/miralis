@@ -47,6 +47,7 @@ pub enum Instr {
         uimm: usize,
     },
     Mret,
+    Vfencevma,
     Unknown,
 }
 
@@ -96,6 +97,7 @@ fn decode_system(raw: usize) -> Instr {
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
             0b001100000010 => Instr::Mret,
+            x if imm >> 4 == 0b0001001 => Instr::Vfencevma,
             _ => Instr::Unknown,
         };
     }
