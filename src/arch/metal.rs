@@ -178,6 +178,8 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn enter_virt_os(ctx: &mut VirtContext) {
+
+        
         log::debug!("enter_virt_os");
         let handler = _raw_trap_handler_os as usize;
         unsafe {

@@ -23,6 +23,8 @@ pub struct VirtContext {
     pub csr: VirtCsr,
     /// Number of virtual PMPs
     nbr_pmps: usize,
+    /// Offset to the PMPs
+    pmp_offset: usize,
     /// Hart ID
     hart_id: usize,
     /// Number of exists to Mirage
@@ -39,13 +41,14 @@ impl VirtContext {
             trap_info: Default::default(),
             nb_exits: 0,
             hart_id,
-            nbr_pmps: match Plat::get_nb_pmp() {
-                0 => 0,
-                16 => 0,
-                64 => 16,
-                _ => 0,
-            },
+            nbr_pmps: 0,
+            pmp_offset: 0,
         }
+    }
+
+    pub fn set_pmp_values(&mut self, nbr_pmps: usize, pmp_offset: usize){
+        self.pmp_offset = pmp_offset;
+        self.nbr_pmps = nbr_pmps;
     }
 }
 
@@ -143,6 +146,14 @@ impl VirtCsr {
         //Set field
         *csr = *csr | (value << offset);
     }
+
+    pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize { // TODO : filter out not valid csr values
+        if pmp_csr_idx < nbr_valid_pmps / 8 {
+            return !0b0;
+        }
+        return !0b0;
+    }
+
 }
 
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
@@ -429,7 +440,7 @@ impl RegisterContext<Csr> for VirtContext {
                     // This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmp_cfg[pmp_cfg_idx]
+                self.csr.pmp_cfg[pmp_cfg_idx] & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx,self.nbr_pmps)
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= self.nbr_pmps {
@@ -630,7 +641,7 @@ impl RegisterContext<Csr> for VirtContext {
                     // This PMP is not emulated, ignore changes
                     return;
                 }
-                self.csr.pmp_cfg[pmp_cfg_idx] = Csr::PMP_CFG_LEGAL_MASK & value;
+                self.csr.pmp_cfg[pmp_cfg_idx] = Csr::PMP_CFG_LEGAL_MASK & value & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx,self.nbr_pmps);
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= self.nbr_pmps {

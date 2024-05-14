@@ -45,11 +45,14 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
-        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR); // TODO: I do not think these writes are working
-        Arch::write_pmpaddr(0, usize::MAX); // TODO: I do not think these writes are working
+        Arch::write_pmpcfg(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR); 
+        Arch::write_pmpaddr(0, usize::MAX); 
 
         // Configure misa to execute with expected features
-        Arch::write_misa(Arch::read_misa() & !misa::DISABLED); // TODO: I do not think these writes are working
+        Arch::write_misa(Arch::read_misa() & !misa::DISABLED); // Misa is read-only in Qemu
+
+        // Setup 4 PMPs for mirage
+        ctx.set_pmp_values(8, 4); // Give 8 PMPs to the firmware
 
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
