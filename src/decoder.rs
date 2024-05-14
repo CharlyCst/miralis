@@ -102,7 +102,7 @@ fn decode_system(raw: usize) -> Instr {
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
             0b001100000010 => Instr::Mret,
-            _ if (imm & 0b111111111111) == 0b0001001000 => Instr::Vfencevma,
+            _ if (imm & 0b111111111111) == 0b000100100000 => Instr::Vfencevma,
             _ => Instr::Unknown,
         };
     }
