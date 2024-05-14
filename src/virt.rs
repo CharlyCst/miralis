@@ -147,9 +147,13 @@ impl VirtCsr {
         *csr = *csr | (value << offset);
     }
 
-    pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize { // TODO : filter out not valid csr values
-        if pmp_csr_idx < nbr_valid_pmps / 8 {
-            return !0b0;
+    pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize {
+
+        if pmp_csr_idx == nbr_valid_pmps / 8 {
+            // We are in the correct csr to filter out
+            let to_filter_out: usize = ((nbr_valid_pmps/8) + 1)*8 - nbr_valid_pmps; 
+
+            return !0b0 >> (to_filter_out*8);
         }
         return !0b0;
     }

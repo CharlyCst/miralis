@@ -20,7 +20,7 @@ use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
-use crate::virt::{RegisterContext, Runner, VirtContext};
+use crate::virt::{RegisterContext, Runner, VirtContext, VirtCsr};
 
 // Defined in the linker script
 extern "C" {

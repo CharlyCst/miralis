@@ -263,6 +263,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "riscv_pmp"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "mirage_core",
+]
+
+[[package]]
 name = "runner"
 version = "0.1.0"
 dependencies = [
