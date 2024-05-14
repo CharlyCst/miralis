@@ -91,13 +91,18 @@ fn decode_system(raw: usize) -> Instr {
     let rs1 = (raw >> 15) & 0b11111;
     let imm = (raw >> 20) & 0b111111111111;
 
+    log::debug!(
+        "raw instruction is 0b{:b}",
+        raw
+    );
+
     if func3 == 0b000 {
         return match imm {
             0b000000000000 => Instr::Ecall,
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
             0b001100000010 => Instr::Mret,
-            x if imm >> 4 == 0b0001001 => Instr::Vfencevma,
+            _ if (imm & 0b111111111111) == 0b0001001000 => Instr::Vfencevma,
             _ => Instr::Unknown,
         };
     }
