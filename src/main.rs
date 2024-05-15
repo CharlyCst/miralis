@@ -122,7 +122,14 @@ fn handle_os_trap(ctx: &mut VirtContext) {
 }
 
 /// Handle the trap coming from mirage
-fn handle_mirage_trap(_ctx: &mut VirtContext) {
+fn handle_mirage_trap(ctx: &mut VirtContext) {
+    let trap = &ctx.trap_info;
+    log::error!("Unexpected trap while executing Mirage");
+    log::error!("  cause:   {} ({:?})", trap.mcause, trap.get_cause());
+    log::error!("  mepc:    0x{:x}", trap.mepc);
+    log::error!("  mtval:   0x{:x}", trap.mtval);
+    log::error!("  mstatus: 0x{:x}", trap.mstatus);
+    log::error!("  mip:     0x{:x}", trap.mip);
     todo!("Mirage trap handler entered");
 }
 
