@@ -29,6 +29,7 @@ members = [
     "payloads/mepc",
     "payloads/mcause",
     "payloads/mret",
+    "payloads/os_ctx_switch",
 
     # Crates
     "crates/abi",
