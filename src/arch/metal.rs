@@ -4,6 +4,7 @@ use core::arch::{asm, global_asm};
 use core::ptr;
 
 use super::{Architecture, MCause, Mode, TrapInfo};
+use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
 
@@ -15,7 +16,7 @@ impl Architecture for MetalArch {
         // Set trap handler
         let handler = _raw_trap_handler as usize;
         unsafe { write_mtvec(handler) };
-        let mtvec = read_mtvec();
+        let mtvec = Self::read_mtvec();
         assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 
@@ -110,7 +111,7 @@ impl Architecture for MetalArch {
         instr as usize
     }
 
-    unsafe fn enter_virt_firmware(ctx: &mut VirtContext) {
+    unsafe fn run_vcpu(ctx: &mut VirtContext) {
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
@@ -118,7 +119,7 @@ impl Architecture for MetalArch {
             "sd x8, (8*3)(sp)",
             "sd x9, (8*4)(sp)",
             // Jump into context switch code
-            "jal x30, _enter_virt_firmware",
+            "jal x30, _run_vcpu",
             // Restore registers
             "ld x3, (8*1)(sp)",
             "ld x4, (8*2)(sp)",
@@ -154,6 +155,146 @@ impl Architecture for MetalArch {
             out("x30") _,
         );
     }
+
+    fn read_mtvec() -> usize {
+        let mtvec: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mtvec",
+                x = out(reg) mtvec
+            )
+        }
+        return mtvec;
+    }
+
+    /// Loads the S-mode CSR registers into the physical registers configures M-mode registers for
+    /// payload execution.
+    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext) {
+        // First, restore S-mode registers
+        asm!(
+            "csrw stvec, {stvec}",
+            "csrw scounteren, {scounteren}",
+            "csrw satp, {satp}",
+            satp = in(reg) ctx.csr.satp,
+            stvec = in(reg) ctx.csr.stvec,
+            scounteren = in(reg) ctx.csr.scounteren,
+            options(nomem)
+        );
+        asm!(
+            "csrw sscratch, {sscratch}",
+            "csrw sepc, {sepc}",
+            "csrw scause, {scause}",
+            sscratch = in(reg) ctx.csr.sscratch,
+            sepc = in(reg) ctx.csr.sepc,
+            scause = in(reg) ctx.csr.scause,
+            options(nomem)
+        );
+        asm!(
+            "csrw stval, {stval}",
+            stval = in(reg) ctx.csr.stval,
+            options(nomem)
+        );
+
+        // TODO: add support for senvcfg
+        if false {
+            asm!(
+                "csrw senvcfg, {senvcfg}",
+                senvcfg = in(reg) ctx.csr.senvcfg,
+                options(nomem)
+            );
+        }
+
+        // Then configuring M-mode registers
+        asm!(
+            "csrw mstatus, {mstatus}",
+            "csrw mideleg, {mideleg}",
+            "csrw medeleg, {medeleg}",
+            mstatus = in(reg) ctx.csr.mstatus,
+            mideleg = in(reg) ctx.csr.mideleg,
+            medeleg = in(reg) ctx.csr.medeleg,
+            options(nomem)
+        );
+        // TODO: should we filter mstatus? What other registers?
+        // - mip?
+        // - mie?
+    }
+
+    /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
+    /// 0) for running the virtual firmware in U-mode.
+    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext) {
+        // Save the registers into the virtual context.
+        // We save them 3 by 3 to give the compiler more freedom to choose registers and re-order
+        // code (which is possible because of the `nomem` option).
+        let stvec: usize;
+        let scounteren: usize;
+        let senvcfg: usize;
+        let sscratch: usize;
+        let sepc: usize;
+        let scause: usize;
+        let stval: usize;
+        let satp: usize;
+
+        asm!(
+            "csrrw {stvec}, stvec, x0",
+            "csrrw {scounteren}, scounteren, x0",
+            "csrrw {satp}, satp, x0",
+            stvec = out(reg) stvec,
+            scounteren = out(reg) scounteren,
+            satp = out(reg) satp,
+            options(nomem)
+        );
+        ctx.csr.stvec = stvec;
+        ctx.csr.scounteren = scounteren;
+        ctx.csr.satp = satp;
+
+        asm!(
+            "csrrw {sscratch}, sscratch, x0",
+            "csrrw {sepc}, sepc, x0",
+            "csrrw {scause}, scause, x0",
+            sscratch = out(reg) sscratch,
+            sepc = out(reg) sepc,
+            scause = out(reg) scause,
+            options(nomem)
+        );
+        ctx.csr.sscratch = sscratch;
+        ctx.csr.sepc = sepc;
+        ctx.csr.scause = scause;
+
+        asm!(
+            "csrrw {stval}, stval, x0",
+            stval = out(reg) stval,
+            options(nomem)
+        );
+        ctx.csr.stval = stval;
+
+        // TODO: add support for senvcfg
+        if false {
+            asm!(
+                "csrrw {senvcfg}, senvcfg, x0",
+                senvcfg = out(reg) senvcfg,
+                options(nomem)
+            );
+            ctx.csr.senvcfg = senvcfg;
+        }
+
+        // Now save M-mode registers which are (partially) exposed as S-mode registers.
+        // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
+        // (virtual firmware) during the next mret.
+        let mstatus: usize;
+        let mpp_u_mode: usize = MPP_FILTER << MPP_OFFSET;
+        asm!(
+            "csrrc {mstatus}, mstatus, {mpp_u_mode}",
+            "csrw mideleg, x0", // Do not delegate any interrupts
+            "csrw medeleg, x0", // Do not delegate any exceptions
+            mstatus = out(reg) mstatus,
+            mpp_u_mode = in(reg) mpp_u_mode,
+            options(nomem)
+        );
+        ctx.csr.mstatus = mstatus;
+        // TODO: handle S-mode registers which are subsets of M-mode registers, such as:
+        // - sip
+        // - sie
+    }
 }
 
 unsafe fn write_mtvec(value: usize) {
@@ -161,17 +302,6 @@ unsafe fn write_mtvec(value: usize) {
         "csrw mtvec, {x}",
         x = in(reg) value
     )
-}
-
-fn read_mtvec() -> usize {
-    let mtvec: usize;
-    unsafe {
-        asm!(
-            "csrr {x}, mtvec",
-            x = out(reg) mtvec
-        )
-    }
-    return mtvec;
 }
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
@@ -214,14 +344,14 @@ global_asm!(
     r#"
 .text
 .align 4
-.global _enter_virt_firmware
-_enter_virt_firmware:
+.global _run_vcpu
+_run_vcpu:
     csrw mscratch, x31        // Save context in mscratch
     sd x30, (0)(sp)           // Store return address
     sd sp,(8*0)(x31)          // Store host stack
     ld x1,(8+8*32)(x31)       // Read payload PC
     csrw mepc,x1              // Restore payload PC in mepc
-    // TODO: load payload misa
+
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
     ld x3,(8+8*3)(x31)
