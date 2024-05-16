@@ -40,7 +40,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
     let mut ctx = VirtContext::new(hart_id); // Virtual context used to copy from and to hardware
-    let mut runner = Runner::Firmware; // The runner indicates who is running on the hardware
 
     unsafe {
         // Set return address, mode and PMP permissions
@@ -66,6 +65,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                 match Plat::get_nb_pmp() {
                     16 => 2,
                     64 => 14,
+                    _ => 0,
                 },
                 (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) << 56,
             );
@@ -83,10 +83,10 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         ctx.pc = payload_addr;
     }
 
-    main_loop(ctx, &mut runner);
+    main_loop(ctx);
 }
 
-fn main_loop(mut ctx: VirtContext, runner: &mut Runner) -> ! {
+fn main_loop(mut ctx: VirtContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
 
     log::debug!("starting loop");
@@ -99,7 +99,7 @@ fn main_loop(mut ctx: VirtContext, runner: &mut Runner) -> ! {
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>, runner: &mut Runner) {
+fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", ctx.trap_info.mcause);
     log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);

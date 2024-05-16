@@ -62,6 +62,12 @@ impl Architecture for MetalArch {
                     x = in(reg) pmpcfg
                 )
             }
+            2 => {
+                asm!(
+                    "csrw pmpcfg2, {x}",
+                    x = in(reg) pmpcfg
+                )
+            }
             _ => todo!("pmpcfg{} not yet implemented", idx),
         }
     }
@@ -77,6 +83,24 @@ impl Architecture for MetalArch {
             1 => {
                 asm!(
                     "csrw pmpaddr1, {x}",
+                    x = in(reg) pmpaddr
+                )
+            }
+            2 => {
+                asm!(
+                    "csrw pmpaddr1, {x}",
+                    x = in(reg) pmpaddr
+                )
+            }
+            3 => {
+                asm!(
+                    "csrw pmpaddr3, {x}",
+                    x = in(reg) pmpaddr
+                )
+            }
+            15 => {
+                asm!(
+                    "csrw pmpaddr15, {x}",
                     x = in(reg) pmpaddr
                 )
             }
@@ -294,6 +318,10 @@ impl Architecture for MetalArch {
         // TODO: handle S-mode registers which are subsets of M-mode registers, such as:
         // - sip
         // - sie
+    }
+
+    unsafe fn flush_with_sfence() {
+        asm!("sfence.vma")
     }
 }
 

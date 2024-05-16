@@ -1,7 +1,4 @@
 //! Firmware Virtualisation
-
-use core::arch::asm;
-
 use mirage_core::abi;
 
 use crate::arch::{misa, mstatus, Arch, Architecture, Csr, MCause, Mode, Register, TrapInfo};
@@ -19,7 +16,7 @@ pub enum ExecutionMode {
 }
 
 /// The context of a virtual firmware.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
@@ -175,7 +172,7 @@ impl VirtCsr {
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
 
 impl VirtContext {
-    fn emulate_instr(&mut self, instr: &Instr, runner: &mut Runner) {
+    fn emulate_instr(&mut self, instr: &Instr) {
         match instr {
             Instr::Wfi => {
                 todo!("wfi is not yet supported");
@@ -188,7 +185,7 @@ impl VirtContext {
             | Instr::Csrrci { csr, .. }
                 if csr.is_unknown() =>
             {
-                self.emulate_jump_trap_handler(runner);
+                self.emulate_jump_trap_handler();
             }
             Instr::Csrrw { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
@@ -228,7 +225,6 @@ impl VirtContext {
             Instr::Mret => {
                 match (self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER {
                     3 => {
-
                         log::trace!("mret to m-mode");
                         // Mret is jumping back to machine mode, do nothing
                     }
@@ -336,7 +332,7 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self, runner: &mut Runner) {
+    pub fn handle_payload_trap(&mut self) {
         // Keep track of the number of exit
         self.nb_exits += 1;
 
@@ -399,10 +395,10 @@ impl VirtContext {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_instr(&instr, runner);
+                self.emulate_instr(&instr);
             }
             MCause::Breakpoint => {
-                self.emulate_jump_trap_handler(runner);
+                self.emulate_jump_trap_handler();
             }
             _ => {
                 if cause.is_interrupt() {
@@ -778,10 +774,4 @@ where
     fn set(&mut self, register: &'a R, value: usize) {
         self.set(*register, value)
     }
-}
-
-#[derive(Debug)]
-pub enum Runner {
-    Firmware,
-    OS,
 }
