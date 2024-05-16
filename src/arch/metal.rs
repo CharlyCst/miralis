@@ -3,13 +3,15 @@ use core::arch::{asm, global_asm};
 use core::ptr;
 
 use riscv_pmp::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
-use riscv_pmp::pmpcfg_write;
+use riscv_pmp::{pmpcfg_write, pmpcfg_read};
 
 use super::{Architecture, MCause, Mode, TrapInfo};
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmpcfg;
+use crate::platform::Platform;
 use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
+use crate::Plat;
 
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
@@ -244,6 +246,46 @@ impl Architecture for MetalArch {
         // TODO: should we filter mstatus? What other registers?
         // - mip?
         // - mie?
+
+        for i in 0..ctx.nbr_pmps{
+            pmpcfg_csr_write(
+                i+ctx.pmp_offset,
+                match pmpcfg_write(i+ctx.pmp_offset, 
+                    ctx.csr.read_pmp_cfg(i)
+                 ) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
+            );
+            pmpaddr_csr_write(i+ctx.pmp_offset, ctx.csr.pmp_addr[i]);
+        }
+        pmpcfg_csr_write(
+            Plat::get_nb_pmp() - 1,
+            match pmpcfg_write(Plat::get_nb_pmp() - 1, pmpcfg::TOR) {
+                Ok(x) => x,
+                Err(_) => panic!(),
+            },
+        );
+
+        log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
+        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp()-1));
+
+        log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
+        log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
+        log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
+        log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
+
+        log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
+        log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
+        log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
+        log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
+        log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
+        log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
+        log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
+        log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
+
+        log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(Plat::get_nb_pmp()-1));
+
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -321,6 +363,46 @@ impl Architecture for MetalArch {
         // TODO: handle S-mode registers which are subsets of M-mode registers, such as:
         // - sip
         // - sie
+
+        for i in 0..ctx.nbr_pmps{
+            pmpcfg_csr_write(
+                i+ctx.pmp_offset,
+                match pmpcfg_write(i+ctx.pmp_offset, 
+                    0
+                 ) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
+            );
+            pmpaddr_csr_write(i+ctx.pmp_offset, 0);
+        }
+        pmpcfg_csr_write(
+            Plat::get_nb_pmp() - 1,
+            match pmpcfg_write(Plat::get_nb_pmp() - 1, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+                Ok(x) => x,
+                Err(_) => panic!(),
+            },
+        );
+
+        log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
+        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp()-1));
+
+        log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
+        log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
+        log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
+        log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
+
+        log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
+        log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
+        log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
+        log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
+        log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
+        log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
+        log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
+        log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
+
+        log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(Plat::get_nb_pmp()-1));
+
     }
 
     unsafe fn flush_with_sfence() {

@@ -227,7 +227,7 @@ fn pmpaddr_read(index: usize) -> usize {
 }
 
 //Returns read value from pmpcfg[n]
-fn pmpcfg_read(index: usize) -> usize {
+pub fn pmpcfg_read(index: usize) -> usize {
     let mut pmpcfg: usize;
 
     //Need to extract the pmpcfg value based on the index. Assumes 8 bit pmpcfg as specified in the

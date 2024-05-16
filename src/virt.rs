@@ -32,9 +32,9 @@ pub struct VirtContext {
     /// Current privilege mode
     pub(crate) mode: Mode,
     /// Number of virtual PMPs
-    nbr_pmps: usize,
+    pub(crate) nbr_pmps: usize,
     /// Offset to the PMPs
-    pmp_offset: usize,
+    pub(crate) pmp_offset: usize,
     /// Hart ID
     hart_id: usize,
     /// Number of exists to Mirage
@@ -166,6 +166,22 @@ impl VirtCsr {
             return !0b0 >> (to_filter_out * 8);
         }
         return !0b0;
+    }
+
+    pub fn read_pmp_cfg(&mut self, index: usize) -> usize{
+        let mut pmpcfg: usize;
+
+        //Need to extract the pmpcfg value based on the index. Assumes 8 bit pmpcfg as specified in the
+        //RV Specification Vol 2 - Privileged Arch.
+
+        pmpcfg = self.pmp_cfg[(index/8)*2];
+
+        let index_pos: usize = index % 8;
+        let pmpcfg_mask: usize = 0xff << (index_pos * 8);
+
+        pmpcfg = (pmpcfg & pmpcfg_mask) >> (index_pos * 8);
+
+        return pmpcfg;
     }
 }
 

@@ -85,14 +85,9 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             pmpaddr_csr_write(2, 0);
             pmpaddr_csr_write(3, 0);
 
-            let last_idx = match Plat::get_nb_pmp() {
-                16 => 15,
-                64 => 63,
-                _ => 0,
-            };
             pmpcfg_csr_write(
-                last_idx,
-                match pmpcfg_write(last_idx, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+                Plat::get_nb_pmp() - 1,
+                match pmpcfg_write(Plat::get_nb_pmp() - 1, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
@@ -100,20 +95,30 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             pmpaddr_csr_write(Plat::get_nb_pmp() - 1, usize::MAX);
 
             log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-            log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(14));
+            log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
 
             log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
             log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
             log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
             log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
 
-            log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(last_idx));
+            log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
+            log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
+            log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
+            log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
+            log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
+            log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
+            log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
+            log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
+
+            log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(Plat::get_nb_pmp() - 1));
 
             Arch::flush_with_sfence();
+            
+            ctx.set_pmp_values(8, 4); // Give 8 PMPs to the firmware
         }
 
-        ctx.set_pmp_values(8, 4); // Give 8 PMPs to the firmware
-
+        
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
