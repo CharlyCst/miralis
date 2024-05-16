@@ -198,7 +198,7 @@ pub fn pmp_write_compute(
         pmpcfg = 0;
         pmpaddr = region_addr;
         log::trace!(
-            "PMPADDR value {:x} for index {:x} PMPCFG value {:x}",
+            "PMPADDR value {:x} for index {} PMPCFG value {:x}",
             pmpaddr,
             csr_index,
             pmpcfg

@@ -19,7 +19,7 @@ mod virt;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 use riscv_pmp::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
-use riscv_pmp::pmpcfg_write;
+use riscv_pmp::{pmpcfg_write, pmp_write_compute};
 
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
@@ -47,10 +47,20 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
         if Plat::get_nb_pmp() > 0 {
-            // Setup 4 PMPs for mirage
+
             pmpcfg_csr_write(
                 0,
                 match pmpcfg_write(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
+            );
+            pmpaddr_csr_write(0, usize::MAX );
+
+            // Setup 4 PMPs for mirage
+            pmpcfg_csr_write(
+                0,
+                match pmpcfg_write(0, pmpcfg::TOR) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
@@ -77,11 +87,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                 },
             );
 
-            // 0 to 0x80000000          : empty
+            // 0 to 0x80000000          : free
             // 0x80000000 to 0x80100000 : mirage
             // 0x80100000 to MAX_USIZE  : free
-            pmpaddr_csr_write(0, 0x80000000);
-            pmpaddr_csr_write(1, 0x80100000);
+            pmpaddr_csr_write(0, 0x80000000 >> 2);
+            pmpaddr_csr_write(1, 0x80100000 >> 2);
             pmpaddr_csr_write(2, 0);
             pmpaddr_csr_write(3, 0);
 
@@ -92,7 +102,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                     Err(_) => panic!(),
                 },
             );
-            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, usize::MAX);
+            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, usize::MAX );
 
             log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
             log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));

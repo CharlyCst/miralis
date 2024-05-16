@@ -253,7 +253,7 @@ impl VirtContext {
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
-                            Mode::S.to_bits(),
+                            0,
                         );
                     }
                     0 => {
@@ -265,7 +265,7 @@ impl VirtContext {
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
-                            Mode::U.to_bits(),
+                            0,
                         );
                     }
                     _ => {

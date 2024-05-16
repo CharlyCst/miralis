@@ -139,7 +139,7 @@ fn decode_csr(csr: usize) -> Csr {
         0xF12 => Csr::Marchid,
         0xF13 => Csr::Mimpid,
         0x3A0..=0x3AF => Csr::Pmpcfg(csr - 0x3A0),
-        0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3AF),
+        0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
         0xB00 => Csr::Mcycle,
         0xB02 => Csr::Minstret,
         0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29

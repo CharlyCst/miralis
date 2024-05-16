@@ -3,7 +3,7 @@ use core::arch::{asm, global_asm};
 use core::ptr;
 
 use riscv_pmp::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
-use riscv_pmp::{pmpcfg_write, pmpcfg_read};
+use riscv_pmp::pmpcfg_write;
 
 use super::{Architecture, MCause, Mode, TrapInfo};
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
