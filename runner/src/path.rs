@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::{Target, MIRAGE_TARGET, PAYLOAD_TARGET};
+use crate::artifacts::{Target, MIRAGE_TARGET, PAYLOAD_TARGET};
 
 /// Return the root of the workspace.
 pub fn get_workspace_path() -> PathBuf {
