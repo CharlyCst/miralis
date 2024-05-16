@@ -265,7 +265,7 @@ fn pmpcfg_compute(index: usize, value: usize) -> Result<usize, PMPErrorCode> {
 }
 
 #[allow(dead_code)]
-fn pmpcfg_write(index: usize, value: usize) -> Result<usize, PMPErrorCode> {
+pub fn pmpcfg_write(index: usize, value: usize) -> Result<usize, PMPErrorCode> {
     let mut pmpcfg: usize;
     let index_pos: usize = index % 8;
     let pmpcfg_mask: usize = 0xff << (index_pos * 8);
@@ -282,7 +282,7 @@ fn pmpcfg_write(index: usize, value: usize) -> Result<usize, PMPErrorCode> {
     pmpcfg = pmpcfg | (value << (index_pos * 8));
 
     log::trace!(
-        "Computed for index: {:x} pmpcfg: {} value: {:x}",
+        "Computed for index: {:x} pmpcfg: {:x} value: {:x}",
         index,
         pmpcfg,
         value

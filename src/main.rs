@@ -18,10 +18,11 @@ mod virt;
 
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
+use riscv_pmp::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
+use riscv_pmp::pmpcfg_write;
 
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
-
 
 // Defined in the linker script
 extern "C" {
@@ -47,30 +48,66 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::set_mpp(arch::Mode::U);
         if Plat::get_nb_pmp() > 0 {
             // Setup 4 PMPs for mirage
-            Arch::write_pmpcfg(
+            pmpcfg_csr_write(
                 0,
-                (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR)
-                    | (pmpcfg::TOR) << 8
-                    | 0x0 << 16
-                    | 0x0 << 24,
+                match pmpcfg_write(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
             );
+            pmpcfg_csr_write(
+                1,
+                match pmpcfg_write(1, pmpcfg::TOR) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
+            );
+            pmpcfg_csr_write(
+                2,
+                match pmpcfg_write(2, 0) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
+            );
+            pmpcfg_csr_write(
+                3,
+                match pmpcfg_write(3, 0) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
+                },
+            );
+
             // 0 to 0x80000000          : empty
             // 0x80000000 to 0x80100000 : mirage
             // 0x80100000 to MAX_USIZE  : free
-            Arch::write_pmpaddr(0, 0x80000000);
-            Arch::write_pmpaddr(1, 0x80100000);
-            Arch::write_pmpaddr(2, 0);
-            Arch::write_pmpaddr(3, 0);
+            pmpaddr_csr_write(0, 0x80000000);
+            pmpaddr_csr_write(1, 0x80100000);
+            pmpaddr_csr_write(2, 0);
+            pmpaddr_csr_write(3, 0);
 
-            Arch::write_pmpcfg(
-                match Plat::get_nb_pmp() {
-                    16 => 2,
-                    64 => 14,
-                    _ => 0,
+            let last_idx = match Plat::get_nb_pmp() {
+                16 => 15,
+                64 => 63,
+                _ => 0,
+            };
+            pmpcfg_csr_write(
+                last_idx,
+                match pmpcfg_write(last_idx, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+                    Ok(x) => x,
+                    Err(_) => panic!(),
                 },
-                (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) << 56,
             );
-            Arch::write_pmpaddr(Plat::get_nb_pmp() - 1, usize::MAX);
+            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, usize::MAX);
+
+            log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
+            log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(14));
+
+            log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
+            log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
+            log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
+            log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
+
+            log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(last_idx));
 
             Arch::flush_with_sfence();
         }

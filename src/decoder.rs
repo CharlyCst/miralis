@@ -90,9 +90,6 @@ fn decode_system(raw: usize) -> Instr {
     let func3 = (raw >> 12) & 0b111;
     let rs1 = (raw >> 15) & 0b11111;
     let imm = (raw >> 20) & 0b111111111111;
-
-    log::debug!("raw instruction is 0b{:b}", raw);
-
     if func3 == 0b000 {
         return match imm {
             0b000000000000 => Instr::Ecall,
