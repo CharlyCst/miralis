@@ -22,6 +22,7 @@ use platform::{init, Plat, Platform};
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
 
+
 // Defined in the linker script
 extern "C" {
     pub(crate) static _stack_bottom: u8;

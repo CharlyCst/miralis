@@ -198,6 +198,7 @@ version = "0.1.0"
 dependencies = [
  "log",
  "mirage_core",
+ "riscv_pmp",
  "spin",
  "uart_16550",
 ]
