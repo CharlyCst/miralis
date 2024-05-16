@@ -281,12 +281,10 @@ impl VirtContext {
                 // Jump back to payload
                 self.pc = self.csr.mepc;
             }
-            Instr::Vfencevma => {
-                unsafe {
-                    Arch::flush_with_sfence();
-                    self.pc += 4;
-                }
-            }
+            Instr::Vfencevma => unsafe {
+                Arch::flush_with_sfence();
+                self.pc += 4;
+            },
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
     }

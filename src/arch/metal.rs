@@ -3,7 +3,8 @@
 use core::arch::{asm, global_asm};
 use core::ptr;
 
-use super::{Architecture, MCause, Mode, TrapInfo};
+use super::{pmpcfg, Arch, Architecture, MCause, Mode, TrapInfo};
+use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
 
@@ -301,11 +302,9 @@ impl Architecture for MetalArch {
         }
         return mtvec;
     }
-    
+
     unsafe fn flush_with_sfence() {
-        unsafe {
-            asm!("sfence.vma")
-        }
+        unsafe { asm!("sfence.vma") }
     }
 }
 
@@ -314,6 +313,41 @@ unsafe fn write_mtvec(value: usize) {
         "csrw mtvec, {x}",
         x = in(reg) value
     )
+}
+
+unsafe fn to_payload(ctx: &mut VirtContext){
+
+    if Plat::get_nb_pmp() < 0  {
+        // If there are no PMPs in the hardware : nothing to do
+        return;
+    }
+
+    // Put PMPs from ctx into hardware, taking into account the offset
+    // PMP config : no R/W/X
+        // Read the mirage pmpcfg
+        // Save the virt pmpcfg that will be removed
+        // Shift the virt pmpcfg by offset*8
+    // PMP address
+
+    // Set last PMP to NOT W/R/X anywhere
+
+    Arch::flush_with_sfence();
+}
+
+unsafe fn from_payload(ctx: &mut VirtContext){
+
+    if Plat::get_nb_pmp() < 0  {
+        // If there are no PMPs in the hardware : nothing to do
+        return;
+    }
+
+    // Remove PMPs from hardware into ctx, taking into account the offset
+    // PMP config
+    // PMP address
+
+    // Set last PMP to W/R/X anywhere
+
+    Arch::flush_with_sfence();
 }
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
