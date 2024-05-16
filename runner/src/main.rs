@@ -8,8 +8,7 @@ mod artifacts;
 mod config;
 mod path;
 
-use artifacts::{build_target, Target};
-use path::is_known_payload;
+use artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
@@ -101,10 +100,10 @@ fn main() {
     let cfg = config::read_config(&args);
 
     let mirage = build_target(Target::Mirage, &cfg);
-    let payload = if is_known_payload(&args.payload) {
-        build_target(Target::Payload(args.payload.clone()), &cfg)
-    } else {
-        PathBuf::from_str(&args.payload).expect("Invalid payload path")
+    let payload = match locate_artifact(&args.payload) {
+        Some(Artifact::Source { name }) => build_target(Target::Payload(name), &cfg),
+        Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
+        None => PathBuf::from_str(&args.payload).expect("Invalid payload path"),
     };
 
     run(mirage, payload, &args);

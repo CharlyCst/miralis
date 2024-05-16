@@ -1,0 +1,4 @@
+# Artifact manifest
+
+[bin]
+opensbi = "https://github.com/CharlyCst/mirage-artifact-opensbi/releases/download/v0.1.6/opensbi.bin"

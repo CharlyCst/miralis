@@ -1,6 +1,5 @@
 //! Path helper functions
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -34,6 +33,20 @@ fn get_misc_path() -> PathBuf {
     path
 }
 
+/// Return the path to the artifact manifest file.
+pub fn get_artifact_manifest_path() -> PathBuf {
+    let mut path = get_misc_path();
+    path.push("artifacts.toml");
+    path
+}
+
+/// Return the path to the artifacts forlder.
+pub fn get_artifacts_path() -> PathBuf {
+    let mut path = get_workspace_path();
+    path.push("artifacts");
+    path
+}
+
 /// Return the target triple definition path for the provided target.
 pub fn get_target_config_path(target: &Target) -> PathBuf {
     let mut path = get_misc_path();
@@ -46,7 +59,7 @@ pub fn get_target_config_path(target: &Target) -> PathBuf {
     path
 }
 
-/// Return true if `b` is older than `b`
+/// Return true if `a` is older than `b`
 pub fn is_older(a: &Path, b: &Path) -> bool {
     let Ok(a_meta) = a.metadata() else {
         return false;
@@ -59,31 +72,4 @@ pub fn is_older(a: &Path, b: &Path) -> bool {
         (Ok(a), Ok(b)) => a <= b,
         _ => false,
     }
-}
-
-/// Return true if the payload is one of the knwon test payloads.
-pub fn is_known_payload(name: &str) -> bool {
-    // Get the path to the payloads directory
-    let mut payloads_path = get_workspace_path();
-    payloads_path.push("payloads");
-    assert!(
-        payloads_path.is_dir(),
-        "Could not find 'payloads' directory"
-    );
-
-    // Check if one entry match the name
-    for entry in fs::read_dir(&payloads_path).unwrap() {
-        let Ok(file_path) = entry.map(|e| e.path()) else {
-            continue;
-        };
-        let Some(file_name) = file_path.file_name() else {
-            continue;
-        };
-        if file_name == name {
-            return true;
-        }
-    }
-
-    // Could not find payload
-    false
 }
