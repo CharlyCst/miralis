@@ -3,7 +3,7 @@
 
 use core::arch::{asm, global_asm};
 
-use mirage_abi::{failure, setup_payload, success};
+use mirage_abi::{setup_payload, success};
 
 setup_payload!(main);
 
@@ -11,7 +11,7 @@ fn main() -> ! {
     // Setup some values                : firmware
     // Jump into OS function with mret  : firmware -> OS
     // Modify registers                 : OS
-    // OS exception with ebreak/ecall   : OS -> firmware
+    // OS exception with ecall          : OS -> firmware
     // Check values                     : firmware
 
     let mut t6: usize;
@@ -20,26 +20,25 @@ fn main() -> ! {
     unsafe {
         let os: usize = _raw_os as usize;
         let trap: usize = _raw_trap_handler as usize;
-
-        let value = 0b1 << 11;
+        let mpp = 0b1 << 11; // MPP = S-mode
 
         asm!(
             "auipc t4, 0",
             "addi t4, t4, 24",
-            "csrw mtvec, {1}",   // Write mtvec with trap handler
-            "csrw mstatus, {2}", // Write MPP of mstatus to S-mode
-            "csrw mepc, {0}",   // Write MEPC
+            "csrw mtvec, {mtvec}", // Write mtvec with trap handler
+            "csrw mstatus, {mpp}", // Write MPP of mstatus to S-mode
+            "csrw mepc, {os}",     // Write MEPC
 
-            "mret",            // Jump to OS
+            "mret",                // Jump to OS
 
-            "csrr {3}, sscratch ",
-            "csrr {4}, mstatus ",
+            "csrr {sscratch}, sscratch ",
+            "csrr {mstatus}, mstatus ",
 
-            in(reg) os,
-            in(reg) trap,
-            in(reg) value,
-            out(reg) sscratch,
-            out(reg) mstatus,
+            os = in(reg) os,
+            mtvec = in(reg) trap,
+            mpp = in(reg) mpp,
+            sscratch = out(reg) sscratch,
+            mstatus = out(reg) mstatus,
             out("t6") t6,
         );
     }
@@ -59,6 +58,7 @@ fn main() -> ! {
 }
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
+
 global_asm!(
     r#"
 .text
@@ -69,25 +69,21 @@ _raw_trap_handler:
 "#,
 );
 
-// —————————————————————————————— Guest OS —————————————————————————————— //
+// ———————————————————————————————— Guest OS ———————————————————————————————— //
+
 global_asm!(
     r#"
 .text
 .align 4
 .global _raw_os
 _raw_os:
-    li t6, 0x42    // Store a secret value into t6 before jumping to firmware
-    csrw sscratch, t6     // Store a secret value into sscratch before jumping to firmware
-    ebreak  
+    li t6, 0x42        // Store a secret value into t6 before jumping to firmware
+    csrw sscratch, t6  // Store a secret value into sscratch before jumping to firmware
+    ecall
 "#,
 );
 
 extern "C" {
     fn _raw_trap_handler();
     fn _raw_os();
-    fn _raw_fake_trap_handler();
-}
-
-fn read_test(out_csr: usize, expected: usize) {
-    assert_eq!(out_csr, expected);
 }

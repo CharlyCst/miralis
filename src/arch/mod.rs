@@ -13,7 +13,7 @@ mod trap;
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
-use crate::virt::VirtContext;
+use crate::virt::{ExecutionMode, VirtContext};
 
 // —————————————————————————— Select Architecture ——————————————————————————— //
 
@@ -34,15 +34,15 @@ pub trait Architecture {
     fn read_mtvec() -> usize;
     fn read_mstatus() -> usize;
     unsafe fn set_mpp(mode: Mode);
-    unsafe fn write_misa(misa: usize);
     unsafe fn write_mstatus(mstatus: usize);
     unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize);
     unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret() -> !;
     unsafe fn ecall();
-    unsafe fn enter_virt_firmware(ctx: &mut VirtContext);
-    unsafe fn enter_virt_os(ctx: &mut VirtContext);
     unsafe fn flush_with_sfence();
+    unsafe fn run_vcpu(ctx: &mut VirtContext);
+    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext);
+    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext);
 
     /// Return the faulting instruction at the provided exception PC.
     ///
@@ -54,7 +54,7 @@ pub trait Architecture {
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
 
 /// Privilege modes
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[allow(dead_code)]
 pub enum Mode {
     /// User
@@ -72,6 +72,14 @@ impl Mode {
             Mode::U => 0,
             Mode::S => 1,
             Mode::M => 3,
+        }
+    }
+
+    /// Returns the Mirage execution mode corresponding the virtual mode.
+    pub fn to_exec_mode(self) -> ExecutionMode {
+        match self {
+            Mode::M => ExecutionMode::Firmware,
+            _ => ExecutionMode::Payload,
         }
     }
 }

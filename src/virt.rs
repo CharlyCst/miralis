@@ -4,10 +4,19 @@ use core::arch::asm;
 
 use mirage_core::abi;
 
-use crate::arch::{misa, mstatus, Arch, Architecture, Csr, MCause, Register, TrapInfo};
+use crate::arch::{misa, mstatus, Arch, Architecture, Csr, MCause, Mode, Register, TrapInfo};
 use crate::debug;
 use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
+
+/// The execution mode , either virtualized virmware or native payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionMode {
+    /// Virtualized virmware, running in U-mode.
+    Firmware,
+    /// Native payload, running in U or S-mode.
+    Payload,
+}
 
 /// The context of a virtual firmware.
 #[derive(Debug, Clone)]
@@ -22,7 +31,9 @@ pub struct VirtContext {
     /// Information on the trap that ocurred, used to handle traps
     pub(crate) trap_info: TrapInfo,
     /// Virtual Control and Status Registers
-    pub csr: VirtCsr,
+    pub(crate) csr: VirtCsr,
+    /// Current privilege mode
+    pub(crate) mode: Mode,
     /// Number of virtual PMPs
     nbr_pmps: usize,
     /// Offset to the PMPs
@@ -40,6 +51,7 @@ impl VirtContext {
             regs: Default::default(),
             csr: Default::default(),
             pc: 0,
+            mode: Mode::M,
             trap_info: Default::default(),
             nb_exits: 0,
             hart_id,
@@ -55,46 +67,46 @@ impl VirtContext {
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[repr(C)]
 pub struct VirtCsr {
     pub misa: usize,
-    mie: usize,
-    mip: usize,
-    mtvec: usize,
-    mvendorid: usize,
-    marchid: usize,
-    mimpid: usize,
-    mcycle: usize,
-    minstret: usize,
-    mscratch: usize,
-    mcountinhibit: usize,
-    mcounteren: usize,
-    menvcfg: usize,
-    mseccfg: usize,
-    mcause: usize,
-    mepc: usize,
-    mtval: usize,
+    pub mie: usize,
+    pub mip: usize,
+    pub mtvec: usize,
+    pub mvendorid: usize,
+    pub marchid: usize,
+    pub mimpid: usize,
+    pub mcycle: usize,
+    pub minstret: usize,
+    pub mscratch: usize,
+    pub mcountinhibit: usize,
+    pub mcounteren: usize,
+    pub menvcfg: usize,
+    pub mseccfg: usize,
+    pub mcause: usize,
+    pub mepc: usize,
+    pub mtval: usize,
     pub mstatus: usize,
     pub mtinst: usize,
-    mconfigptr: usize,
-    sie: usize,
-    stvec: usize,
-    scounteren: usize,
-    senvcfg: usize,
-    sscratch: usize,
-    sepc: usize,
-    scause: usize,
-    stval: usize,
-    sip: usize,
-    satp: usize,
-    scontext: usize,
-    medeleg: usize,
-    mideleg: usize,
+    pub mconfigptr: usize,
+    pub sie: usize,
+    pub stvec: usize,
+    pub scounteren: usize,
+    pub senvcfg: usize,
+    pub sscratch: usize,
+    pub sepc: usize,
+    pub scause: usize,
+    pub stval: usize,
+    pub sip: usize,
+    pub satp: usize,
+    pub scontext: usize,
+    pub medeleg: usize,
+    pub mideleg: usize,
     pub pmp_cfg: [usize; 16],
     pub pmp_addr: [usize; 64],
-    mhpmcounter: [usize; 29],
-    mhpmevent: [usize; 29],
+    pub mhpmcounter: [usize; 29],
+    pub mhpmevent: [usize; 29],
 }
 
 impl Default for VirtCsr {
@@ -143,9 +155,9 @@ impl Default for VirtCsr {
 
 impl VirtCsr {
     pub fn set_mstatus_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
-        //Clear field
+        // Clear field
         *csr = *csr & !(filter << offset);
-        //Set field
+        // Set field
         *csr = *csr | (value << offset);
     }
 
@@ -216,31 +228,32 @@ impl VirtContext {
             Instr::Mret => {
                 match (self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER {
                     3 => {
-                        log::debug!("mret to m-mode");
+
+                        log::trace!("mret to m-mode");
                         // Mret is jumping back to machine mode, do nothing
                     }
                     1 if Plat::HAS_S_MODE => {
-                        log::debug!("mret to s-mode with MPP");
+                        log::trace!("mret to s-mode with MPP");
                         // Mret is jumping to supervisor mode, the runner is the guest OS
-                        *runner = Runner::OS;
+                        self.mode = Mode::S;
 
                         VirtCsr::set_mstatus_field(
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
-                            0,
+                            Mode::S.to_bits(),
                         );
                     }
                     0 => {
-                        log::debug!("mret to u-mode with MPP");
+                        log::trace!("mret to u-mode with MPP");
                         // Mret is jumping to user mode, the runner is the guest OS
-                        *runner = Runner::OS;
+                        self.mode = Mode::U;
 
                         VirtCsr::set_mstatus_field(
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
-                            0,
+                            Mode::U.to_bits(),
                         );
                     }
                     _ => {
@@ -262,7 +275,7 @@ impl VirtContext {
                     );
                 }
 
-                //MIE= MPIE, MPIE = 1, MPRV = 0
+                // MIE = MPIE, MPIE = 1, MPRV = 0
                 let mpie = mstatus::MPIE_FILTER & (self.csr.mstatus >> mstatus::MPIE_OFFSET);
 
                 VirtCsr::set_mstatus_field(
@@ -289,7 +302,7 @@ impl VirtContext {
         }
     }
 
-    pub fn emulate_jump_trap_handler(&mut self, runner: &mut Runner) {
+    pub fn emulate_jump_trap_handler(&mut self) {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
@@ -298,18 +311,19 @@ impl VirtContext {
         self.csr.mip = self.trap_info.mip;
         self.csr.mepc = self.trap_info.mepc;
 
-        match runner {
-            Runner::Firmware => {
+        match self.mode {
+            Mode::M => {
                 // Modify mstatus: previous privilege mode is machine = 3
                 VirtCsr::set_mstatus_field(
                     &mut self.csr.mstatus,
                     mstatus::MPP_OFFSET,
                     mstatus::MPP_FILTER,
-                    0b11,
+                    Mode::M.to_bits(),
                 );
             }
-            Runner::OS => {
-                // No need to modify mstatus : MPP is correct
+            _ => {
+                // No need to modify mstatus: MPP is correct
+                self.mode = Mode::M;
             }
         }
 
