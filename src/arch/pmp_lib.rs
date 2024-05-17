@@ -1,22 +1,19 @@
-#![no_std]
 //RISC-V PMP Configuration.
 
 pub use log;
 
-use crate::arch::pmp_csrs::{
-    pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
-};
+use crate::arch::pmp_csrs::{pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
 
 //The following three constants assume 16 PMP entries.
 pub const PMP_ENTRIES: usize = 16;
-pub const PMP_CFG_ENTRIES: usize = 2;
+//pub const PMP_CFG_ENTRIES: usize = 2;
 //The number of PMP entries used to protect for instance memory mapped CSRs related to interrupts,
 //in this case, 1 entry for SiFive CLINT (the highest priority entry)
 //pub const FROZEN_PMP_ENTRIES: usize = 1;
-pub const FROZEN_PMP_ENTRIES: usize = 0;
+//pub const FROZEN_PMP_ENTRIES: usize = 0;
 
-const PMP_CFG: usize = 0;
-const PMP_ADDR: usize = 1;
+//const PMP_CFG: usize = 0;
+//const PMP_ADDR: usize = 1;
 
 const XWR_MASK: usize = 7;
 const RV64_PAGESIZE_MASK: usize = 0xfffffffffffff000;
@@ -46,22 +43,22 @@ const EMPTY_PMP_WRITE_RESPONSE: PMPWriteResponse = PMPWriteResponse {
 pub enum PMPAddressingMode {
     OFF = 0,
     TOR = 1,
-    NA4 = 2,
-    NAPOT = 3,
+    //  NA4 = 2,
+    //  NAPOT = 3,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(usize)]
 pub enum PMPErrorCode {
     Uninitialized = 0,
-    Success = 1, //TODO: Is it needed?
-    InvalidCSRID = 2,
+    //  Success = 1, //TODO: Is it needed?
+    //   InvalidCSRID = 2,
     NotPageAligned = 3,
     InvalidPermissions = 4,
     InvalidIndex = 5,
     InvalidCfg = 6,
 }
-
+/*
 fn compute_log2(num: usize) -> usize {
     let mut result: usize = 0;
     let mut value: usize = num;
@@ -72,10 +69,10 @@ fn compute_log2(num: usize) -> usize {
     }
 
     result
-}
+}*/
 
 //The csr_id is explicitly providing support to only read either pmpcfg or pmpaddr. Todo: Is this useful?
-pub fn pmp_read(csr_id: usize, csr_index: usize) -> Result<usize, PMPErrorCode> {
+/*pub fn pmp_read(csr_id: usize, csr_index: usize) -> Result<usize, PMPErrorCode> {
     //This will ensure that the index is in expected range
     if csr_index >= PMP_ENTRIES {
         return Err(PMPErrorCode::InvalidIndex);
@@ -88,7 +85,7 @@ pub fn pmp_read(csr_id: usize, csr_index: usize) -> Result<usize, PMPErrorCode> 
             return Err(PMPErrorCode::InvalidCSRID);
         }
     }
-}
+}*/
 
 //Only computes the values to be written to the PMP, doesn't actually modify the PMPs.
 //Returns the computed values in PMPWriteResponse.
@@ -129,7 +126,7 @@ pub fn pmp_write_compute(
 
     let mut pmpaddr: usize;
     let mut pmpcfg: usize;
-    let mut log_2_region_size: usize = 0;
+    //let mut log_2_region_size: usize = 0;
 
     /*if (region_size & (region_size - 1)) == 0 {
         log_2_region_size = compute_log2(region_size);
@@ -220,14 +217,14 @@ pub fn pmp_write_compute(
 }
 
 //Returns read value
-fn pmpaddr_read(index: usize) -> usize {
+/*fn pmpaddr_read(index: usize) -> usize {
     let pmpaddr: usize;
     pmpaddr = pmpaddr_csr_read(index);
     return pmpaddr;
-}
+}*/
 
 //Returns read value from pmpcfg[n]
-pub fn pmpcfg_read(index: usize) -> usize {
+/*pub fn pmpcfg_read(index: usize) -> usize {
     let mut pmpcfg: usize;
 
     //Need to extract the pmpcfg value based on the index. Assumes 8 bit pmpcfg as specified in the
@@ -241,7 +238,7 @@ pub fn pmpcfg_read(index: usize) -> usize {
     pmpcfg = (pmpcfg & pmpcfg_mask) >> (index_pos * 8);
 
     return pmpcfg;
-}
+}*/
 
 fn pmpcfg_compute(index: usize, value: usize) -> Result<usize, PMPErrorCode> {
     let pmpcfg: usize;
@@ -298,7 +295,7 @@ pub fn pmpcfg_write(index: usize, value: usize) -> Result<usize, PMPErrorCode> {
 
     //return PMPErrorCode::Success;
 }
-
+/*
 pub fn clear_pmp() {
     for n in FROZEN_PMP_ENTRIES..PMP_ENTRIES {
         pmpaddr_csr_write(n, 0);
@@ -306,7 +303,7 @@ pub fn clear_pmp() {
                                 //has pmpcfg = 0. If that wasn't the case, clearing would
                                 //require fine-grained writes to pmpcfg.
     }
-}
+}*/
 
 pub fn write_pmp_cfg(idx: usize, cfg: usize) {
     pmpcfg_csr_write(
