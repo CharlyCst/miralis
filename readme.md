@@ -32,7 +32,7 @@ We provide a GDB script (in `misc/setup.gdb`) and `just` commands to facilitate 
 To start a GDB session, first run Mirage with `just debug` and then run `just gdb` in another terminal.
 
 The payload can be selected as an additional argument to `just run`.
-Valid payloads are either names of payloads under the `./payloads/` directory, or paths to external firmware images.
+Valid payloads are either names of payloads under the `./payloads/` directory, some pre-build binaries (such as `opensbi`), or paths to external firmware images.
 
 The log level can be adjusted using a `config.toml` file. See `example.config.toml` for reference.
 

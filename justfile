@@ -24,6 +24,9 @@ test:
 	cargo run --package runner -- --max-exits 200 --payload mret
 	cargo run --package runner -- --max-exits 200 --payload os_ctx_switch
 	cargo run --package runner -- --max-exits 200 --payload pmp_fault
+
+	# Testing with external projects
+	cargo run --package runner -- --max-exits 2000 --payload opensbi
 	
 	# Checking formatting...
 	cargo fmt --all -- --check
