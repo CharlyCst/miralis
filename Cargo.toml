@@ -30,6 +30,7 @@ members = [
     "payloads/mcause",
     "payloads/mret",
     "payloads/os_ctx_switch",
+    "payloads/sandbox",
 
     # Crates
     "crates/abi",

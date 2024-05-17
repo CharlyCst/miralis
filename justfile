@@ -23,6 +23,7 @@ test:
 	cargo run --package runner -- --max-exits 200 --payload mcause
 	cargo run --package runner -- --max-exits 200 --payload mret
 	cargo run --package runner -- --max-exits 200 --payload os_ctx_switch
+	cargo run --package runner -- --max-exits 200 --payload sandbox
 
 	# Testing with external projects
 	cargo run --package runner -- --max-exits 2000 --payload opensbi
