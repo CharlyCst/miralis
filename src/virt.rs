@@ -1,5 +1,4 @@
 //! Firmware Virtualisation
-
 use mirage_core::abi;
 
 use crate::arch::{misa, mstatus, Arch, Architecture, Csr, MCause, Mode, Register, TrapInfo};
@@ -7,7 +6,7 @@ use crate::debug;
 use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
 
-/// The execution mode , either virtualized virmware or native payload.
+/// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionMode {
     /// Virtualized virmware, running in U-mode.
@@ -33,7 +32,7 @@ pub struct VirtContext {
     /// Current privilege mode
     pub(crate) mode: Mode,
     /// Number of virtual PMPs
-    nbr_pmps: usize,
+    pub(crate) nb_pmp: usize,
     /// Hart ID
     hart_id: usize,
     /// Number of exists to Mirage
@@ -41,7 +40,9 @@ pub struct VirtContext {
 }
 
 impl VirtContext {
-    pub fn new(hart_id: usize) -> Self {
+    pub fn new(hart_id: usize, nb_pmp: usize) -> Self {
+        assert!(nb_pmp <= 64, "Too many PMP registers");
+
         VirtContext {
             host_stack: 0,
             regs: Default::default(),
@@ -51,12 +52,7 @@ impl VirtContext {
             trap_info: Default::default(),
             nb_exits: 0,
             hart_id,
-            nbr_pmps: match Plat::get_nb_pmp() {
-                0 => 0,
-                16 => 0,
-                64 => 16,
-                _ => 0,
-            },
+            nb_pmp,
         }
     }
 }
@@ -98,8 +94,8 @@ pub struct VirtCsr {
     pub scontext: usize,
     pub medeleg: usize,
     pub mideleg: usize,
-    pub pmp_cfg: [usize; 16],
-    pub pmp_addr: [usize; 64],
+    pub pmpcfg: [usize; 8],
+    pub pmpaddr: [usize; 64],
     pub mhpmcounter: [usize; 29],
     pub mhpmevent: [usize; 29],
 }
@@ -140,8 +136,8 @@ impl Default for VirtCsr {
             scontext: 0,
             medeleg: 0,
             mideleg: 0,
-            pmp_cfg: [0; 16],
-            pmp_addr: [0; 64],
+            pmpcfg: [0; 8],
+            pmpaddr: [0; 64],
             mhpmcounter: [0; 29],
             mhpmevent: [0; 29],
         }
@@ -154,6 +150,17 @@ impl VirtCsr {
         *csr = *csr & !(filter << offset);
         // Set field
         *csr = *csr | (value << offset);
+    }
+
+    /// Returns the mask of valid bit for the given PMP configuration register.
+    pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize {
+        if pmp_csr_idx == nbr_valid_pmps / 8 {
+            // We are in the correct csr to filter out
+            let to_filter_out: usize = ((nbr_valid_pmps / 8) + 1) * 8 - nbr_valid_pmps;
+
+            return !0b0 >> (to_filter_out * 8);
+        }
+        return !0b0;
     }
 }
 
@@ -225,7 +232,7 @@ impl VirtContext {
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
-                            Mode::S.to_bits(),
+                            0,
                         );
                     }
                     0 => {
@@ -237,7 +244,7 @@ impl VirtContext {
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
-                            Mode::U.to_bits(),
+                            0,
                         );
                     }
                     _ => {
@@ -278,6 +285,10 @@ impl VirtContext {
                 // Jump back to payload
                 self.pc = self.csr.mepc;
             }
+            Instr::Vfencevma => unsafe {
+                Arch::sfence_vma();
+                self.pc += 4;
+            },
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
     }
@@ -384,6 +395,10 @@ impl VirtContext {
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
+            MCause::StoreAccessFault | MCause::LoadAccessFault | MCause::InstrAccessFault => {
+                // PMP faults
+                self.emulate_jump_trap_handler();
+            }
             _ => {
                 if cause.is_interrupt() {
                     // TODO : Interrupts are not yet supported
@@ -438,18 +453,19 @@ impl RegisterContext<Csr> for VirtContext {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
                 }
-                if pmp_cfg_idx >= self.nbr_pmps / 8 {
+                if pmp_cfg_idx >= self.nb_pmp / 8 {
                     // This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmp_cfg[pmp_cfg_idx]
+                self.csr.pmpcfg[pmp_cfg_idx / 2]
+                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp)
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if pmp_addr_idx >= self.nbr_pmps {
+                if pmp_addr_idx >= self.nb_pmp {
                     // This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmp_addr[pmp_addr_idx]
+                self.csr.pmpaddr[pmp_addr_idx]
             }
             Csr::Mcycle => self.csr.mcycle,
             Csr::Minstret => self.csr.minstret,
@@ -639,18 +655,20 @@ impl RegisterContext<Csr> for VirtContext {
                 } else if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
-                } else if pmp_cfg_idx >= self.nbr_pmps / 8 {
+                } else if pmp_cfg_idx >= self.nb_pmp / 8 {
                     // This PMP is not emulated, ignore changes
                     return;
                 }
-                self.csr.pmp_cfg[pmp_cfg_idx] = Csr::PMP_CFG_LEGAL_MASK & value;
+                self.csr.pmpcfg[pmp_cfg_idx / 2] = Csr::PMP_CFG_LEGAL_MASK
+                    & value
+                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp);
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if pmp_addr_idx >= self.nbr_pmps {
+                if pmp_addr_idx >= self.nb_pmp {
                     // This PMP is not emulated, ignore
                     return;
                 }
-                self.csr.pmp_addr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
+                self.csr.pmpaddr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
             }
             Csr::Mcycle => (),                    // Read-only 0
             Csr::Minstret => (),                  // Read-only 0

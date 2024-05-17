@@ -22,6 +22,9 @@ pub trait Platform {
     /// Return the number of PMPs of the platform.
     fn get_nb_pmp() -> usize;
 
+    /// Returns the start and size of Mirage's own memory.
+    fn get_mirage_memory_start_and_size() -> (usize, usize);
+
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;
 

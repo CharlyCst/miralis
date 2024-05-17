@@ -12,15 +12,17 @@ mod arch;
 mod config;
 mod debug;
 mod decoder;
+mod host;
 mod logger;
 mod platform;
 mod virt;
 
 use arch::pmp::pmpcfg;
-use arch::{Arch, Architecture};
+use arch::{pmp, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
+use crate::host::MirageContext;
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
 
 // Defined in the linker script
@@ -40,16 +42,38 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into payload");
     let payload_addr = Plat::load_payload();
-    let mut ctx = VirtContext::new(hart_id);
+    let nb_pmp = Plat::get_nb_pmp();
+    let nb_virt_pmp;
 
+    // Initialize Mirage's own context
+    let mut mctx = MirageContext::new(nb_pmp);
+
+    // Configure PMP registers, if available
+    if nb_pmp >= 16 {
+        // Protect Mirage with the first pmp
+        let (start, size) = Plat::get_mirage_memory_start_and_size();
+        mctx.pmp
+            .set(0, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
+        // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
+        mctx.pmp.set(1, 0, pmpcfg::INACTIVE);
+        // Finally, set the last PMP to grant access to the whole memory
+        mctx.pmp
+            .set(nb_pmp - 1, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
+        // Give 8 PMPs to the firmware
+        mctx.virt_pmp_offset = 2;
+        nb_virt_pmp = 8;
+    } else {
+        nb_virt_pmp = 0;
+    }
+
+    // Initialize the virtual context and configure architecture
+    let mut ctx = VirtContext::new(hart_id, nb_virt_pmp);
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
-        Arch::write_pmpcfg(
-            0,
-            (pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) as usize,
-        );
-        Arch::write_pmpaddr(0, usize::MAX);
+        // Update the PMPs prior to first entry
+        Arch::write_pmp(&mctx.pmp);
+        Arch::sfence_vma();
 
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
@@ -58,22 +82,22 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         ctx.pc = payload_addr;
     }
 
-    main_loop(ctx);
+    main_loop(ctx, mctx);
 }
 
-fn main_loop(mut ctx: VirtContext) -> ! {
+fn main_loop(mut ctx: VirtContext, mut mctx: MirageContext) -> ! {
     let max_exit = debug::get_max_payload_exits();
 
     loop {
         unsafe {
             Arch::run_vcpu(&mut ctx);
-            handle_trap(&mut ctx, max_exit);
+            handle_trap(&mut ctx, &mut mctx, max_exit);
             log::trace!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
+fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext, max_exit: Option<usize>) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", ctx.trap_info.mcause);
     log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);
@@ -106,11 +130,11 @@ fn handle_trap(ctx: &mut VirtContext, max_exit: Option<usize>) {
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             log::debug!("Execution mode: Firmware -> Payload");
-            unsafe { Arch::switch_from_firmware_to_payload(ctx) };
+            unsafe { Arch::switch_from_firmware_to_payload(ctx, mctx) };
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
-            unsafe { Arch::switch_from_payload_to_firmware(ctx) };
+            unsafe { Arch::switch_from_payload_to_firmware(ctx, mctx) };
         }
         _ => {} // No execution mode transition
     }
@@ -134,6 +158,7 @@ fn handle_mirage_trap(ctx: &mut VirtContext) {
     log::error!("  mtval:   0x{:x}", trap.mtval);
     log::error!("  mstatus: 0x{:x}", trap.mstatus);
     log::error!("  mip:     0x{:x}", trap.mip);
+
     todo!("Mirage trap handler entered");
 }
 

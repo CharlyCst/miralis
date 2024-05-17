@@ -23,6 +23,9 @@ fn main() -> ! {
         let mpp = 0b1 << 11; // MPP = S-mode
 
         asm!(
+            "li t4, 0xfffffffff",
+            "csrw pmpcfg0, 0xf",   // XRW TOR
+            "csrw pmpaddr0, t4",   // All memory
             "auipc t4, 0",
             "addi t4, t4, 24",
             "csrw mtvec, {mtvec}", // Write mtvec with trap handler

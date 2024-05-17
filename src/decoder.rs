@@ -47,6 +47,7 @@ pub enum Instr {
         uimm: usize,
     },
     Mret,
+    Vfencevma,
     Unknown,
 }
 
@@ -89,13 +90,13 @@ fn decode_system(raw: usize) -> Instr {
     let func3 = (raw >> 12) & 0b111;
     let rs1 = (raw >> 15) & 0b11111;
     let imm = (raw >> 20) & 0b111111111111;
-
     if func3 == 0b000 {
         return match imm {
             0b000000000000 => Instr::Ecall,
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
             0b001100000010 => Instr::Mret,
+            0b000100100000 => Instr::Vfencevma,
             _ => Instr::Unknown,
         };
     }
@@ -138,7 +139,7 @@ fn decode_csr(csr: usize) -> Csr {
         0xF12 => Csr::Marchid,
         0xF13 => Csr::Mimpid,
         0x3A0..=0x3AF => Csr::Pmpcfg(csr - 0x3A0),
-        0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3AF),
+        0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
         0xB00 => Csr::Mcycle,
         0xB02 => Csr::Minstret,
         0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
