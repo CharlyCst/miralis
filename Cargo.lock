@@ -237,6 +237,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "pmp_fault"
+version = "0.1.0"
+dependencies = [
+ "mirage_abi",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.78"
 source = "registry+https://github.com/rust-lang/crates.io-index"

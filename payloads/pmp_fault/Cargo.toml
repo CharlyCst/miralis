@@ -1,0 +1,7 @@
+[package]
+name = "pmp_fault"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mirage_abi = { path = "../../crates/abi" }

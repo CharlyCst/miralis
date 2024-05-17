@@ -48,6 +48,43 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::set_mpp(arch::Mode::U);
         if Plat::get_nb_pmp() > 0 {
 
+            // 0 -> 1
+            let cfg0 = pmp_write_compute(0,0, 0x80000000, pmpcfg::R | pmpcfg::W | pmpcfg::X);
+            // 1 -> 2
+            let cfg1  = pmp_write_compute(1,0x80000000, 0x80100000-0x80000000 , pmpcfg::R | pmpcfg::W | pmpcfg::X);
+            // 3 -> 15
+            let cfg2 = pmp_write_compute(2,0, usize::MAX , pmpcfg::R | pmpcfg::W | pmpcfg::X);
+             
+            log::debug!("(0) : 1st cfg 0x{:x}", cfg0.cfg1);
+            log::debug!("(0) : 2nd cfg 0x{:x}", cfg0.cfg2);
+            log::debug!("(0) : 1st addr 0x{:x}", cfg0.addr1);
+            log::debug!("(0) : 2nd addr 0x{:x}", cfg0.addr2);
+            log::debug!("(0) : addr mode 0x{:?}", cfg0.addressing_mode);
+
+            log::debug!("(1) : 1st cfg 0x{:x}", cfg1.cfg1);
+            log::debug!("(1) : 2nd cfg 0x{:x}", cfg1.cfg2);
+            log::debug!("(1) : 1st addr 0x{:x}", cfg1.addr1);
+            log::debug!("(1) : 2nd addr 0x{:x}", cfg1.addr2);
+            log::debug!("(1) : addr mode 0x{:?}", cfg1.addressing_mode);
+
+            log::debug!("(2) : 1st cfg 0x{:x}", cfg2.cfg1);
+            log::debug!("(2) : 2nd cfg 0x{:x}", cfg2.cfg2);
+            log::debug!("(2) : 1st addr 0x{:x}", cfg2.addr1);
+            log::debug!("(2) : 2nd addr 0x{:x}", cfg2.addr2);
+            log::debug!("(2) : addr mode 0x{:?}", cfg2.addressing_mode);
+
+
+            pmpcfg_csr_write(
+                0,
+                0
+            );
+            pmpaddr_csr_write(0, usize::MAX);
+
+            log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
+            log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
+            
+
+            // Setup 4 PMPs for mirage
             pmpcfg_csr_write(
                 0,
                 match pmpcfg_write(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
@@ -55,23 +92,17 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                     Err(_) => panic!(),
                 },
             );
-            pmpaddr_csr_write(0, usize::MAX );
+            pmpaddr_csr_write(0, 0x20000000);
 
-            // Setup 4 PMPs for mirage
-            pmpcfg_csr_write(
-                0,
-                match pmpcfg_write(0, pmpcfg::TOR) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
-            );
             pmpcfg_csr_write(
                 1,
-                match pmpcfg_write(1, pmpcfg::TOR) {
+                match pmpcfg_write(1,  pmpcfg::TOR) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
             );
+            pmpaddr_csr_write(1, 0x20040000);
+
             pmpcfg_csr_write(
                 2,
                 match pmpcfg_write(2, 0) {
@@ -79,6 +110,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                     Err(_) => panic!(),
                 },
             );
+            pmpaddr_csr_write(2, 0);
+
             pmpcfg_csr_write(
                 3,
                 match pmpcfg_write(3, 0) {
@@ -86,13 +119,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                     Err(_) => panic!(),
                 },
             );
-
-            // 0 to 0x80000000          : free
-            // 0x80000000 to 0x80100000 : mirage
-            // 0x80100000 to MAX_USIZE  : free
-            pmpaddr_csr_write(0, 0x80000000 >> 2);
-            pmpaddr_csr_write(1, 0x80100000 >> 2);
-            pmpaddr_csr_write(2, 0);
             pmpaddr_csr_write(3, 0);
 
             pmpcfg_csr_write(
@@ -102,7 +128,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
                     Err(_) => panic!(),
                 },
             );
-            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, usize::MAX );
+            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, 0x3fffffffffffffff );
 
             log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
             log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));

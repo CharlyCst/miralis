@@ -131,7 +131,7 @@ pub fn pmp_write_compute(
     let mut pmpcfg: usize;
     let mut log_2_region_size: usize = 0;
 
-    if (region_size & (region_size - 1)) == 0 {
+    /*if (region_size & (region_size - 1)) == 0 {
         log_2_region_size = compute_log2(region_size);
         if (log_2_region_size > 0)
             && ((region_addr >> 2) & ((1 << (log_2_region_size - 2)) - 1) == 0)
@@ -161,7 +161,7 @@ pub fn pmp_write_compute(
             }
         }
         pmp_write_response.addr1 = pmpaddr;
-    } else {
+    } *///else {
         //TOR addressing mode    //TODO: NA4 addressing mode!
         log::trace!("TOR Addressing Mode csr_index: {}", csr_index);
         if csr_index == (PMP_ENTRIES - 1) {
@@ -213,7 +213,7 @@ pub fn pmp_write_compute(
             }
         }
         pmp_write_response.addr1 = pmpaddr >> 2;
-    }
+   // }
 
     pmp_write_response.write_failed = false;
     return pmp_write_response;

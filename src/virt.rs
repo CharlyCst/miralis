@@ -416,6 +416,10 @@ impl VirtContext {
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
+            MCause::StoreAccessFault | MCause::LoadAccessFault | MCause::InstrAccessFault => {
+                // PMP faults
+                self.emulate_jump_trap_handler();
+            }
             _ => {
                 if cause.is_interrupt() {
                     // TODO : Interrupts are not yet supported

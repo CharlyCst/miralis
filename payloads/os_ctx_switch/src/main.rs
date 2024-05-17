@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::arch::{asm, global_asm};
+use core::{arch::{asm, global_asm}, ptr};
 
 use mirage_abi::{setup_payload, success};
 
@@ -22,7 +22,11 @@ fn main() -> ! {
         let trap: usize = _raw_trap_handler as usize;
         let mpp = 0b1 << 11; // MPP = S-mode
 
+
         asm!(
+            "li t4, 0xfffffffff",
+            "csrw pmpcfg0, 0xf",
+            "csrw pmpaddr0, t4",
             "auipc t4, 0",
             "addi t4, t4, 24",
             "csrw mtvec, {mtvec}", // Write mtvec with trap handler
