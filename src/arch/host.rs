@@ -4,7 +4,10 @@
 //! architecutre, such as when running unit tests.
 
 use super::Architecture;
+use crate::arch::PmpGroup;
+use crate::host::MirageContext;
 use crate::main;
+use crate::virt::VirtContext;
 
 /// User space mock, running on the host architecture.
 pub struct HostArch {}
@@ -34,11 +37,7 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn write_pmpcfg(_idx: usize, _pmpcfg: usize) {
-        todo!()
-    }
-
-    unsafe fn write_pmpaddr(_idx: usize, _pmpaddr: usize) {
+    unsafe fn write_pmp(_pmp: &PmpGroup) {
         todo!()
     }
 
@@ -62,11 +61,15 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn switch_from_firmware_to_payload(_ctx: &mut crate::virt::VirtContext) {
+    unsafe fn sfence_vma() {
         todo!()
     }
 
-    unsafe fn switch_from_payload_to_firmware(_ctx: &mut crate::virt::VirtContext) {
+    unsafe fn switch_from_firmware_to_payload(_ctx: &mut VirtContext, _mctx: &mut MirageContext) {
+        todo!()
+    }
+
+    unsafe fn switch_from_payload_to_firmware(_ctx: &mut VirtContext, _mctx: &mut MirageContext) {
         todo!()
     }
 }

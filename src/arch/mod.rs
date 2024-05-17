@@ -11,9 +11,11 @@ pub mod pmp;
 mod registers;
 mod trap;
 
+use pmp::PmpGroup;
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
+use crate::host::MirageContext;
 use crate::virt::{ExecutionMode, VirtContext};
 
 // —————————————————————————— Select Architecture ——————————————————————————— //
@@ -35,14 +37,14 @@ pub trait Architecture {
     fn read_mtvec() -> usize;
     fn read_mstatus() -> usize;
     unsafe fn set_mpp(mode: Mode);
+    unsafe fn write_pmp(pmp: &PmpGroup);
     unsafe fn write_mstatus(mstatus: usize);
-    unsafe fn write_pmpcfg(idx: usize, pmpcfg: usize);
-    unsafe fn write_pmpaddr(idx: usize, pmpaddr: usize);
     unsafe fn mret() -> !;
     unsafe fn ecall();
+    unsafe fn sfence_vma();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
-    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext);
-    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext);
+    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MirageContext);
+    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MirageContext);
 
     /// Return the faulting instruction at the provided exception PC.
     ///

@@ -37,6 +37,29 @@ pub mod pmpcfg {
     pub const VALID_BITS: u8 = RWX | NAPOT | L;
 }
 
+// —————————————————————————————— PMP Address ——————————————————————————————— //
+
+/// Build a valid NAPOT pmpaddr value from a provided start and size.
+///
+/// This function checks for a minimum size of 8 and for proper alignment. If the requirements are
+/// not satisfied None is returned instead.
+pub const fn build_napot(start: usize, size: usize) -> Option<usize> {
+    if size < 8 {
+        // Minimum NAPOT size is 8
+        return None;
+    }
+    if size & (size - 1) != 0 {
+        // Size is not a power of 2
+        return None;
+    }
+    if start & (size - 1) != 0 {
+        // Start does not have an alignment of at least 'size'.
+        return None;
+    }
+
+    Some((start >> 2) | ((size - 1) >> 3))
+}
+
 // ——————————————————————————————— PMP Group ———————————————————————————————— //
 
 pub struct PmpGroup {
@@ -244,6 +267,27 @@ impl<'a> IntoIterator for &'a PmpGroup {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn napot() {
+        // Size is too small
+        assert_eq!(None, build_napot(0x1000, 0));
+        assert_eq!(None, build_napot(0x1000, 1));
+        assert_eq!(None, build_napot(0x1000, 2));
+        assert_eq!(None, build_napot(0x1000, 4));
+        assert_eq!(None, build_napot(0x1000, 7));
+
+        // Address is not aligned
+        assert_eq!(None, build_napot(0x1001, 8));
+        assert_eq!(None, build_napot(0x1002, 8));
+        assert_eq!(None, build_napot(0x1004, 8));
+        assert_eq!(None, build_napot(0x1008, 16));
+
+        // Valid address and size
+        assert_eq!(Some(0x400), build_napot(0x1000, 8));
+        assert_eq!(Some(0x401), build_napot(0x1000, 16));
+        assert_eq!(Some(0x403), build_napot(0x1000, 32));
+    }
 
     #[test]
     fn segments() {
