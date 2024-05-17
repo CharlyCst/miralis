@@ -1,9 +1,11 @@
 #![no_std]
 //RISC-V PMP Configuration.
 
-
-use crate::arch::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
 pub use log;
+
+use crate::arch::pmp_csrs::{
+    pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
+};
 
 //The following three constants assume 16 PMP entries.
 pub const PMP_ENTRIES: usize = 16;

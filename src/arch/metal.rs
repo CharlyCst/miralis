@@ -2,11 +2,12 @@
 use core::arch::{asm, global_asm};
 use core::ptr;
 
-use crate::arch::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
-use crate::arch::lib::pmpcfg_write;
-
 use super::{Architecture, MCause, Mode, TrapInfo};
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
+use crate::arch::pmp_csrs::{
+    pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
+};
+use crate::arch::pmp_lib::pmpcfg_write;
 use crate::arch::pmpcfg;
 use crate::platform::Platform;
 use crate::virt::VirtContext;

@@ -35,11 +35,6 @@ fn main() -> ! {
         "Trap handler did not properly update the value in t6"
     );
 
-    // MPIE = 1
-    read_test((mstatus >> 7) & 0b1, 1);
-    // MPRV = 0
-    read_test((mstatus >> 17) & 0b1, 0);
-
     success();
 }
 

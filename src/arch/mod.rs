@@ -7,10 +7,10 @@
 mod host;
 #[cfg(not(feature = "host"))]
 mod metal;
+pub mod pmp_csrs;
+pub mod pmp_lib;
 mod registers;
 mod trap;
-pub mod csrs;
-pub mod lib;
 
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
