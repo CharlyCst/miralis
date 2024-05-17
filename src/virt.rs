@@ -168,6 +168,7 @@ impl VirtCsr {
         return !0b0;
     }
 
+    #[allow(dead_code)]
     pub fn read_pmp_cfg(&mut self, index: usize) -> usize {
         let mut pmpcfg: usize;
 
