@@ -18,8 +18,8 @@ mod virt;
 
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
-use riscv_pmp::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
-use riscv_pmp::{pmp_write_compute, pmpcfg_write};
+use crate::arch::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
+use crate::arch::lib::{pmp_write_compute, pmpcfg_write};
 
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};

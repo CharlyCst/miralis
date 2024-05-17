@@ -1,10 +1,8 @@
 #![no_std]
 //RISC-V PMP Configuration.
 
-pub mod csrs;
-pub mod logger;
 
-use csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
+use crate::arch::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
 pub use log;
 
 //The following three constants assume 16 PMP entries.

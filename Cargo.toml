@@ -8,7 +8,6 @@ uart_16550 = "0.3.0"
 spin = "0.5.2"
 log = { workspace = true }
 mirage_core = { path = "crates/core" }
-riscv_pmp = { path = "crates/riscv_pmp" }
 
 [features]
 host = [] # When running on host architecture, such as when running unit tests.
@@ -36,7 +35,6 @@ members = [
     # Crates
     "crates/abi",
     "crates/core",
-    "crates/riscv_pmp",
 
     # Tooling
     "runner",

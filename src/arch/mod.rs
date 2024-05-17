@@ -9,6 +9,8 @@ mod host;
 mod metal;
 mod registers;
 mod trap;
+pub mod csrs;
+pub mod lib;
 
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};

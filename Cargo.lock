@@ -198,7 +198,6 @@ version = "0.1.0"
 dependencies = [
  "log",
  "mirage_core",
- "riscv_pmp",
  "spin",
  "uart_16550",
 ]
@@ -268,14 +267,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c297679cb867470fa8c9f67dbba74a78d78e3e98d7cf2b08d6d71540f797332"
 dependencies = [
  "bitflags",
-]
-
-[[package]]
-name = "riscv_pmp"
-version = "0.1.0"
-dependencies = [
- "log",
- "mirage_core",
 ]
 
 [[package]]

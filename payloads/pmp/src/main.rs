@@ -10,11 +10,12 @@ setup_payload!(main);
 fn main() -> ! {
     // For now we expose 0 PMPs to the payload, because QEMU supports only 16 PMPs.
     // So we ensure that indeed no PMPs are exposed.
-    test_0_pmp();
+    test_16_pmp();
 
     success();
 }
 
+#[allow(unused)]
 fn test_0_pmp() {
     let addr: usize = 0x00000fffffffff42;
     let cfg: usize = 0b00000111;
