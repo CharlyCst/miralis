@@ -10,8 +10,7 @@ use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmpcfg;
 use crate::platform::Platform;
 use crate::virt::VirtContext;
-use crate::{_stack_bottom, _stack_top, main};
-use crate::Plat;
+use crate::{_stack_bottom, _stack_top, main, Plat};
 
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
@@ -247,17 +246,15 @@ impl Architecture for MetalArch {
         // - mip?
         // - mie?
 
-        for i in 0..ctx.nbr_pmps{
+        for i in 0..ctx.nbr_pmps {
             pmpcfg_csr_write(
-                i+ctx.pmp_offset,
-                match pmpcfg_write(i+ctx.pmp_offset, 
-                    ctx.csr.read_pmp_cfg(i)
-                 ) {
+                i + ctx.pmp_offset,
+                match pmpcfg_write(i + ctx.pmp_offset, ctx.csr.read_pmp_cfg(i)) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
             );
-            pmpaddr_csr_write(i+ctx.pmp_offset, ctx.csr.pmp_addr[i]);
+            pmpaddr_csr_write(i + ctx.pmp_offset, ctx.csr.pmp_addr[i]);
         }
         pmpcfg_csr_write(
             Plat::get_nb_pmp() - 1,
@@ -268,7 +265,7 @@ impl Architecture for MetalArch {
         );
 
         log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp()-1));
+        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
 
         log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
         log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
@@ -284,8 +281,10 @@ impl Architecture for MetalArch {
         log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
         log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
 
-        log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(Plat::get_nb_pmp()-1));
-
+        log::debug!(
+            "pmpaddr15 is 0x{:x}",
+            pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
+        );
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -364,28 +363,29 @@ impl Architecture for MetalArch {
         // - sip
         // - sie
 
-        for i in 0..ctx.nbr_pmps{
+        for i in 0..ctx.nbr_pmps {
             pmpcfg_csr_write(
-                i+ctx.pmp_offset,
-                match pmpcfg_write(i+ctx.pmp_offset, 
-                    0
-                 ) {
+                i + ctx.pmp_offset,
+                match pmpcfg_write(i + ctx.pmp_offset, 0) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
             );
-            pmpaddr_csr_write(i+ctx.pmp_offset, 0);
+            pmpaddr_csr_write(i + ctx.pmp_offset, 0);
         }
         pmpcfg_csr_write(
             Plat::get_nb_pmp() - 1,
-            match pmpcfg_write(Plat::get_nb_pmp() - 1, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+            match pmpcfg_write(
+                Plat::get_nb_pmp() - 1,
+                pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
+            ) {
                 Ok(x) => x,
                 Err(_) => panic!(),
             },
         );
 
         log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp()-1));
+        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
 
         log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
         log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
@@ -401,8 +401,10 @@ impl Architecture for MetalArch {
         log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
         log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
 
-        log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(Plat::get_nb_pmp()-1));
-
+        log::debug!(
+            "pmpaddr15 is 0x{:x}",
+            pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
+        );
     }
 
     unsafe fn flush_with_sfence() {

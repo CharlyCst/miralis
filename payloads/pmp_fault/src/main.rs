@@ -1,7 +1,8 @@
 #![no_std]
 #![no_main]
 
-use core::{arch::{asm, global_asm}, ptr};
+use core::arch::{asm, global_asm};
+use core::ptr;
 
 use mirage_abi::{setup_payload, success};
 
@@ -19,8 +20,8 @@ fn main() -> ! {
         );
     }
 
-    unsafe{
-        let x :usize = 0x80002000;
+    unsafe {
+        let x: usize = 0x80002000;
         let y = x as *const usize;
         ptr::read_volatile(y);
     }
@@ -34,9 +35,9 @@ fn main() -> ! {
             out("t6") mcause,
         );
     }
-    
+
     assert_eq!(mcause, 0x5, "exception was not access fault");
-    
+
     success();
 }
 

@@ -162,58 +162,58 @@ pub fn pmp_write_compute(
         }
         pmp_write_response.addr1 = pmpaddr;
     } *///else {
-        //TOR addressing mode    //TODO: NA4 addressing mode!
-        log::trace!("TOR Addressing Mode csr_index: {}", csr_index);
-        if csr_index == (PMP_ENTRIES - 1) {
-            //Last PMP entry - Don't have enough PMP entries for protecting this region with TOR addressing mode.
-            pmp_write_response.failure_code = PMPErrorCode::InvalidIndex;
+    //TOR addressing mode    //TODO: NA4 addressing mode!
+    log::trace!("TOR Addressing Mode csr_index: {}", csr_index);
+    if csr_index == (PMP_ENTRIES - 1) {
+        //Last PMP entry - Don't have enough PMP entries for protecting this region with TOR addressing mode.
+        pmp_write_response.failure_code = PMPErrorCode::InvalidIndex;
+        return pmp_write_response;
+    }
+    let csr_index_2: usize = csr_index + 1;
+    //Initialize two PMP entries
+    //First PMP entry (index i) contains the top address and pmpcfg value
+    pmpaddr = region_addr + region_size;
+    //>> 2; //TODO: Does this need to be generic or can we assume a fixed
+    //PMP granularity?
+    pmp_write_response.addressing_mode = PMPAddressingMode::TOR;
+    pmpcfg = region_perm | ((pmp_write_response.addressing_mode as usize) << 3);
+    log::trace!(
+        "PMPADDR value {:x} for index {:x} PMPCFG value {:x}",
+        pmpaddr,
+        csr_index_2,
+        pmpcfg
+    );
+    match pmpcfg_compute(csr_index_2, pmpcfg) {
+        Ok(val) => {
+            pmp_write_response.cfg2 = val;
+        }
+        Err(code) => {
+            pmp_write_response.failure_code = code;
             return pmp_write_response;
         }
-        let csr_index_2: usize = csr_index + 1;
-        //Initialize two PMP entries
-        //First PMP entry (index i) contains the top address and pmpcfg value
-        pmpaddr = region_addr + region_size;
-        //>> 2; //TODO: Does this need to be generic or can we assume a fixed
-        //PMP granularity?
-        pmp_write_response.addressing_mode = PMPAddressingMode::TOR;
-        pmpcfg = region_perm | ((pmp_write_response.addressing_mode as usize) << 3);
-        log::trace!(
-            "PMPADDR value {:x} for index {:x} PMPCFG value {:x}",
-            pmpaddr,
-            csr_index_2,
-            pmpcfg
-        );
-        match pmpcfg_compute(csr_index_2, pmpcfg) {
-            Ok(val) => {
-                pmp_write_response.cfg2 = val;
-            }
-            Err(code) => {
-                pmp_write_response.failure_code = code;
-                return pmp_write_response;
-            }
-        }
-        pmp_write_response.addr2 = pmpaddr >> 2;
+    }
+    pmp_write_response.addr2 = pmpaddr >> 2;
 
-        //Second PMP entry (index i-1) contains the bottom address and pmpcfg = 0
-        pmpcfg = 0;
-        pmpaddr = region_addr;
-        log::trace!(
-            "PMPADDR value {:x} for index {} PMPCFG value {:x}",
-            pmpaddr,
-            csr_index,
-            pmpcfg
-        );
-        match pmpcfg_compute(csr_index, pmpcfg) {
-            Ok(val) => {
-                pmp_write_response.cfg1 = val;
-            }
-            Err(code) => {
-                pmp_write_response.failure_code = code;
-                return pmp_write_response;
-            }
+    //Second PMP entry (index i-1) contains the bottom address and pmpcfg = 0
+    pmpcfg = 0;
+    pmpaddr = region_addr;
+    log::trace!(
+        "PMPADDR value {:x} for index {} PMPCFG value {:x}",
+        pmpaddr,
+        csr_index,
+        pmpcfg
+    );
+    match pmpcfg_compute(csr_index, pmpcfg) {
+        Ok(val) => {
+            pmp_write_response.cfg1 = val;
         }
-        pmp_write_response.addr1 = pmpaddr >> 2;
-   // }
+        Err(code) => {
+            pmp_write_response.failure_code = code;
+            return pmp_write_response;
+        }
+    }
+    pmp_write_response.addr1 = pmpaddr >> 2;
+    // }
 
     pmp_write_response.write_failed = false;
     return pmp_write_response;

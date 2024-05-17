@@ -1,7 +1,8 @@
 #![no_std]
 #![no_main]
 
-use core::{arch::{asm, global_asm}, ptr};
+use core::arch::{asm, global_asm};
+use core::ptr;
 
 use mirage_abi::{setup_payload, success};
 
@@ -21,7 +22,6 @@ fn main() -> ! {
         let os: usize = _raw_os as usize;
         let trap: usize = _raw_trap_handler as usize;
         let mpp = 0b1 << 11; // MPP = S-mode
-
 
         asm!(
             "li t4, 0xfffffffff",

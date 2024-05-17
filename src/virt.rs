@@ -168,13 +168,13 @@ impl VirtCsr {
         return !0b0;
     }
 
-    pub fn read_pmp_cfg(&mut self, index: usize) -> usize{
+    pub fn read_pmp_cfg(&mut self, index: usize) -> usize {
         let mut pmpcfg: usize;
 
         //Need to extract the pmpcfg value based on the index. Assumes 8 bit pmpcfg as specified in the
         //RV Specification Vol 2 - Privileged Arch.
 
-        pmpcfg = self.pmp_cfg[(index/8)*2];
+        pmpcfg = self.pmp_cfg[(index / 8) * 2];
 
         let index_pos: usize = index % 8;
         let pmpcfg_mask: usize = 0xff << (index_pos * 8);

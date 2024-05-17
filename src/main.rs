@@ -19,7 +19,7 @@ mod virt;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 use riscv_pmp::csrs::{pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write};
-use riscv_pmp::{pmpcfg_write, pmp_write_compute};
+use riscv_pmp::{pmp_write_compute, pmpcfg_write};
 
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
@@ -47,14 +47,18 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
         if Plat::get_nb_pmp() > 0 {
-
             // 0 -> 1
-            let cfg0 = pmp_write_compute(0,0, 0x80000000, pmpcfg::R | pmpcfg::W | pmpcfg::X);
+            let cfg0 = pmp_write_compute(0, 0, 0x80000000, pmpcfg::R | pmpcfg::W | pmpcfg::X);
             // 1 -> 2
-            let cfg1  = pmp_write_compute(1,0x80000000, 0x80100000-0x80000000 , pmpcfg::R | pmpcfg::W | pmpcfg::X);
+            let cfg1 = pmp_write_compute(
+                1,
+                0x80000000,
+                0x80100000 - 0x80000000,
+                pmpcfg::R | pmpcfg::W | pmpcfg::X,
+            );
             // 3 -> 15
-            let cfg2 = pmp_write_compute(2,0, usize::MAX , pmpcfg::R | pmpcfg::W | pmpcfg::X);
-             
+            let cfg2 = pmp_write_compute(2, 0, usize::MAX, pmpcfg::R | pmpcfg::W | pmpcfg::X);
+
             log::debug!("(0) : 1st cfg 0x{:x}", cfg0.cfg1);
             log::debug!("(0) : 2nd cfg 0x{:x}", cfg0.cfg2);
             log::debug!("(0) : 1st addr 0x{:x}", cfg0.addr1);
@@ -73,16 +77,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             log::debug!("(2) : 2nd addr 0x{:x}", cfg2.addr2);
             log::debug!("(2) : addr mode 0x{:?}", cfg2.addressing_mode);
 
-
-            pmpcfg_csr_write(
-                0,
-                0
-            );
+            pmpcfg_csr_write(0, 0);
             pmpaddr_csr_write(0, usize::MAX);
 
             log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
             log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
-            
 
             // Setup 4 PMPs for mirage
             pmpcfg_csr_write(
@@ -96,7 +95,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
             pmpcfg_csr_write(
                 1,
-                match pmpcfg_write(1,  pmpcfg::TOR) {
+                match pmpcfg_write(1, pmpcfg::TOR) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
@@ -123,12 +122,15 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
             pmpcfg_csr_write(
                 Plat::get_nb_pmp() - 1,
-                match pmpcfg_write(Plat::get_nb_pmp() - 1, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
+                match pmpcfg_write(
+                    Plat::get_nb_pmp() - 1,
+                    pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
+                ) {
                     Ok(x) => x,
                     Err(_) => panic!(),
                 },
             );
-            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, 0x3fffffffffffffff );
+            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, 0x3fffffffffffffff);
 
             log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
             log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
@@ -147,14 +149,16 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
             log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
 
-            log::debug!("pmpaddr15 is 0x{:x}", pmpaddr_csr_read(Plat::get_nb_pmp() - 1));
+            log::debug!(
+                "pmpaddr15 is 0x{:x}",
+                pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
+            );
 
             Arch::flush_with_sfence();
-            
+
             ctx.set_pmp_values(8, 4); // Give 8 PMPs to the firmware
         }
 
-        
         // Configure the payload context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
