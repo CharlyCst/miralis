@@ -307,3 +307,18 @@ pub fn clear_pmp() {
                                 //require fine-grained writes to pmpcfg.
     }
 }
+
+pub fn write_pmp_cfg(idx: usize, cfg: usize) {
+    pmpcfg_csr_write(
+        idx,
+        match pmpcfg_write(idx, cfg) {
+            Ok(x) => x,
+            Err(_) => panic!(),
+        },
+    );
+}
+
+pub fn write_pmp_cfg_and_addr(idx: usize, cfg: usize, addr: usize) {
+    write_pmp_cfg(idx, cfg);
+    pmpaddr_csr_write(idx, addr);
+}

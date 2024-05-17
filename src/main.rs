@@ -22,7 +22,7 @@ use platform::{init, Plat, Platform};
 use crate::arch::pmp_csrs::{
     pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
 };
-use crate::arch::pmp_lib::{pmp_write_compute, pmpcfg_write};
+use crate::arch::pmp_lib::{pmp_write_compute, pmpcfg_write, write_pmp_cfg_and_addr};
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
 
@@ -86,53 +86,19 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
 
             // Setup 4 PMPs for mirage
-            pmpcfg_csr_write(
+            write_pmp_cfg_and_addr(
                 0,
-                match pmpcfg_write(0, pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
+                pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
+                0x20000000,
             );
-            pmpaddr_csr_write(0, 0x20000000);
-
-            pmpcfg_csr_write(
-                1,
-                match pmpcfg_write(1, pmpcfg::TOR) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
-            );
-            pmpaddr_csr_write(1, 0x20040000);
-
-            pmpcfg_csr_write(
-                2,
-                match pmpcfg_write(2, 0) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
-            );
-            pmpaddr_csr_write(2, 0);
-
-            pmpcfg_csr_write(
-                3,
-                match pmpcfg_write(3, 0) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
-            );
-            pmpaddr_csr_write(3, 0);
-
-            pmpcfg_csr_write(
+            write_pmp_cfg_and_addr(1, pmpcfg::TOR, 0x20040000);
+            write_pmp_cfg_and_addr(2, 0, 0);
+            write_pmp_cfg_and_addr(3, 0, 0);
+            write_pmp_cfg_and_addr(
                 Plat::get_nb_pmp() - 1,
-                match pmpcfg_write(
-                    Plat::get_nb_pmp() - 1,
-                    pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
-                ) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
+                pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
+                0x3fffffffffffffff,
             );
-            pmpaddr_csr_write(Plat::get_nb_pmp() - 1, 0x3fffffffffffffff);
 
             log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
             log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));

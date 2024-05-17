@@ -7,7 +7,7 @@ use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmp_csrs::{
     pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
 };
-use crate::arch::pmp_lib::pmpcfg_write;
+use crate::arch::pmp_lib::{pmpcfg_write, write_pmp_cfg, write_pmp_cfg_and_addr};
 use crate::arch::pmpcfg;
 use crate::platform::Platform;
 use crate::virt::VirtContext;
@@ -248,22 +248,13 @@ impl Architecture for MetalArch {
         // - mie?
 
         for i in 0..ctx.nbr_pmps {
-            pmpcfg_csr_write(
+            write_pmp_cfg_and_addr(
                 i + ctx.pmp_offset,
-                match pmpcfg_write(i + ctx.pmp_offset, ctx.csr.read_pmp_cfg(i)) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
+                ctx.csr.read_pmp_cfg(i),
+                ctx.csr.pmp_addr[i],
             );
-            pmpaddr_csr_write(i + ctx.pmp_offset, ctx.csr.pmp_addr[i]);
         }
-        pmpcfg_csr_write(
-            Plat::get_nb_pmp() - 1,
-            match pmpcfg_write(Plat::get_nb_pmp() - 1, pmpcfg::TOR) {
-                Ok(x) => x,
-                Err(_) => panic!(),
-            },
-        );
+        write_pmp_cfg(Plat::get_nb_pmp() - 1, pmpcfg::TOR);
 
         log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
         log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
