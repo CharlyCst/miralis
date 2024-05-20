@@ -140,6 +140,7 @@ fn handle_mirage_trap(ctx: &mut VirtContext) {
     todo!("Mirage trap handler entered");
 }
 
+// Setup the PMPs for mirage and return how many PMPs mirage uses
 fn setup_mirage_pmp() -> usize {
     // These can be used to compute the values to put into the PMPs
     /*
