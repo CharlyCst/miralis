@@ -4,8 +4,7 @@ use core::ptr;
 
 use super::{Architecture, MCause, Mode, TrapInfo};
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
-use crate::arch::pmp_csrs::{pmpaddr_csr_write, pmpcfg_csr_write};
-use crate::arch::pmp_lib::{pmpcfg_write, write_pmp_cfg, write_pmp_cfg_and_addr};
+use crate::arch::pmp_lib::{write_pmp_cfg, write_pmp_cfg_and_addr};
 use crate::arch::pmpcfg;
 use crate::platform::Platform;
 use crate::virt::VirtContext;
