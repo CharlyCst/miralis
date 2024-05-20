@@ -240,7 +240,7 @@ impl VirtContext {
                 self.set(rd, tmp);
                 self.pc += 4;
             }
-            Instr::Mret => {
+            Instr::Mret => { // TODO: maybe make MRET emulation into a serparate function for clarity
                 match (self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER {
                     3 => {
                         log::trace!("mret to m-mode");
