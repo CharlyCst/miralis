@@ -158,6 +158,7 @@ impl VirtCsr {
         *csr = *csr | (value << offset);
     }
 
+    /// Filter out the values that the firmware cannot modify
     pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize {
         if pmp_csr_idx == nbr_valid_pmps / 8 {
             // We are in the correct csr to filter out
@@ -168,6 +169,7 @@ impl VirtCsr {
         return !0b0;
     }
 
+    /// Allows to read the specific configuration of a PMP, not only the whole register
     pub fn read_pmp_cfg(&mut self, index: usize) -> usize {
         let mut pmpcfg: usize;
 
@@ -703,8 +705,8 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Medeleg => {
                 //TODO : some values need to be read-only 0
                 self.csr.medeleg = value;
-            } // Read-only 0 : do not delegate exceptions
-            Csr::Mideleg => (),    // Read-only 0 : do not delegate interrupts
+            }
+            Csr::Mideleg => (),        // Read-only 0 : do not delegate interrupts
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented

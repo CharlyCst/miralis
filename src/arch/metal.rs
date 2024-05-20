@@ -4,9 +4,7 @@ use core::ptr;
 
 use super::{Architecture, MCause, Mode, TrapInfo};
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
-use crate::arch::pmp_csrs::{
-    pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
-};
+use crate::arch::pmp_csrs::{pmpaddr_csr_write, pmpcfg_csr_write};
 use crate::arch::pmp_lib::{pmpcfg_write, write_pmp_cfg, write_pmp_cfg_and_addr};
 use crate::arch::pmpcfg;
 use crate::platform::Platform;
@@ -247,36 +245,19 @@ impl Architecture for MetalArch {
         // - mip?
         // - mie?
 
+        // PMPs: load firmware's PMPs into the hardware
+        // TODO: if more has to be done for PMPs => make this a function
         for i in 0..ctx.nbr_pmps {
+            // Firmware's PMPs need to be moved by 'pmp_offset' to not overwrite mirage's PMPs
             write_pmp_cfg_and_addr(
                 i + ctx.pmp_offset,
                 ctx.csr.read_pmp_cfg(i),
                 ctx.csr.pmp_addr[i],
             );
         }
+        // The last PMP: no permissions in the general case (the payload cannot access all memory)
         write_pmp_cfg(Plat::get_nb_pmp() - 1, pmpcfg::TOR);
-
-        log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
-
-        log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
-        log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
-        log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
-        log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
-
-        log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
-        log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
-        log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
-        log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
-        log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
-        log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
-        log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
-        log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
-
-        log::debug!(
-            "pmpaddr15 is 0x{:x}",
-            pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
-        );
+        Self::flush_with_sfence();
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -355,48 +336,18 @@ impl Architecture for MetalArch {
         // - sip
         // - sie
 
+        // PMPs : clear out all of the firmwares PMPs
+        // TODO: if more has to be done for PMPs => make this a function
         for i in 0..ctx.nbr_pmps {
-            pmpcfg_csr_write(
-                i + ctx.pmp_offset,
-                match pmpcfg_write(i + ctx.pmp_offset, 0) {
-                    Ok(x) => x,
-                    Err(_) => panic!(),
-                },
-            );
-            pmpaddr_csr_write(i + ctx.pmp_offset, 0);
+            // Must not clear mirage's PMPs, hence the offset
+            write_pmp_cfg_and_addr(i + ctx.pmp_offset, 0, 0);
         }
-        pmpcfg_csr_write(
+        // The last PMP: all permissions in the general case (the firmware can access all memory except mirage's)
+        write_pmp_cfg(
             Plat::get_nb_pmp() - 1,
-            match pmpcfg_write(
-                Plat::get_nb_pmp() - 1,
-                pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
-            ) {
-                Ok(x) => x,
-                Err(_) => panic!(),
-            },
+            pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
         );
-
-        log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-        log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
-
-        log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
-        log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
-        log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
-        log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
-
-        log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
-        log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
-        log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
-        log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
-        log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
-        log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
-        log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
-        log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
-
-        log::debug!(
-            "pmpaddr15 is 0x{:x}",
-            pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
-        );
+        Self::flush_with_sfence();
     }
 
     unsafe fn flush_with_sfence() {

@@ -19,10 +19,7 @@ mod virt;
 use arch::{pmpcfg, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
-use crate::arch::pmp_csrs::{
-    pmpaddr_csr_read, pmpaddr_csr_write, pmpcfg_csr_read, pmpcfg_csr_write,
-};
-use crate::arch::pmp_lib::{pmp_write_compute, write_pmp_cfg_and_addr};
+use crate::arch::pmp_lib::write_pmp_cfg_and_addr;
 use crate::arch::{misa, Csr, Register};
 use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
 
@@ -49,82 +46,10 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
         if Plat::get_nb_pmp() > 0 {
-            // 0 -> 1
-            let cfg0 = pmp_write_compute(0, 0, 0x80000000, pmpcfg::R | pmpcfg::W | pmpcfg::X);
-            // 1 -> 2
-            let cfg1 = pmp_write_compute(
-                1,
-                0x80000000,
-                0x80100000 - 0x80000000,
-                pmpcfg::R | pmpcfg::W | pmpcfg::X,
-            );
-            // 3 -> 15
-            let cfg2 = pmp_write_compute(2, 0, usize::MAX, pmpcfg::R | pmpcfg::W | pmpcfg::X);
-
-            log::debug!("(0) : 1st cfg 0x{:x}", cfg0.cfg1);
-            log::debug!("(0) : 2nd cfg 0x{:x}", cfg0.cfg2);
-            log::debug!("(0) : 1st addr 0x{:x}", cfg0.addr1);
-            log::debug!("(0) : 2nd addr 0x{:x}", cfg0.addr2);
-            log::debug!("(0) : addr mode 0x{:?}", cfg0.addressing_mode);
-
-            log::debug!("(1) : 1st cfg 0x{:x}", cfg1.cfg1);
-            log::debug!("(1) : 2nd cfg 0x{:x}", cfg1.cfg2);
-            log::debug!("(1) : 1st addr 0x{:x}", cfg1.addr1);
-            log::debug!("(1) : 2nd addr 0x{:x}", cfg1.addr2);
-            log::debug!("(1) : addr mode 0x{:?}", cfg1.addressing_mode);
-
-            log::debug!("(2) : 1st cfg 0x{:x}", cfg2.cfg1);
-            log::debug!("(2) : 2nd cfg 0x{:x}", cfg2.cfg2);
-            log::debug!("(2) : 1st addr 0x{:x}", cfg2.addr1);
-            log::debug!("(2) : 2nd addr 0x{:x}", cfg2.addr2);
-            log::debug!("(2) : addr mode 0x{:?}", cfg2.addressing_mode);
-
-            pmpcfg_csr_write(0, 0);
-            pmpaddr_csr_write(0, usize::MAX);
-
-            log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-            log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
-
-            // Setup 4 PMPs for mirage
-            write_pmp_cfg_and_addr(
-                0,
-                pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
-                0x20000000,
-            );
-            write_pmp_cfg_and_addr(1, pmpcfg::TOR, 0x20040000);
-            write_pmp_cfg_and_addr(2, 0, 0);
-            write_pmp_cfg_and_addr(3, 0, 0);
-            write_pmp_cfg_and_addr(
-                Plat::get_nb_pmp() - 1,
-                pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
-                0x3fffffffffffffff,
-            );
-
-            log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
-            log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
-
-            log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
-            log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
-            log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
-            log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
-
-            log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
-            log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
-            log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
-            log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
-            log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
-            log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
-            log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
-            log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
-
-            log::debug!(
-                "pmpaddr15 is 0x{:x}",
-                pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
-            );
-
-            Arch::flush_with_sfence();
-
-            ctx.set_pmp_values(8, 4); // Give 8 PMPs to the firmware
+            let mirage_pmps = setup_mirage_pmp();
+            // Give all the remaining PMPs to the firmware
+            // Must keep the last PMP for mirage: to control global permissions
+            ctx.set_pmp_values(Plat::get_nb_pmp() - mirage_pmps - 1, mirage_pmps);
         }
 
         // Configure the payload context
@@ -213,6 +138,92 @@ fn handle_mirage_trap(ctx: &mut VirtContext) {
     log::error!("  mip:     0x{:x}", trap.mip);
 
     todo!("Mirage trap handler entered");
+}
+
+fn setup_mirage_pmp() -> usize {
+    // These can be used to compute the values to put into the PMPs
+    /*
+    // 0 -> 1
+    let cfg0 = pmp_write_compute(0, 0, 0x80000000, pmpcfg::R | pmpcfg::W | pmpcfg::X);
+    // 1 -> 2
+    let cfg1 = pmp_write_compute(
+        1,
+        0x80000000,
+        0x80100000 - 0x80000000,
+        pmpcfg::R | pmpcfg::W | pmpcfg::X,
+    );
+    // 3 -> 15
+    let cfg2 = pmp_write_compute(2, 0, usize::MAX, pmpcfg::R | pmpcfg::W | pmpcfg::X);
+
+    log::debug!("(0) : 1st cfg 0x{:x}", cfg0.cfg1);
+    log::debug!("(0) : 2nd cfg 0x{:x}", cfg0.cfg2);
+    log::debug!("(0) : 1st addr 0x{:x}", cfg0.addr1);
+    log::debug!("(0) : 2nd addr 0x{:x}", cfg0.addr2);
+    log::debug!("(0) : addr mode 0x{:?}", cfg0.addressing_mode);
+
+    log::debug!("(1) : 1st cfg 0x{:x}", cfg1.cfg1);
+    log::debug!("(1) : 2nd cfg 0x{:x}", cfg1.cfg2);
+    log::debug!("(1) : 1st addr 0x{:x}", cfg1.addr1);
+    log::debug!("(1) : 2nd addr 0x{:x}", cfg1.addr2);
+    log::debug!("(1) : addr mode 0x{:?}", cfg1.addressing_mode);
+
+    log::debug!("(2) : 1st cfg 0x{:x}", cfg2.cfg1);
+    log::debug!("(2) : 2nd cfg 0x{:x}", cfg2.cfg2);
+    log::debug!("(2) : 1st addr 0x{:x}", cfg2.addr1);
+    log::debug!("(2) : 2nd addr 0x{:x}", cfg2.addr2);
+    log::debug!("(2) : addr mode 0x{:?}", cfg2.addressing_mode);
+    */
+
+    // This can be used to figure out the granularity of the PMPs of the hardware
+    /*
+    pmpcfg_csr_write(0, 0);
+    pmpaddr_csr_write(0, usize::MAX);
+
+    log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
+    log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
+     */
+
+    // Setup 4 PMPs for mirage
+    write_pmp_cfg_and_addr(
+        0,
+        pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
+        0x20000000,
+    );
+    write_pmp_cfg_and_addr(1, pmpcfg::TOR, 0x20040000);
+    write_pmp_cfg_and_addr(2, 0, 0);
+    write_pmp_cfg_and_addr(3, 0, 0);
+    write_pmp_cfg_and_addr(
+        Plat::get_nb_pmp() - 1,
+        pmpcfg::R | pmpcfg::W | pmpcfg::X | pmpcfg::TOR,
+        0x3fffffffffffffff,
+    );
+    /*
+    log::debug!("pmpcfg0 is 0x{:x}", pmpcfg_csr_read(0));
+    log::debug!("pmpcfg2 is 0x{:x}", pmpcfg_csr_read(Plat::get_nb_pmp() - 1));
+
+    log::debug!("pmpaddr0 is 0x{:x}", pmpaddr_csr_read(0));
+    log::debug!("pmpaddr1 is 0x{:x}", pmpaddr_csr_read(1));
+    log::debug!("pmpaddr2 is 0x{:x}", pmpaddr_csr_read(2));
+    log::debug!("pmpaddr3 is 0x{:x}", pmpaddr_csr_read(3));
+
+    log::debug!("pmpaddr4 is 0x{:x}", pmpaddr_csr_read(4));
+    log::debug!("pmpaddr5 is 0x{:x}", pmpaddr_csr_read(5));
+    log::debug!("pmpaddr6 is 0x{:x}", pmpaddr_csr_read(6));
+    log::debug!("pmpaddr7 is 0x{:x}", pmpaddr_csr_read(7));
+    log::debug!("pmpaddr8 is 0x{:x}", pmpaddr_csr_read(8));
+    log::debug!("pmpaddr9 is 0x{:x}", pmpaddr_csr_read(9));
+    log::debug!("pmpaddr10 is 0x{:x}", pmpaddr_csr_read(10));
+    log::debug!("pmpaddr11 is 0x{:x}", pmpaddr_csr_read(11));
+
+    log::debug!(
+        "pmpaddr15 is 0x{:x}",
+        pmpaddr_csr_read(Plat::get_nb_pmp() - 1)
+    );
+    */
+    unsafe { Arch::flush_with_sfence() };
+
+    let nb_mirage_pmps = 4;
+    return nb_mirage_pmps;
 }
 
 #[panic_handler]

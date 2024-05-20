@@ -89,6 +89,7 @@ fn compute_log2(num: usize) -> usize {
 
 //Only computes the values to be written to the PMP, doesn't actually modify the PMPs.
 //Returns the computed values in PMPWriteResponse.
+// In Mirage we only use TOR addressing mode for now
 pub fn pmp_write_compute(
     csr_index: usize,
     region_addr: usize,
@@ -305,6 +306,9 @@ pub fn clear_pmp() {
     }
 }*/
 
+// MIRAGE : These can be used for all of mirage's applications
+
+// Write the configuration of a given pmp keeping the rest of the register intact
 pub fn write_pmp_cfg(idx: usize, cfg: usize) {
     pmpcfg_csr_write(
         idx,
@@ -315,6 +319,7 @@ pub fn write_pmp_cfg(idx: usize, cfg: usize) {
     );
 }
 
+// Write the configuration and address of a given pmp
 pub fn write_pmp_cfg_and_addr(idx: usize, cfg: usize, addr: usize) {
     write_pmp_cfg(idx, cfg);
     pmpaddr_csr_write(idx, addr);
