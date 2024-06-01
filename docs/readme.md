@@ -35,7 +35,7 @@ At a high level, a deployment on top of Mirage looks like this:
         ┌──────────────┐ ┌────────────┐
 U-mode  │   User App   │ │  Firmware  │
         ├──────────────┤ └────────────┘
-S-mode  │      OS      │               
+S-mode  │      OS      │
         ├──────────────┴──────────────┐
 M-mode  │            Mirage           │
         └─────────────────────────────┘
@@ -46,6 +46,49 @@ But because the hardware still requires a firmware to function properly, Mirage 
 At the same time, Mirage allows running a standard OS like it usually would, in S-mode.
 The OS can call into the firmware, and mirage will take care of forwarding those calls appropriately.
 That way, Mirage manages to keep all the firmware functionalities, but can enforce strong security guarantees, such as ensuring that the firmware can never access the  OS memory.
+
+## PMP Virtualization
+
+One of the main aspect of OS virtualization is MMU (Memory Management Unit) virtualization.
+The MMU can be virtualized using either pure software shadow page tables, or using hardware assisted 2-level page tables.
+
+In the case of Mirage we have no such concerns, because M-mode doesn't have access to an MMU (S-mode does, but Mirage doesn't need to virtualize it).
+Instead, M-mode has access to PMP (Physical Memory Protection) registers, which falls under the category of MPU (Memory Protection Unit) often found in embedded micro-controllers.
+Mirage needs to protect its own memory using PMP while still exposing PMP to the firmware to protect itself from the OS.
+For that purpose Mirage needs to virtualize and multiplex the physical PMP registers.
+
+PMP registers form an ordered list of physical memory ranges with attached access rights.
+The first entry that matches a given address determines the access rights for that particular load or store.
+For more details regarding PMP, please refer to the RISC-V privileged specification.
+
+Mirage split PMP registers in four groups, as depicted bellow with the example of 8 physical PMP registers:
+
+```
+┌─────────┐ ─┐
+│  PMP 0  │  │
+├─────────┤  │ For Mirage use
+│  PMP 1  │  │
+├─────────┤ ─┤
+│    0    │  │ Null entry
+├─────────┤ ─┤
+│ vPMP 0  │  │
+├─────────┤  │
+│ vPMP 1  │  │ Virtual PMP registers,
+├─────────┤  │ dedicated for firmware
+│ vPMP 2  │  │ use
+├─────────┤  │
+│ vPMP 3  │  │
+├─────────┤ ─┤
+│   All   │  │ Default allow/deny all
+└─────────┘ ─┘
+```
+
+The first few registers are reserved for Mirage's own use.
+They are placed first to take priority over firmware-controlled PMP registers.
+Then Mirage inserts a null entry with address 0, this is required to ensure that the first virtual PMP behaves like the first physical PMP when using TOR (Top Of Range) addressing (refer to the spec for details).
+Then the next PMP registers are exposed to the firmware as virtual PMP registers.
+From the firmware point of view, it looks like if there were only PMP 0 to 3 in the example above.
+Finally, the last entry is used by Mirage to either allow access to all memory when running the firmware (to emulate full memory access in virtual M-mode), or disallow all access when running in S or U-mode.
 
 ## Contributing
 
