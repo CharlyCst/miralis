@@ -28,7 +28,7 @@ pub trait Platform {
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;
 
-    const HAS_S_MODE: bool = config::HAS_S_MODE;
+    const HAS_S_MODE: bool = config::VCPU_S_MODE;
 }
 
 pub fn init() {

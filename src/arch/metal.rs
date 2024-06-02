@@ -208,9 +208,11 @@ impl Architecture for MetalArch {
             mctx.virt_pmp_offset as usize,
             ctx.nb_pmp,
         );
-        // Deny all addresses by default
-        let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-        mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
+        // Deny all addresses by default if at least one PMP is implemented
+        if ctx.nb_pmp > 0 {
+            let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
+            mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
+        }
         // Commit the PMP to hardware
         Self::write_pmp(&mctx.pmp);
         Self::sfence_vma();

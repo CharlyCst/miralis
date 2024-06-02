@@ -12,7 +12,11 @@ level = "info"
 # No maximum cap if not present
 max_firmware_exits = 400
 
-[platform]
+[vcpu]
 # Enable upport for S_mode
 # Default to true
 s_mode = true
+
+# Maximum number of PMP exposed to the firmware.
+# No maximum by default.
+max_pmp = 8
