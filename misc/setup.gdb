@@ -5,10 +5,10 @@ target remote :1234
 set print demangle
 set print asm-demangle
 
-# Define an helper function to load payload symbols.
+# Define an helper function to load firmware symbols.
 # The symbols are not loaded by default to prevent collisions with Mirage's own symbols
-define payload
-    add-symbol-file target/riscv-unknown-payload/debug/default 0x80100000
+define firmware
+    add-symbol-file target/riscv-unknown-firmware/debug/default 0x80100000
 end
 
 # Helper function to print the next instructions

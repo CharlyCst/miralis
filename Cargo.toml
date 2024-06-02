@@ -22,17 +22,17 @@ panic = "abort"
 
 [workspace]
 members = [
-    # Payloads
-    "payloads/csr_ops",
-    "payloads/default",
-    "payloads/ecall",
-    "payloads/pmp",
-    "payloads/breakpoint",
-    "payloads/mepc",
-    "payloads/mcause",
-    "payloads/mret",
-    "payloads/os_ctx_switch",
-    "payloads/sandbox",
+    # Firmware
+    "firmware/csr_ops",
+    "firmware/default",
+    "firmware/ecall",
+    "firmware/pmp",
+    "firmware/breakpoint",
+    "firmware/mepc",
+    "firmware/mcause",
+    "firmware/mret",
+    "firmware/os_ctx_switch",
+    "firmware/sandbox",
 
     # Crates
     "crates/abi",

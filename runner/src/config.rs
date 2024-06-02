@@ -33,7 +33,7 @@ pub struct Log {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Debug {
-    pub max_payload_exits: Option<usize>,
+    pub max_firmware_exits: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -67,10 +67,10 @@ impl Log {
 impl Debug {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = HashMap::new();
-        if let Some(max_payload_exits) = self.max_payload_exits {
+        if let Some(max_firmware_exits) = self.max_firmware_exits {
             envs.insert(
-                String::from("MIRAGE_DEBUG_MAX_PAYLOAD_EXITS"),
-                format!("{}", max_payload_exits),
+                String::from("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS"),
+                format!("{}", max_firmware_exits),
             );
         }
         envs
@@ -110,7 +110,7 @@ pub fn read_config(args: &Args) -> Config {
 
     // Override some aspect of the config, if required by the arguments
     if let Some(max_exits) = args.max_exits {
-        config.debug.max_payload_exits = Some(max_exits);
+        config.debug.max_firmware_exits = Some(max_exits);
     }
 
     config

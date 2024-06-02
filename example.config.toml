@@ -8,9 +8,9 @@
 level = "info"
 
 [debug]
-# Maximum number of payload exits before terminating.
+# Maximum number of firmware exits before terminating.
 # No maximum cap if not present
-max_payload_exits = 400
+max_firmware_exits = 400
 
 [platform]
 # Enable upport for S_mode

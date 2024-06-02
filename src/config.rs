@@ -29,5 +29,5 @@ pub const HAS_S_MODE: bool = is_enabled!("MIRAGE_PLATFORM_S_MODE");
 /// The desired log level.
 pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRAGE_LOG_LEVEL");
 
-/// The maximum number of payload exits before quitting.
-pub const MAX_PAYLOAD_EXIT: Option<&'static str> = option_env!("MIRAGE_DEBUG_MAX_PAYLOAD_EXITS");
+/// The maximum number of firmware exits before quitting.
+pub const MAX_FIRMWARE_EXIT: Option<&'static str> = option_env!("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS");

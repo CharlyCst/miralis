@@ -282,7 +282,7 @@ impl VirtContext {
                     mpie,
                 );
 
-                // Jump back to payload
+                // Jump back to firmware
                 self.pc = self.csr.mepc;
             }
             Instr::Vfencevma => unsafe {
@@ -318,7 +318,7 @@ impl VirtContext {
             }
         }
 
-        // Go to payload trap handler
+        // Go to firmware trap handler
         assert!(
             self.csr.mtvec & 0b11 == 0,
             "Only direct mode is supported for mtvec"

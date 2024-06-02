@@ -22,8 +22,8 @@ use crate::path::{
 /// Target triple used to build the monitor.
 pub const MIRAGE_TARGET: &str = "riscv-unknown-mirage";
 
-/// Target triple used to build the payload.
-pub const PAYLOAD_TARGET: &str = "riscv-unknown-payload";
+/// Target triple used to build the firmware.
+pub const FIRMWARE_TARGET: &str = "riscv-unknown-firmware";
 
 /// Extra cargo arguments.
 const CARGO_ARGS: &[&str] = &[
@@ -33,7 +33,7 @@ const CARGO_ARGS: &[&str] = &[
 
 pub enum Target {
     Mirage,
-    Payload(String),
+    Firmware(String),
 }
 
 #[derive(Clone, Debug)]
@@ -110,16 +110,16 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
 ///
 /// Artifacts can be either available as sources, or as external binaries that can be downloaded.
 pub fn locate_artifact(name: &str) -> Option<Artifact> {
-    // Get the path to the payloads directory
-    let mut payloads_path = get_workspace_path();
-    payloads_path.push("payloads");
+    // Get the path to the firmware directory
+    let mut firmware_path = get_workspace_path();
+    firmware_path.push("firmware");
     assert!(
-        payloads_path.is_dir(),
-        "Could not find 'payloads' directory"
+        firmware_path.is_dir(),
+        "Could not find 'firmware' directory"
     );
 
     // Check if one entry match the name
-    for entry in fs::read_dir(&payloads_path).unwrap() {
+    for entry in fs::read_dir(&firmware_path).unwrap() {
         let Ok(file_path) = entry.map(|e| e.path()) else {
             continue;
         };
@@ -164,9 +164,9 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script.x");
             build_cmd.envs(cfg.build_envs());
         }
-        Target::Payload(ref payload) => {
-            build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script-payload.x");
-            build_cmd.arg("--package").arg(payload);
+        Target::Firmware(ref firmware) => {
+            build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script-firmware.x");
+            build_cmd.arg("--package").arg(firmware);
         }
     }
 
@@ -189,9 +189,9 @@ fn objcopy(target: &Target) -> PathBuf {
             elf_path.push("mirage");
             bin_path.push("mirage.img");
         }
-        Target::Payload(payload) => {
-            elf_path.push(payload);
-            bin_path.push(format!("{}.img", payload));
+        Target::Firmware(firmware) => {
+            elf_path.push(firmware);
+            bin_path.push(format!("{}.img", firmware));
         }
     }
 
