@@ -90,6 +90,26 @@ Then the next PMP registers are exposed to the firmware as virtual PMP registers
 From the firmware point of view, it looks like if there were only PMP 0 to 3 in the example above.
 Finally, the last entry is used by Mirage to either allow access to all memory when running the firmware (to emulate full memory access in virtual M-mode), or disallow all access when running in S or U-mode.
 
+## Terminology
+
+Throughout the project we strive to use clear and precise terminology.
+This section serves as the reference for the definitions of the technical terms we use.
+
+- **Mirage**:
+  The software we are building.
+  Mirage executes in M-mode and exposes a virtual M-mode.
+- **Firmware**:
+  We call 'firmware' an M-mode software.
+  Examples of firmware are OpenSBI and FreeRTOS.
+  In the context of Mirage, the firmware is the software we virtualize.
+- **Payload**:
+  Similar to the OpenSBI terminology, the payload is any S or U-mode software managed by the firmware.
+- **Host**:
+  Following the traditional virtualization terminology Mirage is called the host.
+- **Guest**:
+  The guest is the sum of the virtualized firmware and its payload.
+  In other words, anything that executes in non M-mode on top of Mirage.
+
 ## Contributing
 
 The development of Mirage is done through pull requests against the `main` branch.
