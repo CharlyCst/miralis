@@ -39,8 +39,6 @@ pub trait Architecture {
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_pmp(pmp: &PmpGroup);
     unsafe fn write_mstatus(mstatus: usize);
-    unsafe fn mret() -> !;
-    unsafe fn ecall();
     unsafe fn sfence_vma();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
     unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MirageContext);
@@ -57,7 +55,6 @@ pub trait Architecture {
 
 /// Privilege modes
 #[derive(Clone, Copy, Debug)]
-#[allow(dead_code)]
 pub enum Mode {
     /// User
     U,
