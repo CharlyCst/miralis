@@ -21,6 +21,71 @@ macro_rules! is_enabled {
     };
 }
 
+// ————————————————————————————— String Parsing ————————————————————————————— //
+// Required to parse environment variables at compile time.
+// Can be removed once usize::from_str_radix stabilized as const, hopefully soon.
+// See https://github.com/rust-lang/rust/pull/124941
+//
+// Source (and license), adapted for Mirage:
+// https://gist.github.com/DutchGhost/d8604a3c796479777fe9f5e25d855cfd
+// —————————————————————————————————————————————————————————————————————————— //
+
+const fn parse_byte(b: u8, pow10: usize) -> usize {
+    let r = b - 48; // Remove ascii offset
+
+    if r > 9 {
+        panic!("Failed to parse config: expected usize")
+    } else {
+        (r as usize) * pow10
+    }
+}
+
+const POW10: [usize; 20] = {
+    let mut array = [0; 20];
+    let mut current = 1;
+
+    let mut index = 20;
+
+    loop {
+        index -= 1;
+        array[index] = current;
+
+        if index == 0 {
+            break;
+        }
+
+        current *= 10;
+    }
+
+    array
+};
+
+const fn parse(env_var: Option<&str>) -> Option<usize> {
+    let Some(env_var) = env_var else {
+        return None;
+    };
+
+    let bytes = env_var.as_bytes();
+    let mut result: usize = 0;
+
+    let len = bytes.len();
+
+    // Start at the correct index of the table,
+    // (skip the power's that are too large)
+    let mut index_const_table = POW10.len().wrapping_sub(len);
+    let mut index = 0;
+
+    while index < env_var.len() {
+        let pow = POW10[index_const_table];
+        result += parse_byte(bytes[index], pow);
+
+        index += 1;
+        index_const_table += 1;
+    }
+
+    Some(result)
+}
+
 // ———————————————————————— Configuration Parameters ———————————————————————— //
 
 /// Weather the platform supports S mode.
@@ -30,4 +95,4 @@ pub const HAS_S_MODE: bool = is_enabled!("MIRAGE_PLATFORM_S_MODE");
 pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRAGE_LOG_LEVEL");
 
 /// The maximum number of firmware exits before quitting.
-pub const MAX_FIRMWARE_EXIT: Option<&'static str> = option_env!("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS");
+pub const MAX_FIRMWARE_EXIT: Option<usize> = parse(option_env!("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS"));

@@ -86,18 +86,16 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 }
 
 fn main_loop(mut ctx: VirtContext, mut mctx: MirageContext) -> ! {
-    let max_exit = debug::get_max_firmware_exits();
-
     loop {
         unsafe {
             Arch::run_vcpu(&mut ctx);
-            handle_trap(&mut ctx, &mut mctx, max_exit);
+            handle_trap(&mut ctx, &mut mctx);
             log::trace!("{:x?}", &ctx);
         }
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext, max_exit: Option<usize>) {
+fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     log::trace!("Trapped!");
     log::trace!("  mcause:  {:?}", ctx.trap_info.mcause);
     log::trace!("  mstatus: 0x{:x}", ctx.trap_info.mstatus);
@@ -106,7 +104,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext, max_exit: Option
     log::trace!("  exits:   {}", ctx.nb_exits + 1);
     log::trace!("  mode:    {:?}", ctx.mode);
 
-    if let Some(max_exit) = max_exit {
+    if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {
             log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
             Plat::exit_failure();
