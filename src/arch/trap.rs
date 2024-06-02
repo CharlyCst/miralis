@@ -113,7 +113,7 @@ impl MCause {
 
 /// Contains all the information automatically written by the hardware during a trap
 #[repr(C)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct TrapInfo {
     // mtval2 and mtinst only exist with the hypervisor extension
     pub mepc: usize,
@@ -123,28 +123,16 @@ pub struct TrapInfo {
     pub mtval: usize,
 }
 
-impl Default for TrapInfo {
-    fn default() -> TrapInfo {
-        TrapInfo {
-            mepc: 0,
-            mstatus: 0,
-            mcause: 0,
-            mip: 0,
-            mtval: 0,
-        }
-    }
-}
-
 impl TrapInfo {
     /// Whether the trap comes from M mode
-    pub fn from_mmode(&self) -> bool {
+    pub fn is_from_mmode(&self) -> bool {
         let mpp: usize = (self.mstatus >> 11) & 0b11;
-        return mpp == 3; // Mpp : 3 = M mode
+        mpp == 3 // Mpp : 3 = M mode
     }
 
     /// Return the trap cause
     pub fn get_cause(&self) -> MCause {
-        return MCause::new(self.mcause);
+        MCause::new(self.mcause)
     }
 }
 

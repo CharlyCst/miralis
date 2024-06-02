@@ -181,10 +181,7 @@ impl Csr {
     pub const MCOUNTINHIBIT_LEGAL_MASK: usize = !(0b10);
 
     pub fn is_unknown(self) -> bool {
-        match self {
-            Csr::Unknown => true,
-            _ => false,
-        }
+        self == Csr::Unknown
     }
 }
 
