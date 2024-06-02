@@ -113,7 +113,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext, max_exit: Option
         }
     }
 
-    if ctx.trap_info.from_mmode() {
+    if ctx.trap_info.is_from_mmode() {
         // Trap comes from M mode: Mirage
         handle_mirage_trap(ctx);
         return;

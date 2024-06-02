@@ -147,9 +147,9 @@ impl Default for VirtCsr {
 impl VirtCsr {
     pub fn set_mstatus_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
         // Clear field
-        *csr = *csr & !(filter << offset);
+        *csr &= !(filter << offset);
         // Set field
-        *csr = *csr | (value << offset);
+        *csr |= value << offset;
     }
 
     /// Returns the mask of valid bit for the given PMP configuration register.
@@ -160,7 +160,7 @@ impl VirtCsr {
 
             return !0b0 >> (to_filter_out * 8);
         }
-        return !0b0;
+        !0b0
     }
 }
 
@@ -357,10 +357,8 @@ impl VirtContext {
                         // TODO: add proper validation that this memory range belongs to the
                         // payload
                         let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, size) };
-                        let message = match core::str::from_utf8(bytes) {
-                            Ok(msg) => msg,
-                            Err(_) => "note: invalid message, not utf-8",
-                        };
+                        let message = core::str::from_utf8(bytes)
+                            .unwrap_or("note: invalid message, not utf-8");
                         match log_level {
                             abi::log::MIRAGE_ERROR => log::error!("> {}", message),
                             abi::log::MIRAGE_WARN => log::warn!("> {}", message),
@@ -495,7 +493,7 @@ impl RegisterContext<Csr> for VirtContext {
             //Supervisor-level CSRs
             Csr::Sstatus => {
                 let mstatus: usize = self.get(Csr::Mstatus);
-                return mstatus & mstatus::SSTATUS_FILTER;
+                mstatus & mstatus::SSTATUS_FILTER
             }
             Csr::Sie => self.csr.sie,
             Csr::Stvec => self.csr.stvec,
@@ -566,7 +564,7 @@ impl RegisterContext<Csr> for VirtContext {
                 );
 
                 // TVM : 20 : read-only 0 (NO S-MODE)
-                new_value = new_value & !(0b1 << 20); // clear TVM
+                new_value &= !(0b1 << 20); // clear TVM
                 if !Plat::HAS_S_MODE {
                     VirtCsr::set_mstatus_field(
                         &mut new_value,

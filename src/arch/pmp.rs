@@ -128,9 +128,7 @@ impl PmpGroup {
         nb_pmp: usize,
     ) {
         // Load pmpaddr
-        for idx in 0..nb_pmp {
-            self.pmpaddr[idx + offset] = pmpaddr[idx];
-        }
+        self.pmpaddr[offset..(nb_pmp + offset)].copy_from_slice(&pmpaddr[..nb_pmp]);
 
         // Load pmpcfg
         for idx in 0..nb_pmp {
