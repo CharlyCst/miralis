@@ -1,22 +1,6 @@
 //! Debug utils for Mirage
 
-use crate::{_stack_bottom, _stack_top, config};
-
-// ——————————————————————————— Max Firmware Exits ——————————————————————————— //
-
-/// Returns the maximum number of firmware exits before panicking.
-///
-/// If the value returned is None, there is no maximum cap.
-///
-/// NOTE: For now we still need some basic runtime parsing, but once
-/// https://github.com/rust-lang/rust/pull/99322 gets merged we can convert this function to a
-/// constant.
-pub fn get_max_firmware_exits() -> Option<usize> {
-    match config::MAX_FIRMWARE_EXIT {
-        Some(env_var) => usize::from_str_radix(env_var, 10).ok(),
-        None => None,
-    }
-}
+use crate::{_stack_bottom, _stack_top};
 
 // ———————————————————————————— Max Stack Usage ————————————————————————————— //
 
