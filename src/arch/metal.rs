@@ -75,14 +75,6 @@ impl Architecture for MetalArch {
         }
     }
 
-    unsafe fn mret() -> ! {
-        asm!("mret", options(noreturn))
-    }
-
-    unsafe fn ecall() {
-        asm!("ecall")
-    }
-
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
         assert!(
             trap_info.mcause == MCause::IllegalInstr as usize,

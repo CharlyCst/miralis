@@ -41,14 +41,6 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn mret() -> ! {
-        todo!()
-    }
-
-    unsafe fn ecall() {
-        todo!()
-    }
-
     unsafe fn run_vcpu(_ctx: &mut crate::virt::VirtContext) {
         todo!()
     }
