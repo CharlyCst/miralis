@@ -12,7 +12,7 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features host -p mirage
+	cargo test --features userspace -p mirage
 
 	# Running integration tests...
 	cargo run --package runner -- --max-exits 200 --payload ecall

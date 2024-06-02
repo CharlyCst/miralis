@@ -4,12 +4,12 @@
 //! future, we could emulate RISC-V instructions to enable running the monitor in user space, which
 //! would be very helpful for testing purpose.
 
-mod host;
-#[cfg(not(feature = "host"))]
+#[cfg(not(feature = "userspace"))]
 mod metal;
 pub mod pmp;
 mod registers;
 mod trap;
+mod userspace;
 
 use pmp::PmpGroup;
 pub use registers::{Csr, Register};
@@ -21,12 +21,12 @@ use crate::virt::{ExecutionMode, VirtContext};
 // —————————————————————————— Select Architecture ——————————————————————————— //
 
 /// Risc-V bare-metal M-mode architecture.
-#[cfg(not(feature = "host"))]
+#[cfg(not(feature = "userspace"))]
 pub type Arch = metal::MetalArch;
 
 /// Host architecture, running in userspace.
-#[cfg(feature = "host")]
-pub type Arch = host::HostArch;
+#[cfg(feature = "userspace")]
+pub type Arch = userspace::HostArch;
 
 // ———————————————————————— Architecture Definition ————————————————————————— //
 
