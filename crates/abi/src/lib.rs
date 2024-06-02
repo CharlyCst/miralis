@@ -1,7 +1,7 @@
 //! Mirage ABI
 //!
-//! While mirage forwards standard SBI calls to the virtualized payload, mirage do expose its own
-//! ABI for the payload to interact with.
+//! While mirage forwards standard SBI calls to the virtualized firmware, mirage do expose its own
+//! ABI for the firmware to interact with.
 //!
 //! The Mirage ABI tries to be compatible with the SBI specification as best as it can.
 //! See: https://github.com/riscv-non-isa/riscv-sbi-doc
@@ -38,13 +38,13 @@ pub fn failure() -> ! {
     }
 }
 
-// ————————————————————————————— Payload Setup —————————————————————————————— //
+// ————————————————————————————— Firmware Setup ————————————————————————————— //
 
-/// Configure the payload entry point and panic handler.
+/// Configure the firmware entry point and panic handler.
 ///
-/// This macro prepares all the boiler plate required by Mirage's payloads.
+/// This macro prepares all the boiler plate required by Mirage's firmware.
 #[macro_export]
-macro_rules! setup_payload {
+macro_rules! setup_firmware {
     ($path:path) => {
         // The assembly entry point
         core::arch::global_asm!(
@@ -62,11 +62,11 @@ macro_rules! setup_payload {
                 __stack_top:
                     .dword {stack_top}
             "#,
-            entry = sym _payload_start,
+            entry = sym _firmware_start,
             stack_top = sym _stack_top,
         );
 
-        pub extern "C" fn _payload_start() -> ! {
+        pub extern "C" fn _firmware_start() -> ! {
             // Validate the signature of the entry point.
             let f: fn() -> ! = $path;
 
@@ -82,19 +82,19 @@ macro_rules! setup_payload {
         }
 
         // Also include the panic handler
-        $crate::payload_panic!();
+        $crate::firmware_panic!();
     };
 }
 
-/// Configure a panic handler for a Mirage payload.
+/// Configure a panic handler for a Mirage firmware.
 ///
 /// The handler uses the Mirage ABI to gracefully exit with an error.
 #[macro_export]
-macro_rules! payload_panic {
+macro_rules! firmware_panic {
     () => {
         #[panic_handler]
         fn panic(info: &core::panic::PanicInfo) -> ! {
-            $crate::log::error!("Payload: {:#?} ", info);
+            $crate::log::error!("Firmware: {:#?} ", info);
             $crate::failure();
         }
     };

@@ -16,8 +16,8 @@ pub trait Platform {
     fn exit_success() -> !;
     fn exit_failure() -> !;
 
-    /// Load the payload (virtual M-mode software) and return its address.
-    fn load_payload() -> usize;
+    /// Load the firmware (virtual M-mode software) and return its address.
+    fn load_firmware() -> usize;
 
     /// Return the number of PMPs of the platform.
     fn get_nb_pmp() -> usize;

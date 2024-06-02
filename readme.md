@@ -15,8 +15,8 @@ Then running Mirage is as simple as invoking `just run`.
 ## Project Organisation
 
 The Mirage sources live in `src`, that is where the main body of code live for now.
-Mirage does nothing by itself, however, and it needs a _payload_ (or firmware) to virtualise.
-The `payload` folder contains simple payloads used for testing, including the `default` payload selected by `just run`.
+Mirage does nothing by itself, however, and it needs a _firmware_ to virtualise.
+The `firmware` folder contains simple firmware used for testing, including the `default` firmware selected by `just run`.
 
 To make development and testing easier, the `runner` folder contains a simple command line tool to build, prepare, and load executables on QEMU.
 The runner is invoked automatically by `just run`.
@@ -31,8 +31,8 @@ Integration tests can be run with `just test`.
 We provide a GDB script (in `misc/setup.gdb`) and `just` commands to facilitate debugging.
 To start a GDB session, first run Mirage with `just debug` and then run `just gdb` in another terminal.
 
-The payload can be selected as an additional argument to `just run`.
-Valid payloads are either names of payloads under the `./payloads/` directory, some pre-build binaries (such as `opensbi`), or paths to external firmware images.
+The firmware can be selected as an additional argument to `just run`.
+Valid firmware are either names of firmware under the `./firmware/` directory, some pre-build binaries (such as `opensbi`), or paths to external firmware images.
 
 The log level can be adjusted using a `config.toml` file. See `example.config.toml` for reference.
 

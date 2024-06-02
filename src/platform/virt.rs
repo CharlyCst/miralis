@@ -13,7 +13,7 @@ use super::Platform;
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRAGE_START_ADDR: usize = 0x80000000;
-const PAYLOAD_START_ADDR: usize = 0x80100000;
+const FIRMWARE_START_ADDR: usize = 0x80100000;
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
@@ -47,9 +47,9 @@ impl Platform for VirtPlatform {
         exit_qemu(false)
     }
 
-    fn load_payload() -> usize {
-        // We directly load the payload from QEMU, nothing to do here.
-        PAYLOAD_START_ADDR
+    fn load_firmware() -> usize {
+        // We directly load the firmware from QEMU, nothing to do here.
+        FIRMWARE_START_ADDR
     }
 
     fn get_nb_pmp() -> usize {
@@ -57,7 +57,7 @@ impl Platform for VirtPlatform {
     }
 
     fn get_mirage_memory_start_and_size() -> (usize, usize) {
-        let size = PAYLOAD_START_ADDR - MIRAGE_START_ADDR;
+        let size = FIRMWARE_START_ADDR - MIRAGE_START_ADDR;
         (MIRAGE_START_ADDR, size)
     }
 

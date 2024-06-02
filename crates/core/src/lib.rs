@@ -3,7 +3,7 @@
 //! This crate purpose is to hold core types and constants definitions for user by other crates.
 //! In particular, this crate does not hold any code, this is important as not all code is
 //! portable, but some of the definitions here can be used in lots of different contexts (such as
-//! in Mirage itself, from payloads or external tooling).
+//! in Mirage itself, from firmware or external tooling).
 
 #![no_std]
 

@@ -21,8 +21,8 @@ const QEMU_ARGS: &[&str] = &[
     "-machine", "virt",
 ];
 
-/// Address at which the payload is loaded in memory.
-const PAYLOAD_ADDR: u64 = 0x80100000;
+/// Address at which the firmware is loaded in memory.
+const FIRMWARE_ADDR: u64 = 0x80100000;
 
 // —————————————————————————————— CLI Parsing ——————————————————————————————— //
 
@@ -36,10 +36,10 @@ struct Args {
     stop: bool,
     #[arg(short, long, action)]
     verbose: bool,
-    #[arg(short, long, default_value = "ecall")]
-    payload: String,
+    #[arg(short, long, default_value = "default")]
+    firmware: String,
     #[arg(long)]
-    /// Maximum number of payload exits
+    /// Maximum number of firmware exits
     max_exits: Option<usize>,
 }
 
@@ -52,7 +52,7 @@ fn parse_args() -> Args {
 // —————————————————————————————————— Run ——————————————————————————————————— //
 
 /// Run the binaries on QEMU
-fn run(mirage: PathBuf, payload: PathBuf, args: &Args) {
+fn run(mirage: PathBuf, firmware: PathBuf, args: &Args) {
     let mut qemu_cmd = Command::new(QEMU);
     qemu_cmd.args(QEMU_ARGS);
     qemu_cmd
@@ -61,8 +61,8 @@ fn run(mirage: PathBuf, payload: PathBuf, args: &Args) {
         .arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
-            payload.to_str().unwrap(),
-            PAYLOAD_ADDR
+            firmware.to_str().unwrap(),
+            FIRMWARE_ADDR
         ))
         .arg("-smp")
         .arg(format!("{}", args.smp));
@@ -95,16 +95,16 @@ fn run(mirage: PathBuf, payload: PathBuf, args: &Args) {
 fn main() {
     let args = parse_args();
 
-    println!("Running Mirage with '{}' payload", &args.payload);
+    println!("Running Mirage with '{}' firmware", &args.firmware);
 
     let cfg = config::read_config(&args);
 
     let mirage = build_target(Target::Mirage, &cfg);
-    let payload = match locate_artifact(&args.payload) {
-        Some(Artifact::Source { name }) => build_target(Target::Payload(name), &cfg),
+    let firmware = match locate_artifact(&args.firmware) {
+        Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
         Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-        None => PathBuf::from_str(&args.payload).expect("Invalid payload path"),
+        None => PathBuf::from_str(&args.firmware).expect("Invalid firmware path"),
     };
 
-    run(mirage, payload, &args);
+    run(mirage, firmware, &args);
 }

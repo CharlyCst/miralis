@@ -47,7 +47,7 @@ pub trait Architecture {
     /// Return the faulting instruction at the provided exception PC.
     ///
     /// SAFETY:
-    /// The trap info must correspond to a valid payload trap info, no further checks are performed.
+    /// The trap info must correspond to a valid trap info, no further checks are performed.
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize;
 }
 

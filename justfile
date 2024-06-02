@@ -15,29 +15,29 @@ test:
 	cargo test --features userspace -p mirage
 
 	# Running integration tests...
-	cargo run --package runner -- --max-exits 200 --payload ecall
-	cargo run --package runner -- --max-exits 200 --payload csr_ops
-	cargo run --package runner -- --max-exits 200 --payload pmp
-	cargo run --package runner -- --max-exits 200 --payload breakpoint
-	cargo run --package runner -- --max-exits 200 --payload mepc
-	cargo run --package runner -- --max-exits 200 --payload mcause
-	cargo run --package runner -- --max-exits 200 --payload mret
-	cargo run --package runner -- --max-exits 200 --payload os_ctx_switch
-	cargo run --package runner -- --max-exits 200 --payload sandbox
+	cargo run --package runner -- --max-exits 200 --firmware ecall
+	cargo run --package runner -- --max-exits 200 --firmware csr_ops
+	cargo run --package runner -- --max-exits 200 --firmware pmp
+	cargo run --package runner -- --max-exits 200 --firmware breakpoint
+	cargo run --package runner -- --max-exits 200 --firmware mepc
+	cargo run --package runner -- --max-exits 200 --firmware mcause
+	cargo run --package runner -- --max-exits 200 --firmware mret
+	cargo run --package runner -- --max-exits 200 --firmware os_ctx_switch
+	cargo run --package runner -- --max-exits 200 --firmware sandbox
 
 	# Testing with external projects
-	cargo run --package runner -- --max-exits 2000 --payload opensbi
+	cargo run --package runner -- --max-exits 2000 --firmware opensbi
 	
 	# Checking formatting...
 	cargo fmt --all -- --check
 
 # Run Mirage
-run payload=default:
-	cargo run --package runner -- -v --payload {{payload}}
+run firmware=default:
+	cargo run --package runner -- -v --firmware {{firmware}}
 
 # Run Mirage but wait for a debugger to connect
-debug payload=default:
-	cargo run --package runner -- -v --payload {{payload}} --dbg --stop
+debug firmware=default:
+	cargo run --package runner -- -v --firmware {{firmware}} --dbg --stop
 
 # Connect a debugger to a running Mirage instance
 gdb:

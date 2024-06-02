@@ -57,9 +57,9 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-/// Initialize the payload logger
+/// Initialize the firmware logger
 ///
-/// This function is called automatically bu `setup_payload!`.
+/// This function is called automatically bu `setup_firmware!`.
 pub fn init() {
     static LOGGER: Logger = Logger {};
 

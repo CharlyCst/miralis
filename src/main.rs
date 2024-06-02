@@ -40,8 +40,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
     log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
-    log::info!("Preparing jump into payload");
-    let payload_addr = Plat::load_payload();
+    log::info!("Preparing jump into firmware");
+    let firmware_addr = Plat::load_firmware();
     let nb_pmp = Plat::get_nb_pmp();
     let nb_virt_pmp;
 
@@ -75,18 +75,18 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::write_pmp(&mctx.pmp);
         Arch::sfence_vma();
 
-        // Configure the payload context
+        // Configure the firmware context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
         ctx.set(Csr::Misa, Arch::read_misa() & !misa::DISABLED);
-        ctx.pc = payload_addr;
+        ctx.pc = firmware_addr;
     }
 
     main_loop(ctx, mctx);
 }
 
 fn main_loop(mut ctx: VirtContext, mut mctx: MirageContext) -> ! {
-    let max_exit = debug::get_max_payload_exits();
+    let max_exit = debug::get_max_firmware_exits();
 
     loop {
         unsafe {

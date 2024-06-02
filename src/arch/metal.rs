@@ -465,8 +465,8 @@ _run_vcpu:
     csrw mscratch, x31        // Save context in mscratch
     sd x30, (0)(sp)           // Store return address
     sd sp,(8*0)(x31)          // Store host stack
-    ld x1,(8+8*32)(x31)       // Read payload PC
-    csrw mepc,x1              // Restore payload PC in mepc
+    ld x1,(8+8*32)(x31)       // Read guest PC
+    csrw mepc,x1              // Restore guest PC in mepc
 
     ld x1,(8+8*1)(x31)        // Load guest general purpose registers
     ld x2,(8+8*2)(x31)
@@ -548,7 +548,7 @@ _raw_trap_handler:
 
     // TODO: restore host misa
 
-    csrr x30, mepc              // Read payload PC
+    csrr x30, mepc              // Read guest PC
     sd x30, (8+8*32)(x31)       // Save the PC
     sd x30, (8+8*32+8+8*0)(x31) // Save mepc
     csrr x30, mstatus           // Fill the TrapInfo :  Read mstatus
