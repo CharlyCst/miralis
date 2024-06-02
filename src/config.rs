@@ -88,8 +88,11 @@ const fn parse(env_var: Option<&str>) -> Option<usize> {
 
 // ———————————————————————— Configuration Parameters ———————————————————————— //
 
-/// Weather the platform supports S mode.
-pub const HAS_S_MODE: bool = is_enabled!("MIRAGE_PLATFORM_S_MODE");
+/// Weather the vCPU exposes S-mode.
+pub const VCPU_S_MODE: bool = is_enabled!("MIRAGE_VCPU_S_MODE");
+
+/// Maximum number of PMP exposed by the vCPU, no limit if None.
+pub const VCPU_MAX_PMP: Option<usize> = parse(option_env!("MIRAGE_VCPU_MAX_PMP"));
 
 /// The desired log level.
 pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRAGE_LOG_LEVEL");

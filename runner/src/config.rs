@@ -21,7 +21,7 @@ pub struct Config {
     #[serde(default)]
     pub debug: Debug,
     #[serde(default)]
-    pub platform: Platform,
+    pub vcpu: VCpu,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -38,8 +38,9 @@ pub struct Debug {
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
-pub struct Platform {
+pub struct VCpu {
     pub s_mode: Option<bool>,
+    pub max_pmp: Option<usize>,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //
@@ -49,7 +50,7 @@ impl Config {
         let mut envs = HashMap::new();
         envs.extend(self.log.build_envs());
         envs.extend(self.debug.build_envs());
-        envs.extend(self.platform.build_envs());
+        envs.extend(self.vcpu.build_envs());
         envs
     }
 }
@@ -77,14 +78,14 @@ impl Debug {
     }
 }
 
-impl Platform {
+impl VCpu {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = HashMap::new();
         if let Some(s_mode) = self.s_mode {
-            envs.insert(
-                String::from("MIRAGE_PLATFORM_S_MODE"),
-                format!("{}", s_mode),
-            );
+            envs.insert(String::from("MIRAGE_VCPU_S_MODE"), format!("{}", s_mode));
+        }
+        if let Some(max_pmp) = self.max_pmp {
+            envs.insert(String::from("MIRAGE_VCPU_MAX_PMP"), format!("{}", max_pmp));
         }
         envs
     }

@@ -61,7 +61,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             .set(nb_pmp - 1, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
         // Give 8 PMPs to the firmware
         mctx.virt_pmp_offset = 2;
-        nb_virt_pmp = 8;
+        if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
+            nb_virt_pmp = core::cmp::min(8, max_virt_pmp);
+        } else {
+            nb_virt_pmp = 8;
+        }
     } else {
         nb_virt_pmp = 0;
     }
