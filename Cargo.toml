@@ -10,7 +10,9 @@ log = { workspace = true }
 mirage_core = { path = "crates/core" }
 
 [features]
-host = [] # When running on host architecture, such as when running unit tests.
+# When running on host architecture as a userspace application, such as when
+# running unit tests.
+userspace = []
 
 [profile.dev]
 panic = "abort"
