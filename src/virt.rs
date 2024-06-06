@@ -648,9 +648,12 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
             Csr::Pmpcfg(pmp_cfg_idx) => {
+                let mut value = value;
                 if Csr::PMP_CFG_LOCK_MASK & value != 0 {
-                    panic!("PMP lock bits are not yet supported")
-                } else if pmp_cfg_idx % 2 == 1 {
+                    log::warn!("PMP lock bits are not yet supported");
+                    value &= !Csr::PMP_CFG_LOCK_MASK;
+                }
+                if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
                     panic!("Illegal PMP_CFG {:?}", register)
                 } else if pmp_cfg_idx >= self.nb_pmp / 8 {
