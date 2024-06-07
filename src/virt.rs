@@ -34,7 +34,7 @@ pub struct VirtContext {
     /// Number of virtual PMPs
     pub(crate) nb_pmp: usize,
     /// Hart ID
-    hart_id: usize,
+    pub(crate) hart_id: usize,
     /// Number of exists to Mirage
     pub(crate) nb_exits: usize,
 }
