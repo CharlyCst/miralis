@@ -632,7 +632,10 @@ impl RegisterContext<Csr> for VirtContext {
                 self.csr.misa =
                     (value & arch_misa & mstatus::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
             }
-            Csr::Mie => (), // Read-only 0 : interrupts are not yet supported : self.csr.mie = value,
+            Csr::Mie => {
+                // Read-only 0: interrupts are not yet supported,
+                debug::warn_once!("mie is not yet supported");
+            }
             Csr::Mip => {
                 // Only reset possible : interrupts are not yet supported
                 // TODO: handle mip emulation properly
@@ -650,7 +653,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Pmpcfg(pmp_cfg_idx) => {
                 let mut value = value;
                 if Csr::PMP_CFG_LOCK_MASK & value != 0 {
-                    log::warn!("PMP lock bits are not yet supported");
+                    debug::warn_once!("PMP lock bits are not yet supported");
                     value &= !Csr::PMP_CFG_LOCK_MASK;
                 }
                 if pmp_cfg_idx % 2 == 1 {
