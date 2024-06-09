@@ -2,6 +2,24 @@
 
 use crate::{_stack_bottom, _stack_top};
 
+// ————————————————————————————— Logging Utils —————————————————————————————— //
+
+/// Emit a warning only once.
+///
+/// This macro calls log::warn internally and forwards all arguments.
+macro_rules! warn_once {
+    ($($args:tt)*) => {{
+        use core::sync::atomic::{AtomicBool, Ordering};
+        static IS_FIRST_WARN: AtomicBool = AtomicBool::new(true);
+
+        if IS_FIRST_WARN.swap(false, Ordering::Relaxed) == true {
+            log::warn!($($args)*);
+        }
+    }}
+}
+
+pub(crate) use warn_once;
+
 // ———————————————————————————— Max Stack Usage ————————————————————————————— //
 
 /// A well known memory pattern
