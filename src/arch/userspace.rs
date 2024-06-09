@@ -20,6 +20,10 @@ impl Architecture for HostArch {
         todo!()
     }
 
+    fn wfi() {
+        todo!()
+    }
+
     fn read_misa() -> usize {
         todo!()
     }
