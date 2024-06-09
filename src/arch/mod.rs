@@ -44,6 +44,9 @@ pub trait Architecture {
     unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MirageContext);
     unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MirageContext);
 
+    /// Wait for interrupt
+    fn wfi();
+
     /// Return the faulting instruction at the provided exception PC.
     ///
     /// SAFETY:

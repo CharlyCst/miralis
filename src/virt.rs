@@ -170,7 +170,11 @@ impl VirtContext {
     fn emulate_instr(&mut self, instr: &Instr) {
         match instr {
             Instr::Wfi => {
-                todo!("wfi is not yet supported");
+                // NOTE: for now there is no safeguard which guarantees that we will eventually get
+                // an interrupt, so the firmware might be able to put the core in perpetual sleep
+                // state.
+                Arch::wfi();
+                self.pc += 4;
             }
             Instr::Csrrw { csr, .. }
             | Instr::Csrrs { csr, .. }

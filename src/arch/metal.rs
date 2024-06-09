@@ -22,6 +22,11 @@ impl Architecture for MetalArch {
         assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 
+    #[inline]
+    fn wfi() {
+        unsafe { asm!("wfi") };
+    }
+
     fn read_misa() -> usize {
         let misa: usize;
         unsafe {
