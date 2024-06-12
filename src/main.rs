@@ -15,6 +15,7 @@ mod decoder;
 mod host;
 mod logger;
 mod platform;
+mod utils;
 mod virt;
 
 use arch::pmp::pmpcfg;
@@ -45,8 +46,12 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let nb_pmp = Plat::get_nb_pmp();
     let nb_virt_pmp;
 
+    // Detect hardware capabilities
+    // SAFETY: this lust happen before hardware initialization
+    let hw = unsafe { Arch::detect_hardware() };
+
     // Initialize Mirage's own context
-    let mut mctx = MirageContext::new(nb_pmp);
+    let mut mctx = MirageContext::new(nb_pmp, hw);
 
     // Configure PMP registers, if available
     if nb_pmp >= 16 {

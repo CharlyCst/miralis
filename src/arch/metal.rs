@@ -1,11 +1,12 @@
 //! Bare metal RISC-V
 use core::arch::{asm, global_asm};
+use core::marker::PhantomData;
 use core::{ptr, usize};
 
 use super::{Architecture, MCause, Mode, TrapInfo};
-use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
+use crate::arch::mstatus::{MIE_OFFSET, MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::PmpGroup;
+use crate::arch::{HardwareCapability, PmpGroup};
 use crate::host::MirageContext;
 use crate::virt::VirtContext;
 use crate::{_stack_bottom, _stack_top, main};
@@ -45,6 +46,47 @@ impl Architecture for MetalArch {
                 x = out(reg) mstatus);
         }
         return mstatus;
+    }
+
+    unsafe fn detect_hardware() -> HardwareCapability {
+        let mstatus: usize;
+        let mtvec: usize;
+
+        // Save current CSRs
+        asm!(
+            "csrr {mstatus}, mstatus",
+            "csrr {mtvec}, mtvec",
+            mstatus = out(reg) mstatus,
+            mtvec = out(reg) mtvec,
+            options(nomem)
+        );
+
+        // Detect available interrupt IDs
+        let available_int: usize;
+        asm!(
+            "csrc mstatus, {clear_mie}", // Disable interrupts by clearing MIE in mstatus
+            "csrw mie, {all_int}",       // Set all bits in the mie register
+            "csrr {available_int}, mie", // Read back wich bits are set to 1
+            "csrw mie, x0",              // Clear all bits in mie
+            clear_mie = in(reg) (1_usize << MIE_OFFSET),
+            all_int = in(reg) usize::MAX,
+            available_int = out(reg) available_int,
+            options(nomem)
+        );
+
+        // Restore CSRs
+        asm!(
+            "csrw mstatus, {mstatus}",
+            "csrw mtvec, {mtvec}",
+            mstatus = in(reg) mstatus,
+            mtvec = in(reg) mtvec,
+            options(nomem),
+        );
+
+        HardwareCapability {
+            interrupts: available_int,
+            _marker: PhantomData,
+        }
     }
 
     unsafe fn set_mpp(mode: Mode) {
