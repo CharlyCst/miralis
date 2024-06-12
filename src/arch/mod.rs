@@ -16,6 +16,7 @@ pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
 use crate::host::MirageContext;
+use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
 
 // —————————————————————————— Select Architecture ——————————————————————————— //
@@ -47,11 +48,38 @@ pub trait Architecture {
     /// Wait for interrupt
     fn wfi();
 
+    /// Detect available hardware capabilities.
+    ///
+    /// Capabilities are local to a core: two cores (harts in RISC-V parlance) can have different
+    /// sets of capabilities. This is modelled by the fact that [HardwareCapability] does not
+    /// implement Send and Sync, meaning that it can't be shared across cores (which is enforced by
+    /// the compiler and invariants in unsafe code).
+    ///
+    /// SAFETY:
+    /// This function might temporarily change the state of the hart during the detection process.
+    /// For this reason it is only safe to execute as part of the core initialization, not during
+    /// standard operations.
+    /// It should not be assume that any of the core configuration is preserved by this function.
+    unsafe fn detect_hardware() -> HardwareCapability;
+
     /// Return the faulting instruction at the provided exception PC.
     ///
     /// SAFETY:
     /// The trap info must correspond to a valid trap info, no further checks are performed.
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize;
+}
+
+// ——————————————————————————— Hardware Detection ——————————————————————————— //
+
+/// A struct that contains information about the hardware capability.
+///
+/// This struct has to be local to a core (it is !Send and !Sync) and can be obtained though
+/// hardware capability detection using the [Architecture] trait.
+pub struct HardwareCapability {
+    /// Bitmap of valid interrupts, marks valid bits in `mie` and `mip`.
+    pub interrupts: usize,
+    /// Prevent the struct from being used on another core.
+    _marker: PhantomNotSendNotSync,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

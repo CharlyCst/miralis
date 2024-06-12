@@ -4,7 +4,7 @@
 //! architecutre, such as when running unit tests.
 
 use super::Architecture;
-use crate::arch::PmpGroup;
+use crate::arch::{HardwareCapability, PmpGroup};
 use crate::host::MirageContext;
 use crate::main;
 use crate::virt::VirtContext;
@@ -66,6 +66,10 @@ impl Architecture for HostArch {
     }
 
     unsafe fn switch_from_payload_to_firmware(_ctx: &mut VirtContext, _mctx: &mut MirageContext) {
+        todo!()
+    }
+
+    unsafe fn detect_hardware() -> HardwareCapability {
         todo!()
     }
 }
