@@ -19,12 +19,13 @@ mod utils;
 mod virt;
 
 use arch::pmp::pmpcfg;
-use arch::{pmp, Arch, Architecture};
+use arch::{pmp, Arch, Architecture, HardwareCapability};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
 use crate::host::MirageContext;
-use crate::virt::{ExecutionMode, RegisterContext, VirtContext};
+use crate::virt::traits::*;
+use crate::virt::{ExecutionMode, VirtContext};
 
 // Defined in the linker script
 extern "C" {
@@ -87,7 +88,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
-        ctx.set(Csr::Misa, Arch::read_misa() & !misa::DISABLED);
+        ctx.set_csr(Csr::Misa, Arch::read_misa() & !misa::DISABLED, &mctx.hw);
         ctx.pc = firmware_addr;
     }
 
@@ -124,7 +125,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     // Perform emulation
     let exec_mode = ctx.mode.to_exec_mode();
     match exec_mode {
-        ExecutionMode::Firmware => handle_firmware_trap(ctx),
+        ExecutionMode::Firmware => handle_firmware_trap(ctx, &mctx.hw),
         ExecutionMode::Payload => handle_os_trap(ctx),
     }
 
@@ -142,8 +143,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     }
 }
 
-fn handle_firmware_trap(ctx: &mut VirtContext) {
-    ctx.handle_payload_trap();
+fn handle_firmware_trap(ctx: &mut VirtContext, hw: &HardwareCapability) {
+    ctx.handle_payload_trap(hw);
 }
 
 fn handle_os_trap(ctx: &mut VirtContext) {

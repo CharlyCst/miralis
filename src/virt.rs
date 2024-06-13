@@ -1,7 +1,9 @@
 //! Firmware Virtualisation
 use mirage_core::abi;
 
-use crate::arch::{misa, mstatus, Arch, Architecture, Csr, MCause, Mode, Register, TrapInfo};
+use crate::arch::{
+    misa, mstatus, Arch, Architecture, Csr, HardwareCapability, MCause, Mode, Register, TrapInfo,
+};
 use crate::debug;
 use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
@@ -167,7 +169,7 @@ impl VirtCsr {
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
 
 impl VirtContext {
-    fn emulate_instr(&mut self, instr: &Instr) {
+    fn emulate_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
         match instr {
             Instr::Wfi => {
                 // NOTE: for now there is no safeguard which guarantees that we will eventually get
@@ -188,36 +190,36 @@ impl VirtContext {
             }
             Instr::Csrrw { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
-                self.set(csr, self.get(rs1));
+                self.set_csr(csr, self.get(rs1), hw);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrs { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
-                self.set(csr, tmp | self.get(rs1));
+                self.set_csr(csr, tmp | self.get(rs1), hw);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrwi { csr, rd, uimm } => {
                 self.set(rd, self.get(csr));
-                self.set(csr, *uimm);
+                self.set_csr(csr, *uimm, hw);
                 self.pc += 4;
             }
             Instr::Csrrsi { csr, rd, uimm } => {
                 let tmp = self.get(csr);
-                self.set(csr, tmp | uimm);
+                self.set_csr(csr, tmp | uimm, hw);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrc { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
-                self.set(csr, tmp & !self.get(rs1));
+                self.set_csr(csr, tmp & !self.get(rs1), hw);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrci { csr, rd, uimm } => {
                 let tmp = self.get(csr);
-                self.set(csr, tmp & !uimm);
+                self.set_csr(csr, tmp & !uimm, hw);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
@@ -331,7 +333,7 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self) {
+    pub fn handle_payload_trap(&mut self, hw: &HardwareCapability) {
         // Keep track of the number of exit
         self.nb_exits += 1;
 
@@ -392,7 +394,7 @@ impl VirtContext {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_instr(&instr);
+                self.emulate_instr(&instr, hw);
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
@@ -416,18 +418,41 @@ impl VirtContext {
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
 
-/// A trait implemented by virtual contexts to read and write registers.
-pub trait RegisterContext<R> {
+/// A module exposing the traits to manipulate registers of a virtual context.
+///
+/// To get and set registers from a virtual context, first import all the traits:
+///
+/// ```
+/// use crate::virt::traits::*;
+/// ```
+pub mod traits {
+    pub use super::{HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter};
+}
+
+/// A trait implemented by virtual contexts to read registers.
+pub trait RegisterContextGetter<R> {
     fn get(&self, register: R) -> usize;
+}
+
+/// A trait implemented by virtual contexts to write registers.
+pub trait RegisterContextSetter<R> {
     fn set(&mut self, register: R, value: usize);
 }
 
-impl RegisterContext<Register> for VirtContext {
+/// A trait implemented by virtual contexts to write registers whose value depends on
+/// hardware capabilities..
+pub trait HwRegisterContextSetter<R> {
+    fn set_csr(&mut self, register: R, value: usize, hw: &HardwareCapability);
+}
+
+impl RegisterContextGetter<Register> for VirtContext {
     fn get(&self, register: Register) -> usize {
         // NOTE: Register x0 is never set, so always keeps a value of 0
         self.regs[register as usize]
     }
+}
 
+impl RegisterContextSetter<Register> for VirtContext {
     fn set(&mut self, register: Register, value: usize) {
         // Skip register x0
         if register == Register::X0 {
@@ -437,7 +462,7 @@ impl RegisterContext<Register> for VirtContext {
     }
 }
 
-impl RegisterContext<Csr> for VirtContext {
+impl RegisterContextGetter<Csr> for VirtContext {
     fn get(&self, register: Csr) -> usize {
         match register {
             Csr::Mhartid => self.hart_id,
@@ -514,8 +539,10 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
     }
+}
 
-    fn set(&mut self, register: Csr, value: usize) {
+impl HwRegisterContextSetter<Csr> for VirtContext {
+    fn set_csr(&mut self, register: Csr, value: usize, hw: &HardwareCapability) {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
@@ -724,7 +751,7 @@ impl RegisterContext<Csr> for VirtContext {
             Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
             Csr::Sstatus => {
-                self.set(Csr::Mstatus, value & mstatus::SSTATUS_FILTER);
+                self.set_csr(Csr::Mstatus, value & mstatus::SSTATUS_FILTER, hw);
             }
             Csr::Sie => self.csr.sie = value,
             Csr::Stvec => self.csr.stvec = value,
@@ -768,17 +795,38 @@ impl RegisterContext<Csr> for VirtContext {
     }
 }
 
-/// Forward RegisterContext implementation for register references
-impl<'a, R> RegisterContext<&'a R> for VirtContext
+/// Forward RegisterContextGetter implementation for register references
+impl<'a, R> RegisterContextGetter<&'a R> for VirtContext
 where
     R: Copy,
-    VirtContext: RegisterContext<R>,
+    VirtContext: RegisterContextGetter<R>,
 {
+    #[inline]
     fn get(&self, register: &'a R) -> usize {
         self.get(*register)
     }
+}
 
+/// Forward RegisterContextSetter implementation for register references
+impl<'a, R> RegisterContextSetter<&'a R> for VirtContext
+where
+    R: Copy,
+    VirtContext: RegisterContextSetter<R>,
+{
+    #[inline]
     fn set(&mut self, register: &'a R, value: usize) {
         self.set(*register, value)
+    }
+}
+
+/// Forward HwCsrRegisterContextSetter implementation for register references
+impl<'a, R> HwRegisterContextSetter<&'a R> for VirtContext
+where
+    R: Copy,
+    VirtContext: HwRegisterContextSetter<R>,
+{
+    #[inline]
+    fn set_csr(&mut self, register: &'a R, value: usize, hw: &HardwareCapability) {
+        self.set_csr(*register, value, hw)
     }
 }
