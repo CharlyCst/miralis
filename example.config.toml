@@ -7,6 +7,10 @@
 # Possible values are: trace, debug, info, warn, error, off
 level = "info"
 
+# Use color in logs (using ANSI escape sequences).
+# Default to true.
+log = true
+
 [debug]
 # Maximum number of firmware exits before terminating.
 # No maximum cap if not present

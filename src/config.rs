@@ -97,5 +97,8 @@ pub const VCPU_MAX_PMP: Option<usize> = parse(option_env!("MIRAGE_VCPU_MAX_PMP")
 /// The desired log level.
 pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRAGE_LOG_LEVEL");
 
+/// If colors in logs are enabled
+pub const LOG_COLOR: bool = is_enabled!("MIRAGE_LOG_COLOR");
+
 /// The maximum number of firmware exits before quitting.
 pub const MAX_FIRMWARE_EXIT: Option<usize> = parse(option_env!("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS"));
