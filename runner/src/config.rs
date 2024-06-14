@@ -28,6 +28,7 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct Log {
     pub level: Option<String>,
+    pub color: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -60,6 +61,9 @@ impl Log {
         let mut envs = HashMap::new();
         if let Some(level) = &self.level {
             envs.insert(String::from("MIRAGE_LOG_LEVEL"), level.clone());
+        }
+        if let Some(color) = self.color {
+            envs.insert(String::from("MIRAGE_LOG_COLOR"), format!("{}", color));
         }
         envs
     }

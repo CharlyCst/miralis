@@ -75,11 +75,22 @@ pub fn init() {
 // ————————————————————————————————— Utils —————————————————————————————————— //
 
 fn level_display(level: Level) -> &'static str {
-    match level {
-        Level::Error => "Error",
-        Level::Warn => "Warn ",
-        Level::Info => "Info ",
-        Level::Debug => "Debug",
-        Level::Trace => "Trace",
+    if config::LOG_COLOR {
+        // We log with colors, using ANSI escape sequences
+        match level {
+            Level::Error => "\x1b[31;1mError\x1b[0m",
+            Level::Warn => "\x1b[33;1mWarn\x1b[0m ",
+            Level::Info => "\x1b[32;1mInfo\x1b[0m ",
+            Level::Debug => "\x1b[34;1mDebug\x1b[0m",
+            Level::Trace => "\x1b[35;1mTrace\x1b[0m",
+        }
+    } else {
+        match level {
+            Level::Error => "Error",
+            Level::Warn => "Warn ",
+            Level::Info => "Info ",
+            Level::Debug => "Debug",
+            Level::Trace => "Trace",
+        }
     }
 }
