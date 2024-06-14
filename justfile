@@ -1,5 +1,4 @@
-mirage_elf          := "target/riscv-unknown-mirage/debug/mirage"
-default             := "default"
+default := "default"
 
 # Print the list of commands
 help:
@@ -41,7 +40,7 @@ debug firmware=default:
 
 # Connect a debugger to a running Mirage instance
 gdb:
-	rust-gdb {{mirage_elf}} -q -x "./misc/setup.gdb"
+	cargo run --package runner -- gdb
 
 # Install the rust toolchain and required components
 install-toolchain:
