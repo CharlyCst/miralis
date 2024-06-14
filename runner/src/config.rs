@@ -9,8 +9,6 @@ use std::fs;
 use serde::Deserialize;
 
 use crate::path::get_workspace_path;
-use crate::Args;
-
 // ——————————————————————————— Config Definition ———————————————————————————— //
 
 #[derive(Deserialize, Debug)]
@@ -97,7 +95,7 @@ impl VCpu {
 
 // ————————————————————————————— Config Loader —————————————————————————————— //
 
-pub fn read_config(args: &Args) -> Config {
+pub fn read_config() -> Config {
     // Try to read config
     let mut config_path = get_workspace_path();
     config_path.push("config.toml");
@@ -111,12 +109,5 @@ pub fn read_config(args: &Args) -> Config {
     };
 
     // Parse the config and returns it
-    let mut config = toml::from_str::<Config>(&config).expect("Failed to parse configuration");
-
-    // Override some aspect of the config, if required by the arguments
-    if let Some(max_exits) = args.max_exits {
-        config.debug.max_firmware_exits = Some(max_exits);
-    }
-
-    config
+    toml::from_str::<Config>(&config).expect("Failed to parse configuration")
 }

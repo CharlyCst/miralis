@@ -2,13 +2,14 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 
 mod artifacts;
 mod config;
 mod path;
 
 use artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
+use config::Config;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
@@ -27,11 +28,23 @@ const FIRMWARE_ADDR: u64 = 0x80100000;
 // —————————————————————————————— CLI Parsing ——————————————————————————————— //
 
 #[derive(Parser)]
-struct Args {
+struct CliArgs {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Run Mirage on QEMU
+    Run(RunArgs),
+}
+
+#[derive(Args)]
+struct RunArgs {
     #[arg(long, default_value = "1")]
     smp: usize,
     #[arg(long, action)]
-    dbg: bool,
+    debug: bool,
     #[arg(long, action)]
     stop: bool,
     #[arg(short, long, action)]
@@ -43,16 +56,23 @@ struct Args {
     max_exits: Option<usize>,
 }
 
-fn parse_args() -> Args {
-    let args = Args::parse();
-    assert!(args.smp > 0, "Must use at least one core");
-    return args;
-}
-
 // —————————————————————————————————— Run ——————————————————————————————————— //
 
-/// Run the binaries on QEMU
-fn run(mirage: PathBuf, firmware: PathBuf, args: &Args) {
+/// Run Mirage on QEMU
+fn run(args: &RunArgs) {
+    println!("Running Mirage with '{}' firmware", &args.firmware);
+    assert!(args.smp > 0, "Must use at least one core");
+    let cfg = get_config(args);
+
+    // Build or retrieve the artifacts to run
+    let mirage = build_target(Target::Mirage, &cfg);
+    let firmware = match locate_artifact(&args.firmware) {
+        Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
+        Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
+        None => PathBuf::from_str(&args.firmware).expect("Invalid firmware path"),
+    };
+
+    // Prepare the actual command
     let mut qemu_cmd = Command::new(QEMU);
     qemu_cmd.args(QEMU_ARGS);
     qemu_cmd
@@ -67,7 +87,7 @@ fn run(mirage: PathBuf, firmware: PathBuf, args: &Args) {
         .arg("-smp")
         .arg(format!("{}", args.smp));
 
-    if args.dbg {
+    if args.debug {
         qemu_cmd.arg("-s");
     }
     if args.stop {
@@ -90,21 +110,23 @@ fn run(mirage: PathBuf, firmware: PathBuf, args: &Args) {
     }
 }
 
+fn get_config(args: &RunArgs) -> Config {
+    // Read config and build (or download) artifacts
+    let mut cfg = config::read_config();
+
+    // Override some aspect of the config, if required by the arguments
+    if let Some(max_exits) = args.max_exits {
+        cfg.debug.max_firmware_exits = Some(max_exits);
+    }
+
+    cfg
+}
+
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
 fn main() {
-    let args = parse_args();
-
-    println!("Running Mirage with '{}' firmware", &args.firmware);
-
-    let cfg = config::read_config(&args);
-
-    let mirage = build_target(Target::Mirage, &cfg);
-    let firmware = match locate_artifact(&args.firmware) {
-        Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
-        Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-        None => PathBuf::from_str(&args.firmware).expect("Invalid firmware path"),
+    let args = CliArgs::parse();
+    match args.command {
+        Commands::Run(args) => run(&args),
     };
-
-    run(mirage, firmware, &args);
 }
