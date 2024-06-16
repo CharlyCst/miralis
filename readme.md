@@ -28,11 +28,15 @@ Running `just` or `just help` give the list of available commands.
 
 Integration tests can be run with `just test`.
 
-We provide a GDB script (in `misc/setup.gdb`) and `just` commands to facilitate debugging.
-To start a GDB session, first run Mirage with `just debug` and then run `just gdb` in another terminal.
-
 The firmware can be selected as an additional argument to `just run`.
 Valid firmware are either names of firmware under the `./firmware/` directory, some pre-build binaries (such as `opensbi`), or paths to external firmware images.
+Thus, `just run opensbi` will execute OpenSBI on top of Mirage.
+
+We provide support for debugging with GDB.
+To start a GDB session, first run Mirage with `just debug` and then run `just gdb` in another terminal.
+Similar to `just run`, `just debug` takes an optional firmware argument which can be used to debug a particular image.
+Debugging with GDB requires a RISC-V capable GDB executable in path.
+If `just gdb` can't locate such a binary it will provide a list of supported GDB binaries, installing any one of them will resolve the issue.
 
 The log level can be adjusted using a `config.toml` file. See `example.config.toml` for reference.
 
