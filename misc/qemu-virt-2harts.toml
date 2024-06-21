@@ -1,0 +1,15 @@
+# A test configuration to run on QEMU virt platform with 2 harts
+
+[log]
+level = "info"
+color = true
+
+[debug]
+max_firmware_exits = 2000
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 2
+stack_size = 0x8000

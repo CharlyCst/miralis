@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand};
 
 mod artifacts;
@@ -37,6 +39,9 @@ struct RunArgs {
     #[arg(long)]
     /// Maximum number of firmware exits
     max_exits: Option<usize>,
+    #[arg(long)]
+    /// Path to the configuration file to use
+    config: Option<PathBuf>,
 }
 
 #[derive(Args)]

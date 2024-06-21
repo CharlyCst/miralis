@@ -82,7 +82,7 @@ pub fn run(args: &RunArgs) {
 
 fn get_config(args: &RunArgs) -> Config {
     // Read config and build (or download) artifacts
-    let mut cfg = read_config();
+    let mut cfg = read_config(&args.config);
 
     // Override some aspect of the config, if required by the arguments
     if let Some(max_exits) = args.max_exits {
