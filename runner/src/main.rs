@@ -24,8 +24,8 @@ enum Subcommands {
 
 #[derive(Args)]
 struct RunArgs {
-    #[arg(long, default_value = "1")]
-    smp: usize,
+    #[arg(long)]
+    smp: Option<usize>,
     #[arg(long, action)]
     debug: bool,
     #[arg(long, action)]

@@ -29,11 +29,18 @@ use crate::virt::{ExecutionMode, VirtContext};
 
 // Defined in the linker script
 extern "C" {
-    pub(crate) static _stack_bottom: u8;
-    pub(crate) static _stack_top: u8;
+    pub(crate) static _stack_start: u8;
 }
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
+    // For now we simply park all the harts other than the boot one
+    if hart_id != 0 {
+        loop {
+            Arch::wfi();
+            core::hint::spin_loop();
+        }
+    }
+
     init();
     log::info!("Hello, world!");
     log::info!("Hart ID: {}", hart_id);

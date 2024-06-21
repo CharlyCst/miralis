@@ -30,7 +30,6 @@ const FIRMWARE_ADDR: u64 = 0x80100000;
 /// Run Mirage on QEMU
 pub fn run(args: &RunArgs) {
     println!("Running Mirage with '{}' firmware", &args.firmware);
-    assert!(args.smp > 0, "Must use at least one core");
     let cfg = get_config(args);
 
     // Build or retrieve the artifacts to run
@@ -52,10 +51,12 @@ pub fn run(args: &RunArgs) {
             "loader,file={},addr=0x{:x},force-raw=on",
             firmware.to_str().unwrap(),
             FIRMWARE_ADDR
-        ))
-        .arg("-smp")
-        .arg(format!("{}", args.smp));
+        ));
 
+    if let Some(nb_harts) = cfg.platform.nb_harts {
+        assert!(nb_harts > 0, "Must use at least one core");
+        qemu_cmd.arg("-smp").arg(format!("{}", nb_harts));
+    }
     if args.debug {
         qemu_cmd.arg("-s");
     }
@@ -86,6 +87,9 @@ fn get_config(args: &RunArgs) -> Config {
     // Override some aspect of the config, if required by the arguments
     if let Some(max_exits) = args.max_exits {
         cfg.debug.max_firmware_exits = Some(max_exits);
+    }
+    if let Some(nb_harts) = args.smp {
+        cfg.platform.nb_harts = Some(nb_harts);
     }
 
     cfg

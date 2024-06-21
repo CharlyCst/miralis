@@ -151,6 +151,13 @@ const fn str_list_len(env_var: Option<&str>) -> usize {
     len
 }
 
+const fn parse_usize_or(env_var: Option<&str>, default: usize) -> usize {
+    match parse_usize(env_var) {
+        Some(value) => value,
+        None => default,
+    }
+}
+
 // ———————————————————————— Configuration Parameters ———————————————————————— //
 
 /// Weather the vCPU exposes S-mode.
@@ -162,7 +169,7 @@ pub const VCPU_MAX_PMP: Option<usize> = parse_usize(option_env!("MIRAGE_VCPU_MAX
 /// The desired log level.
 pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRAGE_LOG_LEVEL");
 
-/// If colors in logs are enabled
+/// If colors in logs are enabled.
 pub const LOG_COLOR: bool = is_enabled!("MIRAGE_LOG_COLOR");
 
 /// The maximum number of firmware exits before quitting.
@@ -188,3 +195,10 @@ pub const LOG_DEBUG: &[&str; str_list_len(option_env!("MIRAGE_LOG_DEBUG"))] =
 /// Log trace
 pub const LOG_TRACE: &[&str; str_list_len(option_env!("MIRAGE_LOG_TRACE"))] =
     &parse_str_list(option_env!("MIRAGE_LOG_TRACE"));
+
+/// The expected number of harts.
+pub const _PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRAGE_PLATFORM_NB_HARTS"), 1);
+
+/// The stack size for each Mirage thread (one per hart).
+pub const PLATFORM_STACK_SIZE: usize =
+    parse_usize_or(option_env!("MIRAGE_PLATFORM_STACK_SIZE"), 0x8000);

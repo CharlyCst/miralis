@@ -1,6 +1,8 @@
 //! Debug utils for Mirage
 
-use crate::{_stack_bottom, _stack_top};
+use crate::_stack_start;
+use crate::arch::{Arch, Architecture};
+use crate::config::PLATFORM_STACK_SIZE;
 
 // ————————————————————————————— Logging Utils —————————————————————————————— //
 
@@ -68,14 +70,14 @@ pub unsafe fn log_stack_usage() {
     const WARNING_THRESHOLD: usize = 80;
 
     // Get stack usage
-    let stack_top = (&_stack_top) as *const u8 as usize;
-    let stack_bottom = (&_stack_bottom) as *const u8 as usize;
-    assert!(stack_top > stack_bottom);
-    let stack_size = stack_top - stack_bottom;
+    let stack_bottom = (&_stack_start) as *const u8 as usize;
+    let hart_id = Arch::read_mhartid();
+    let stack_bottom = stack_bottom + hart_id * PLATFORM_STACK_SIZE;
+    let stack_top = stack_bottom + PLATFORM_STACK_SIZE;
     let max_stack_usage = get_max_stack_usage(stack_top, stack_bottom);
 
     // Compute percentage with one 1 decimal precision
-    let permil = (1000 * max_stack_usage + stack_size / 2) / stack_size;
+    let permil = (1000 * max_stack_usage + PLATFORM_STACK_SIZE / 2) / PLATFORM_STACK_SIZE;
     let percent = permil / 10;
     let decimal = permil % 100;
 
