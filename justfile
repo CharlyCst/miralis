@@ -1,4 +1,6 @@
-default := "default"
+default          := "default"
+qemu_virt        := "./misc/qemu-virt.toml"
+qemu_virt_2harts := "./misc/qemu-virt.toml"
 
 # Print the list of commands
 help:
@@ -14,18 +16,18 @@ test:
 	cargo test --features userspace -p mirage
 
 	# Running integration tests...
-	cargo run --package runner -- run --max-exits 200 --firmware ecall
-	cargo run --package runner -- run --max-exits 200 --firmware csr_ops
-	cargo run --package runner -- run --max-exits 200 --firmware pmp
-	cargo run --package runner -- run --max-exits 200 --firmware breakpoint
-	cargo run --package runner -- run --max-exits 200 --firmware mepc
-	cargo run --package runner -- run --max-exits 200 --firmware mcause
-	cargo run --package runner -- run --max-exits 200 --firmware mret
-	cargo run --package runner -- run --max-exits 200 --firmware os_ctx_switch
-	cargo run --package runner -- run --max-exits 200 --firmware sandbox
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware csr_ops
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware pmp
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware breakpoint
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware mepc
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware mcause
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware mret
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ctx_switch
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware sandbox
 
 	# Testing with external projects
-	cargo run --package runner -- run --max-exits 2000 --firmware opensbi
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
 
 	# Checking formatting...
 	cargo fmt --all -- --check

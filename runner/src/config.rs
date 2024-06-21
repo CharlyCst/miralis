@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::path::PathBuf;
 
 use serde::Deserialize;
 
@@ -163,11 +164,16 @@ impl Platform {
 
 // ————————————————————————————— Config Loader —————————————————————————————— //
 
-pub fn read_config() -> Config {
+pub fn read_config(path: &Option<PathBuf>) -> Config {
     // Try to read config
-    let mut config_path = get_workspace_path();
-    config_path.push("config.toml");
-    let config = match fs::read_to_string(config_path) {
+    let config = if let Some(path) = path {
+        fs::read_to_string(path)
+    } else {
+        let mut config_path = get_workspace_path();
+        config_path.push("config.toml");
+        fs::read_to_string(config_path)
+    };
+    let config = match config {
         Ok(config) => config,
         Err(_) => {
             println!("No config file found");
