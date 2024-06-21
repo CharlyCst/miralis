@@ -47,6 +47,7 @@ pub enum Instr {
         uimm: usize,
     },
     Mret,
+    Sret,
     Vfencevma,
     Unknown,
 }
@@ -96,6 +97,7 @@ fn decode_system(raw: usize) -> Instr {
             0b000000000001 => Instr::Ebreak,
             0b000100000101 => Instr::Wfi,
             0b001100000010 => Instr::Mret,
+            0b000100000010 => Instr::Sret,
             0b000100100000 => Instr::Vfencevma,
             _ => Instr::Unknown,
         };
@@ -359,22 +361,192 @@ fn decode_csr(csr: usize) -> Csr {
 mod tests {
     use super::*;
 
-    /// Decodes a few basic instructions, just to check the bare minimum functionalities.
-    ///
+    /// Decodes priviledged instructions
     /// Here is an handy tool to double check:
     /// https://luplab.gitlab.io/rvcodecjs/
     #[test]
-    fn simple_decode() {
-        assert_eq!(decode(0x10500073), Instr::Wfi);
+    fn system_instructions() {
+        // ECALL: Environment call.
         assert_eq!(decode(0x00000073), Instr::Ecall);
+        // EBREAK: Environment break.
+        assert_eq!(decode(0x00100073), Instr::Ebreak);
+        // MRET: Return from machine mode.
         assert_eq!(decode(0x30200073), Instr::Mret);
+        // SRET: Return from supervisor mode.
+        assert_eq!(decode(0x10200073), Instr::Sret);
+        // WFI: Wait for interrupt.
+        assert_eq!(decode(0x10500073), Instr::Wfi);
+        // SFENCE.VMA: Supervisor memory-management fence.
+        assert_eq!(decode(0x12000073), Instr::Vfencevma);
+    }
+
+    #[test]
+    fn csr_instructions() {
+        // CSRRW: Atomic Read/Write CSR.
         assert_eq!(
-            decode(0x34071473),
+            decode(0x30001073),
             Instr::Csrrw {
-                csr: Csr::Mscratch,
-                rd: Register::X8,
-                rs1: Register::X14
+                csr: Csr::Mstatus,
+                rd: Register::X0,
+                rs1: Register::X0,
             }
         );
+
+        // CSRRS: Atomic Read and Set Bits in CSR.
+        assert_eq!(
+            decode(0x30002073),
+            Instr::Csrrs {
+                csr: Csr::Mstatus,
+                rd: Register::X0,
+                rs1: Register::X0,
+            }
+        );
+
+        // CSRRC: Atomic Read and Clear Bits in CSR.
+        assert_eq!(
+            decode(0x30003073),
+            Instr::Csrrc {
+                csr: Csr::Mstatus,
+                rd: Register::X0,
+                rs1: Register::X0,
+            }
+        );
+
+        // CSRRWI: Atomic Read/Write CSR Immediate.
+        assert_eq!(
+            decode(0x30005073),
+            Instr::Csrrwi {
+                csr: Csr::Mstatus,
+                rd: Register::X0,
+                uimm: 0x0,
+            }
+        );
+
+        // CSRRSI: Atomic Read and Set Bits in CSR Immediate.
+        assert_eq!(
+            decode(0x30006073),
+            Instr::Csrrsi {
+                csr: Csr::Mstatus,
+                rd: Register::X0,
+                uimm: 0x0,
+            }
+        );
+
+        // CSRRCI: Atomic Read and Clear Bits in CSR Immediate.s
+        assert_eq!(
+            decode(0x30007073),
+            Instr::Csrrci {
+                csr: Csr::Mstatus,
+                rd: Register::X0,
+                uimm: 0x0,
+            }
+        );
+    }
+
+    #[test]
+    fn decode_rd() {
+        let base_instruction: usize = 0x30001073;
+
+        let instruction_builder_rd = |offset: usize| -> usize { base_instruction + (offset << 7) };
+
+        let registers_to_test: [(usize, Register); 32] = [
+            (instruction_builder_rd(0), Register::X0),
+            (instruction_builder_rd(1), Register::X1),
+            (instruction_builder_rd(2), Register::X2),
+            (instruction_builder_rd(3), Register::X3),
+            (instruction_builder_rd(4), Register::X4),
+            (instruction_builder_rd(5), Register::X5),
+            (instruction_builder_rd(6), Register::X6),
+            (instruction_builder_rd(7), Register::X7),
+            (instruction_builder_rd(8), Register::X8),
+            (instruction_builder_rd(9), Register::X9),
+            (instruction_builder_rd(10), Register::X10),
+            (instruction_builder_rd(11), Register::X11),
+            (instruction_builder_rd(12), Register::X12),
+            (instruction_builder_rd(13), Register::X13),
+            (instruction_builder_rd(14), Register::X14),
+            (instruction_builder_rd(15), Register::X15),
+            (instruction_builder_rd(16), Register::X16),
+            (instruction_builder_rd(17), Register::X17),
+            (instruction_builder_rd(18), Register::X18),
+            (instruction_builder_rd(19), Register::X19),
+            (instruction_builder_rd(20), Register::X20),
+            (instruction_builder_rd(21), Register::X21),
+            (instruction_builder_rd(22), Register::X22),
+            (instruction_builder_rd(23), Register::X23),
+            (instruction_builder_rd(24), Register::X24),
+            (instruction_builder_rd(25), Register::X25),
+            (instruction_builder_rd(26), Register::X26),
+            (instruction_builder_rd(27), Register::X27),
+            (instruction_builder_rd(28), Register::X28),
+            (instruction_builder_rd(29), Register::X29),
+            (instruction_builder_rd(30), Register::X30),
+            (instruction_builder_rd(31), Register::X31),
+        ];
+
+        for tuple in registers_to_test.iter() {
+            assert_eq!(
+                decode(tuple.0),
+                Instr::Csrrw {
+                    csr: Csr::Mstatus,
+                    rd: tuple.1,
+                    rs1: Register::X0,
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn decode_rs1() {
+        let base_instruction: usize = 0x30001073;
+
+        let instruction_builder_rs1 =
+            |offset: usize| -> usize { base_instruction + (offset << 15) };
+
+        let registers_to_test: [(usize, Register); 32] = [
+            (instruction_builder_rs1(0), Register::X0),
+            (instruction_builder_rs1(1), Register::X1),
+            (instruction_builder_rs1(2), Register::X2),
+            (instruction_builder_rs1(3), Register::X3),
+            (instruction_builder_rs1(4), Register::X4),
+            (instruction_builder_rs1(5), Register::X5),
+            (instruction_builder_rs1(6), Register::X6),
+            (instruction_builder_rs1(7), Register::X7),
+            (instruction_builder_rs1(8), Register::X8),
+            (instruction_builder_rs1(9), Register::X9),
+            (instruction_builder_rs1(10), Register::X10),
+            (instruction_builder_rs1(11), Register::X11),
+            (instruction_builder_rs1(12), Register::X12),
+            (instruction_builder_rs1(13), Register::X13),
+            (instruction_builder_rs1(14), Register::X14),
+            (instruction_builder_rs1(15), Register::X15),
+            (instruction_builder_rs1(16), Register::X16),
+            (instruction_builder_rs1(17), Register::X17),
+            (instruction_builder_rs1(18), Register::X18),
+            (instruction_builder_rs1(19), Register::X19),
+            (instruction_builder_rs1(20), Register::X20),
+            (instruction_builder_rs1(21), Register::X21),
+            (instruction_builder_rs1(22), Register::X22),
+            (instruction_builder_rs1(23), Register::X23),
+            (instruction_builder_rs1(24), Register::X24),
+            (instruction_builder_rs1(25), Register::X25),
+            (instruction_builder_rs1(26), Register::X26),
+            (instruction_builder_rs1(27), Register::X27),
+            (instruction_builder_rs1(28), Register::X28),
+            (instruction_builder_rs1(29), Register::X29),
+            (instruction_builder_rs1(30), Register::X30),
+            (instruction_builder_rs1(31), Register::X31),
+        ];
+
+        for tuple in registers_to_test.iter() {
+            assert_eq!(
+                decode(tuple.0),
+                Instr::Csrrw {
+                    csr: Csr::Mstatus,
+                    rd: Register::X0,
+                    rs1: tuple.1,
+                }
+            );
+        }
     }
 }
