@@ -31,15 +31,9 @@ SECTIONS
     *(.bss.*)
   }
 
-
-  /* Then we allocate some stack space */
-  .stack : ALIGN(0x1000)
-   {
-      . = ALIGN(8);
-      _stack_bottom = .;
-      . = . + STACK_SIZE;
-      . = ALIGN(8);
-      _stack_top = .;
-   }
+  /* Then we mark the start of the stack (or the end, as the stack grows
+   * downard). */
+  . = ALIGN(0x1000);
+  _stack_start = .;
 }
 

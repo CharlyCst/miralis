@@ -32,6 +32,10 @@ impl Architecture for HostArch {
         todo!()
     }
 
+    fn read_mhartid() -> usize {
+        todo!()
+    }
+
     unsafe fn set_mpp(mode: super::Mode) {
         let _ = mode.to_bits();
         todo!()

@@ -31,10 +31,19 @@ color = true
 max_firmware_exits = 400
 
 [vcpu]
-# Enable upport for S_mode
+# Enable support for S_mode
 # Default to true
 s_mode = true
 
 # Maximum number of PMP exposed to the firmware.
 # No maximum by default.
 max_pmp = 8
+
+[platform]
+# Nuber of harts (i.e. cores).
+# Default to 1.
+nb_harts = 1
+
+# Size of the stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000

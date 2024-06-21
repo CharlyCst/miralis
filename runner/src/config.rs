@@ -20,6 +20,8 @@ pub struct Config {
     pub debug: Debug,
     #[serde(default)]
     pub vcpu: VCpu,
+    #[serde(default)]
+    pub platform: Platform,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -47,6 +49,13 @@ pub struct VCpu {
     pub max_pmp: Option<usize>,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Platform {
+    pub nb_harts: Option<usize>,
+    pub stack_size: Option<usize>,
+}
+
 // ————————————————————————— Environment Variables —————————————————————————— //
 
 impl Config {
@@ -55,6 +64,7 @@ impl Config {
         envs.extend(self.log.build_envs());
         envs.extend(self.debug.build_envs());
         envs.extend(self.vcpu.build_envs());
+        envs.extend(self.platform.build_envs());
         envs
     }
 }
@@ -127,6 +137,25 @@ impl VCpu {
         }
         if let Some(max_pmp) = self.max_pmp {
             envs.insert(String::from("MIRAGE_VCPU_MAX_PMP"), format!("{}", max_pmp));
+        }
+        envs
+    }
+}
+
+impl Platform {
+    fn build_envs(&self) -> HashMap<String, String> {
+        let mut envs = HashMap::new();
+        if let Some(nb_harts) = self.nb_harts {
+            envs.insert(
+                String::from("MIRAGE_PLATFORM_NB_HARTS"),
+                format!("{}", nb_harts),
+            );
+        }
+        if let Some(stack_size) = self.stack_size {
+            envs.insert(
+                String::from("MIRAGE_PLATFORM_STACK_SIZE"),
+                format!("{}", stack_size),
+            );
         }
         envs
     }

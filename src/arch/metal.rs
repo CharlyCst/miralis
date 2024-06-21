@@ -7,9 +7,10 @@ use super::{Architecture, MCause, Mode, RegistersCapability, TrapInfo};
 use crate::arch::mstatus::{MIE_OFFSET, MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{HardwareCapability, PmpGroup};
+use crate::config::PLATFORM_STACK_SIZE;
 use crate::host::MirageContext;
 use crate::virt::VirtContext;
-use crate::{_stack_bottom, _stack_top, main};
+use crate::{_stack_start, main};
 
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
@@ -52,6 +53,18 @@ impl Architecture for MetalArch {
                 x = out(reg) mstatus);
         }
         return mstatus;
+    }
+
+    fn read_mhartid() -> usize {
+        let mhartid: usize;
+        unsafe {
+            asm!(
+                "csrr {x}, mhartid",
+                x = out(reg) mhartid,
+                options(nomem)
+            );
+        }
+        return mhartid;
     }
 
     unsafe fn detect_hardware() -> HardwareCapability {
@@ -525,9 +538,16 @@ r#"
 .text
 .global _start
 _start:
-    // Start by filling the stack with a known memory pattern
-    ld t0, __stack_bottom
-    ld t1, __stack_top
+    // We start by setting up the stack:
+    // First we find where the stack is for that hart
+    ld t0, __stack_start
+    ld t1, {stack_size}  // Per-hart stack size
+    csrr t2, mhartid     // Our current hart ID
+    mul t3, t2, t1       // How me space before our own stack 
+    add t0, t0, t3       // The actual start of our stack
+    add t1, t0, t1       // And the end of our stack
+
+    // Then we fill the stack with a known memory pattern
     li t2, 0x0BADBED0
 loop:
     bgeu t0, t1, done // Exit when reaching the end address
@@ -536,21 +556,27 @@ loop:
     j loop
 done:
 
-    // Then load the stack pointer and jump into main
-    ld sp, __stack_top
+    // And finally we load the stack pointer into sp and jump into main
+    mv sp, t1
     j {main}
 
 // Store the address of the stack in memory
 // That way it can be loaded as an absolute value
-__stack_top:
-    .dword {stack_top}
-__stack_bottom:
-    .dword {stack_bottom}
+__stack_start:
+    .dword {stack_start}
 "#,
     main = sym main,
-    stack_top = sym _stack_top,
-    stack_bottom = sym _stack_bottom,
+    stack_start = sym _stack_start,
+    stack_size = sym STACK_SIZE,
 );
+
+// NOTE: We need to use a static here because constant in `asm!` blocks are not yet supported.
+// The workaround is to create a static (so a variable in memory) holding the value and using the
+// symbol (so the address) in assembly to load it into a register.
+//
+// This can be removed once `asm_const` gets stabilized. See:
+// https://github.com/rust-lang/rust/issues/93332
+static STACK_SIZE: usize = PLATFORM_STACK_SIZE;
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
 
