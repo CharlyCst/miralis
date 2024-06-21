@@ -13,7 +13,7 @@ use crate::virt::VirtContext;
 pub struct HostArch {}
 
 impl Architecture for HostArch {
-    fn init() {
+    fn hart_init() {
         // Use main to avoid "never used" warnings.
         let _ = main;
 

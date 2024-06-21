@@ -34,7 +34,7 @@ pub type Arch = userspace::HostArch;
 
 /// Architecture abstraction layer.
 pub trait Architecture {
-    fn init();
+    fn hart_init();
     fn read_misa() -> usize;
     fn read_mtvec() -> usize;
     fn read_mstatus() -> usize;

@@ -18,9 +18,11 @@ mod platform;
 mod utils;
 mod virt;
 
+use core::sync::atomic::{AtomicBool, Ordering};
+
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture, HardwareCapability};
-use platform::{init, Plat, Platform};
+use platform::{Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
 use crate::host::MirageContext;
@@ -33,21 +35,36 @@ extern "C" {
 }
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
-    // For now we simply park all the harts other than the boot one
-    if hart_id != 0 {
-        loop {
-            Arch::wfi();
-            core::hint::spin_loop();
-        }
-    }
+    static INITIALIZATION_DONE: AtomicBool = AtomicBool::new(false);
 
-    init();
-    log::info!("Hello, world!");
-    log::info!("Hart ID: {}", hart_id);
-    log::info!("misa:    0x{:x}", Arch::read_misa());
-    log::info!("vmisa:   0x{:x}", Arch::read_misa() & !misa::DISABLED);
-    log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
-    log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
+    // Platform and hart initialization
+    if hart_id == 0 {
+        // Boot hart
+        Plat::init();
+        Arch::hart_init();
+        log::info!("Hello, world!");
+        log::info!("Hart ID: {}", hart_id);
+        log::info!("misa:    0x{:x}", Arch::read_misa());
+        log::info!("vmisa:   0x{:x}", Arch::read_misa() & !misa::DISABLED);
+        log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
+        log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
+
+        // Unblock other harts
+        INITIALIZATION_DONE.store(true, Ordering::SeqCst);
+    } else {
+        // Non-boot hart
+        loop {
+            // Wait until the platform is initialized
+            if INITIALIZATION_DONE.load(Ordering::SeqCst) {
+                break;
+            } else {
+                core::hint::spin_loop();
+            }
+        }
+
+        Arch::hart_init();
+        log::info!("Waking up hart {}", hart_id);
+    }
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();

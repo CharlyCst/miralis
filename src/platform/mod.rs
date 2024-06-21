@@ -3,8 +3,7 @@ pub mod virt;
 use core::fmt;
 
 // Re-export virt platform by default for now
-use crate::arch::{Arch, Architecture};
-use crate::{config, logger};
+use crate::config;
 
 /// Export the current platform.
 /// For now, only QEMU's Virt board is supported
@@ -29,12 +28,4 @@ pub trait Platform {
     fn get_max_valid_address() -> usize;
 
     const HAS_S_MODE: bool = config::VCPU_S_MODE;
-}
-
-pub fn init() {
-    Plat::init();
-    logger::init();
-
-    // Trap handler
-    Arch::init();
 }

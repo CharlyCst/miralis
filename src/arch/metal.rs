@@ -25,7 +25,7 @@ impl MetalArch {
 }
 
 impl Architecture for MetalArch {
-    fn init() {
+    fn hart_init() {
         // Install trap handler
         MetalArch::install_handler(_raw_trap_handler as usize);
     }

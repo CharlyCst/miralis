@@ -7,6 +7,7 @@ use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
 use super::Platform;
+use crate::logger;
 
 // —————————————————————————— Platform parameters ——————————————————————————— //
 
@@ -28,6 +29,9 @@ impl Platform for VirtPlatform {
         let mut mmio = unsafe { MmioSerialPort::new(SERIAL_PORT_BASE_ADDRESS) };
         mmio.init();
         *uart = Some(mmio);
+
+        // Now we can initialize the logger
+        logger::init();
     }
 
     fn debug_print(args: fmt::Arguments) {
