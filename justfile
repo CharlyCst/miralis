@@ -30,6 +30,10 @@ test:
 	# Checking formatting...
 	cargo fmt --all -- --check
 
+# Run unit tests
+unit-test:
+	cargo test --features userspace -p mirage
+
 # Run Mirage
 run firmware=default:
 	cargo run --package runner -- run -v --firmware {{firmware}}
