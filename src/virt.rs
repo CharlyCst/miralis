@@ -2,7 +2,8 @@
 use mirage_core::abi;
 
 use crate::arch::{
-    misa, mstatus, Arch, Architecture, Csr, HardwareCapability, MCause, Mode, Register, TrapInfo,
+    misa, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, HardwareCapability, MCause,
+    Mode, Register, TrapInfo,
 };
 use crate::debug;
 use crate::decoder::{decode, Instr};
@@ -224,12 +225,12 @@ impl VirtContext {
                 self.pc += 4;
             }
             Instr::Mret => {
-                match (self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER {
-                    3 => {
+                match parse_mpp_return_mode(self.csr.mstatus) {
+                    Mode::M => {
                         log::trace!("mret to m-mode");
                         // Mret is jumping back to machine mode, do nothing
                     }
-                    1 if Plat::HAS_S_MODE => {
+                    Mode::S if Plat::HAS_S_MODE => {
                         log::trace!("mret to s-mode with MPP");
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         self.mode = Mode::S;
@@ -241,7 +242,7 @@ impl VirtContext {
                             0,
                         );
                     }
-                    0 => {
+                    Mode::U => {
                         log::trace!("mret to u-mode with MPP");
                         // Mret is jumping to user mode, the runner is the guest OS
                         self.mode = Mode::U;
