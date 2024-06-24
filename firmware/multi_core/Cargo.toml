@@ -1,0 +1,8 @@
+[package]
+name = "multi_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mirage_abi = { path = "../../crates/abi" }
+log = { workspace = true }

@@ -222,6 +222,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "multi_core"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "mirage_abi",
+]
+
+[[package]]
 name = "os_ctx_switch"
 version = "0.1.0"
 dependencies = [
