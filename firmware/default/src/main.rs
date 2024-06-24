@@ -14,7 +14,6 @@ fn main() -> ! {
     let res: usize;
     unsafe {
         asm!(
-            "li {0}, 0x42",
             "csrw mscratch, {0}",
             "csrr {1}, mscratch",
             in(reg) secret,

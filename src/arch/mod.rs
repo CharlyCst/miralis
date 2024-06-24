@@ -15,6 +15,7 @@ use pmp::PmpGroup;
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
+use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::host::MirageContext;
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
@@ -93,6 +94,16 @@ pub enum Mode {
     S,
     /// Machine
     M,
+}
+
+/// Returns the mode corresponding to the bit pattern
+pub fn parse_mpp_return_mode(mstatus_reg: usize) -> Mode {
+    match (mstatus_reg >> MPP_OFFSET) & MPP_FILTER {
+        0 => Mode::U,
+        1 => Mode::S,
+        3 => Mode::M,
+        _ => panic!("Unknown mode!"),
+    }
 }
 
 impl Mode {
