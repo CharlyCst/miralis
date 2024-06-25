@@ -9,19 +9,67 @@ use crate::platform::{Plat, Platform};
 
 // ————————————————————————————————— Logger ————————————————————————————————— //
 
-pub struct Logger {
-    log_level: LevelFilter,
-    max_level: LevelFilter,
+pub struct Logger {}
+
+impl Logger {
+    const GLOBAL_LOG_LEVEL: LevelFilter = match config::LOG_LEVEL {
+        Some(s) => match s.as_bytes() {
+            b"trace" => LevelFilter::Trace,
+            b"debug" => LevelFilter::Debug,
+            b"info" => LevelFilter::Info,
+            b"warn" => LevelFilter::Warn,
+            b"error" => LevelFilter::Error,
+            b"off" => LevelFilter::Off,
+            _ => LevelFilter::Info,
+        },
+        _ => LevelFilter::Info,
+    };
+
+    fn contains_target<const N: usize>(log_modules: &[&str; N], target: &str) -> bool {
+        for element in log_modules.iter() {
+            if *element == target {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    fn filter_by_module(&self, record: &Record) -> bool {
+        let mut specific_module_enabled: bool = false;
+
+        specific_module_enabled |= record.metadata().level() <= LevelFilter::Trace
+            && Self::contains_target(config::LOG_TRACE, record.target());
+        specific_module_enabled |= record.metadata().level() <= LevelFilter::Debug
+            && Self::contains_target(config::LOG_DEBUG, record.target());
+        specific_module_enabled |= record.metadata().level() <= LevelFilter::Info
+            && Self::contains_target(config::LOG_INFO, record.target());
+        specific_module_enabled |= record.metadata().level() <= LevelFilter::Warn
+            && Self::contains_target(config::LOG_WARN, record.target());
+        specific_module_enabled |= record.metadata().level() <= LevelFilter::Error
+            && Self::contains_target(config::LOG_ERROR, record.target());
+
+        specific_module_enabled
+    }
+
+    fn filter_by_global_level(&self, record: &Record) -> bool {
+        Self::GLOBAL_LOG_LEVEL >= record.metadata().level()
+    }
 }
 
 impl log::Log for Logger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        self.log_level >= metadata.level()
+    fn enabled(&self, _: &Metadata) -> bool {
+        // We set to true such that each logs arrives in the log function and then we filter
+        true
     }
 
     fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            Plat::debug_print(core::format_args!(
+        let global_level_mask: bool = self.filter_by_global_level(record);
+        let module_level_mask: bool = self.filter_by_module(record);
+
+        if global_level_mask || module_level_mask {
+            // Writes the log
+            Plat::debug_print(format_args!(
                 "[{} | {}] {}\n",
                 level_display(record.level()),
                 record.target(),
@@ -32,39 +80,13 @@ impl log::Log for Logger {
 
     fn flush(&self) {}
 }
-
-impl Logger {
-    const DEFAULT_LOG_LEVEL: LevelFilter = LevelFilter::Info;
-
-    const fn new_from_env() -> Self {
-        let log_level = match config::LOG_LEVEL {
-            Some(s) => match s.as_bytes() {
-                b"trace" => LevelFilter::Trace,
-                b"debug" => LevelFilter::Debug,
-                b"info" => LevelFilter::Info,
-                b"warn" => LevelFilter::Warn,
-                b"error" => LevelFilter::Error,
-                b"off" => LevelFilter::Off,
-                _ => Self::DEFAULT_LOG_LEVEL,
-            },
-            _ => Self::DEFAULT_LOG_LEVEL,
-        };
-
-        Logger {
-            log_level,
-            max_level: log_level,
-        }
-    }
-}
-
 pub fn init() {
     static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
-    static LOGGER: Logger = Logger::new_from_env();
 
     match IS_INITIALIZED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
         Ok(_) => {
-            log::set_logger(&LOGGER).unwrap();
-            log::set_max_level(LOGGER.max_level);
+            log::set_logger(&Logger {}).unwrap();
+            log::set_max_level(LevelFilter::Trace);
         }
         Err(_) => {
             log::warn!("Logger is already initialized, skipping init");
@@ -92,5 +114,21 @@ fn level_display(level: Level) -> &'static str {
             Level::Debug => "Debug",
             Level::Trace => "Trace",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::logger::Logger;
+
+    #[test]
+    fn test_in_list() {
+        assert!(Logger::contains_target(&["test", "test"], "test"));
+        assert!(!Logger::contains_target(&["test"], "test2"));
+        assert!(Logger::contains_target(&[""], ""));
+        assert!(!Logger::contains_target(&["test", "test"], "test-test"));
+        assert!(Logger::contains_target(&["car", "train", "boat"], "car"));
+        assert!(Logger::contains_target(&["car", "train", "boat"], "train"));
+        assert!(Logger::contains_target(&["car", "train", "boat"], "boat"));
     }
 }

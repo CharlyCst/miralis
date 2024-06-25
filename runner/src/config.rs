@@ -27,6 +27,11 @@ pub struct Config {
 pub struct Log {
     pub level: Option<String>,
     pub color: Option<bool>,
+    pub error: Option<Vec<String>>,
+    pub warn: Option<Vec<String>>,
+    pub info: Option<Vec<String>>,
+    pub debug: Option<Vec<String>>,
+    pub trace: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -54,15 +59,49 @@ impl Config {
     }
 }
 
+fn format_env_array(text: &Vec<String>) -> String {
+    format!("{}", text.join(","))
+}
+
 impl Log {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = HashMap::new();
+
+        // Global log level
         if let Some(level) = &self.level {
             envs.insert(String::from("MIRAGE_LOG_LEVEL"), level.clone());
         }
+
+        // Decides between colored and gray output
         if let Some(color) = self.color {
             envs.insert(String::from("MIRAGE_LOG_COLOR"), format!("{}", color));
         }
+
+        // Modules logged at error level
+        if let Some(error) = &self.error {
+            envs.insert(String::from("MIRAGE_LOG_ERROR"), format_env_array(error));
+        }
+
+        // Modules logged at warn level
+        if let Some(warn) = &self.warn {
+            envs.insert(String::from("MIRAGE_LOG_WARN"), format_env_array(warn));
+        }
+
+        // Modules logged at info level
+        if let Some(info) = &self.info {
+            envs.insert(String::from("MIRAGE_LOG_INFO"), format_env_array(info));
+        }
+
+        // Modules logged at debug level
+        if let Some(debug) = &self.debug {
+            envs.insert(String::from("MIRAGE_LOG_DEBUG"), format_env_array(debug));
+        }
+
+        // Modules logged at trace level
+        if let Some(trace) = &self.trace {
+            envs.insert(String::from("MIRAGE_LOG_TRACE"), format_env_array(trace));
+        }
+
         envs
     }
 }
