@@ -7,9 +7,23 @@
 # Possible values are: trace, debug, info, warn, error, off
 level = "info"
 
+# In addition log levels can be specified for individual modules
+#
+# Each of the five levels can specify a list of modules which will log all
+# message at this or higher priority level. This is useful to selectively log
+# low priority messages (e.g. 'trace' or 'debug') while keeping a higher
+# default log level (e.g. 'info' or 'warn').
+#
+# By default only the default log level is taken into account.
+trace = ["mirage::virt", "mirage::arch::metal"]
+debug = ["mirage::arch"]
+info = []
+warn = []
+error = []
+
 # Use color in logs (using ANSI escape sequences).
 # Default to true.
-log = true
+color = true
 
 [debug]
 # Maximum number of firmware exits before terminating.
