@@ -21,9 +21,9 @@ pub struct MiralisContext {
 
 impl MiralisContext {
     /// Creates a new Miralis context with default values.
-    pub fn new(nb_pmp: usize, hw: HardwareCapability) -> Self {
+    pub fn new(hw: HardwareCapability) -> Self {
         Self {
-            pmp: PmpGroup::new(nb_pmp),
+            pmp: PmpGroup::new(hw.available_reg.nb_pmp),
             virt_pmp_offset: 0,
             hw,
             devices: [Plat::create_clint_device()],

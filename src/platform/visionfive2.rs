@@ -17,7 +17,6 @@ const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const MIRALIS_START_ADDR: usize = 0x80000000;
 const FIRMWARE_START_ADDR: usize = 0x80200000;
 const CLINT_BASE: usize = 0x2000000;
-const PMP_NUMBER: usize = 8;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -76,10 +75,6 @@ impl Platform for VisionFive2Platform {
 
     fn load_firmware() -> usize {
         FIRMWARE_START_ADDR
-    }
-
-    fn get_nb_pmp() -> usize {
-        PMP_NUMBER
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {

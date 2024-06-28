@@ -205,12 +205,31 @@ impl Architecture for MetalArch {
         // Hint: to simulate a missing register, one can add "ecall" after the first line in asm! of the macro
         let is_menvcfg_present: bool = register_present!("menvcfg");
         let is_senvcfg_present: bool = register_present!("senvcfg");
-
         log::debug!(
-            "Detecting available registers [menvcfg : {} | senvcfg : {}]",
+            "Detecting available envcfg registers [menvcfg : {} | senvcfg : {} ]",
             is_menvcfg_present,
             is_senvcfg_present,
         );
+
+        // Detect available PMP registers:
+        // - On RV64 platforms only even-numbered pmpcfg registers are present
+        // - The spec mandates that there is either 0, 16 or 64 PMP registers implemented
+        // Thus:
+        // - If pmpcfg14 is implemented there is 64 implemented PMP registers
+        // - if pmpcfg2 is implemented there is 16 implemented PMP registers
+        // - Otherwise there is 0
+        let is_pmpcfg14_present: bool = register_present!("pmpcfg14");
+        let is_pmpcfg2_present: bool = register_present!("pmpcfg2");
+        let nb_implemented_pmp = if is_pmpcfg14_present {
+            64
+        } else if is_pmpcfg2_present {
+            16
+        } else {
+            0
+        };
+        let nb_pmp = find_nb_of_non_zero_pmp(nb_implemented_pmp);
+
+        log::debug!("Number of PMP: {}", nb_pmp);
 
         // Save current CSRs
         let mstatus = Self::read_csr(Csr::Mstatus);
@@ -244,6 +263,7 @@ impl Architecture for MetalArch {
             available_reg: RegistersCapability {
                 menvcfg: is_menvcfg_present,
                 senvcfg: is_senvcfg_present,
+                nb_pmp,
             },
         }
     }
@@ -350,6 +370,125 @@ impl Architecture for MetalArch {
     unsafe fn sfence_vma() {
         asm!("sfence.vma")
     }
+}
+
+/// Finds the number of non-zero PMP registers, i.e. the effective number of PMP registers
+/// available on the current core.
+///
+/// SAFETY: This function assumes that at least `nb_implemented` PMP registers are _implemented_
+/// (but some can be hard-wired at 0). If that is not the case this function might trap with an
+/// illegal instruction exception.
+unsafe fn find_nb_of_non_zero_pmp(nb_implemented: usize) -> usize {
+    // According to the spec either 0, 16 or 64 entries are implemented
+    assert!(nb_implemented == 0 || nb_implemented == 16 || nb_implemented == 64);
+
+    // This macro tests if a PMP address register can be written with a non-zero value, and return
+    // the index of the PMP. If we test all PMP sequentially in increasing order the returned value
+    // is number of implemented pmp.
+    //
+    // E.g. if PMP 0 and 1 are implemented but not PMP 2, then
+    // ```
+    // test_pmp!(0);
+    // test_pmp!(1);
+    // test_pmp!(2);
+    // ```
+    // Does return the number of implemented PMPs (2).
+    //
+    // Unfortunately we have to rely on macros because each pmp entry needs a different assembly
+    // instruction to be written. Because of this we can't check all entries in a for loop, but we
+    // need to manually write (or with a macro) 64 tests.
+    macro_rules! test_pmp {
+        ($idx:literal) => {{
+            let read_addr: usize;
+            asm!(
+                // We save try to write a non-zero value in pmpaddr and read it back
+                concat!("csrrw {tmp}, pmpaddr", $idx, ", {addr}"),
+                concat!("csrrw {addr}, pmpaddr", $idx, ", {tmp}"),
+                tmp = out(reg) _,
+                addr = inout(reg) 1_usize => read_addr,
+                options(nomem)
+            );
+            if read_addr == 0 {
+                return $idx;
+            }
+        }};
+    }
+
+    if nb_implemented == 0 {
+        return 0;
+    }
+
+    test_pmp!(0);
+    test_pmp!(1);
+    test_pmp!(2);
+    test_pmp!(3);
+    test_pmp!(4);
+    test_pmp!(5);
+    test_pmp!(6);
+    test_pmp!(7);
+    test_pmp!(8);
+    test_pmp!(9);
+    test_pmp!(10);
+    test_pmp!(11);
+    test_pmp!(12);
+    test_pmp!(13);
+    test_pmp!(14);
+    test_pmp!(15);
+
+    if nb_implemented == 16 {
+        return 16;
+    }
+
+    test_pmp!(16);
+    test_pmp!(17);
+    test_pmp!(18);
+    test_pmp!(19);
+    test_pmp!(20);
+    test_pmp!(21);
+    test_pmp!(22);
+    test_pmp!(23);
+    test_pmp!(24);
+    test_pmp!(25);
+    test_pmp!(26);
+    test_pmp!(27);
+    test_pmp!(28);
+    test_pmp!(29);
+    test_pmp!(30);
+    test_pmp!(31);
+    test_pmp!(32);
+    test_pmp!(33);
+    test_pmp!(34);
+    test_pmp!(35);
+    test_pmp!(36);
+    test_pmp!(37);
+    test_pmp!(38);
+    test_pmp!(39);
+    test_pmp!(40);
+    test_pmp!(41);
+    test_pmp!(42);
+    test_pmp!(43);
+    test_pmp!(44);
+    test_pmp!(45);
+    test_pmp!(46);
+    test_pmp!(47);
+    test_pmp!(48);
+    test_pmp!(49);
+    test_pmp!(50);
+    test_pmp!(51);
+    test_pmp!(52);
+    test_pmp!(53);
+    test_pmp!(54);
+    test_pmp!(55);
+    test_pmp!(56);
+    test_pmp!(57);
+    test_pmp!(58);
+    test_pmp!(59);
+    test_pmp!(60);
+    test_pmp!(61);
+    test_pmp!(62);
+    test_pmp!(63);
+
+    return 64;
 }
 
 unsafe fn write_pmpaddr(index: usize, pmpaddr: usize) {
