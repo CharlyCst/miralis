@@ -93,6 +93,8 @@ pub struct RegistersCapability {
     pub menvcfg: bool,
     /// Boolean value indicating if Supervisor environment configuration register is present
     pub senvcfg: bool,
+    /// The number of implemented and non-zero PMP registers
+    pub nb_pmp: usize,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

@@ -57,19 +57,18 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();
-    let nb_pmp = Plat::get_nb_pmp();
     let nb_virt_pmp;
     let clint = Plat::create_clint_device();
 
     // Detect hardware capabilities
-    // SAFETY: this lust happen before hardware initialization
+    // SAFETY: this must happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
 
     // Initialize Miralis's own context
-    let mut mctx = MiralisContext::new(nb_pmp, hw);
+    let mut mctx = MiralisContext::new(hw);
 
     // Configure PMP registers, if available
-    if nb_pmp >= 16 {
+    if mctx.pmp.nb_pmp >= 16 {
         // Protect Miralis with the first pmp
         let (start, size) = Plat::get_miralis_memory_start_and_size();
         mctx.pmp
@@ -83,8 +82,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
         mctx.pmp.set(2, 0, pmpcfg::INACTIVE);
         // Finally, set the last PMP to grant access to the whole memory
-        mctx.pmp
-            .set(nb_pmp - 1, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
+        mctx.pmp.set(
+            (mctx.pmp.nb_pmp - 1) as usize,
+            usize::MAX,
+            pmpcfg::RWX | pmpcfg::NAPOT,
+        );
         // Give 8 PMPs to the firmware
         mctx.virt_pmp_offset = 2;
         if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
