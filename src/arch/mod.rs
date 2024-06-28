@@ -79,8 +79,18 @@ pub trait Architecture {
 pub struct HardwareCapability {
     /// Bitmap of valid interrupts, marks valid bits in `mie` and `mip`.
     pub interrupts: usize,
+    /// Structure indicating the presence of optional registers
+    pub available_reg: RegistersCapability,
     /// Prevent the struct from being used on another core.
     _marker: PhantomNotSendNotSync,
+}
+
+/// A struct that contains information about the available registers
+pub struct RegistersCapability {
+    /// Boolean value indicating if Machine environment configuration register is present
+    pub menvcfg: bool,
+    /// Boolean value indicating if Supervisor environment configuration register is present
+    pub senvcfg: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

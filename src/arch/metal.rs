@@ -3,7 +3,7 @@ use core::arch::{asm, global_asm};
 use core::marker::PhantomData;
 use core::{ptr, usize};
 
-use super::{Architecture, MCause, Mode, TrapInfo};
+use super::{Architecture, MCause, Mode, RegistersCapability, TrapInfo};
 use crate::arch::mstatus::{MIE_OFFSET, MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{HardwareCapability, PmpGroup};
@@ -14,13 +14,19 @@ use crate::{_stack_bottom, _stack_top, main};
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
 
-impl Architecture for MetalArch {
-    fn init() {
+impl MetalArch {
+    fn install_handler(handler: usize) {
         // Set trap handler
-        let handler = _raw_trap_handler as usize;
         unsafe { write_mtvec(handler) };
         let mtvec = Self::read_mtvec();
         assert_eq!(handler, mtvec, "Failed to set trap handler");
+    }
+}
+
+impl Architecture for MetalArch {
+    fn init() {
+        // Install trap handler
+        MetalArch::install_handler(_raw_trap_handler as usize);
     }
 
     #[inline]
@@ -49,6 +55,44 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn detect_hardware() -> HardwareCapability {
+        macro_rules! register_present {
+             ($reg:expr) => {{
+                 // Install "tracer" handler, it allows mirage to know if it executed an illegal instruction
+                 // and thus detects which registers aren't available
+                 MetalArch::install_handler(_tracing_trap_handler as usize);
+
+                 // Perform detection
+                 let mut _dummy_variable: usize = 0;
+                 let mut tracer_var: usize;
+                 unsafe {
+                     asm!(
+                        "csrw mscratch, zero",
+                        concat!("csrr {0}, ", $reg),
+                        "csrr {1}, mscratch",
+                        out(reg) _dummy_variable,
+                        out(reg) tracer_var,
+                        );
+                    }
+
+                 // Restore normal handler
+                 MetalArch::install_handler(_raw_trap_handler as usize);
+
+                 // Present if value is 0
+                 tracer_var == 0
+             }};
+        }
+
+        // Test menvcfg & senvcfg
+        // Hint: to simulate a missing register, one can add "ecall" after the first line in asm! of the macro
+        let is_menvcfg_present: bool = register_present!("menvcfg");
+        let is_senvcfg_present: bool = register_present!("senvcfg");
+
+        log::debug!(
+            "Detecting available registers [menvcfg : {} | senvcfg : {}]",
+            is_menvcfg_present,
+            is_senvcfg_present,
+        );
+
         let mstatus: usize;
         let mtvec: usize;
 
@@ -83,9 +127,14 @@ impl Architecture for MetalArch {
             options(nomem),
         );
 
+        // Return hardware configuration
         HardwareCapability {
             interrupts: available_int,
             _marker: PhantomData,
+            available_reg: RegistersCapability {
+                menvcfg: is_menvcfg_present,
+                senvcfg: is_senvcfg_present,
+            },
         }
     }
 
@@ -615,6 +664,28 @@ _raw_trap_handler:
 "#,
 );
 
+// —————————————————————————————— Tracing trap Handler —————————————————————————————— //
+
+global_asm!(
+    r"
+.text
+.align 4
+.global _tracing_trap_handler
+_tracing_trap_handler:
+    // Skip illegal instruction (pc += 4)
+    csrrw x5, mepc, x5
+    addi x5, x5, 4
+    csrrw x5, mepc, x5
+    // Set mscratch to 1
+    csrrw x5, mscratch, x5
+    addi x5, x0, 1
+    csrrw x5, mscratch, x5
+    // Return back to mirage
+    mret
+#"
+);
+
 extern "C" {
     fn _raw_trap_handler();
+    fn _tracing_trap_handler();
 }
