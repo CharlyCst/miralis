@@ -91,6 +91,22 @@ pub struct RegistersCapability {
     pub menvcfg: bool,
     /// Boolean value indicating if Supervisor environment configuration register is present
     pub senvcfg: bool,
+    /// Array of boolean values indicating if pmpcfg0 - pmpcfg1 - pmpcfg2 - pmpcfg3 are present
+    pub pmpcfg: [bool; 4],
+}
+
+impl HardwareCapability {
+    pub fn get_nb_pmp(&self) -> usize {
+        let mut counter: usize = 0;
+
+        for pmpcfg_reg_mask in self.available_reg.pmpcfg.iter() {
+            if *pmpcfg_reg_mask {
+                counter += 16
+            }
+        }
+
+        16
+    }
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

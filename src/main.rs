@@ -7,6 +7,7 @@
 // We need both std and main to be able to run tests in user-space on the host architecture.
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+use core::arch::asm;
 
 mod arch;
 mod config;
@@ -35,6 +36,9 @@ extern "C" {
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     init();
+    unsafe {
+        asm!("csrr x5, pmpcfg1");
+    }
     log::info!("Hello, world!");
     log::info!("Hart ID: {}", hart_id);
     log::info!("misa:    0x{:x}", Arch::read_misa());
@@ -44,12 +48,12 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();
-    let nb_pmp = Plat::get_nb_pmp();
     let nb_virt_pmp;
 
     // Detect hardware capabilities
     // SAFETY: this lust happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
+    let nb_pmp = hw.get_nb_pmp();
 
     // Initialize Mirage's own context
     let mut mctx = MirageContext::new(nb_pmp, hw);

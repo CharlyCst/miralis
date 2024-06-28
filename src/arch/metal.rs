@@ -87,10 +87,23 @@ impl Architecture for MetalArch {
         let is_menvcfg_present: bool = register_present!("menvcfg");
         let is_senvcfg_present: bool = register_present!("senvcfg");
 
+        let is_pmpcfg0_present: bool = register_present!("pmpcfg0");
+        let is_pmpcfg1_present: bool = register_present!("pmpcfg0");
+        let is_pmpcfg2_present: bool = register_present!("pmpcfg0");
+        let is_pmpcfg3_present: bool = register_present!("pmpcfg0");
+
         log::debug!(
-            "Detecting available registers [menvcfg : {} | senvcfg : {}]",
+            "Detecting available envcfg registers [menvcfg : {} | senvcfg : {} ]",
             is_menvcfg_present,
             is_senvcfg_present,
+        );
+
+        log::debug!(
+            "Detecting available pmpcfg registers [pmpcfg0 : {} | pmpcfg1: {} | pmpcfg2: {} | pmpcfg3: {} ]",
+            is_pmpcfg0_present,
+            is_pmpcfg1_present,
+            is_pmpcfg2_present,
+            is_pmpcfg3_present,
         );
 
         let mstatus: usize;
@@ -134,6 +147,12 @@ impl Architecture for MetalArch {
             available_reg: RegistersCapability {
                 menvcfg: is_menvcfg_present,
                 senvcfg: is_senvcfg_present,
+                pmpcfg: [
+                    is_pmpcfg0_present,
+                    is_pmpcfg1_present,
+                    is_pmpcfg2_present,
+                    is_pmpcfg3_present,
+                ],
             },
         }
     }
