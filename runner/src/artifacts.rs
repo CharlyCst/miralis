@@ -59,6 +59,7 @@ struct ArtifactManifest {
 #[serde(deny_unknown_fields)]
 struct Bin {
     opensbi: Option<String>,
+    zephyr: Option<String>,
 }
 
 fn read_artifact_manifest() -> ArtifactManifest {
@@ -101,6 +102,7 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
     let mut map = HashMap::new();
 
     append_artifact("opensbi", &manifest.bin.opensbi, &mut map);
+    append_artifact("zephyr", &manifest.bin.zephyr, &mut map);
     map
 }
 
