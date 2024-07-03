@@ -17,11 +17,13 @@ fn main() -> ! {
     let mut t6: usize;
     let mut sscratch: usize;
     let mut mstatus: usize;
-    unsafe {
-        let os: usize = _raw_os as usize;
-        let trap: usize = _raw_trap_handler as usize;
-        let mpp = 0b1 << 11; // MPP = S-mode
+    let mut mepc: usize;
 
+    let os: usize = _raw_os as usize;
+    let trap: usize = _raw_trap_handler as usize;
+    let mpp = 0b1 << 11; // MPP = S-mode
+
+    unsafe {
         asm!(
             "li t4, 0xfffffffff",
             "csrw pmpcfg0, 0xf",   // XRW TOR
@@ -36,12 +38,14 @@ fn main() -> ! {
 
             "csrr {sscratch}, sscratch ",
             "csrr {mstatus}, mstatus ",
+            "csrr {mepc}, mepc",
 
             os = in(reg) os,
             mtvec = in(reg) trap,
             mpp = in(reg) mpp,
             sscratch = out(reg) sscratch,
             mstatus = out(reg) mstatus,
+            mepc = out(reg) mepc,
             out("t6") t6,
         );
     }
@@ -55,6 +59,12 @@ fn main() -> ! {
         (mstatus >> 11) & 0b11,
         0b01,
         "Check that mstatus MPP is still in S-mode"
+    );
+
+    assert_eq!(
+        mepc,
+        os + 4 * 2, // mepc must be set to where the trap occured (ecall)
+        "Check that mepc has good value"
     );
 
     success();
