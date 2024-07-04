@@ -49,14 +49,14 @@ fn test_simple_regs() {
     // Test mcounteren
     unsafe {
         asm!(
-            "li {0}, 0x42",
+            "li {0}, 0xffff",
             "csrw mcounteren, {0}",
             "csrr {1}, mcounteren",
             out(reg) _,
             out(reg) res,
         );
     }
-    assert_eq!(res, 0);
+    assert_eq!(res, 0b111);
 }
 
 fn test_some_counters_events() {
