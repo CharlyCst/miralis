@@ -3,7 +3,7 @@ STACK_SIZE = 0x8000;
 SECTIONS
 {
   /* Start address */
-  . = 0x80100000;
+  . = 0x80200000;
 
   /* Output a text section, starting with the entry point */
   .text : ALIGN(0x4) {

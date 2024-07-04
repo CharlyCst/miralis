@@ -13,7 +13,7 @@ use super::Platform;
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRAGE_START_ADDR: usize = 0x80000000;
-const FIRMWARE_START_ADDR: usize = 0x80100000;
+const FIRMWARE_START_ADDR: usize = 0x80200000;
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 

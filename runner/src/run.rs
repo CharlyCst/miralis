@@ -23,7 +23,7 @@ const QEMU_ARGS: &[&str] = &[
 ];
 
 /// Address at which the firmware is loaded in memory.
-const FIRMWARE_ADDR: u64 = 0x80100000;
+const FIRMWARE_ADDR: u64 = 0x80200000;
 
 // —————————————————————————————————— Run ——————————————————————————————————— //
 
