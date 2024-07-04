@@ -287,11 +287,24 @@ impl Architecture for MetalArch {
             options(nomem)
         );
 
-        // TODO: add support for senvcfg
-        if false {
+        asm!(
+            "csrw mcounteren, {mcounteren}",
+            mcounteren = in(reg) ctx.csr.mcounteren,
+            options(nomem)
+        );
+
+        if mctx.hw.available_reg.senvcfg {
             asm!(
                 "csrw senvcfg, {senvcfg}",
                 senvcfg = in(reg) ctx.csr.senvcfg,
+                options(nomem)
+            );
+        }
+
+        if mctx.hw.available_reg.menvcfg {
+            asm!(
+                "csrw menvcfg, {menvcfg}",
+                menvcfg = in(reg) ctx.csr.menvcfg,
                 options(nomem)
             );
         }
@@ -341,6 +354,8 @@ impl Architecture for MetalArch {
         let scause: usize;
         let stval: usize;
         let satp: usize;
+        let menvcfg: usize;
+        let mcounteren: usize;
 
         asm!(
             "csrrw {stvec}, stvec, x0",
@@ -375,8 +390,7 @@ impl Architecture for MetalArch {
         );
         ctx.csr.stval = stval;
 
-        // TODO: add support for senvcfg
-        if false {
+        if mctx.hw.available_reg.senvcfg {
             asm!(
                 "csrrw {senvcfg}, senvcfg, x0",
                 senvcfg = out(reg) senvcfg,
@@ -384,6 +398,22 @@ impl Architecture for MetalArch {
             );
             ctx.csr.senvcfg = senvcfg;
         }
+
+        if mctx.hw.available_reg.menvcfg {
+            asm!(
+                "csrrw {menvcfg}, menvcfg, x0",
+                menvcfg = out(reg) menvcfg,
+                options(nomem)
+            );
+            ctx.csr.menvcfg = menvcfg;
+        }
+
+        asm!(
+            "csrrw {mcounteren}, mcounteren, x0",
+            mcounteren = out(reg) mcounteren,
+            options(nomem)
+        );
+        ctx.csr.mcounteren = mcounteren;
 
         // Now save M-mode registers which are (partially) exposed as S-mode registers.
         // For mstatus we read the current value and clear the two MPP bits to jump into U-mode

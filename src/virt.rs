@@ -706,12 +706,12 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.pmpaddr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
             }
-            Csr::Mcycle => (),                    // Read-only 0
-            Csr::Minstret => (),                  // Read-only 0
-            Csr::Mhpmcounter(_counter_idx) => (), // Read-only 0
-            Csr::Mcountinhibit => (),             // Read-only 0
-            Csr::Mhpmevent(_event_idx) => (),     // Read-only 0
-            Csr::Mcounteren => (),                // Read-only 0
+            Csr::Mcycle => (),                                      // Read-only 0
+            Csr::Minstret => (),                                    // Read-only 0
+            Csr::Mhpmcounter(_counter_idx) => (),                   // Read-only 0
+            Csr::Mcountinhibit => (),                               // Read-only 0
+            Csr::Mhpmevent(_event_idx) => (),                       // Read-only 0
+            Csr::Mcounteren => self.csr.mcounteren = value & 0b111, // Only show IR, TM and CY (for cycle, time and instret counters)
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (), // Read-only
