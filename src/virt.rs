@@ -1,4 +1,7 @@
 //! Firmware Virtualisation
+use core::arch::asm;
+use core::ptr::{read_volatile, write_volatile};
+
 use mirage_core::abi;
 
 use crate::arch::{
@@ -333,11 +336,8 @@ impl VirtContext {
         self.pc = self.csr.mtvec
     }
 
-    /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self, hw: &HardwareCapability) {
-        // Keep track of the number of exit
-        self.nb_exits += 1;
-
+    /// Handle the trap coming from the firmware
+    pub fn handle_firmware_trap(&mut self, hw: &HardwareCapability) {
         let cause = self.trap_info.get_cause();
         match cause {
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRAGE_EID => {
@@ -406,8 +406,19 @@ impl VirtContext {
             }
             _ => {
                 if cause.is_interrupt() {
-                    // TODO : Interrupts are not yet supported
-                    todo!("Interrupts are not yet implemented");
+                    // TODO : For now, only care for MTIP bit
+
+                    const MTIP: usize = 1 << 7;
+                    if self.trap_info.mip & MTIP != 0 {
+                        // Set mtimecmp > mtime to clear mip.mtip
+                        const MTIMECMP: *mut u32 = 0x2004000 as *mut u32;
+                        const MTIME: *mut u32 = 0x200BFF8 as *mut u32;
+                        unsafe {
+                            let mtime = read_volatile(MTIME);
+                            write_volatile(MTIMECMP, mtime + 1_000_000); // TODO : what value ?
+                        }
+                        self.emulate_jump_trap_handler();
+                    }
                 } else {
                     // TODO : Need to match other traps
                     todo!("Other traps are not yet implemented");
@@ -666,7 +677,16 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Mie => {
                 // Read-only 0: interrupts are not yet supported,
-                debug::warn_once!("mie is not yet supported");
+                self.csr.mie = value;
+                // reflect change into hw, mirage need to have at least same state of mie
+                unsafe {
+                    asm!(
+                        "csrw mie, {mie}",
+                        mie = in(reg) self.csr.mie,
+                        options(nomem)
+                    );
+                }
+                // debug::warn_once!("mie is not yet supported");
             }
             Csr::Mip => {
                 // Only reset possible : interrupts are not yet supported
@@ -714,12 +734,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mcounteren => self.csr.mcounteren = value & 0b111, // Only show IR, TM and CY (for cycle, time and instret counters)
             Csr::Menvcgf => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => (), // Read-only
-            Csr::Medeleg => {
-                //TODO : some values need to be read-only 0
-                self.csr.medeleg = value;
-            } // Read-only 0 : do not delegate exceptions
-            Csr::Mideleg => (),    // Read-only 0 : do not delegate interrupts
+            Csr::Mconfigptr => (),                    // Read-only
+            Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
+            Csr::Mideleg => self.csr.mideleg = value, //TODO : some values need to be read-only 0 ?
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented

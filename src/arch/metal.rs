@@ -320,8 +320,15 @@ impl Architecture for MetalArch {
             options(nomem)
         );
         // TODO: should we filter mstatus? What other registers?
-        // - mip?
-        // - mie?
+
+        // TODO : we may need to do this until mirage can handle exception
+        asm!(
+            "csrw mie, {mie}",
+            "csrw mip, {mip}",
+            mie = in(reg) ctx.csr.mie,
+            mip = in(reg) ctx.csr.mip,
+            options(nomem)
+        );
 
         // Load virtual PMP registers into Mirage's own registers
         mctx.pmp.load_with_offset(
@@ -356,6 +363,8 @@ impl Architecture for MetalArch {
         let satp: usize;
         let menvcfg: usize;
         let mcounteren: usize;
+        let mie: usize;
+        let mip: usize;
 
         asm!(
             "csrrw {stvec}, stvec, x0",
@@ -429,9 +438,25 @@ impl Architecture for MetalArch {
             options(nomem)
         );
         ctx.csr.mstatus = mstatus;
-        // TODO: handle S-mode registers which are subsets of M-mode registers, such as:
-        // - sip
-        // - sie
+
+        // TODO: handle S-mode registers which are subsets of M-mode registers
+
+        // TODO : we may need to do this until mirage can handle exception
+        asm!(
+            "csrr {mie}, mie",
+            "csrr {mip}, mip",
+            mie = out(reg) mie,
+            mip = out(reg) mip,
+            options(nomem)
+        );
+        ctx.csr.mie = mie;
+        ctx.csr.mip = mip;
+
+        // Avoid Mirage to handle traps that are delegated
+        asm!(
+            "csrw mie, {mie}",
+            mie = in(reg) ctx.csr.mie & !ctx.csr.mideleg
+        );
 
         // Remove Firmware PMP from the hardware
         mctx.pmp
