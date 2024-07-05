@@ -1,5 +1,5 @@
 # Artifact manifest
 
 [bin]
-opensbi = "https://github.com/CharlyCst/mirage-artifact-opensbi/releases/download/v0.1.6/opensbi.bin"
-zephyr = "https://github.com/CharlyCst/mirage-artifact-zephyr/releases/download/v0.0.4/zephyr.bin"
+opensbi = "https://github.com/CharlyCst/mirage-artifact-opensbi/releases/download/v0.1.7/opensbi.bin"
+zephyr = "https://github.com/CharlyCst/mirage-artifact-zephyr/releases/download/v0.0.6/zephyr.bin"
