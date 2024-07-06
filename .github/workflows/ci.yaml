@@ -29,6 +29,13 @@ jobs:
       # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference
       shell: bash
       run: |
+        # First we check if there are merge commits in the PR
+        echo "Checking that history is linear..."
+        if [ ! -z "$(git rev-list --min-parents=2 HEAD)" ]; then
+          echo "There are merge commits! Please rebase the PR to remove them"
+          false
+        fi
+
         # We run tests for all commits in the PR
         revisions=$(git rev-list origin/main..HEAD)
         for commit in $revisions; do
