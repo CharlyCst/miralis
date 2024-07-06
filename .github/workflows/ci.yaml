@@ -36,7 +36,18 @@ jobs:
           false
         fi
 
-        # We run tests for all commits in the PR
+        # List the biggest git objects
+        echo "Biggest git objects:"
+        git ls-tree --format="%(objectsize:padded)  %(path)" -r HEAD | sort --key 1 --reverse | head -n 5
+
+        # And here we check that no object is too big
+        biggest="$(git ls-tree --format="%(objectsize:padded)" -r HEAD | sort --reverse | head -n 1)"
+        if [ $biggest -gt "200000" ]; then
+          echo "It seems a big object was committed. Please remove any executable or binary blob."
+          echo "Object size: $biggest bytes"
+        fi
+
+        # Finally we run the tests for all commits in the PR
         revisions=$(git rev-list origin/main..HEAD)
         for commit in $revisions; do
           echo ""
