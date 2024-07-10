@@ -4,7 +4,7 @@ use core::fmt;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
-use crate::{config, logger};
+use crate::{config, device, logger};
 
 /// Export the current platform.
 /// For now, only QEMU's Virt board is supported
@@ -15,6 +15,7 @@ pub trait Platform {
     fn debug_print(args: fmt::Arguments);
     fn exit_success() -> !;
     fn exit_failure() -> !;
+    fn create_clint_device() -> device::VirtDevice;
 
     /// Load the firmware (virtual M-mode software) and return its address.
     fn load_firmware() -> usize;
