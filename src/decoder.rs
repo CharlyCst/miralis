@@ -49,6 +49,30 @@ pub enum Instr {
     Mret,
     Sret,
     Vfencevma,
+    /// Load (register-based)
+    Ld{
+        rd: Register,
+        rs1: Register,
+        imm: usize,
+    },
+    /// Store (register-based)
+    Sd{
+        rs1: Register,
+        rs2: Register,
+        imm: usize,
+    },
+    // Compressed Load (register-based)
+    CLd{
+        rd: Register,
+        rs1: Register,
+        imm: usize,
+    },
+    // Compressed Store (register-based)s
+    CSd{
+        rs1: Register,
+        rs2: Register,
+        imm: usize,
+    },
     Unknown,
 }
 
@@ -56,7 +80,9 @@ pub enum Instr {
 #[derive(Debug)]
 enum Opcode {
     Load,
+    Store,
     System,
+    Compressed,
     Unknown,
 }
 
@@ -67,23 +93,82 @@ pub fn decode(raw: usize) -> Instr {
     let opcode = decode_opcode(raw);
     match opcode {
         Opcode::System => decode_system(raw),
+        Opcode::Load => decode_load(raw),
+        Opcode::Store => decode_store(raw),
+        Opcode::Compressed => decode_c_reg_based(raw),
         _ => Instr::Unknown,
     }
 }
 
 fn decode_opcode(raw: usize) -> Opcode {
-    let opcode = raw & OPCODE_MASK;
-
-    if opcode & 0b11 != 0b11 {
-        // It seems all 32 bits instructions start with  0b11.
-        return Opcode::Unknown;
-    }
-
-    match opcode >> 2 {
-        0b00000 => Opcode::Load,
-        0b11100 => Opcode::System,
+    let last_two_bits = raw & 0b11;
+    match last_two_bits {
+        0b11 => { 
+            // It seems all 32 bits instructions start with 0b11
+            let opcode = raw & OPCODE_MASK;
+            match opcode >> 2 {
+                0b00000 => Opcode::Load,
+                0b01000 => Opcode::Store,
+                0b11100 => Opcode::System,
+                _ => Opcode::Unknown,
+            }
+        }
+        // Register-based load and store instruction for C set start with 0b00
+        0b00 => Opcode::Compressed, 
         _ => Opcode::Unknown,
+    }   
+}
+
+fn decode_c_reg_based(raw: usize) -> Instr {
+    let func3 = (raw >> 13) & 0b111;
+    let rd_rs2 = (raw >> 2) & 0b111;
+    let rs1 = (raw >> 7) & 0b111;
+    let imm = ((raw >> 5) & 0b11) | ((raw >> 10) & 0b111);
+
+    let rd_rs2 = Register::from(rd_rs2 + 8);
+    let rs1 = Register::from(rs1 + 8);
+
+    match func3 {
+        0b111 => {
+            let rs2 = rd_rs2;
+            Instr::CSd { rs1, rs2, imm }
+        }
+        0b011 => {
+            let rd = rd_rs2;
+            Instr::CLd { rd, rs1, imm }
+        }
+        _ => Instr::Unknown,
     }
+}
+
+fn decode_load(raw: usize) -> Instr {
+    let func3 = (raw >> 12) & 0b111;
+    let rd = (raw >> 7) & 0b11111;
+    let rs1 = (raw >> 15) & 0b11111;
+    let imm = (raw >> 20) & 0b111111111111;
+
+    let rs1 = Register::from(rs1);
+    let rd = Register::from(rd);
+
+    return match func3 {
+        0b011 => Instr::Ld { rd, rs1, imm }, 
+        _ => Instr::Unknown,
+    };
+}
+
+fn decode_store(raw: usize) -> Instr {
+    let func3 = (raw >> 12) & 0b111;
+    let rs1: usize = (raw >> 15) & 0b11111;
+    let rs2 = (raw >> 20) & 0b11111;
+    let imm = ((raw >> 7) & 0b11111) | ((raw >> 25) & 0b111111111111);
+
+    let rs1 = Register::from(rs1);
+    let rs2 = Register::from(rs2);
+
+    return match func3 {
+        0b011 => Instr::Sd { rs1, rs2, imm }, 
+        _ => Instr::Unknown,
+    };
 }
 
 fn decode_system(raw: usize) -> Instr {

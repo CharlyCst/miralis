@@ -11,6 +11,8 @@ use crate::arch::{
 use crate::debug;
 use crate::decoder::{decode, Instr};
 use crate::platform::{Plat, Platform};
+use crate::host::MirageContext;
+use crate::device;
 
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -307,7 +309,34 @@ impl VirtContext {
             Instr::Vfencevma => unsafe {
                 Arch::sfence_vma();
                 self.pc += 4;
-            },
+            }
+            Instr::Ld { rd, rs1: _ , imm: _ } => {
+                let offset = self.trap_info.mtval - Plat::get_clint_base(); // To vitrualize for all devices
+                let result = device::VirtClint::read_clint(offset);
+                match result {
+                    Ok(value) => {
+                        self.set(rd, value);
+                        self.pc += 4;
+                    }
+                    Err(err) => {
+                        panic!("Error reading VirtClint: {}", err);
+                    }
+                }
+            }
+            Instr::CSd { rs1, rs2, imm: _ } => {
+                let offset = self.trap_info.mtval - Plat::get_clint_base(); // To vitrualize for all devices
+                let data = self.get(rs2);
+                let result = device::VirtClint::write_clint(offset, data);
+                match result {
+                    Ok(_value) => {
+                        self.set(rs1, data);
+                        self.pc += 2;
+                    }
+                    Err(_err) => {
+                        panic!("Error writing VirtClint");
+                    }
+                }
+            }
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
     }
@@ -347,6 +376,12 @@ impl VirtContext {
 
     /// Handle the trap coming from the firmware
     pub fn handle_firmware_trap(&mut self, hw: &HardwareCapability) {
+    /// Handle the trap coming from the payload
+    pub fn handle_payload_trap(&mut self, mctx: &MirageContext) {
+        // Keep track of the number of exit
+        self.nb_exits += 1;
+        let hw = &mctx.hw;
+
         let cause = self.trap_info.get_cause();
         match cause {
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRAGE_EID => {
@@ -411,18 +446,16 @@ impl VirtContext {
             }
             MCause::StoreAccessFault | MCause::LoadAccessFault | MCause::InstrAccessFault => {
                 // PMP faults
-                self.emulate_jump_trap_handler();
-            }
-            MCause::MachineTimerInt => {
-                // Set mtimecmp > mtime to clear mip.mtip
-                const MTIMECMP: *mut u64 = 0x2004000 as *mut u64;
-                const MTIME: *mut u64 = 0x200BFF8 as *mut u64;
-                unsafe {
-                    let mtime = read_volatile(MTIME);
-                    write_volatile(MTIMECMP, mtime + 1000_000); // TODO : what value ?
-                }
-
-                self.emulate_jump_trap_handler();
+                if let Some(device) = device::find_matching_device(self.trap_info.mtval, &mctx.devices) {
+                    let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                    let instr = decode(instr);
+             
+                    log::trace!("Accessed device: {} | With instr: {:?}", device.name, instr);    
+                    self.emulate_instr(&instr, hw);          
+                } else {
+                    log::trace!("No matching device found for address: {}", self.csr.mtval);
+                    self.emulate_jump_trap_handler();
+                }                             
             }
             _ => {
                 if cause.is_interrupt() {

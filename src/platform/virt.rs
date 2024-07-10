@@ -5,6 +5,7 @@ use core::{fmt, ptr};
 
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
+use crate::device;
 
 use super::Platform;
 
@@ -14,6 +15,7 @@ const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRAGE_START_ADDR: usize = 0x80000000;
 const FIRMWARE_START_ADDR: usize = 0x80200000;
+const CLINT_BASE: usize = 0x2000000;
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
@@ -64,6 +66,19 @@ impl Platform for VirtPlatform {
     fn get_max_valid_address() -> usize {
         usize::MAX
     }
+
+    fn create_clint_device() -> device::Device {
+        device::Device {
+            start_addr: CLINT_BASE,
+            size: Self::CLINT_SIZE,
+            name: "CLINT", 
+        }
+    }
+
+    fn get_clint_base() -> usize{
+        CLINT_BASE
+    }
+
 }
 
 fn exit_qemu(success: bool) -> ! {

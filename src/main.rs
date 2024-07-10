@@ -17,6 +17,8 @@ mod logger;
 mod platform;
 mod utils;
 mod virt;
+mod device;
+mod driver;
 
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
@@ -53,6 +55,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let firmware_addr = Plat::load_firmware();
     let nb_pmp = Plat::get_nb_pmp();
     let nb_virt_pmp;
+    let clint: device::Device = Plat::create_clint_device();
 
     // Detect hardware capabilities
     // SAFETY: this lust happen before hardware initialization
@@ -67,8 +70,10 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         let (start, size) = Plat::get_mirage_memory_start_and_size();
         mctx.pmp
             .set(0, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
+        // Protect CLINT memory to trap firmware read/writes there
+        mctx.pmp.set(1, pmp::build_napot(clint.start_addr, clint.size).unwrap(), pmpcfg::NAPOT);
         // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-        mctx.pmp.set(1, 0, pmpcfg::INACTIVE);
+        mctx.pmp.set(2, 0, pmpcfg::INACTIVE);
         // Finally, set the last PMP to grant access to the whole memory
         mctx.pmp
             .set(nb_pmp - 1, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
@@ -135,8 +140,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     match exec_mode {
-        ExecutionMode::Firmware => ctx.handle_firmware_trap(&mctx.hw),
-        ExecutionMode::Payload => ctx.emulate_jump_trap_handler(),
+        ExecutionMode::Firmware => handle_firmware_trap(ctx, &mctx),
+        ExecutionMode::Payload => handle_os_trap(ctx),
     }
 
     // Check for execution mode change
@@ -151,6 +156,15 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
         }
         _ => {} // No execution mode transition
     }
+}
+
+fn handle_firmware_trap(ctx: &mut VirtContext, mctx: &MirageContext) {
+    ctx.handle_payload_trap(mctx);
+}
+
+fn handle_os_trap(ctx: &mut VirtContext) {
+    ctx.nb_exits += 1;
+    ctx.emulate_jump_trap_handler();
 }
 
 /// Handle the trap coming from mirage
