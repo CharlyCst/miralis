@@ -49,6 +49,36 @@ pub enum Instr {
     Mret,
     Sret,
     Vfencevma,
+    /// Load Double-Word (register-based)
+    Ld {
+        rd: Register,
+        rs1: Register,
+        imm: isize,
+    },
+    /// Store Double-Word (register-based)
+    Sd {
+        rs1: Register,
+        rs2: Register,
+        imm: isize,
+    },
+    /// Compressed Load Double-Word (register-based)
+    CLd {
+        rd: Register,
+        rs1: Register,
+        imm: usize,
+    },
+    /// Compressed Store Double-Word (register-based)
+    CSd {
+        rs1: Register,
+        rs2: Register,
+        imm: usize,
+    },
+    /// Compressed Store Word (register-based)
+    CSw {
+        rs1: Register,
+        rs2: Register,
+        imm: usize,
+    },
     Unknown,
 }
 
@@ -56,7 +86,9 @@ pub enum Instr {
 #[derive(Debug)]
 enum Opcode {
     Load,
+    Store,
     System,
+    Compressed,
     Unknown,
 }
 
@@ -67,23 +99,105 @@ pub fn decode(raw: usize) -> Instr {
     let opcode = decode_opcode(raw);
     match opcode {
         Opcode::System => decode_system(raw),
+        Opcode::Load => decode_load(raw),
+        Opcode::Store => decode_store(raw),
+        Opcode::Compressed => decode_c_reg_based(raw),
         _ => Instr::Unknown,
     }
 }
 
 fn decode_opcode(raw: usize) -> Opcode {
-    let opcode = raw & OPCODE_MASK;
-
-    if opcode & 0b11 != 0b11 {
-        // It seems all 32 bits instructions start with  0b11.
-        return Opcode::Unknown;
-    }
-
-    match opcode >> 2 {
-        0b00000 => Opcode::Load,
-        0b11100 => Opcode::System,
+    let last_two_bits = raw & 0b11;
+    match last_two_bits {
+        0b11 => {
+            // It seems all 32 bits instructions start with 0b11
+            let opcode = raw & OPCODE_MASK;
+            match opcode >> 2 {
+                0b00000 => Opcode::Load,
+                0b01000 => Opcode::Store,
+                0b11100 => Opcode::System,
+                _ => Opcode::Unknown,
+            }
+        }
+        // Register-based load and store instruction for C set start with 0b00
+        0b00 => Opcode::Compressed,
         _ => Opcode::Unknown,
     }
+}
+
+fn decode_c_reg_based(raw: usize) -> Instr {
+    let func3 = (raw >> 13) & 0b111;
+    let rd_rs2 = (raw >> 2) & 0b111;
+    let rs1 = (raw >> 7) & 0b111;
+
+    let rd_rs2 = Register::from(rd_rs2 + 8);
+    let rs1 = Register::from(rs1 + 8);
+
+    match func3 {
+        0b111 => {
+            let rs2 = rd_rs2;
+            let imm = 0b000 | (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+            Instr::CSd { rs1, rs2, imm }
+        }
+        0b011 => {
+            let rd = rd_rs2;
+            let imm = 0b000 | (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+            Instr::CLd { rd, rs1, imm }
+        }
+        0b110 => {
+            let rs2 = rd_rs2;
+            let imm = 0b00 | (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+            Instr::CSw { rs1, rs2, imm }
+        }
+        _ => Instr::Unknown,
+    }
+}
+
+fn bits_to_int(raw: usize, start_bit: isize, end_bit: isize) -> isize {
+    let mask = (1 << (end_bit - start_bit + 1)) - 1;
+    let value = (raw >> start_bit) & mask;
+
+    // Check if the most significant bit is set (indicating a negative value)
+    if value & (1 << (end_bit - start_bit)) != 0 {
+        // Extend the sign bit to the left
+        let sign_extension = !0 << (end_bit - start_bit);
+        value as isize | sign_extension
+    } else {
+        value as isize
+    }
+}
+fn decode_load(raw: usize) -> Instr {
+    let func3 = (raw >> 12) & 0b111;
+    let rd = (raw >> 7) & 0b11111;
+    let rs1 = (raw >> 15) & 0b11111;
+    let imm = bits_to_int(raw, 20, 31);
+
+    let rs1 = Register::from(rs1);
+    let rd = Register::from(rd);
+
+    return match func3 {
+        0b011 => Instr::Ld { rd, rs1, imm },
+        _ => Instr::Unknown,
+    };
+}
+
+fn decode_store(raw: usize) -> Instr {
+    let func3 = (raw >> 12) & 0b111;
+    let rs1: usize = (raw >> 15) & 0b11111;
+    let rs2 = (raw >> 20) & 0b11111;
+    let imm = bits_to_int(
+        ((raw >> 7) & 0b11111) | ((raw >> 20) & 0b111111100000),
+        0,
+        11,
+    );
+
+    let rs1 = Register::from(rs1);
+    let rs2 = Register::from(rs2);
+
+    return match func3 {
+        0b011 => Instr::Sd { rs1, rs2, imm },
+        _ => Instr::Unknown,
+    };
 }
 
 fn decode_system(raw: usize) -> Instr {
@@ -439,6 +553,51 @@ mod tests {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 uimm: 0x0,
+            }
+        );
+
+        assert_eq!(
+            decode(0xff87b703),
+            Instr::Ld {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xfee7bc23),
+            Instr::Sd {
+                rs1: Register::X15,
+                rs2: Register::X14,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xffffe71c),
+            Instr::CSd {
+                rs1: Register::X14,
+                rs2: Register::X15,
+                imm: 8
+            }
+        );
+
+        assert_eq!(
+            decode(0xffff671c),
+            Instr::CLd {
+                rd: Register::X15,
+                rs1: Register::X14,
+                imm: 8
+            }
+        );
+
+        assert_eq!(
+            decode(0xffffc71c),
+            Instr::CSw {
+                rs1: Register::X14,
+                rs2: Register::X15,
+                imm: 8
             }
         );
     }
