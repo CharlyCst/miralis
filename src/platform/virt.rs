@@ -7,15 +7,25 @@ use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
 use super::Platform;
+use crate::device::{self, VirtClint};
 
-// —————————————————————————— Platform parameters ——————————————————————————— //
+// —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRAGE_START_ADDR: usize = 0x80000000;
 const FIRMWARE_START_ADDR: usize = 0x80200000;
+const CLINT_BASE: usize = 0x2000000;
+
+// ———————————————————————————— Platform Devices ———————————————————————————— //
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
+
+/// The virtual CLINT device.
+///
+/// SAFETY: this is the oncly CLINT device that we create, and the platform code does not otherwise
+/// access the CLINT.
+static CLINT_MUTEX: Mutex<VirtClint> = unsafe { Mutex::new(VirtClint::new(CLINT_BASE)) };
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -63,6 +73,15 @@ impl Platform for VirtPlatform {
 
     fn get_max_valid_address() -> usize {
         usize::MAX
+    }
+
+    fn create_clint_device() -> device::VirtDevice {
+        device::VirtDevice {
+            start_addr: CLINT_BASE,
+            size: device::CLINT_SIZE,
+            name: "CLINT",
+            device_interface: &CLINT_MUTEX,
+        }
     }
 }
 

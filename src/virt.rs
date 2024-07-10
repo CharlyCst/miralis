@@ -8,9 +8,11 @@ use crate::arch::{
     mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
     MCause, Mode, Register, TrapInfo,
 };
-use crate::debug;
 use crate::decoder::{decode, Instr};
+use crate::device::{DeviceAccess, VirtDevice};
+use crate::host::MirageContext;
 use crate::platform::{Plat, Platform};
+use crate::{debug, device, utils};
 
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -170,7 +172,7 @@ impl VirtCsr {
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
 
 impl VirtContext {
-    fn emulate_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
+    fn emulate_privileged_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
         match instr {
             Instr::Wfi => {
                 // NOTE: for now there is no safeguard which guarantees that we will eventually get
@@ -312,6 +314,53 @@ impl VirtContext {
         }
     }
 
+    pub fn handle_device_access_fault(&mut self, instr: &Instr, device: &VirtDevice) {
+        match instr {
+            Instr::Ld { rd, rs1, imm } => {
+                let address = utils::calculate_addr(self.get(rs1), *imm);
+                let offset = address - device.start_addr;
+                match device.device_interface.lock().read_device(offset) {
+                    Ok(value) => {
+                        self.set(rd, value);
+                        self.pc += 4;
+                    }
+                    Err(err) => {
+                        panic!("Error reading {}: {}", device.name, err);
+                    }
+                }
+            }
+            Instr::CSd { rs1, rs2, imm } => {
+                let address = self.get(rs1) + imm * 8;
+                let offset = address - device.start_addr;
+                let data = self.get(rs2);
+                match device.device_interface.lock().write_device(offset, data) {
+                    Ok(()) => {
+                        self.set(rs1, data);
+                        self.pc += 2;
+                    }
+                    Err(err) => {
+                        panic!("Error writing {}: {}", device.name, err);
+                    }
+                }
+            }
+            Instr::CSw { rs1, rs2, imm } => {
+                let address = self.get(rs1) + imm * 4;
+                let offset = address - device.start_addr;
+                let data = self.get(rs2);
+                match device.device_interface.lock().write_device(offset, data) {
+                    Ok(()) => {
+                        self.set(rs1, data);
+                        self.pc += 2;
+                    }
+                    Err(err) => {
+                        panic!("Error writing {}: {}", device.name, err);
+                    }
+                }
+            }
+            _ => todo!("Instruction not yet implemented: {:?}", instr),
+        }
+    }
+
     pub fn emulate_jump_trap_handler(&mut self) {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
@@ -346,7 +395,9 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the firmware
-    pub fn handle_firmware_trap(&mut self, hw: &HardwareCapability) {
+    pub fn handle_firmware_trap(&mut self, mctx: &MirageContext) {
+        let hw = &mctx.hw;
+
         let cause = self.trap_info.get_cause();
         match cause {
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRAGE_EID => {
@@ -404,14 +455,24 @@ impl VirtContext {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_instr(&instr, hw);
+                self.emulate_privileged_instr(&instr, hw);
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
             MCause::StoreAccessFault | MCause::LoadAccessFault | MCause::InstrAccessFault => {
                 // PMP faults
-                self.emulate_jump_trap_handler();
+                if let Some(device) =
+                    device::find_matching_device(self.trap_info.mtval, &mctx.devices)
+                {
+                    let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                    let instr = decode(instr);
+                    log::trace!("Accessed device: {} | With instr: {:?}", device.name, instr);
+                    self.handle_device_access_fault(&instr, &device);
+                } else {
+                    log::trace!("No matching device found for address: {}", self.csr.mtval);
+                    self.emulate_jump_trap_handler();
+                }
             }
             MCause::MachineTimerInt => {
                 // Set mtimecmp > mtime to clear mip.mtip
