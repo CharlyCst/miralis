@@ -1,11 +1,10 @@
 //! Firmware Virtualisation
-use core::arch::asm;
 use core::ptr::{read_volatile, write_volatile};
 
 use mirage_core::abi;
 
 use crate::arch::{
-    misa, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, HardwareCapability, MCause,
+    mie, misa, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, HardwareCapability, MCause,
     Mode, Register, TrapInfo,
 };
 use crate::debug;
@@ -87,7 +86,6 @@ pub struct VirtCsr {
     pub mstatus: usize,
     pub mtinst: usize,
     pub mconfigptr: usize,
-    pub sie: usize,
     pub stvec: usize,
     pub scounteren: usize,
     pub senvcfg: usize,
@@ -95,7 +93,6 @@ pub struct VirtCsr {
     pub sepc: usize,
     pub scause: usize,
     pub stval: usize,
-    pub sip: usize,
     pub satp: usize,
     pub scontext: usize,
     pub medeleg: usize,
@@ -129,7 +126,6 @@ impl Default for VirtCsr {
             mstatus: 0,
             mtinst: 0,
             mconfigptr: 0,
-            sie: 0,
             stvec: 0,
             scounteren: 0,
             senvcfg: 0,
@@ -137,7 +133,6 @@ impl Default for VirtCsr {
             sepc: 0,
             scause: 0,
             stval: 0,
-            sip: 0,
             satp: 0,
             scontext: 0,
             medeleg: 0,
@@ -179,6 +174,12 @@ impl VirtContext {
                 // NOTE: for now there is no safeguard which guarantees that we will eventually get
                 // an interrupt, so the firmware might be able to put the core in perpetual sleep
                 // state.
+
+                // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
+                unsafe {
+                    Arch::write_mie(self.csr.mie);
+                }
+
                 Arch::wfi();
                 self.pc += 4;
             }
@@ -404,21 +405,21 @@ impl VirtContext {
                 // PMP faults
                 self.emulate_jump_trap_handler();
             }
+            MCause::MachineTimerInt => {
+                // Set mtimecmp > mtime to clear mip.mtip
+                const MTIMECMP: *mut u64 = 0x2004000 as *mut u64;
+                const MTIME: *mut u64 = 0x200BFF8 as *mut u64;
+                unsafe {
+                    let mtime = read_volatile(MTIME);
+                    write_volatile(MTIMECMP, mtime + 1000_000); // TODO : what value ?
+                }
+
+                self.emulate_jump_trap_handler();
+            }
             _ => {
                 if cause.is_interrupt() {
                     // TODO : For now, only care for MTIP bit
-
-                    const MTIP: usize = 1 << 7;
-                    if self.trap_info.mip & MTIP != 0 {
-                        // Set mtimecmp > mtime to clear mip.mtip
-                        const MTIMECMP: *mut u32 = 0x2004000 as *mut u32;
-                        const MTIME: *mut u32 = 0x200BFF8 as *mut u32;
-                        unsafe {
-                            let mtime = read_volatile(MTIME);
-                            write_volatile(MTIMECMP, mtime + 1_000_000); // TODO : what value ?
-                        }
-                        self.emulate_jump_trap_handler();
-                    }
+                    todo!("Other interrupt are not yet implemented {:?}", cause);
                 } else {
                     // TODO : Need to match other traps
                     todo!("Other traps are not yet implemented");
@@ -532,11 +533,8 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
-            Csr::Sstatus => {
-                let mstatus: usize = self.get(Csr::Mstatus);
-                mstatus & mstatus::SSTATUS_FILTER
-            }
-            Csr::Sie => self.csr.sie,
+            Csr::Sstatus => self.get(Csr::Mstatus) & mstatus::SSTATUS_FILTER,
+            Csr::Sie => self.get(Csr::Mie) & mie::SIE_FILTER,
             Csr::Stvec => self.csr.stvec,
             Csr::Scounteren => self.csr.scounteren,
             Csr::Senvcfg => self.csr.senvcfg,
@@ -544,7 +542,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Sepc => self.csr.sepc,
             Csr::Scause => self.csr.scause,
             Csr::Stval => self.csr.stval,
-            Csr::Sip => self.csr.sip,
+            Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER,
             Csr::Satp => self.csr.satp,
             Csr::Scontext => self.csr.scontext,
             // Unknown
@@ -675,19 +673,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.misa =
                     (value & arch_misa & mstatus::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
             }
-            Csr::Mie => {
-                // Read-only 0: interrupts are not yet supported,
-                self.csr.mie = value;
-                // reflect change into hw, mirage need to have at least same state of mie
-                unsafe {
-                    asm!(
-                        "csrw mie, {mie}",
-                        mie = in(reg) self.csr.mie,
-                        options(nomem)
-                    );
-                }
-                // debug::warn_once!("mie is not yet supported");
-            }
+            Csr::Mie => self.csr.mie = value & hw.interrupts,
             Csr::Mip => {
                 // Only reset possible : interrupts are not yet supported
                 // TODO: handle mip emulation properly
@@ -736,7 +722,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
-            Csr::Mideleg => self.csr.mideleg = value, //TODO : some values need to be read-only 0 ?
+            Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
             Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented
@@ -769,9 +755,21 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
             Csr::Sstatus => {
-                self.set_csr(Csr::Mstatus, value & mstatus::SSTATUS_FILTER, hw);
+                // Clear sstatus bits
+                let mstatus = self.get(Csr::Mstatus) & !mstatus::SSTATUS_FILTER;
+                // Set sstatus bits to new value
+                self.set_csr(
+                    Csr::Mstatus,
+                    mstatus | (value & mstatus::SSTATUS_FILTER),
+                    hw,
+                );
             }
-            Csr::Sie => self.csr.sie = value,
+            Csr::Sie => {
+                // Clear S bits
+                let mie = self.get(Csr::Mie) & !mie::SIE_FILTER;
+                // Set S bits to new value
+                self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), hw);
+            }
             Csr::Stvec => self.csr.stvec = value,
             Csr::Scounteren => (), // Read-only 0
             Csr::Senvcfg => self.csr.senvcfg = value,
@@ -796,12 +794,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
-                // TODO: handle sip emulation properly
-                if value != 0 {
-                    // We only support resetting sip for now
-                    panic!("sip emulation is not yet implemented");
-                }
-                self.csr.sip = value;
+                // Clear S bits
+                let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
+                // Set S bits to new value
+                self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), hw);
             }
             Csr::Satp => {
                 self.csr.satp = value & mstatus::SATP_CHANGE_FILTER;

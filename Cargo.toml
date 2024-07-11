@@ -33,6 +33,7 @@ members = [
     "firmware/mret",
     "firmware/os_ctx_switch",
     "firmware/sandbox",
+    "firmware/interrupt",
 
     # Crates
     "crates/abi",

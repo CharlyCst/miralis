@@ -45,6 +45,10 @@ impl Architecture for HostArch {
         todo!()
     }
 
+    unsafe fn write_mie(_mie: usize) {
+        todo!()
+    }
+
     unsafe fn write_pmp(_pmp: &PmpGroup) {
         todo!()
     }

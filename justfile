@@ -25,6 +25,7 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware mret
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ctx_switch
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware sandbox
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware interrupt
 
 	# Testing with external projects
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
