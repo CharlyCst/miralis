@@ -1,6 +1,7 @@
 //! Trap handling
 
 use core::fmt;
+use core::mem::size_of;
 
 // ————————————————————————————————— mcause ————————————————————————————————— //
 
@@ -41,8 +42,8 @@ impl MCause {
     pub fn new(cause: usize) -> Self {
         if (cause as isize) < 0 {
             // Interrupt
-            // TODO: I think this does not work, investigate when getting unknownn ints
-            match cause {
+            // set last bit to 0
+            match cause ^ 1 << (size_of::<usize>() * 8 - 1) {
                 0 => Self::UserSoftInt,
                 1 => Self::SupervisorSoftInt,
                 3 => Self::MachineSoftInt,

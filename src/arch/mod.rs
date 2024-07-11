@@ -42,6 +42,7 @@ pub trait Architecture {
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_pmp(pmp: &PmpGroup);
     unsafe fn write_mstatus(mstatus: usize);
+    unsafe fn write_mie(mie: usize);
     unsafe fn sfence_vma();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
     unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MirageContext);
@@ -97,7 +98,7 @@ pub struct RegistersCapability {
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
 
 /// Privilege modes
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
     /// User
     U,
@@ -270,4 +271,35 @@ pub mod mstatus {
     /// SD
     pub const SD_OFFSET: usize = 63;
     pub const SD_FILTER: usize = 0b1;
+}
+
+// ———————————————————————— Machine Interrupt-Enabled ——————————————————————— //
+
+#[allow(unused)]
+pub mod mie {
+    /// Constant to filter out SIE bits of mstatus
+    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
+
+    // Mstatus fields constants
+    /// SSIE
+    pub const SSIE_OFFSET: usize = 1;
+    pub const SSIE_FILTER: usize = 0b1 << SSIE_OFFSET;
+    /// MSIE
+    pub const MSIE_OFFSET: usize = 3;
+    pub const MSIE_FILTER: usize = 0b1 << MSIE_OFFSET;
+    /// STIE
+    pub const STIE_OFFSET: usize = 5;
+    pub const STIE_FILTER: usize = 0b1 << STIE_OFFSET;
+    /// MTIE
+    pub const MTIE_OFFSET: usize = 7;
+    pub const MTIE_FILTER: usize = 0b1 << MTIE_OFFSET;
+    /// SEIE
+    pub const SEIE_OFFSET: usize = 9;
+    pub const SEIE_FILTER: usize = 0b1 << SEIE_OFFSET;
+    /// MEIE
+    pub const MEIE_OFFSET: usize = 11;
+    pub const MEIE_FILTER: usize = 0b1 << MEIE_OFFSET;
+    /// LCOFIE
+    pub const LCOFIE_OFFSET: usize = 13;
+    pub const LCOFIE_FILTER: usize = 0b1 << LCOFIE_OFFSET;
 }

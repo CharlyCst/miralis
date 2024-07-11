@@ -4,9 +4,9 @@ use core::marker::PhantomData;
 use core::{ptr, usize};
 
 use super::{Architecture, MCause, Mode, RegistersCapability, TrapInfo};
-use crate::arch::mstatus::{MIE_OFFSET, MPP_FILTER, MPP_OFFSET};
+use crate::arch::mstatus::{self, MIE_OFFSET, MPP_FILTER, MPP_OFFSET};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{HardwareCapability, PmpGroup};
+use crate::arch::{Arch, HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
 use crate::host::MirageContext;
 use crate::virt::VirtContext;
@@ -165,6 +165,13 @@ impl Architecture for MetalArch {
         )
     }
 
+    unsafe fn write_mie(mie: usize) {
+        asm!(
+            "csrw mie, {x}",
+            x = in(reg) mie
+        )
+    }
+
     unsafe fn write_pmp(pmp: &PmpGroup) {
         let pmpaddr = pmp.pmpaddr();
         let pmpcfg = pmp.pmpcfg();
@@ -204,6 +211,20 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn run_vcpu(ctx: &mut VirtContext) {
+        // When M-mode, patch mie register in order to trap on i only when mstatus.MIE
+        // is set and mideleg[i] is not set.
+        if ctx.mode == Mode::M {
+            let mie = mstatus::MIE_FILTER & (ctx.csr.mstatus >> mstatus::MIE_OFFSET);
+            let mie_patched = if mie == 1 {
+                ctx.csr.mie & !ctx.csr.mideleg
+            } else {
+                0
+            };
+            unsafe {
+                Arch::write_mie(mie_patched);
+            }
+        }
+
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "sd x3, (8*1)(sp)",
@@ -319,9 +340,7 @@ impl Architecture for MetalArch {
             medeleg = in(reg) ctx.csr.medeleg,
             options(nomem)
         );
-        // TODO: should we filter mstatus? What other registers?
 
-        // TODO : we may need to do this until mirage can handle exception
         asm!(
             "csrw mie, {mie}",
             "csrw mip, {mip}",
@@ -439,9 +458,6 @@ impl Architecture for MetalArch {
         );
         ctx.csr.mstatus = mstatus;
 
-        // TODO: handle S-mode registers which are subsets of M-mode registers
-
-        // TODO : we may need to do this until mirage can handle exception
         asm!(
             "csrr {mie}, mie",
             "csrr {mip}, mip",
@@ -451,12 +467,6 @@ impl Architecture for MetalArch {
         );
         ctx.csr.mie = mie;
         ctx.csr.mip = mip;
-
-        // Avoid Mirage to handle traps that are delegated
-        asm!(
-            "csrw mie, {mie}",
-            mie = in(reg) ctx.csr.mie & !ctx.csr.mideleg
-        );
 
         // Remove Firmware PMP from the hardware
         mctx.pmp
