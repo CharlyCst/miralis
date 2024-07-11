@@ -49,26 +49,32 @@ pub enum Instr {
     Mret,
     Sret,
     Vfencevma,
-    /// Load (register-based)
+    /// Load Double-Word (register-based)
     Ld{
         rd: Register,
         rs1: Register,
-        imm: usize,
+        imm: isize,
     },
-    /// Store (register-based)
+    /// Store Double-Word (register-based)
     Sd{
         rs1: Register,
         rs2: Register,
-        imm: usize,
+        imm: isize,
     },
-    // Compressed Load (register-based)
+    /// Compressed Load Double-Word (register-based)
     CLd{
         rd: Register,
         rs1: Register,
         imm: usize,
     },
-    // Compressed Store (register-based)s
+    /// Compressed Store Double-Word (register-based)
     CSd{
+        rs1: Register,
+        rs2: Register,
+        imm: usize,
+    },
+    /// Compressed Store Word (register-based)
+    CSw{
         rs1: Register,
         rs2: Register,
         imm: usize,
@@ -123,7 +129,7 @@ fn decode_c_reg_based(raw: usize) -> Instr {
     let func3 = (raw >> 13) & 0b111;
     let rd_rs2 = (raw >> 2) & 0b111;
     let rs1 = (raw >> 7) & 0b111;
-    let imm = ((raw >> 5) & 0b11) | ((raw >> 10) & 0b111);
+    let mut imm = ((raw >> 5) & 0b11) | ((raw >> 10) & 0b111);
 
     let rd_rs2 = Register::from(rd_rs2 + 8);
     let rs1 = Register::from(rs1 + 8);
@@ -137,15 +143,33 @@ fn decode_c_reg_based(raw: usize) -> Instr {
             let rd = rd_rs2;
             Instr::CLd { rd, rs1, imm }
         }
+        0b110 => {
+            let rs2 = rd_rs2;
+            imm = ((raw >> 5) & 0b1) | ((raw >> 10) & 0b111) | ((raw >> 6) & 0b1);
+            Instr::CSw { rs1, rs2, imm }
+        }
         _ => Instr::Unknown,
     }
 }
 
+fn bits_to_int(raw: usize, start_bit: isize, end_bit: isize) -> isize {
+    let mask = (1 << (end_bit - start_bit + 1)) - 1;
+    let value = (raw >> start_bit) & mask;
+
+    // Check if the most significant bit is set (indicating a negative value)
+    if value & (1 << (end_bit - start_bit)) != 0 {
+        // Extend the sign bit to the left
+        let sign_extension = !0 << (end_bit - start_bit);
+        value as isize | sign_extension
+    } else {
+        value as isize
+    }
+}
 fn decode_load(raw: usize) -> Instr {
     let func3 = (raw >> 12) & 0b111;
     let rd = (raw >> 7) & 0b11111;
     let rs1 = (raw >> 15) & 0b11111;
-    let imm = (raw >> 20) & 0b111111111111;
+    let imm = bits_to_int(raw, 20, 31);
 
     let rs1 = Register::from(rs1);
     let rd = Register::from(rd);
@@ -160,7 +184,7 @@ fn decode_store(raw: usize) -> Instr {
     let func3 = (raw >> 12) & 0b111;
     let rs1: usize = (raw >> 15) & 0b11111;
     let rs2 = (raw >> 20) & 0b11111;
-    let imm = ((raw >> 7) & 0b11111) | ((raw >> 25) & 0b111111111111);
+    let imm =  bits_to_int(((raw >> 7) & 0b11111) | ((raw >> 25) & 0b1111111), 0, 11);
 
     let rs1 = Register::from(rs1);
     let rs2 = Register::from(rs2);

@@ -310,8 +310,8 @@ impl VirtContext {
                 Arch::sfence_vma();
                 self.pc += 4;
             }
-            Instr::Ld { rd, rs1: _ , imm: _ } => {
-                let offset = self.trap_info.mtval - Plat::get_clint_base(); // To vitrualize for all devices
+            Instr::Ld { rd, rs1, imm} => {                
+                let offset = device::VirtClint::calculate_offset(self.get(rs1), *imm);
                 let result = device::VirtClint::read_clint(offset);
                 match result {
                     Ok(value) => {
@@ -323,13 +323,29 @@ impl VirtContext {
                     }
                 }
             }
-            Instr::CSd { rs1, rs2, imm: _ } => {
-                let offset = self.trap_info.mtval - Plat::get_clint_base(); // To vitrualize for all devices
+            Instr::CSd { rs1, rs2, imm } => {
+                let offset = self.get(rs1) + imm*8; 
                 let data = self.get(rs2);
                 let result = device::VirtClint::write_clint(offset, data);
                 match result {
                     Ok(_value) => {
                         self.set(rs1, data);
+                        self.pc += 2;
+                    }
+                    Err(_err) => {
+                        panic!("Error writing VirtClint");
+                    }
+                }
+            }
+            Instr::CSw { rs1, rs2, imm} => {
+                let offset = self.get(rs1) + imm*4; 
+                let data = self.get(rs2);
+                log::trace!("Data {:?}", data);
+                let result = device::VirtClint::write_clint(offset, data);
+                match result {
+                    Ok(_value) => {
+                        self.set(rs1, data);
+                        log::trace!("CSw call successful!");
                         self.pc += 2;
                     }
                     Err(_err) => {

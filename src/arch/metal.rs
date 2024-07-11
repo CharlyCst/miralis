@@ -191,7 +191,7 @@ impl Architecture for MetalArch {
         }
     }
 
-    unsafe fn   get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
+    unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
        /* assert!(
             trap_info.mcause == MCause::IllegalInstr as usize,
             "Trying to read faulting instruction but trap is not an illegal instruction"
