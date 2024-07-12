@@ -3,9 +3,10 @@ use core::ptr::{read_volatile, write_volatile};
 
 use mirage_core::abi;
 
+use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::arch::{
-    mie, misa, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, HardwareCapability, MCause,
-    Mode, Register, TrapInfo,
+    mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
+    MCause, Mode, Register, TrapInfo,
 };
 use crate::debug;
 use crate::decoder::{decode, Instr};
@@ -148,7 +149,7 @@ impl Default for VirtCsr {
 impl VirtCsr {
     pub fn set_mstatus_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
         // Clear field
-        *csr &= !(filter << offset);
+        *csr &= !filter;
         // Set field
         *csr |= value << offset;
     }
@@ -262,7 +263,7 @@ impl VirtContext {
                         panic!(
                             "MRET is not going to M/S/U mode: {} with MPP {:x}",
                             self.csr.mstatus,
-                            ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER)
+                            (self.csr.mstatus & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET
                         );
                     }
                 }
@@ -278,7 +279,7 @@ impl VirtContext {
                 }
 
                 // MIE = MPIE, MPIE = 1, MPRV = 0
-                let mpie = mstatus::MPIE_FILTER & (self.csr.mstatus >> mstatus::MPIE_OFFSET);
+                let mpie = (self.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET;
 
                 VirtCsr::set_mstatus_field(
                     &mut self.csr.mstatus,
@@ -559,7 +560,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // TODO: create some constant values
                 let mut new_value = value & mstatus::MSTATUS_FILTER; //self.csr.mstatus;
                                                                      // MPP : 11 : write legal : 0,1,3
-                let mpp = (value >> 11) & 0b11;
+                let mpp = (value & MPP_FILTER) >> MPP_OFFSET;
                 VirtCsr::set_mstatus_field(
                     &mut new_value,
                     mstatus::MPP_OFFSET,
@@ -588,7 +589,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
 
                 // MPRV : 17 : write anything
                 // MBE : 37 : write anything
-                let mbe: usize = (self.csr.mstatus >> mstatus::MBE_OFFSET) & mstatus::MBE_FILTER;
+                let mbe: usize = (self.csr.mstatus & mstatus::MBE_FILTER) >> mstatus::MBE_OFFSET;
                 // SBE : 36 : equals MBE
                 VirtCsr::set_mstatus_field(
                     &mut new_value,
@@ -653,7 +654,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mstatus::SD_OFFSET,
                     mstatus::SD_FILTER,
                     if Plat::HAS_S_MODE {
-                        let fs: usize = (value >> mstatus::FS_OFFSET) & mstatus::FS_FILTER;
+                        let fs: usize = (value & mstatus::FS_FILTER) >> mstatus::FS_OFFSET;
                         if fs != 0 {
                             0b1
                         } else {
@@ -671,7 +672,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 let arch_misa: usize = Arch::read_misa();
                 // Update misa to a legal value
                 self.csr.misa =
-                    (value & arch_misa & mstatus::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
+                    (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
             }
             Csr::Mie => self.csr.mie = value & hw.interrupts,
             Csr::Mip => {
@@ -800,7 +801,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), hw);
             }
             Csr::Satp => {
-                self.csr.satp = value & mstatus::SATP_CHANGE_FILTER;
+                self.csr.satp = value & satp::SATP_CHANGE_FILTER;
             }
             Csr::Scontext => todo!("No information in the specification"),
             // Unknown
