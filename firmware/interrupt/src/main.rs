@@ -40,7 +40,7 @@ fn test_mie() {
 fn test_sie() {
     let sie: usize;
     let mie: usize;
-    let value = !0;
+    let value = 0x3ff;
     let masked_value = value & 0x222;
 
     unsafe {
@@ -64,7 +64,7 @@ fn test_sie() {
 // Test sie: writting to mie must be
 fn test_sie_by_mie() {
     let res: usize;
-    let value = !0;
+    let value = 0x3ff;
     let masked_value = value & 0x222;
     unsafe {
         asm!(
