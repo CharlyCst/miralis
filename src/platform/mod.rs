@@ -4,8 +4,7 @@ use core::fmt;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
-use crate::{config, logger};
-use crate::device;
+use crate::{config, device, logger};
 
 /// Export the current platform.
 /// For now, only QEMU's Virt board is supported
@@ -33,7 +32,6 @@ pub trait Platform {
     fn get_clint_base() -> usize;
 
     const HAS_S_MODE: bool = config::VCPU_S_MODE;
-    const CLINT_SIZE: usize = 0x10000;
 }
 
 pub fn init() {

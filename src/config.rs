@@ -197,7 +197,7 @@ pub const LOG_TRACE: &[&str; str_list_len(option_env!("MIRAGE_LOG_TRACE"))] =
     &parse_str_list(option_env!("MIRAGE_LOG_TRACE"));
 
 /// The expected number of harts.
-pub const _PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRAGE_PLATFORM_NB_HARTS"), 1);
+pub const PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRAGE_PLATFORM_NB_HARTS"), 1);
 
 /// The stack size for each Mirage thread (one per hart).
 pub const PLATFORM_STACK_SIZE: usize =

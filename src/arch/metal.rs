@@ -192,18 +192,13 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
-       /* assert!(
-            trap_info.mcause == MCause::IllegalInstr as usize,
-            "Trying to read faulting instruction but trap is not an illegal instruction"
-        );*/
-
         if trap_info.mcause == MCause::IllegalInstr as usize {
             // First, try mtval and check if it contains an instruction
             if trap_info.mtval != 0 {
                 return trap_info.mtval;
             }
         }
-        
+
         let instr_ptr = trap_info.mepc as *const u32;
 
         // With compressed instruction extention ("C") instructions can be misaligned.

@@ -4,8 +4,8 @@
 
 use crate::arch::pmp::PmpGroup;
 use crate::arch::HardwareCapability;
-use crate::platform::{Plat, Platform};
 use crate::device;
+use crate::platform::{Plat, Platform};
 
 /// The Mirage Context, holding configuration registers for Mirage.
 pub struct MirageContext {
@@ -15,7 +15,7 @@ pub struct MirageContext {
     pub virt_pmp_offset: u8,
     /// Hardware capabilities of the core (hart).
     pub hw: HardwareCapability,
-    /// List of devices with PMP 
+    /// List of devices with PMP
     pub devices: [device::Device; 1],
 }
 

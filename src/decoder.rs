@@ -50,31 +50,31 @@ pub enum Instr {
     Sret,
     Vfencevma,
     /// Load Double-Word (register-based)
-    Ld{
+    Ld {
         rd: Register,
         rs1: Register,
         imm: isize,
     },
     /// Store Double-Word (register-based)
-    Sd{
+    Sd {
         rs1: Register,
         rs2: Register,
         imm: isize,
     },
     /// Compressed Load Double-Word (register-based)
-    CLd{
+    CLd {
         rd: Register,
         rs1: Register,
         imm: usize,
     },
     /// Compressed Store Double-Word (register-based)
-    CSd{
+    CSd {
         rs1: Register,
         rs2: Register,
         imm: usize,
     },
     /// Compressed Store Word (register-based)
-    CSw{
+    CSw {
         rs1: Register,
         rs2: Register,
         imm: usize,
@@ -109,7 +109,7 @@ pub fn decode(raw: usize) -> Instr {
 fn decode_opcode(raw: usize) -> Opcode {
     let last_two_bits = raw & 0b11;
     match last_two_bits {
-        0b11 => { 
+        0b11 => {
             // It seems all 32 bits instructions start with 0b11
             let opcode = raw & OPCODE_MASK;
             match opcode >> 2 {
@@ -120,16 +120,15 @@ fn decode_opcode(raw: usize) -> Opcode {
             }
         }
         // Register-based load and store instruction for C set start with 0b00
-        0b00 => Opcode::Compressed, 
+        0b00 => Opcode::Compressed,
         _ => Opcode::Unknown,
-    }   
+    }
 }
 
 fn decode_c_reg_based(raw: usize) -> Instr {
     let func3 = (raw >> 13) & 0b111;
     let rd_rs2 = (raw >> 2) & 0b111;
     let rs1 = (raw >> 7) & 0b111;
-    let mut imm = ((raw >> 5) & 0b11) | ((raw >> 10) & 0b111);
 
     let rd_rs2 = Register::from(rd_rs2 + 8);
     let rs1 = Register::from(rs1 + 8);
@@ -137,15 +136,17 @@ fn decode_c_reg_based(raw: usize) -> Instr {
     match func3 {
         0b111 => {
             let rs2 = rd_rs2;
+            let imm = 0b000 | (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
             Instr::CSd { rs1, rs2, imm }
         }
         0b011 => {
             let rd = rd_rs2;
+            let imm = 0b000 | (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
             Instr::CLd { rd, rs1, imm }
         }
         0b110 => {
             let rs2 = rd_rs2;
-            imm = ((raw >> 5) & 0b1) | ((raw >> 10) & 0b111) | ((raw >> 6) & 0b1);
+            let imm = 0b00 | (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
             Instr::CSw { rs1, rs2, imm }
         }
         _ => Instr::Unknown,
@@ -175,7 +176,7 @@ fn decode_load(raw: usize) -> Instr {
     let rd = Register::from(rd);
 
     return match func3 {
-        0b011 => Instr::Ld { rd, rs1, imm }, 
+        0b011 => Instr::Ld { rd, rs1, imm },
         _ => Instr::Unknown,
     };
 }
@@ -184,13 +185,17 @@ fn decode_store(raw: usize) -> Instr {
     let func3 = (raw >> 12) & 0b111;
     let rs1: usize = (raw >> 15) & 0b11111;
     let rs2 = (raw >> 20) & 0b11111;
-    let imm =  bits_to_int(((raw >> 7) & 0b11111) | ((raw >> 25) & 0b1111111), 0, 11);
+    let imm = bits_to_int(
+        ((raw >> 7) & 0b11111) | ((raw >> 20) & 0b111111100000),
+        0,
+        11,
+    );
 
     let rs1 = Register::from(rs1);
     let rs2 = Register::from(rs2);
 
     return match func3 {
-        0b011 => Instr::Sd { rs1, rs2, imm }, 
+        0b011 => Instr::Sd { rs1, rs2, imm },
         _ => Instr::Unknown,
     };
 }
@@ -548,6 +553,51 @@ mod tests {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 uimm: 0x0,
+            }
+        );
+
+        assert_eq!(
+            decode(0xff87b703),
+            Instr::Ld {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xfee7bc23),
+            Instr::Sd {
+                rs1: Register::X15,
+                rs2: Register::X14,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xffffe71c),
+            Instr::CSd {
+                rs1: Register::X14,
+                rs2: Register::X15,
+                imm: 8
+            }
+        );
+
+        assert_eq!(
+            decode(0xffff671c),
+            Instr::CLd {
+                rd: Register::X15,
+                rs1: Register::X14,
+                imm: 8
+            }
+        );
+
+        assert_eq!(
+            decode(0xffffc71c),
+            Instr::CSw {
+                rs1: Register::X14,
+                rs2: Register::X15,
+                imm: 8
             }
         );
     }

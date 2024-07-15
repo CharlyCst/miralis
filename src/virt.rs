@@ -8,11 +8,11 @@ use crate::arch::{
     mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
     MCause, Mode, Register, TrapInfo,
 };
-use crate::debug;
 use crate::decoder::{decode, Instr};
-use crate::platform::{Plat, Platform};
+use crate::device::{Device, DeviceAccess};
 use crate::host::MirageContext;
-use crate::device;
+use crate::platform::{Plat, Platform};
+use crate::{debug, device, utils};
 
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -172,7 +172,7 @@ impl VirtCsr {
 // —————————————————————————— Handle Payload Traps —————————————————————————— //
 
 impl VirtContext {
-    fn emulate_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
+    fn emulate_privileged_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
         match instr {
             Instr::Wfi => {
                 // NOTE: for now there is no safeguard which guarantees that we will eventually get
@@ -309,48 +309,62 @@ impl VirtContext {
             Instr::Vfencevma => unsafe {
                 Arch::sfence_vma();
                 self.pc += 4;
-            }
-            Instr::Ld { rd, rs1, imm} => {                
-                let offset = device::VirtClint::calculate_offset(self.get(rs1), *imm);
-                let result = device::VirtClint::read_clint(offset);
-                match result {
-                    Ok(value) => {
-                        self.set(rd, value);
-                        self.pc += 4;
+            },
+            _ => todo!("Instruction not yet implemented: {:?}", instr),
+        }
+    }
+
+    pub fn handle_device_access_fault(&mut self, instr: &Instr, device: &Device) {
+        match instr {
+            Instr::Ld { rd, rs1, imm } => {
+                let offset = utils::calculate_offset(self.get(rs1), *imm);
+                if let Some(device_interface) = &device.device_interface {
+                    match device_interface.lock().read_device(offset) {
+                        Ok(value) => {
+                            self.set(rd, value);
+                            self.pc += 4;
+                        }
+                        Err(err) => {
+                            panic!("Error reading {}: {}", device.name, err);
+                        }
                     }
-                    Err(err) => {
-                        panic!("Error reading VirtClint: {}", err);
-                    }
+                } else {
+                    panic!("No device interface for {}", device.name);
                 }
             }
             Instr::CSd { rs1, rs2, imm } => {
-                let offset = self.get(rs1) + imm*8; 
+                let offset = self.get(rs1) + imm * 8;
                 let data = self.get(rs2);
-                let result = device::VirtClint::write_clint(offset, data);
-                match result {
-                    Ok(_value) => {
-                        self.set(rs1, data);
-                        self.pc += 2;
+                if let Some(device_interface) = &device.device_interface {
+                    match device_interface.lock().write_device(offset, data) {
+                        Ok(()) => {
+                            self.set(rs1, data);
+                            self.pc += 2;
+                        }
+                        Err(err) => {
+                            panic!("Error writing {}: {}", device.name, err);
+                        }
                     }
-                    Err(_err) => {
-                        panic!("Error writing VirtClint");
-                    }
+                } else {
+                    panic!("No device interface for {}", device.name);
                 }
             }
-            Instr::CSw { rs1, rs2, imm} => {
-                let offset = self.get(rs1) + imm*4; 
+            Instr::CSw { rs1, rs2, imm } => {
+                let offset = self.get(rs1) + imm * 4;
                 let data = self.get(rs2);
                 log::trace!("Data {:?}", data);
-                let result = device::VirtClint::write_clint(offset, data);
-                match result {
-                    Ok(_value) => {
-                        self.set(rs1, data);
-                        log::trace!("CSw call successful!");
-                        self.pc += 2;
+                if let Some(device_interface) = &device.device_interface {
+                    match device_interface.lock().write_device(offset, data) {
+                        Ok(()) => {
+                            self.set(rs1, data);
+                            self.pc += 2;
+                        }
+                        Err(err) => {
+                            panic!("Error writing {}: {}", device.name, err);
+                        }
                     }
-                    Err(_err) => {
-                        panic!("Error writing VirtClint");
-                    }
+                } else {
+                    panic!("No device interface for {}", device.name);
                 }
             }
             _ => todo!("Instruction not yet implemented: {:?}", instr),
@@ -455,23 +469,28 @@ impl VirtContext {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_instr(&instr, hw);
+                self.emulate_privileged_instr(&instr, hw);
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
             MCause::StoreAccessFault | MCause::LoadAccessFault | MCause::InstrAccessFault => {
                 // PMP faults
-                if let Some(device) = device::find_matching_device(self.trap_info.mtval, &mctx.devices) {
+                if let Some(device) =
+                    device::find_matching_device(self.trap_info.mtval, &mctx.devices)
+                {
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+
                     let instr = decode(instr);
-             
-                    log::trace!("Accessed device: {} | With instr: {:?}", device.name, instr);    
-                    self.emulate_instr(&instr, hw);          
+
+                    log::trace!("Accessed device: {} | With instr: {:?}", device.name, instr);
+
+                    self.handle_device_access_fault(&instr, &device);
                 } else {
                     log::trace!("No matching device found for address: {}", self.csr.mtval);
+
                     self.emulate_jump_trap_handler();
-                }                             
+                }
             }
             _ => {
                 if cause.is_interrupt() {

@@ -5,9 +5,9 @@ use core::{fmt, ptr};
 
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
-use crate::device;
 
 use super::Platform;
+use crate::device::{self, VirtClint};
 
 // —————————————————————————— Platform parameters ——————————————————————————— //
 
@@ -18,7 +18,8 @@ const FIRMWARE_START_ADDR: usize = 0x80200000;
 const CLINT_BASE: usize = 0x2000000;
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
-
+static mut VIRT_CLINT: Option<VirtClint> = None;
+static mut CLINT_MUTEX: Option<Mutex<VirtClint>> = None;
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
 pub struct VirtPlatform {}
@@ -68,17 +69,35 @@ impl Platform for VirtPlatform {
     }
 
     fn create_clint_device() -> device::Device {
+        let virt_clint = unsafe {
+            if let Some(existing_clint) = &VIRT_CLINT {
+                existing_clint
+            } else {
+                VIRT_CLINT = Some(VirtClint::new());
+                VIRT_CLINT.as_ref().unwrap()
+            }
+        };
+
+        let clint_mutex = unsafe {
+            if let Some(existing_mutex) = &CLINT_MUTEX {
+                existing_mutex
+            } else {
+                CLINT_MUTEX = Some(Mutex::new(virt_clint.clone()));
+                CLINT_MUTEX.as_ref().unwrap()
+            }
+        };
+
         device::Device {
             start_addr: CLINT_BASE,
-            size: Self::CLINT_SIZE,
-            name: "CLINT", 
+            size: device::CLINT_SIZE,
+            name: "CLINT",
+            device_interface: Some(clint_mutex),
         }
     }
 
-    fn get_clint_base() -> usize{
+    fn get_clint_base() -> usize {
         CLINT_BASE
     }
-
 }
 
 fn exit_qemu(success: bool) -> ! {

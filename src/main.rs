@@ -12,13 +12,13 @@ mod arch;
 mod config;
 mod debug;
 mod decoder;
+mod device;
+mod driver;
 mod host;
 mod logger;
 mod platform;
 mod utils;
 mod virt;
-mod device;
-mod driver;
 
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
@@ -71,7 +71,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         mctx.pmp
             .set(0, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
         // Protect CLINT memory to trap firmware read/writes there
-        mctx.pmp.set(1, pmp::build_napot(clint.start_addr, clint.size).unwrap(), pmpcfg::NAPOT);
+        mctx.pmp.set(
+            1,
+            pmp::build_napot(clint.start_addr, clint.size).unwrap(),
+            pmpcfg::NAPOT,
+        );
         // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
         mctx.pmp.set(2, 0, pmpcfg::INACTIVE);
         // Finally, set the last PMP to grant access to the whole memory
