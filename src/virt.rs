@@ -294,6 +294,12 @@ impl VirtContext {
                     mstatus::MIE_FILTER,
                     mpie,
                 );
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::MPP_OFFSET,
+                    mstatus::MPP_FILTER,
+                    0,
+                );
 
                 // Jump back to firmware
                 self.pc = self.csr.mepc;

@@ -27,7 +27,7 @@ fn main() -> ! {
     let mpie = (mstatus >> 7) & 0b1;
     let mprv = (mstatus >> 17) & 0b1;
 
-    assert_eq!(mpp, 3, "Invalid MPP: {}, expected 3", mpp);
+    assert_eq!(mpp, 0, "Invalid MPP: {}, expected 0", mpp);
     assert_eq!(mpie, 1, "Invalid MPIE: {}, expected 1", mpie);
     assert_eq!(mprv, 0, "Invalid MPRV: {}, expected 0", mprv);
     assert_eq!(

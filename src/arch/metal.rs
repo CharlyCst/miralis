@@ -9,7 +9,7 @@ use crate::arch::pmp::pmpcfg;
 use crate::arch::{Arch, HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
 use crate::host::MirageContext;
-use crate::virt::VirtContext;
+use crate::virt::{VirtContext, VirtCsr};
 use crate::{_stack_start, main};
 
 /// Bare metal RISC-V runtime.
@@ -304,12 +304,8 @@ impl Architecture for MetalArch {
         );
         asm!(
             "csrw stval, {stval}",
-            stval = in(reg) ctx.csr.stval,
-            options(nomem)
-        );
-
-        asm!(
             "csrw mcounteren, {mcounteren}",
+            stval = in(reg) ctx.csr.stval,
             mcounteren = in(reg) ctx.csr.mcounteren,
             options(nomem)
         );
@@ -331,11 +327,18 @@ impl Architecture for MetalArch {
         }
 
         // Then configuring M-mode registers
+        let mut mstatus = ctx.csr.mstatus; // We need to set the next mode bits before mret
+        VirtCsr::set_csr_field(
+            &mut mstatus,
+            mstatus::MPP_OFFSET,
+            mstatus::MPP_FILTER,
+            ctx.mode.to_bits(),
+        );
         asm!(
             "csrw mstatus, {mstatus}",
             "csrw mideleg, {mideleg}",
             "csrw medeleg, {medeleg}",
-            mstatus = in(reg) ctx.csr.mstatus,
+            mstatus = in(reg) mstatus,
             mideleg = in(reg) ctx.csr.mideleg,
             medeleg = in(reg) ctx.csr.medeleg,
             options(nomem)
