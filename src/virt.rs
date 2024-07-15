@@ -147,7 +147,8 @@ impl Default for VirtCsr {
 }
 
 impl VirtCsr {
-    pub fn set_mstatus_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
+    pub fn set_csr_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
+        debug_assert_eq!((value << offset) & !filter, 0, "Invalid set_csr_field");
         // Clear field
         *csr &= !filter;
         // Set field
@@ -240,7 +241,7 @@ impl VirtContext {
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         self.mode = Mode::S;
 
-                        VirtCsr::set_mstatus_field(
+                        VirtCsr::set_csr_field(
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
@@ -252,7 +253,7 @@ impl VirtContext {
                         // Mret is jumping to user mode, the runner is the guest OS
                         self.mode = Mode::U;
 
-                        VirtCsr::set_mstatus_field(
+                        VirtCsr::set_csr_field(
                             &mut self.csr.mstatus,
                             mstatus::MPRV_OFFSET,
                             mstatus::MPRV_FILTER,
@@ -270,7 +271,7 @@ impl VirtContext {
                 // Modify mstatus
                 // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
                 if false {
-                    VirtCsr::set_mstatus_field(
+                    VirtCsr::set_csr_field(
                         &mut self.csr.mstatus,
                         mstatus::MPV_OFFSET,
                         mstatus::MPV_FILTER,
@@ -281,13 +282,13 @@ impl VirtContext {
                 // MIE = MPIE, MPIE = 1, MPRV = 0
                 let mpie = (self.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET;
 
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut self.csr.mstatus,
                     mstatus::MPIE_OFFSET,
                     mstatus::MPIE_FILTER,
                     1,
                 );
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut self.csr.mstatus,
                     mstatus::MIE_OFFSET,
                     mstatus::MIE_FILTER,
@@ -317,7 +318,7 @@ impl VirtContext {
         match self.mode {
             Mode::M => {
                 // Modify mstatus: previous privilege mode is machine = 3
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut self.csr.mstatus,
                     mstatus::MPP_OFFSET,
                     mstatus::MPP_FILTER,
@@ -561,7 +562,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 let mut new_value = value & mstatus::MSTATUS_FILTER; //self.csr.mstatus;
                                                                      // MPP : 11 : write legal : 0,1,3
                 let mpp = (value & MPP_FILTER) >> MPP_OFFSET;
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::MPP_OFFSET,
                     mstatus::MPP_FILTER,
@@ -573,14 +574,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
                 // SXL : 34 : read-only : MX-LEN = 64
                 let mxl: usize = 2;
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::SXL_OFFSET,
                     mstatus::SXL_FILTER,
                     if Plat::HAS_S_MODE { mxl } else { 0 },
                 );
                 // UXL : 32 : read-only : MX-LEN = 64
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::UXL_OFFSET,
                     mstatus::UXL_FILTER,
@@ -591,14 +592,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // MBE : 37 : write anything
                 let mbe: usize = (self.csr.mstatus & mstatus::MBE_FILTER) >> mstatus::MBE_OFFSET;
                 // SBE : 36 : equals MBE
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::SBE_OFFSET,
                     mstatus::SBE_FILTER,
                     if Plat::HAS_S_MODE { mbe } else { 0 },
                 );
                 // UBE : 6 : equals MBE
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::UBE_OFFSET,
                     mstatus::UBE_FILTER,
@@ -608,7 +609,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // TVM : 20 : read-only 0 (NO S-MODE)
                 new_value &= !(0b1 << 20); // clear TVM
                 if !Plat::HAS_S_MODE {
-                    VirtCsr::set_mstatus_field(
+                    VirtCsr::set_csr_field(
                         &mut new_value,
                         mstatus::TVM_OFFSET,
                         mstatus::TVM_FILTER,
@@ -618,7 +619,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // TW : 21 : write anything
                 // TSR : 22 : read-only 0 (NO S-MODE)
                 if !Plat::HAS_S_MODE {
-                    VirtCsr::set_mstatus_field(
+                    VirtCsr::set_csr_field(
                         &mut new_value,
                         mstatus::TSR_OFFSET,
                         mstatus::TSR_FILTER,
@@ -627,7 +628,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 // FS : 13 : read-only 0 (NO S-MODE, F extension)
                 if !Plat::HAS_S_MODE {
-                    VirtCsr::set_mstatus_field(
+                    VirtCsr::set_csr_field(
                         &mut new_value,
                         mstatus::FS_OFFSET,
                         mstatus::FS_FILTER,
@@ -635,21 +636,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     );
                 }
                 // VS : 9 : read-only 0 (v registers)
-                VirtCsr::set_mstatus_field(
-                    &mut new_value,
-                    mstatus::VS_OFFSET,
-                    mstatus::VS_FILTER,
-                    0,
-                );
+                VirtCsr::set_csr_field(&mut new_value, mstatus::VS_OFFSET, mstatus::VS_FILTER, 0);
                 // XS : 15 : read-only 0 (NO FS nor VS)
-                VirtCsr::set_mstatus_field(
-                    &mut new_value,
-                    mstatus::XS_OFFSET,
-                    mstatus::XS_FILTER,
-                    0,
-                );
+                VirtCsr::set_csr_field(&mut new_value, mstatus::XS_OFFSET, mstatus::XS_FILTER, 0);
                 // SD : 63 : read-only 0 (if NO FS/VS/XS)
-                VirtCsr::set_mstatus_field(
+                VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::SD_OFFSET,
                     mstatus::SD_FILTER,
