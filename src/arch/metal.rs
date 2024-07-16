@@ -118,6 +118,14 @@ impl Architecture for MetalArch {
             options(nomem)
         );
 
+        // Read hart ID
+        let hart: usize;
+        asm!(
+            "csrr {hart}, mhartid",
+            hart = out(reg) hart,
+            options(nomem)
+        );
+
         // Detect available interrupt IDs
         let available_int: usize;
         asm!(
@@ -143,6 +151,7 @@ impl Architecture for MetalArch {
         // Return hardware configuration
         HardwareCapability {
             interrupts: available_int,
+            hart,
             _marker: PhantomData,
             available_reg: RegistersCapability {
                 menvcfg: is_menvcfg_present,

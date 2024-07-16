@@ -1,5 +1,5 @@
 //! Firmware Virtualisation
-use core::ptr::{read_volatile, write_volatile};
+use core::usize;
 
 use mirage_core::abi;
 
@@ -476,13 +476,12 @@ impl VirtContext {
             }
             MCause::MachineTimerInt => {
                 // Set mtimecmp > mtime to clear mip.mtip
-                const MTIMECMP: *mut u64 = 0x2004000 as *mut u64;
-                const MTIME: *mut u64 = 0x200BFF8 as *mut u64;
-                unsafe {
-                    let mtime = read_volatile(MTIME);
-                    write_volatile(MTIMECMP, mtime + 1000_000); // TODO : what value ?
-                }
-
+                // We set a deadline as far as possible in the future for now, the firmware can
+                // re-write mtimecmp through the virtual CLINT to trigger an interrupt earlier.
+                let mut clint = Plat::get_clint().lock();
+                clint
+                    .write_mtimecmp(mctx.hw.hart, usize::MAX)
+                    .expect("Failed to write mtimecmp");
                 self.emulate_jump_trap_handler();
             }
             _ => {
