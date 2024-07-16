@@ -55,7 +55,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let firmware_addr = Plat::load_firmware();
     let nb_pmp = Plat::get_nb_pmp();
     let nb_virt_pmp;
-    let clint: device::VirtDevice = Plat::create_clint_device();
+    let clint = Plat::create_clint_device();
 
     // Detect hardware capabilities
     // SAFETY: this lust happen before hardware initialization

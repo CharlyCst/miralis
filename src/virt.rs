@@ -9,7 +9,7 @@ use crate::arch::{
     MCause, Mode, Register, TrapInfo,
 };
 use crate::decoder::{decode, Instr};
-use crate::device::{DeviceAccess, VirtDevice};
+use crate::device::VirtDevice;
 use crate::host::MirageContext;
 use crate::platform::{Plat, Platform};
 use crate::{debug, device, utils};
@@ -319,7 +319,7 @@ impl VirtContext {
             Instr::Ld { rd, rs1, imm } => {
                 let address = utils::calculate_addr(self.get(rs1), *imm);
                 let offset = address - device.start_addr;
-                match device.device_interface.lock().read_device(offset) {
+                match device.device_interface.read_device(offset) {
                     Ok(value) => {
                         self.set(rd, value);
                         self.pc += 4;
@@ -333,7 +333,7 @@ impl VirtContext {
                 let address = self.get(rs1) + imm * 8;
                 let offset = address - device.start_addr;
                 let data = self.get(rs2);
-                match device.device_interface.lock().write_device(offset, data) {
+                match device.device_interface.write_device(offset, data) {
                     Ok(()) => {
                         self.set(rs1, data);
                         self.pc += 2;
@@ -347,7 +347,7 @@ impl VirtContext {
                 let address = self.get(rs1) + imm * 4;
                 let offset = address - device.start_addr;
                 let data = self.get(rs2);
-                match device.device_interface.lock().write_device(offset, data) {
+                match device.device_interface.write_device(offset, data) {
                     Ok(()) => {
                         self.set(rs1, data);
                         self.pc += 2;
