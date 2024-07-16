@@ -1,6 +1,4 @@
 //! Firmware Virtualisation
-use core::ptr::{read_volatile, write_volatile};
-
 use mirage_core::abi;
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
@@ -489,14 +487,24 @@ impl VirtContext {
             }
             MCause::MachineTimerInt => {
                 // Set mtimecmp > mtime to clear mip.mtip
-                const MTIMECMP: *mut u64 = 0x2004000 as *mut u64;
-                const MTIME: *mut u64 = 0x200BFF8 as *mut u64;
-                unsafe {
-                    let mtime = read_volatile(MTIME);
-                    write_volatile(MTIMECMP, mtime + 1000_000); // TODO : what value ?
-                }
+                const MTIMECMP: usize = 0x2004000 as usize;
+                const MTIME: usize = 0x200BFF8 as usize;
+                let clint_device = &mctx.devices.get(0);
 
-                self.emulate_jump_trap_handler();
+                if let Some(device) = clint_device {
+                    if let Some(interface) = device.device_interface {
+                        let mut clint_interface = interface.lock();
+                        let time = clint_interface.read_device(MTIME).unwrap_or_default();
+                        let new_timecmp_value = time + 1000_000; // TODO : what value ?
+                        clint_interface.write_device(MTIMECMP, new_timecmp_value);
+
+                        self.emulate_jump_trap_handler();
+                    } else {
+                        panic!("No device interface for {}", device.name);
+                    }
+                } else {
+                    panic!("No CLINT device to write to!");
+                }
             }
             _ => {
                 if cause.is_interrupt() {
