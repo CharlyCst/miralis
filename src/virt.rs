@@ -352,7 +352,6 @@ impl VirtContext {
             Instr::CSw { rs1, rs2, imm } => {
                 let offset = self.get(rs1) + imm * 4;
                 let data = self.get(rs2);
-                log::trace!("Data {:?}", data);
                 if let Some(device_interface) = &device.device_interface {
                     match device_interface.lock().write_device(offset, data) {
                         Ok(()) => {
@@ -405,11 +404,7 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the firmware
-    pub fn handle_firmware_trap(&mut self, hw: &HardwareCapability) {
-    /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self, mctx: &MirageContext) {
-        // Keep track of the number of exit
-        self.nb_exits += 1;
+    pub fn handle_firmware_trap(&mut self, mctx: &MirageContext) {
         let hw = &mctx.hw;
 
         let cause = self.trap_info.get_cause();
@@ -491,6 +486,17 @@ impl VirtContext {
 
                     self.emulate_jump_trap_handler();
                 }
+            }
+            MCause::MachineTimerInt => {
+                // Set mtimecmp > mtime to clear mip.mtip
+                const MTIMECMP: *mut u64 = 0x2004000 as *mut u64;
+                const MTIME: *mut u64 = 0x200BFF8 as *mut u64;
+                unsafe {
+                    let mtime = read_volatile(MTIME);
+                    write_volatile(MTIMECMP, mtime + 1000_000); // TODO : what value ?
+                }
+
+                self.emulate_jump_trap_handler();
             }
             _ => {
                 if cause.is_interrupt() {

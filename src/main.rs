@@ -144,8 +144,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     match exec_mode {
-        ExecutionMode::Firmware => handle_firmware_trap(ctx, &mctx),
-        ExecutionMode::Payload => handle_os_trap(ctx),
+        ExecutionMode::Firmware => ctx.handle_firmware_trap(&mctx),
+        ExecutionMode::Payload => ctx.emulate_jump_trap_handler(),
     }
 
     // Check for execution mode change
@@ -160,15 +160,6 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
         }
         _ => {} // No execution mode transition
     }
-}
-
-fn handle_firmware_trap(ctx: &mut VirtContext, mctx: &MirageContext) {
-    ctx.handle_payload_trap(mctx);
-}
-
-fn handle_os_trap(ctx: &mut VirtContext) {
-    ctx.nb_exits += 1;
-    ctx.emulate_jump_trap_handler();
 }
 
 /// Handle the trap coming from mirage
