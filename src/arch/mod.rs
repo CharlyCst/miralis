@@ -81,8 +81,10 @@ pub trait Architecture {
 pub struct HardwareCapability {
     /// Bitmap of valid interrupts, marks valid bits in `mie` and `mip`.
     pub interrupts: usize,
-    /// Structure indicating the presence of optional registers
+    /// Structure indicating the presence of optional registers.
     pub available_reg: RegistersCapability,
+    /// The hart ID, as read from mhartid.
+    pub hart: usize,
     /// Prevent the struct from being used on another core.
     _marker: PhantomNotSendNotSync,
 }

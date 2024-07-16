@@ -87,6 +87,10 @@ impl Platform for VirtPlatform {
             device_interface: &VIRT_CLINT,
         }
     }
+
+    fn get_clint() -> &'static Mutex<ClintDriver> {
+        &CLINT_MUTEX
+    }
 }
 
 fn exit_qemu(success: bool) -> ! {
