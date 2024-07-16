@@ -8,6 +8,7 @@ use uart_16550::MmioSerialPort;
 
 use super::Platform;
 use crate::device::{self, VirtClint};
+use crate::driver::ClintDriver;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
@@ -21,11 +22,14 @@ const CLINT_BASE: usize = 0x2000000;
 
 static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
-/// The virtual CLINT device.
+/// The physical CLINT driver.
 ///
-/// SAFETY: this is the oncly CLINT device that we create, and the platform code does not otherwise
-/// access the CLINT.
-static CLINT_MUTEX: Mutex<VirtClint> = unsafe { Mutex::new(VirtClint::new(CLINT_BASE)) };
+/// SAFETY: this is the oncly CLINT device driver that we create, and the platform code does not
+/// otherwise access the CLINT.
+static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
+
+/// The virtual CLINT device.
+static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -80,7 +84,7 @@ impl Platform for VirtPlatform {
             start_addr: CLINT_BASE,
             size: device::CLINT_SIZE,
             name: "CLINT",
-            device_interface: &CLINT_MUTEX,
+            device_interface: &VIRT_CLINT,
         }
     }
 }
