@@ -15,6 +15,9 @@ test:
 	# Running unit tests...
 	cargo test --features userspace -p miralis
 
+	# Checking formatting...
+	cargo fmt --all -- --check
+
 	# Running integration tests...
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware csr_ops
@@ -29,9 +32,6 @@ test:
 
 	# Testing with external projects
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
-
-	# Checking formatting...
-	cargo fmt --all -- --check
 
 # Run unit tests
 unit-test:
