@@ -1,6 +1,6 @@
 //! Run subcommand
 //!
-//! The run subcommand launches a Mirage instance in QEMU with the provided Mirage and firmware
+//! The run subcommand launches a Miralis instance in QEMU with the provided Miralis and firmware
 //! images.
 
 use std::path::PathBuf;
@@ -27,13 +27,13 @@ const FIRMWARE_ADDR: u64 = 0x80200000;
 
 // —————————————————————————————————— Run ——————————————————————————————————— //
 
-/// Run Mirage on QEMU
+/// Run Miralis on QEMU
 pub fn run(args: &RunArgs) {
-    println!("Running Mirage with '{}' firmware", &args.firmware);
+    println!("Running Miralis with '{}' firmware", &args.firmware);
     let cfg = get_config(args);
 
     // Build or retrieve the artifacts to run
-    let mirage = build_target(Target::Mirage, &cfg);
+    let miralis = build_target(Target::Miralis, &cfg);
     let firmware = match locate_artifact(&args.firmware) {
         Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
         Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
@@ -45,7 +45,7 @@ pub fn run(args: &RunArgs) {
     qemu_cmd.args(QEMU_ARGS);
     qemu_cmd
         .arg("-bios")
-        .arg(mirage)
+        .arg(miralis)
         .arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",

@@ -18,7 +18,7 @@ struct CliArgs {
 
 #[derive(Subcommand)]
 enum Subcommands {
-    /// Run Mirage on QEMU
+    /// Run Miralis on QEMU
     Run(RunArgs),
     /// Start GDB and connect to a running instance
     Gdb(GdbArgs),

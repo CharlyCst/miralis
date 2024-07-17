@@ -1,11 +1,11 @@
 //! A mock of architecture specific features when running in user space.
 //!
-//! This implementation is useful for running Mirage on the host (potentially non-riscv)
+//! This implementation is useful for running Miralis on the host (potentially non-riscv)
 //! architecutre, such as when running unit tests.
 
 use super::Architecture;
 use crate::arch::{HardwareCapability, PmpGroup};
-use crate::host::MirageContext;
+use crate::host::MiralisContext;
 use crate::main;
 use crate::virt::VirtContext;
 
@@ -69,11 +69,11 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn switch_from_firmware_to_payload(_ctx: &mut VirtContext, _mctx: &mut MirageContext) {
+    unsafe fn switch_from_firmware_to_payload(_ctx: &mut VirtContext, _mctx: &mut MiralisContext) {
         todo!()
     }
 
-    unsafe fn switch_from_payload_to_firmware(_ctx: &mut VirtContext, _mctx: &mut MirageContext) {
+    unsafe fn switch_from_payload_to_firmware(_ctx: &mut VirtContext, _mctx: &mut MiralisContext) {
         todo!()
     }
 

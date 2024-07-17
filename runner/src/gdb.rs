@@ -1,6 +1,6 @@
 //! GDB subcommand
 //!
-//! The gdb subcommand launches a GDB session and attach it to a running Mirage instance.
+//! The gdb subcommand launches a GDB session and attach it to a running Miralis instance.
 
 use std::io;
 use std::process::{exit, Command, Stdio};
@@ -25,13 +25,13 @@ static GDB_EXECUTABLES: &[&'static str] = &[
 /// GDB can be distributed under different names, depending on the available targets, hence the
 /// need for such a function.
 fn build_gdb_command(gdb_executable: &str) -> Command {
-    // Retrieve the path of Mirage's binary
-    let mut mirage_path = get_target_dir_path(&Target::Mirage);
-    mirage_path.push("mirage");
+    // Retrieve the path of Miralis's binary
+    let mut miralis_path = get_target_dir_path(&Target::Miralis);
+    miralis_path.push("miralis");
 
     let mut gdb_cmd = Command::new(gdb_executable);
     gdb_cmd
-        .arg(&mirage_path)
+        .arg(&miralis_path)
         .arg("-q")
         .args(["-x", "./misc/setup.gdb"]);
     gdb_cmd

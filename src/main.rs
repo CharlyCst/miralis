@@ -1,4 +1,4 @@
-//! Mirage entry point
+//! Miralis entry point
 //!
 //! The main function is called directly after platform specific minimal setup (such as
 //! configuration of the stack).
@@ -25,7 +25,7 @@ use arch::{pmp, Arch, Architecture};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
-use crate::host::MirageContext;
+use crate::host::MiralisContext;
 use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -61,13 +61,13 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     // SAFETY: this lust happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
 
-    // Initialize Mirage's own context
-    let mut mctx = MirageContext::new(nb_pmp, hw);
+    // Initialize Miralis's own context
+    let mut mctx = MiralisContext::new(nb_pmp, hw);
 
     // Configure PMP registers, if available
     if nb_pmp >= 16 {
-        // Protect Mirage with the first pmp
-        let (start, size) = Plat::get_mirage_memory_start_and_size();
+        // Protect Miralis with the first pmp
+        let (start, size) = Plat::get_miralis_memory_start_and_size();
         mctx.pmp
             .set(0, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
         // Protect CLINT memory to trap firmware read/writes there
@@ -111,7 +111,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     main_loop(ctx, mctx);
 }
 
-fn main_loop(mut ctx: VirtContext, mut mctx: MirageContext) -> ! {
+fn main_loop(mut ctx: VirtContext, mut mctx: MiralisContext) -> ! {
     loop {
         unsafe {
             Arch::run_vcpu(&mut ctx);
@@ -120,7 +120,7 @@ fn main_loop(mut ctx: VirtContext, mut mctx: MirageContext) -> ! {
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
+fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     if log::log_enabled!(log::Level::Trace) {
         log_ctx(ctx);
     }
@@ -133,8 +133,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     }
 
     if ctx.trap_info.is_from_mmode() {
-        // Trap comes from M mode: Mirage
-        handle_mirage_trap(ctx);
+        // Trap comes from M mode: Miralis
+        handle_miralis_trap(ctx);
         return;
     }
 
@@ -162,17 +162,17 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MirageContext) {
     }
 }
 
-/// Handle the trap coming from mirage
-fn handle_mirage_trap(ctx: &mut VirtContext) {
+/// Handle the trap coming from miralis
+fn handle_miralis_trap(ctx: &mut VirtContext) {
     let trap = &ctx.trap_info;
-    log::error!("Unexpected trap while executing Mirage");
+    log::error!("Unexpected trap while executing Miralis");
     log::error!("  cause:   {} ({:?})", trap.mcause, trap.get_cause());
     log::error!("  mepc:    0x{:x}", trap.mepc);
     log::error!("  mtval:   0x{:x}", trap.mtval);
     log::error!("  mstatus: 0x{:x}", trap.mstatus);
     log::error!("  mip:     0x{:x}", trap.mip);
 
-    todo!("Mirage trap handler entered");
+    todo!("Miralis trap handler entered");
 }
 
 #[panic_handler]

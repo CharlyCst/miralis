@@ -14,7 +14,7 @@ use crate::driver::ClintDriver;
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
-const MIRAGE_START_ADDR: usize = 0x80000000;
+const MIRALIS_START_ADDR: usize = 0x80000000;
 const FIRMWARE_START_ADDR: usize = 0x80200000;
 const CLINT_BASE: usize = 0x2000000;
 
@@ -70,9 +70,9 @@ impl Platform for VirtPlatform {
         16
     }
 
-    fn get_mirage_memory_start_and_size() -> (usize, usize) {
-        let size = FIRMWARE_START_ADDR - MIRAGE_START_ADDR;
-        (MIRAGE_START_ADDR, size)
+    fn get_miralis_memory_start_and_size() -> (usize, usize) {
+        let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
+        (MIRALIS_START_ADDR, size)
     }
 
     fn get_max_valid_address() -> usize {

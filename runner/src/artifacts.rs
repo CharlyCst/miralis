@@ -20,7 +20,7 @@ use crate::path::{
 // —————————————————————————— Target & Build Info ——————————————————————————— //
 
 /// Target triple used to build the monitor.
-pub const MIRAGE_TARGET: &str = "riscv-unknown-mirage";
+pub const MIRALIS_TARGET: &str = "riscv-unknown-miralis";
 
 /// Target triple used to build the firmware.
 pub const FIRMWARE_TARGET: &str = "riscv-unknown-firmware";
@@ -32,7 +32,7 @@ const CARGO_ARGS: &[&str] = &[
 ];
 
 pub enum Target {
-    Mirage,
+    Miralis,
     Firmware(String),
 }
 
@@ -162,7 +162,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         .arg(get_target_config_path(&target));
 
     match target {
-        Target::Mirage => {
+        Target::Miralis => {
             build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script.x");
             build_cmd.envs(cfg.build_envs());
         }
@@ -187,9 +187,9 @@ fn objcopy(target: &Target) -> PathBuf {
     let mut bin_path = path.clone();
 
     match target {
-        Target::Mirage => {
-            elf_path.push("mirage");
-            bin_path.push("mirage.img");
+        Target::Miralis => {
+            elf_path.push("miralis");
+            bin_path.push("miralis.img");
         }
         Target::Firmware(firmware) => {
             elf_path.push(firmware);

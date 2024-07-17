@@ -1,7 +1,7 @@
 //! Firmware Virtualisation
 use core::usize;
 
-use mirage_core::abi;
+use miralis_core::abi;
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
 use crate::arch::{
@@ -10,7 +10,7 @@ use crate::arch::{
 };
 use crate::decoder::{decode, Instr};
 use crate::device::VirtDevice;
-use crate::host::MirageContext;
+use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::{debug, device, utils};
 
@@ -43,7 +43,7 @@ pub struct VirtContext {
     pub(crate) nb_pmp: usize,
     /// Hart ID
     pub(crate) hart_id: usize,
-    /// Number of exists to Mirage
+    /// Number of exists to Miralis
     pub(crate) nb_exits: usize,
 }
 
@@ -395,28 +395,28 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the firmware
-    pub fn handle_firmware_trap(&mut self, mctx: &MirageContext) {
+    pub fn handle_firmware_trap(&mut self, mctx: &MiralisContext) {
         let hw = &mctx.hw;
 
         let cause = self.trap_info.get_cause();
         match cause {
-            MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRAGE_EID => {
+            MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 let fid = self.get(Register::X16);
                 match fid {
-                    abi::MIRAGE_FAILURE_FID => {
+                    abi::MIRALIS_FAILURE_FID => {
                         log::error!("Payload panicked!");
                         log::error!("  pc:    0x{:x}", self.pc);
                         log::error!("  exits: {}", self.nb_exits);
                         unsafe { debug::log_stack_usage() };
                         Plat::exit_failure();
                     }
-                    abi::MIRAGE_SUCCESS_FID => {
+                    abi::MIRALIS_SUCCESS_FID => {
                         log::info!("Success!");
                         log::info!("Number of payload exits: {}", self.nb_exits);
                         unsafe { debug::log_stack_usage() };
                         Plat::exit_success();
                     }
-                    abi::MIRAGE_LOG_FID => {
+                    abi::MIRALIS_LOG_FID => {
                         let log_level = self.get(Register::X10);
                         let addr = self.get(Register::X11);
                         let size = self.get(Register::X12);
@@ -427,13 +427,13 @@ impl VirtContext {
                         let message = core::str::from_utf8(bytes)
                             .unwrap_or("note: invalid message, not utf-8");
                         match log_level {
-                            abi::log::MIRAGE_ERROR => log::error!("> {}", message),
-                            abi::log::MIRAGE_WARN => log::warn!("> {}", message),
-                            abi::log::MIRAGE_INFO => log::info!("> {}", message),
-                            abi::log::MIRAGE_DEBUG => log::debug!("> {}", message),
-                            abi::log::MIRAGE_TRACE => log::trace!("> {}", message),
+                            abi::log::MIRALIS_ERROR => log::error!("> {}", message),
+                            abi::log::MIRALIS_WARN => log::warn!("> {}", message),
+                            abi::log::MIRALIS_INFO => log::info!("> {}", message),
+                            abi::log::MIRALIS_DEBUG => log::debug!("> {}", message),
+                            abi::log::MIRALIS_TRACE => log::trace!("> {}", message),
                             _ => {
-                                log::info!("Mirage log SBI call with invalid level: {}", log_level)
+                                log::info!("Miralis log SBI call with invalid level: {}", log_level)
                             }
                         }
 
@@ -442,11 +442,11 @@ impl VirtContext {
                         self.set(Register::X11, 0);
                         self.pc += 4;
                     }
-                    _ => panic!("Invalid Mirage FID: 0x{:x}", fid),
+                    _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
                 }
             }
             MCause::EcallFromUMode => {
-                todo!("ecall is not yet supported for EID other than Mirage ABI");
+                todo!("ecall is not yet supported for EID other than Miralis ABI");
             }
             MCause::EcallFromSMode => {
                 todo!("ecall from smode is not yet supported")

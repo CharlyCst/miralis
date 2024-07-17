@@ -8,7 +8,7 @@ use crate::arch::mstatus::{self, MIE_FILTER, MPP_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{Arch, HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
-use crate::host::MirageContext;
+use crate::host::MiralisContext;
 use crate::virt::{VirtContext, VirtCsr};
 use crate::{_stack_start, main};
 
@@ -70,7 +70,7 @@ impl Architecture for MetalArch {
     unsafe fn detect_hardware() -> HardwareCapability {
         macro_rules! register_present {
              ($reg:expr) => {{
-                 // Install "tracer" handler, it allows mirage to know if it executed an illegal instruction
+                 // Install "tracer" handler, it allows miralis to know if it executed an illegal instruction
                  // and thus detects which registers aren't available
                  MetalArch::install_handler(_tracing_trap_handler as usize);
 
@@ -288,7 +288,7 @@ impl Architecture for MetalArch {
 
     /// Loads the S-mode CSR registers into the physical registers configures M-mode registers for
     /// payload execution.
-    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MirageContext) {
+    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         // First, restore S-mode registers
         asm!(
             "csrw stvec, {stvec}",
@@ -358,7 +358,7 @@ impl Architecture for MetalArch {
             options(nomem)
         );
 
-        // Load virtual PMP registers into Mirage's own registers
+        // Load virtual PMP registers into Miralis's own registers
         mctx.pmp.load_with_offset(
             &ctx.csr.pmpaddr,
             &ctx.csr.pmpcfg,
@@ -377,7 +377,7 @@ impl Architecture for MetalArch {
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
     /// 0) for running the virtual firmware in U-mode.
-    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MirageContext) {
+    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         // Save the registers into the virtual context.
         // We save them 3 by 3 to give the compiler more freedom to choose registers and re-order
         // code (which is possible because of the `nomem` option).
@@ -780,7 +780,7 @@ _tracing_trap_handler:
     csrrw x5, mscratch, x5
     addi x5, x0, 1
     csrrw x5, mscratch, x5
-    // Return back to mirage
+    // Return back to miralis
     mret
 #"
 );

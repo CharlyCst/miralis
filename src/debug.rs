@@ -1,4 +1,4 @@
-//! Debug utils for Mirage
+//! Debug utils for Miralis
 
 use crate::_stack_start;
 use crate::arch::{Arch, Architecture};

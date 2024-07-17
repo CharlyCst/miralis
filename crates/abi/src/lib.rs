@@ -1,16 +1,16 @@
-//! Mirage ABI
+//! Miralis ABI
 //!
-//! While mirage forwards standard SBI calls to the virtualized firmware, mirage do expose its own
+//! While miralis forwards standard SBI calls to the virtualized firmware, miralis do expose its own
 //! ABI for the firmware to interact with.
 //!
-//! The Mirage ABI tries to be compatible with the SBI specification as best as it can.
+//! The Miralis ABI tries to be compatible with the SBI specification as best as it can.
 //! See: https://github.com/riscv-non-isa/riscv-sbi-doc
 #![no_std]
 
 use core::arch::asm;
 use core::hint;
 
-use mirage_core::abi;
+use miralis_core::abi;
 
 pub mod logger;
 
@@ -18,21 +18,21 @@ pub use log;
 
 // ———————————————————————————— Client Functions ———————————————————————————— //
 
-/// Ask Mirage to exit with a success error code.
+/// Ask Miralis to exit with a success error code.
 pub fn success() -> ! {
-    unsafe { mirage_ecall(abi::MIRAGE_SUCCESS_FID).ok() };
+    unsafe { miralis_ecall(abi::MIRALIS_SUCCESS_FID).ok() };
 
-    // Loop forever, this should never happen as Mirage will terminate the execution before.
+    // Loop forever, this should never happen as Miralis will terminate the execution before.
     loop {
         hint::spin_loop();
     }
 }
 
-/// Ask Mirage to exit with a failure error code.
+/// Ask Miralis to exit with a failure error code.
 pub fn failure() -> ! {
-    unsafe { mirage_ecall(abi::MIRAGE_FAILURE_FID).ok() };
+    unsafe { miralis_ecall(abi::MIRALIS_FAILURE_FID).ok() };
 
-    // Loop forever, this should never happen as Mirage will terminate the execution before.
+    // Loop forever, this should never happen as Miralis will terminate the execution before.
     loop {
         hint::spin_loop();
     }
@@ -42,7 +42,7 @@ pub fn failure() -> ! {
 
 /// Configure the firmware entry point and panic handler.
 ///
-/// This macro prepares all the boiler plate required by Mirage's firmware.
+/// This macro prepares all the boiler plate required by Miralis's firmware.
 #[macro_export]
 macro_rules! setup_firmware {
     ($path:path) => {
@@ -86,9 +86,9 @@ macro_rules! setup_firmware {
     };
 }
 
-/// Configure a panic handler for a Mirage firmware.
+/// Configure a panic handler for a Miralis firmware.
 ///
-/// The handler uses the Mirage ABI to gracefully exit with an error.
+/// The handler uses the Miralis ABI to gracefully exit with an error.
 #[macro_export]
 macro_rules! firmware_panic {
     () => {
@@ -103,14 +103,14 @@ macro_rules! firmware_panic {
 // ————————————————————————————————— Utils —————————————————————————————————— //
 
 #[inline]
-unsafe fn mirage_ecall(fid: usize) -> Result<usize, usize> {
+unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
     let error: usize;
     let value: usize;
 
     asm!(
         "ecall",
         in("a6") fid,
-        in("a7") abi::MIRAGE_EID,
+        in("a7") abi::MIRALIS_EID,
         out("a0") error,
         out("a1") value,
     );

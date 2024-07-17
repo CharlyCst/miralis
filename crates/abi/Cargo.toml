@@ -1,8 +1,8 @@
 [package]
-name = "mirage_abi"
+name = "miralis_abi"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mirage_core = { path = "../core" }
+miralis_core = { path = "../core" }
 log = { workspace = true }

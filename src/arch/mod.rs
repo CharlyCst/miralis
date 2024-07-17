@@ -16,7 +16,7 @@ pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
-use crate::host::MirageContext;
+use crate::host::MiralisContext;
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -45,8 +45,8 @@ pub trait Architecture {
     unsafe fn write_mie(mie: usize);
     unsafe fn sfence_vma();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
-    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MirageContext);
-    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MirageContext);
+    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MiralisContext);
+    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MiralisContext);
 
     /// Wait for interrupt
     fn wfi();
@@ -130,7 +130,7 @@ impl Mode {
         }
     }
 
-    /// Returns the Mirage execution mode corresponding the virtual mode.
+    /// Returns the Miralis execution mode corresponding the virtual mode.
     pub fn to_exec_mode(self) -> ExecutionMode {
         match self {
             Mode::M => ExecutionMode::Firmware,
@@ -172,7 +172,7 @@ pub mod misa {
     pub const X: usize = 1 << 23;
 
     /// Machine XLEN (i.e. one of 32, 64 or 128 bits).
-    /// For now Mirage only supports 64 bits.
+    /// For now Miralis only supports 64 bits.
     pub const MXL: usize = 0b10 << (core::mem::size_of::<usize>() * 8 - 2);
 
     /// Architecture extensions disabled by the current configuration

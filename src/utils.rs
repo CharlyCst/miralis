@@ -1,6 +1,6 @@
 //! Utils
 //!
-//! This module expose utilities used accross Mirage, such as types or helper functions.
+//! This module expose utilities used accross Miralis, such as types or helper functions.
 
 use core::marker::PhantomData;
 

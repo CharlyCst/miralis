@@ -1,5 +1,5 @@
 [package]
-name = "mirage"
+name = "miralis"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,7 @@ edition = "2021"
 uart_16550 = "0.3.0"
 spin = "0.5.2"
 log = { workspace = true }
-mirage_core = { path = "crates/core" }
+miralis_core = { path = "crates/core" }
 
 [features]
 # When running on host architecture as a userspace application, such as when

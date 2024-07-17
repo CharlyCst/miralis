@@ -1,12 +1,12 @@
-//! Mirage SBI logger
+//! Miralis SBI logger
 //!
-//! This is a logger implementation that uses the Mirage SBI to log messages.
+//! This is a logger implementation that uses the Miralis SBI to log messages.
 
 use core::arch::asm;
 use core::fmt::Write;
 
 use log::{LevelFilter, Metadata, Record};
-use mirage_core::abi;
+use miralis_core::abi;
 
 // ————————————————————————————————— Logger ————————————————————————————————— //
 
@@ -14,7 +14,7 @@ pub struct Logger {}
 
 impl log::Log for Logger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
-        // Log is always enabled for all levels, filtering is done by Mirage depending on its
+        // Log is always enabled for all levels, filtering is done by Miralis depending on its
         // configuration
         true
     }
@@ -28,14 +28,14 @@ impl log::Log for Logger {
             write!(&mut buff, "{}", record.args()).ok();
 
             // Prepare ecall arguments
-            let eid = abi::MIRAGE_EID;
-            let fid = abi::MIRAGE_LOG_FID;
+            let eid = abi::MIRALIS_EID;
+            let fid = abi::MIRALIS_LOG_FID;
             let level = match record.level() {
-                log::Level::Error => abi::log::MIRAGE_ERROR,
-                log::Level::Warn => abi::log::MIRAGE_WARN,
-                log::Level::Info => abi::log::MIRAGE_INFO,
-                log::Level::Debug => abi::log::MIRAGE_DEBUG,
-                log::Level::Trace => abi::log::MIRAGE_TRACE,
+                log::Level::Error => abi::log::MIRALIS_ERROR,
+                log::Level::Warn => abi::log::MIRALIS_WARN,
+                log::Level::Info => abi::log::MIRALIS_INFO,
+                log::Level::Debug => abi::log::MIRALIS_DEBUG,
+                log::Level::Trace => abi::log::MIRALIS_TRACE,
             };
             let addr = buff.buff.as_ptr() as usize;
             let len = buff.cursor;

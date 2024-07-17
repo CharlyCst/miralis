@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::artifacts::{Target, FIRMWARE_TARGET, MIRAGE_TARGET};
+use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET};
 
 /// Return the root of the workspace.
 pub fn get_workspace_path() -> PathBuf {
@@ -19,7 +19,7 @@ pub fn get_target_dir_path(target: &Target) -> PathBuf {
     let mut path = get_workspace_path();
     path.push("target");
     match target {
-        Target::Mirage => path.push(MIRAGE_TARGET),
+        Target::Miralis => path.push(MIRALIS_TARGET),
         Target::Firmware(_) => path.push(FIRMWARE_TARGET),
     }
     path.push("debug"); // TODO: add support for release mode
@@ -51,8 +51,8 @@ pub fn get_artifacts_path() -> PathBuf {
 pub fn get_target_config_path(target: &Target) -> PathBuf {
     let mut path = get_misc_path();
     match target {
-        Target::Mirage => {
-            path.push(format!("{}.json", MIRAGE_TARGET));
+        Target::Miralis => {
+            path.push(format!("{}.json", MIRALIS_TARGET));
         }
         Target::Firmware(_) => path.push(format!("{}.json", FIRMWARE_TARGET)),
     }

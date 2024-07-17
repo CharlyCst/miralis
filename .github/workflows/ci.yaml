@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  Mirage:
+  Miralis:
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: --deny warnings

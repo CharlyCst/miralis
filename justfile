@@ -13,7 +13,7 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features userspace -p mirage
+	cargo test --features userspace -p miralis
 
 	# Running integration tests...
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
@@ -35,17 +35,17 @@ test:
 
 # Run unit tests
 unit-test:
-	cargo test --features userspace -p mirage
+	cargo test --features userspace -p miralis
 
-# Run Mirage
+# Run Miralis
 run firmware=default:
 	cargo run --package runner -- run -v --firmware {{firmware}}
 
-# Run Mirage but wait for a debugger to connect
+# Run Miralis but wait for a debugger to connect
 debug firmware=default:
 	cargo run --package runner -- run -v --firmware {{firmware}} --debug --stop
 
-# Connect a debugger to a running Mirage instance
+# Connect a debugger to a running Miralis instance
 gdb:
 	cargo run --package runner -- gdb
 

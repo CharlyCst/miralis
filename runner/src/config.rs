@@ -1,7 +1,7 @@
-//! Mirage configuration
+//! Miralis configuration
 //!
 //! The configuration is read from the `config.toml` file by the runner which will configure the
-//! appropriate environment variables during Mirage's build.
+//! appropriate environment variables during Miralis's build.
 
 use std::collections::HashMap;
 use std::fs;
@@ -80,37 +80,37 @@ impl Log {
 
         // Global log level
         if let Some(level) = &self.level {
-            envs.insert(String::from("MIRAGE_LOG_LEVEL"), level.clone());
+            envs.insert(String::from("MIRALIS_LOG_LEVEL"), level.clone());
         }
 
         // Decides between colored and gray output
         if let Some(color) = self.color {
-            envs.insert(String::from("MIRAGE_LOG_COLOR"), format!("{}", color));
+            envs.insert(String::from("MIRALIS_LOG_COLOR"), format!("{}", color));
         }
 
         // Modules logged at error level
         if let Some(error) = &self.error {
-            envs.insert(String::from("MIRAGE_LOG_ERROR"), format_env_array(error));
+            envs.insert(String::from("MIRALIS_LOG_ERROR"), format_env_array(error));
         }
 
         // Modules logged at warn level
         if let Some(warn) = &self.warn {
-            envs.insert(String::from("MIRAGE_LOG_WARN"), format_env_array(warn));
+            envs.insert(String::from("MIRALIS_LOG_WARN"), format_env_array(warn));
         }
 
         // Modules logged at info level
         if let Some(info) = &self.info {
-            envs.insert(String::from("MIRAGE_LOG_INFO"), format_env_array(info));
+            envs.insert(String::from("MIRALIS_LOG_INFO"), format_env_array(info));
         }
 
         // Modules logged at debug level
         if let Some(debug) = &self.debug {
-            envs.insert(String::from("MIRAGE_LOG_DEBUG"), format_env_array(debug));
+            envs.insert(String::from("MIRALIS_LOG_DEBUG"), format_env_array(debug));
         }
 
         // Modules logged at trace level
         if let Some(trace) = &self.trace {
-            envs.insert(String::from("MIRAGE_LOG_TRACE"), format_env_array(trace));
+            envs.insert(String::from("MIRALIS_LOG_TRACE"), format_env_array(trace));
         }
 
         envs
@@ -122,7 +122,7 @@ impl Debug {
         let mut envs = HashMap::new();
         if let Some(max_firmware_exits) = self.max_firmware_exits {
             envs.insert(
-                String::from("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS"),
+                String::from("MIRALIS_DEBUG_MAX_FIRMWARE_EXITS"),
                 format!("{}", max_firmware_exits),
             );
         }
@@ -134,10 +134,10 @@ impl VCpu {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = HashMap::new();
         if let Some(s_mode) = self.s_mode {
-            envs.insert(String::from("MIRAGE_VCPU_S_MODE"), format!("{}", s_mode));
+            envs.insert(String::from("MIRALIS_VCPU_S_MODE"), format!("{}", s_mode));
         }
         if let Some(max_pmp) = self.max_pmp {
-            envs.insert(String::from("MIRAGE_VCPU_MAX_PMP"), format!("{}", max_pmp));
+            envs.insert(String::from("MIRALIS_VCPU_MAX_PMP"), format!("{}", max_pmp));
         }
         envs
     }
@@ -148,13 +148,13 @@ impl Platform {
         let mut envs = HashMap::new();
         if let Some(nb_harts) = self.nb_harts {
             envs.insert(
-                String::from("MIRAGE_PLATFORM_NB_HARTS"),
+                String::from("MIRALIS_PLATFORM_NB_HARTS"),
                 format!("{}", nb_harts),
             );
         }
         if let Some(stack_size) = self.stack_size {
             envs.insert(
-                String::from("MIRAGE_PLATFORM_STACK_SIZE"),
+                String::from("MIRALIS_PLATFORM_STACK_SIZE"),
                 format!("{}", stack_size),
             );
         }
