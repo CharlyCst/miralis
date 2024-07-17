@@ -6,7 +6,7 @@ set print demangle
 set print asm-demangle
 
 # Define an helper function to load firmware symbols.
-# The symbols are not loaded by default to prevent collisions with Mirage's own symbols
+# The symbols are not loaded by default to prevent collisions with Miralis's own symbols
 define firmware
     add-symbol-file target/riscv-unknown-firmware/debug/default 0x80200000
 end

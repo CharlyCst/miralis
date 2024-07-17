@@ -3,7 +3,7 @@
 
 use core::arch::global_asm;
 
-use mirage_abi::firmware_panic;
+use miralis_abi::firmware_panic;
 
 global_asm!(
     r#"
@@ -11,8 +11,8 @@ global_asm!(
 .align 4
 .global _start
 _start:
-    li a6, 1           // Mirage ABI FID: success
-    li a7, 0x08475bcd  // Mirage ABI EID
+    li a6, 1           // Miralis ABI FID: success
+    li a7, 0x08475bcd  // Miralis ABI EID
     ecall
 "#,
 );

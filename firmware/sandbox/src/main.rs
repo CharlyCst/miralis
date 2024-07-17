@@ -1,6 +1,6 @@
 //! Sandboxing test
 //!
-//! This test firmware checks that Mirage is properly protected, or in other words that the
+//! This test firmware checks that Miralis is properly protected, or in other words that the
 //! firmware is properly sandboxed.
 
 #![no_std]
@@ -9,7 +9,7 @@
 use core::arch::{asm, global_asm};
 use core::ptr;
 
-use mirage_abi::{setup_firmware, success};
+use miralis_abi::{setup_firmware, success};
 
 setup_firmware!(main);
 
@@ -22,7 +22,7 @@ fn main() -> ! {
             handler = in(reg) _raw_trap_handler as usize,
         );
 
-        // Try to read an address that should be protected by Mirage
+        // Try to read an address that should be protected by Miralis
         let x: usize = 0x80002000;
         ptr::read_volatile(x as *const usize);
 

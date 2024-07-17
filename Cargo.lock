@@ -66,7 +66,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 name = "breakpoint"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
@@ -120,7 +120,7 @@ name = "csr_ops"
 version = "0.1.0"
 dependencies = [
  "log",
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
@@ -128,14 +128,14 @@ name = "default"
 version = "0.1.0"
 dependencies = [
  "log",
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
 name = "ecall"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
@@ -171,7 +171,7 @@ name = "interrupt"
 version = "0.1.0"
 dependencies = [
  "log",
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
@@ -184,7 +184,7 @@ checksum = "b5e6163cb8c49088c2c36f57875e58ccd8c87c7427f7fbd50ea6710b2f3f2e8f"
 name = "mcause"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
@@ -197,50 +197,50 @@ checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 name = "mepc"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
-name = "mirage"
+name = "miralis"
 version = "0.1.0"
 dependencies = [
  "log",
- "mirage_core",
+ "miralis_core",
  "spin",
  "uart_16550",
 ]
 
 [[package]]
-name = "mirage_abi"
+name = "miralis_abi"
 version = "0.1.0"
 dependencies = [
  "log",
- "mirage_core",
+ "miralis_core",
 ]
 
 [[package]]
-name = "mirage_core"
+name = "miralis_core"
 version = "0.1.0"
 
 [[package]]
 name = "mret"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
 name = "os_ctx_switch"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
 name = "pmp"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]
@@ -289,7 +289,7 @@ checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 name = "sandbox"
 version = "0.1.0"
 dependencies = [
- "mirage_abi",
+ "miralis_abi",
 ]
 
 [[package]]

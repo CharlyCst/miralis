@@ -3,7 +3,7 @@
 
 use core::arch::asm;
 
-use mirage_abi::{setup_firmware, success};
+use miralis_abi::{setup_firmware, success};
 
 setup_firmware!(main);
 

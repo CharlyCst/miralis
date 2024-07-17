@@ -1,7 +1,7 @@
 //! Configuration constants
 //!
-//! The constants in this file are parsed from the Mirage configuration file (passed through
-//! environment variables by the runner during Mirage build).
+//! The constants in this file are parsed from the Miralis configuration file (passed through
+//! environment variables by the runner during Miralis build).
 
 // ———————————————————————————————— Helpers ————————————————————————————————— //
 
@@ -26,7 +26,7 @@ macro_rules! is_enabled {
 // Can be removed once usize::from_str_radix stabilized as const, hopefully soon.
 // See https://github.com/rust-lang/rust/pull/124941
 //
-// Source (and license), adapted for Mirage:
+// Source (and license), adapted for Miralis:
 // https://gist.github.com/DutchGhost/d8604a3c796479777fe9f5e25d855cfd
 // —————————————————————————————————————————————————————————————————————————— //
 
@@ -161,44 +161,44 @@ const fn parse_usize_or(env_var: Option<&str>, default: usize) -> usize {
 // ———————————————————————— Configuration Parameters ———————————————————————— //
 
 /// Weather the vCPU exposes S-mode.
-pub const VCPU_S_MODE: bool = is_enabled!("MIRAGE_VCPU_S_MODE");
+pub const VCPU_S_MODE: bool = is_enabled!("MIRALIS_VCPU_S_MODE");
 
 /// Maximum number of PMP exposed by the vCPU, no limit if None.
-pub const VCPU_MAX_PMP: Option<usize> = parse_usize(option_env!("MIRAGE_VCPU_MAX_PMP"));
+pub const VCPU_MAX_PMP: Option<usize> = parse_usize(option_env!("MIRALIS_VCPU_MAX_PMP"));
 
 /// The desired log level.
-pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRAGE_LOG_LEVEL");
+pub const LOG_LEVEL: Option<&'static str> = option_env!("MIRALIS_LOG_LEVEL");
 
 /// If colors in logs are enabled.
-pub const LOG_COLOR: bool = is_enabled!("MIRAGE_LOG_COLOR");
+pub const LOG_COLOR: bool = is_enabled!("MIRALIS_LOG_COLOR");
 
 /// The maximum number of firmware exits before quitting.
 pub const MAX_FIRMWARE_EXIT: Option<usize> =
-    parse_usize(option_env!("MIRAGE_DEBUG_MAX_FIRMWARE_EXITS"));
+    parse_usize(option_env!("MIRALIS_DEBUG_MAX_FIRMWARE_EXITS"));
 
 /// Log error
-pub const LOG_ERROR: &[&str; str_list_len(option_env!("MIRAGE_LOG_ERROR"))] =
-    &parse_str_list(option_env!("MIRAGE_LOG_ERROR"));
+pub const LOG_ERROR: &[&str; str_list_len(option_env!("MIRALIS_LOG_ERROR"))] =
+    &parse_str_list(option_env!("MIRALIS_LOG_ERROR"));
 
 /// Log warn
-pub const LOG_WARN: &[&str; str_list_len(option_env!("MIRAGE_LOG_WARN"))] =
-    &parse_str_list(option_env!("MIRAGE_LOG_WARN"));
+pub const LOG_WARN: &[&str; str_list_len(option_env!("MIRALIS_LOG_WARN"))] =
+    &parse_str_list(option_env!("MIRALIS_LOG_WARN"));
 
 /// Log info
-pub const LOG_INFO: &[&str; str_list_len(option_env!("MIRAGE_LOG_INFO"))] =
-    &parse_str_list(option_env!("MIRAGE_LOG_INFO"));
+pub const LOG_INFO: &[&str; str_list_len(option_env!("MIRALIS_LOG_INFO"))] =
+    &parse_str_list(option_env!("MIRALIS_LOG_INFO"));
 
 /// Log debug
-pub const LOG_DEBUG: &[&str; str_list_len(option_env!("MIRAGE_LOG_DEBUG"))] =
-    &parse_str_list(option_env!("MIRAGE_LOG_DEBUG"));
+pub const LOG_DEBUG: &[&str; str_list_len(option_env!("MIRALIS_LOG_DEBUG"))] =
+    &parse_str_list(option_env!("MIRALIS_LOG_DEBUG"));
 
 /// Log trace
-pub const LOG_TRACE: &[&str; str_list_len(option_env!("MIRAGE_LOG_TRACE"))] =
-    &parse_str_list(option_env!("MIRAGE_LOG_TRACE"));
+pub const LOG_TRACE: &[&str; str_list_len(option_env!("MIRALIS_LOG_TRACE"))] =
+    &parse_str_list(option_env!("MIRALIS_LOG_TRACE"));
 
 /// The expected number of harts.
-pub const PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRAGE_PLATFORM_NB_HARTS"), 1);
+pub const PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRALIS_PLATFORM_NB_HARTS"), 1);
 
-/// The stack size for each Mirage thread (one per hart).
+/// The stack size for each Miralis thread (one per hart).
 pub const PLATFORM_STACK_SIZE: usize =
-    parse_usize_or(option_env!("MIRAGE_PLATFORM_STACK_SIZE"), 0x8000);
+    parse_usize_or(option_env!("MIRALIS_PLATFORM_STACK_SIZE"), 0x8000);

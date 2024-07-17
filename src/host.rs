@@ -1,14 +1,14 @@
-//! Host (Mirage) Context
+//! Host (Miralis) Context
 //!
-//! This module exposes the host context as [MirageCtx], which holds Mirage's own configuration registers.
+//! This module exposes the host context as [MiralisCtx], which holds Miralis's own configuration registers.
 
 use crate::arch::pmp::PmpGroup;
 use crate::arch::HardwareCapability;
 use crate::device;
 use crate::platform::{Plat, Platform};
 
-/// The Mirage Context, holding configuration registers for Mirage.
-pub struct MirageContext {
+/// The Miralis Context, holding configuration registers for Miralis.
+pub struct MiralisContext {
     /// Configuration of the host PMP
     pub pmp: PmpGroup,
     /// The offset of the virutal PMP registers, compared to physical PMP.
@@ -19,8 +19,8 @@ pub struct MirageContext {
     pub devices: [device::VirtDevice; 1],
 }
 
-impl MirageContext {
-    /// Creates a new Mirage context with default values.
+impl MiralisContext {
+    /// Creates a new Miralis context with default values.
     pub fn new(nb_pmp: usize, hw: HardwareCapability) -> Self {
         Self {
             pmp: PmpGroup::new(nb_pmp),

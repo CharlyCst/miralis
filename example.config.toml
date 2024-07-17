@@ -1,6 +1,6 @@
-# Mirage configuration example
+# Miralis configuration example
 #
-# To configure Mirage create a copy of that file named config.toml
+# To configure Miralis create a copy of that file named config.toml
 
 [log]
 # The default log level
@@ -15,8 +15,8 @@ level = "info"
 # default log level (e.g. 'info' or 'warn').
 #
 # By default only the default log level is taken into account.
-trace = ["mirage::virt", "mirage::arch::metal"]
-debug = ["mirage::arch"]
+trace = ["miralis::virt", "miralis::arch::metal"]
+debug = ["miralis::arch"]
 info = []
 warn = []
 error = []
