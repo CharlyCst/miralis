@@ -1,4 +1,5 @@
 pub mod virt;
+pub mod visionfive2;
 
 use core::fmt;
 
@@ -11,9 +12,14 @@ use crate::{config, device, logger};
 
 /// Export the current platform.
 /// For now, only QEMU's Virt board is supported
+#[cfg(not(feature = "platform_visionfive2"))]
 pub type Plat = virt::VirtPlatform;
 
+#[cfg(feature = "platform_visionfive2")]
+pub type Plat = visionfive2::VisionFive2Platform;
+
 pub trait Platform {
+    fn name() -> &'static str;
     fn init();
     fn debug_print(args: fmt::Arguments);
     fn exit_success() -> !;
@@ -34,6 +40,7 @@ pub trait Platform {
     fn get_max_valid_address() -> usize;
 
     const HAS_S_MODE: bool = config::VCPU_S_MODE;
+    const NB_HARTS: usize;
 }
 
 pub fn init() {

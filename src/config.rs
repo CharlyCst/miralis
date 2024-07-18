@@ -5,6 +5,8 @@
 
 // ———————————————————————————————— Helpers ————————————————————————————————— //
 
+use crate::platform::{Plat, Platform};
+
 /// Helper macro to check is boolean choice is enabled by the configuration, defaulting to yes.
 ///
 /// The current implementation works around the limitation of const functions in rust at the
@@ -197,7 +199,14 @@ pub const LOG_TRACE: &[&str; str_list_len(option_env!("MIRALIS_LOG_TRACE"))] =
     &parse_str_list(option_env!("MIRALIS_LOG_TRACE"));
 
 /// The expected number of harts.
-pub const PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRALIS_PLATFORM_NB_HARTS"), 1);
+pub const PLATFORM_NB_HARTS: usize = {
+    const MAX_NB_HARTS: usize = parse_usize_or(option_env!("MIRALIS_PLATFORM_NB_HARTS"), 1);
+    if MAX_NB_HARTS < Plat::NB_HARTS {
+        MAX_NB_HARTS
+    } else {
+        Plat::NB_HARTS
+    }
+};
 
 /// The stack size for each Miralis thread (one per hart).
 pub const PLATFORM_STACK_SIZE: usize =

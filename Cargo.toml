@@ -13,6 +13,7 @@ miralis_core = { path = "crates/core" }
 # When running on host architecture as a userspace application, such as when
 # running unit tests.
 userspace = []
+platform_visionfive2 = []
 
 [profile.dev]
 panic = "abort"

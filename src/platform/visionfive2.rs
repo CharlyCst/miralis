@@ -1,23 +1,23 @@
 //! QEMU Virt board
 
 use core::fmt::Write;
-use core::{fmt, ptr};
+use core::{fmt, hint};
 
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
 use super::Platform;
+use crate::arch::{Arch, Architecture};
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRALIS_START_ADDR: usize = 0x80000000;
 const FIRMWARE_START_ADDR: usize = 0x80200000;
 const CLINT_BASE: usize = 0x2000000;
-const PMP_NUMBER: usize = 16;
+const PMP_NUMBER: usize = 8;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -34,13 +34,13 @@ static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
-pub struct VirtPlatform {}
+pub struct VisionFive2Platform {}
 
-impl Platform for VirtPlatform {
-    const NB_HARTS: usize = usize::MAX;
+impl Platform for VisionFive2Platform {
+    const NB_HARTS: usize = 5;
 
     fn name() -> &'static str {
-        "QEMU virt"
+        "VisionFive 2 board"
     }
 
     fn init() {
@@ -61,15 +61,20 @@ impl Platform for VirtPlatform {
     }
 
     fn exit_success() -> ! {
-        exit_qemu(true)
+        loop {
+            Arch::wfi();
+            hint::spin_loop();
+        }
     }
 
     fn exit_failure() -> ! {
-        exit_qemu(false)
+        loop {
+            Arch::wfi();
+            hint::spin_loop();
+        }
     }
 
     fn load_firmware() -> usize {
-        // We directly load the firmware from QEMU, nothing to do here.
         FIRMWARE_START_ADDR
     }
 
@@ -97,19 +102,5 @@ impl Platform for VirtPlatform {
 
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
-    }
-}
-
-fn exit_qemu(success: bool) -> ! {
-    let code = if success { 0x5555 } else { (1 << 16) | 0x3333 };
-
-    unsafe {
-        let mmio_addr = TEST_MMIO_ADDRESS as *mut i32;
-        ptr::write_volatile(mmio_addr, code);
-    }
-
-    // Loop forever if shutdown failed
-    loop {
-        core::hint::spin_loop();
     }
 }
