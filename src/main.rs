@@ -45,6 +45,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     init();
     log::info!("Hello, world!");
+    log::info!("Platform name: {}", Plat::name());
     log::info!("Hart ID: {}", hart_id);
     log::info!("misa:    0x{:x}", Arch::read_misa());
     log::info!("vmisa:   0x{:x}", Arch::read_misa() & !misa::DISABLED);
