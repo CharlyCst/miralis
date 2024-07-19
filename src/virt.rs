@@ -329,32 +329,28 @@ impl VirtContext {
                     }
                 }
             }
+            Instr::Sd { rs1, rs2, imm } => {
+                let address = utils::calculate_addr(self.get(rs1), *imm);
+                let offset = address - device.start_addr;
+                match device.device_interface.write_device(offset, self.get(rs2)) {
+                    Ok(()) => self.pc += 4,
+                    Err(err) => panic!("Error writing {}: {}", device.name, err),
+                }
+            }
             Instr::CSd { rs1, rs2, imm } => {
                 let address = self.get(rs1) + imm * 8;
                 let offset = address - device.start_addr;
-                let data = self.get(rs2);
-                match device.device_interface.write_device(offset, data) {
-                    Ok(()) => {
-                        self.set(rs1, data);
-                        self.pc += 2;
-                    }
-                    Err(err) => {
-                        panic!("Error writing {}: {}", device.name, err);
-                    }
+                match device.device_interface.write_device(offset, self.get(rs2)) {
+                    Ok(()) => self.pc += 2,
+                    Err(err) => panic!("Error writing {}: {}", device.name, err),
                 }
             }
             Instr::CSw { rs1, rs2, imm } => {
                 let address = self.get(rs1) + imm * 4;
                 let offset = address - device.start_addr;
-                let data = self.get(rs2);
-                match device.device_interface.write_device(offset, data) {
-                    Ok(()) => {
-                        self.set(rs1, data);
-                        self.pc += 2;
-                    }
-                    Err(err) => {
-                        panic!("Error writing {}: {}", device.name, err);
-                    }
+                match device.device_interface.write_device(offset, self.get(rs2)) {
+                    Ok(()) => self.pc += 2,
+                    Err(err) => panic!("Error writing {}: {}", device.name, err),
                 }
             }
             _ => todo!("Instruction not yet implemented: {:?}", instr),
