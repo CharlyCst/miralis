@@ -38,7 +38,7 @@ Similar to `just run`, `just debug` takes an optional firmware argument which ca
 Debugging with GDB requires a RISC-V capable GDB executable in path.
 If `just gdb` can't locate such a binary it will provide a list of supported GDB binaries, installing any one of them will resolve the issue.
 
-The log level can be adjusted using a `config.toml` file. See `example.config.toml` for reference.
+The log level can be adjusted using a `config.toml` file. See `./config/example.config.toml` for reference.
 
 ## Contributing
 

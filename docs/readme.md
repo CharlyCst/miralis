@@ -139,6 +139,18 @@ But **not** like this:
 //and this
 ```
 
+## Configuration
+
+Miralis uses [toml](https://toml.io/) for configuration.
+Pre-defined configurations can be found in the `./config` directory.
+In particular, the `./config/example.config.toml` list the valid configuration fields with explanatory comments.
+
+The Miralis build tool will by default look for a configuration named `config.toml` at the root of this repository (this file is ignored by the `.gitignore`, so that each developer can keep its own), but there are default value for every field in case none is found.
+Using a custom `config.toml` file is recommended for developing and debugging, it exposes utilities such as configuring the log level (globally or on a per-module basis) and limiting the maximum number of firmware traps to prevent infinite loops.
+
+Configurations are especially important when building for a particular platform.
+The `just build` command takes a configuration as argument for instance, from which the appropriate platform will be selected (for instance `visionfive2` or `qemu_virt`).
+
 ## Test Artifacts
 
 In addition to writing our own test firmware, we test Miarge against third party projects.

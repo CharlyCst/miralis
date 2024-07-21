@@ -11,7 +11,7 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
-use crate::config::Config;
+use crate::config::{Config, Platforms};
 use crate::path::{
     get_artifact_manifest_path, get_artifacts_path, get_target_config_path, get_target_dir_path,
     get_workspace_path, is_older,
@@ -170,6 +170,16 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         Target::Miralis => {
             build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script.x");
             build_cmd.envs(cfg.build_envs());
+            if let Some(plat) = cfg.platform.name {
+                match plat {
+                    Platforms::QemuVirt => {
+                        // Nothing to do, default platform
+                    }
+                    Platforms::VisionFive2 => {
+                        build_cmd.arg("--features").arg("platform_visionfive2");
+                    }
+                }
+            }
         }
         Target::Firmware(ref firmware) => {
             build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script-firmware.x");

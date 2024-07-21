@@ -40,6 +40,10 @@ s_mode = true
 max_pmp = 8
 
 [platform]
+# Name of the platform (i.e. board) to compile for.
+# Default to "qemu_virt"
+name = "qemu_virt"
+
 # Nuber of harts (i.e. cores).
 # Default to 1.
 nb_harts = 1
