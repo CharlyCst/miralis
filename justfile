@@ -1,6 +1,6 @@
 default          := "default"
-qemu_virt        := "./misc/qemu-virt.toml"
-qemu_virt_2harts := "./misc/qemu-virt.toml"
+qemu_virt        := "./config/test/qemu-virt.toml"
+qemu_virt_2harts := "./config/test/qemu-virt.toml"
 
 # Print the list of commands
 help:
@@ -17,6 +17,9 @@ test:
 
 	# Checking formatting...
 	cargo fmt --all -- --check
+
+	# Checking configs...
+	cargo run --package runner -- check-config ./config/example.config.toml
 
 	# Running integration tests...
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
@@ -40,6 +43,10 @@ unit-test:
 # Run Miralis
 run firmware=default:
 	cargo run --package runner -- run -v --firmware {{firmware}}
+
+# Build Miralis with the provided config
+build config:
+	cargo run --package runner -- build --config {{config}}
 
 # Run Miralis but wait for a debugger to connect
 debug firmware=default:
