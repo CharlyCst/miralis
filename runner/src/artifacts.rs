@@ -168,8 +168,15 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 
     match target {
         Target::Miralis => {
-            build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script.x");
+            // Linker arguments
+            let start_address = cfg.platform.start_address.unwrap_or(0x80000000);
+            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={start_address}");
+            build_cmd.env("RUSTFLAGS", linker_args);
+
+            // Environment variables
             build_cmd.envs(cfg.build_envs());
+
+            // Features
             if let Some(plat) = cfg.platform.name {
                 match plat {
                     Platforms::QemuVirt => {

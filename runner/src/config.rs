@@ -58,6 +58,7 @@ pub struct Platform {
     pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
     pub stack_size: Option<usize>,
+    pub start_address: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]

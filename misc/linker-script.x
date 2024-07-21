@@ -1,9 +1,8 @@
-STACK_SIZE = 0x8000;
-
 SECTIONS
 {
   /* Start address */
-  . = 0x80000000;
+  /* The address is read from the configuration file and passed to the linker */
+  . = _start_address;
 
   /* Output a text section, starting with the entry point */
   .text : ALIGN(0x4) {
