@@ -3,6 +3,10 @@ name = "interrupt"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "interrupt"
+path = "main.rs"
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
 log = { workspace = true }

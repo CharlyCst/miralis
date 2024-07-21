@@ -3,5 +3,9 @@ name = "os_ctx_switch"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "os_ctx_switch"
+path = "main.rs"
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
