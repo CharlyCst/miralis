@@ -10,6 +10,8 @@ use std::path::PathBuf;
 use serde::Deserialize;
 
 use crate::path::get_workspace_path;
+use crate::CheckConfigArgs;
+
 // ——————————————————————————— Config Definition ———————————————————————————— //
 
 #[derive(Deserialize, Debug)]
@@ -184,4 +186,22 @@ pub fn read_config(path: &Option<PathBuf>) -> Config {
 
     // Parse the config and returns it
     toml::from_str::<Config>(&config).expect("Failed to parse configuration")
+}
+
+// —————————————————————————————— Check Config —————————————————————————————— //
+
+/// Print an error if the config is not valid.
+pub fn check_config(args: &CheckConfigArgs) {
+    let config = match fs::read_to_string(&args.config) {
+        Ok(config) => config,
+        Err(error) => {
+            println!("Could not read config: {}", error);
+            return;
+        }
+    };
+
+    match toml::from_str::<Config>(&config) {
+        Ok(_) => println!("Config is valid"),
+        Err(err) => println!("Config is not valid: {:?}", err),
+    }
 }

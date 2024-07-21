@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 
 mod artifacts;
+mod build;
 mod config;
 mod gdb;
 mod path;
@@ -20,6 +21,10 @@ struct CliArgs {
 enum Subcommands {
     /// Run Miralis on QEMU
     Run(RunArgs),
+    /// Build Miralis
+    Build(BuildArgs),
+    /// Exit with an error if the config is not valid
+    CheckConfig(CheckConfigArgs),
     /// Start GDB and connect to a running instance
     Gdb(GdbArgs),
 }
@@ -45,6 +50,21 @@ struct RunArgs {
 }
 
 #[derive(Args)]
+struct BuildArgs {
+    #[arg(short, long, action)]
+    verbose: bool,
+    #[arg(long)]
+    /// Path to the configuration file to use
+    config: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct CheckConfigArgs {
+    /// Path to the configuration
+    config: PathBuf,
+}
+
+#[derive(Args)]
 struct GdbArgs {}
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
@@ -53,6 +73,8 @@ fn main() {
     let args = CliArgs::parse();
     match args.command {
         Subcommands::Run(args) => run::run(&args),
+        Subcommands::Build(args) => build::build(&args),
         Subcommands::Gdb(args) => gdb::gdb(&args),
+        Subcommands::CheckConfig(args) => config::check_config(&args),
     };
 }
