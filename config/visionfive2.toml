@@ -1,0 +1,16 @@
+# A simple configuration to run on QEMU virt platform
+
+[log]
+level = "info"
+color = true
+
+[debug]
+# max_firmware_exits = 2000
+
+[vcpu]
+max_pmp = 0
+
+[platform]
+name = "visionfive2"
+nb_harts = 5
+stack_size = 0x8000

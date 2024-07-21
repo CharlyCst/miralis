@@ -55,8 +55,17 @@ pub struct VCpu {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Platform {
+    pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
     pub stack_size: Option<usize>,
+}
+
+#[derive(Deserialize, Debug, Clone, Copy)]
+pub enum Platforms {
+    #[serde(rename = "qemu_virt")]
+    QemuVirt,
+    #[serde(rename = "visionfive2")]
+    VisionFive2,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //
@@ -185,7 +194,10 @@ pub fn read_config(path: &Option<PathBuf>) -> Config {
     };
 
     // Parse the config and returns it
-    toml::from_str::<Config>(&config).expect("Failed to parse configuration")
+    match toml::from_str::<Config>(&config) {
+        Ok(config) => config,
+        Err(err) => panic!("Failed to parse configuration:\n{:#?}", err),
+    }
 }
 
 // —————————————————————————————— Check Config —————————————————————————————— //
