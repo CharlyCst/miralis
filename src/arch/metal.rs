@@ -4,8 +4,7 @@ use core::marker::PhantomData;
 use core::{ptr, usize};
 
 use super::{Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
-use crate::arch::mstatus::{self, MIE_FILTER};
-use crate::arch::{HardwareCapability, PmpGroup};
+use crate::arch::{mstatus, HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
 use crate::virt::VirtContext;
 use crate::{_stack_start, main};
@@ -227,7 +226,7 @@ impl Architecture for MetalArch {
             "csrw mie, {all_int}",       // Set all bits in the mie register
             "csrr {available_int}, mie", // Read back wich bits are set to 1
             "csrw mie, x0",              // Clear all bits in mie
-            clear_mie = in(reg) MIE_FILTER,
+            clear_mie = in(reg) mstatus::MIE_FILTER,
             all_int = in(reg) usize::MAX,
             available_int = out(reg) available_int,
             options(nomem)
