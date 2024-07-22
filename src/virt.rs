@@ -3,7 +3,7 @@ use core::usize;
 
 use miralis_core::abi;
 
-use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
+use crate::arch::pmp::pmpcfg;
 use crate::arch::{
     mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
     MCause, Mode, Register, TrapInfo,
@@ -181,7 +181,7 @@ impl VirtContext {
 
                 // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
                 unsafe {
-                    Arch::write_mie(self.csr.mie);
+                    Arch::write_csr(Csr::Mie, self.csr.mie);
                 }
 
                 Arch::wfi();
@@ -466,7 +466,7 @@ impl VirtContext {
                     log::trace!("Accessed device: {} | With instr: {:?}", device.name, instr);
                     self.handle_device_access_fault(&instr, &device);
                 } else {
-                    log::trace!("No matching device found for address: {}", self.csr.mtval);
+                    log::trace!("No matching device found for address: {:x}", self.csr.mtval);
                     self.emulate_jump_trap_handler();
                 }
             }
@@ -490,6 +490,109 @@ impl VirtContext {
                 }
             }
         }
+    }
+
+    /// Loads the S-mode CSR registers into the physical registers configures M-mode registers for
+    /// payload execution.
+    pub unsafe fn switch_from_firmware_to_payload(&mut self, mctx: &mut MiralisContext) {
+        // First, restore S-mode registers
+
+        Arch::write_csr(Csr::Stvec, self.csr.stvec);
+        Arch::write_csr(Csr::Scounteren, self.csr.scounteren);
+        Arch::write_csr(Csr::Satp, self.csr.satp);
+        Arch::write_csr(Csr::Sscratch, self.csr.sscratch);
+        Arch::write_csr(Csr::Sepc, self.csr.sepc);
+        Arch::write_csr(Csr::Scause, self.csr.scause);
+        Arch::write_csr(Csr::Stval, self.csr.stval);
+        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren);
+
+        if mctx.hw.available_reg.senvcfg {
+            Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
+        }
+
+        if mctx.hw.available_reg.menvcfg {
+            Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
+        }
+
+        // Then configuring M-mode registers
+        let mut mstatus = self.csr.mstatus; // We need to set the next mode bits before mret
+        VirtCsr::set_csr_field(
+            &mut mstatus,
+            mstatus::MPP_OFFSET,
+            mstatus::MPP_FILTER,
+            self.mode.to_bits(),
+        );
+        Arch::write_csr(Csr::Mstatus, mstatus);
+        Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
+        Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
+
+        Arch::write_csr(Csr::Mie, self.csr.mie);
+        Arch::write_csr(Csr::Mip, self.csr.mip);
+
+        // Load virtual PMP registers into Miralis's own registers
+        mctx.pmp.load_with_offset(
+            &self.csr.pmpaddr,
+            &self.csr.pmpcfg,
+            mctx.virt_pmp_offset as usize,
+            self.nb_pmp,
+        );
+        // Deny all addresses by default if at least one PMP is implemented
+        if self.nb_pmp > 0 {
+            let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
+            mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
+        }
+        // Commit the PMP to hardware
+        Arch::write_pmp(&mctx.pmp);
+        Arch::sfence_vma();
+    }
+
+    /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
+    /// 0) for running the virtual firmware in U-mode.
+    pub unsafe fn switch_from_payload_to_firmware(&mut self, mctx: &mut MiralisContext) {
+        // Save the registers into the virtual context.
+
+        self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
+        self.csr.scounteren = Arch::write_csr(Csr::Scounteren, 0);
+        self.csr.satp = Arch::write_csr(Csr::Satp, 0);
+
+        self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
+        self.csr.sepc = Arch::write_csr(Csr::Sepc, 0);
+        self.csr.scause = Arch::write_csr(Csr::Scause, 0);
+
+        self.csr.stval = Arch::write_csr(Csr::Stval, 0);
+
+        if mctx.hw.available_reg.senvcfg {
+            self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
+        }
+
+        if mctx.hw.available_reg.menvcfg {
+            self.csr.menvcfg = Arch::write_csr(Csr::Menvcfg, 0);
+        }
+
+        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, 0);
+
+        // Now save M-mode registers which are (partially) exposed as S-mode registers.
+        // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
+        // (virtual firmware) during the next mret.
+
+        self.csr.mstatus = Arch::read_csr(Csr::Mstatus);
+        Arch::set_mpp(Mode::U);
+        Arch::write_csr(Csr::Mideleg, 0); // Do not delegate any interrupts
+        Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
+
+        self.csr.mie = Arch::read_csr(Csr::Mie);
+        self.csr.mip = Arch::read_csr(Csr::Mip);
+
+        // Remove Firmware PMP from the hardware
+        mctx.pmp
+            .clear_range(mctx.virt_pmp_offset as usize, self.nb_pmp);
+        // Allow all addresses by default
+        let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
+        mctx.pmp
+            .set(last_pmp_idx, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
+        // Commit the PMP to hardware
+        Arch::write_pmp(&mctx.pmp);
+        Arch::sfence_vma();
     }
 }
 
@@ -577,7 +680,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mcountinhibit => self.csr.mcountinhibit,
             Csr::Mhpmevent(n) => self.csr.mhpmevent[n],
             Csr::Mcounteren => self.csr.mcounteren,
-            Csr::Menvcgf => self.csr.menvcfg,
+            Csr::Menvcfg => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
             Csr::Medeleg => self.csr.medeleg,
             Csr::Mideleg => self.csr.mideleg,
@@ -623,7 +726,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // TODO: create some constant values
                 let mut new_value = value & mstatus::MSTATUS_FILTER; //self.csr.mstatus;
                                                                      // MPP : 11 : write legal : 0,1,3
-                let mpp = (value & MPP_FILTER) >> MPP_OFFSET;
+                let mpp = (value & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET;
                 VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::MPP_OFFSET,
@@ -722,7 +825,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Misa => {
                 // misa shows the extensions available : we cannot have more than possible in hardware
-                let arch_misa: usize = Arch::read_misa();
+                let arch_misa: usize = Arch::read_csr(Csr::Misa);
                 // Update misa to a legal value
                 self.csr.misa =
                     (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
@@ -772,7 +875,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mcountinhibit => (),                               // Read-only 0
             Csr::Mhpmevent(_event_idx) => (),                       // Read-only 0
             Csr::Mcounteren => self.csr.mcounteren = value & 0b111, // Only show IR, TM and CY (for cycle, time and instret counters)
-            Csr::Menvcgf => self.csr.menvcfg = value,
+            Csr::Menvcfg => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
