@@ -49,9 +49,12 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     log::info!("Hello, world!");
     log::info!("Platform name: {}", Plat::name());
     log::info!("Hart ID: {}", hart_id);
-    log::info!("misa:    0x{:x}", Arch::read_misa());
-    log::info!("vmisa:   0x{:x}", Arch::read_misa() & !misa::DISABLED);
-    log::info!("mstatus: 0x{:x}", Arch::read_mstatus());
+    log::info!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
+    log::info!(
+        "vmisa:   0x{:x}",
+        Arch::read_csr(Csr::Misa) & !misa::DISABLED
+    );
+    log::info!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
     log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     log::info!("Preparing jump into firmware");
@@ -107,7 +110,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
-        ctx.set_csr(Csr::Misa, Arch::read_misa() & !misa::DISABLED, &mctx.hw);
+        ctx.set_csr(
+            Csr::Misa,
+            Arch::read_csr(Csr::Misa) & !misa::DISABLED,
+            &mctx.hw,
+        );
         ctx.pc = firmware_addr;
     }
 
@@ -155,11 +162,11 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             log::debug!("Execution mode: Firmware -> Payload");
-            unsafe { Arch::switch_from_firmware_to_payload(ctx, mctx) };
+            unsafe { ctx.switch_from_firmware_to_payload(mctx) };
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
-            unsafe { Arch::switch_from_payload_to_firmware(ctx, mctx) };
+            unsafe { ctx.switch_from_payload_to_firmware(mctx) };
         }
         _ => {} // No execution mode transition
     }

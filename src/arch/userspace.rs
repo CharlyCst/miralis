@@ -5,9 +5,7 @@
 
 use super::Architecture;
 use crate::arch::{HardwareCapability, PmpGroup};
-use crate::host::MiralisContext;
 use crate::main;
-use crate::virt::VirtContext;
 
 /// User space mock, running on the host architecture.
 pub struct HostArch {}
@@ -24,28 +22,8 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    fn read_misa() -> usize {
-        todo!()
-    }
-
-    fn read_mstatus() -> usize {
-        todo!()
-    }
-
-    fn read_mhartid() -> usize {
-        todo!()
-    }
-
     unsafe fn set_mpp(mode: super::Mode) {
         let _ = mode.to_bits();
-        todo!()
-    }
-
-    unsafe fn write_mstatus(_mstatus: usize) {
-        todo!()
-    }
-
-    unsafe fn write_mie(_mie: usize) {
         todo!()
     }
 
@@ -61,23 +39,19 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    fn read_mtvec() -> usize {
-        todo!()
-    }
-
     unsafe fn sfence_vma() {
         todo!()
     }
 
-    unsafe fn switch_from_firmware_to_payload(_ctx: &mut VirtContext, _mctx: &mut MiralisContext) {
-        todo!()
-    }
-
-    unsafe fn switch_from_payload_to_firmware(_ctx: &mut VirtContext, _mctx: &mut MiralisContext) {
-        todo!()
-    }
-
     unsafe fn detect_hardware() -> HardwareCapability {
+        todo!()
+    }
+
+    fn read_csr(_csr: super::Csr) -> usize {
+        todo!()
+    }
+
+    unsafe fn write_csr(_csr: super::Csr, _value: usize) -> usize {
         todo!()
     }
 }

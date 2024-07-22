@@ -3,13 +3,11 @@ use core::arch::{asm, global_asm};
 use core::marker::PhantomData;
 use core::{ptr, usize};
 
-use super::{Architecture, MCause, Mode, RegistersCapability, TrapInfo};
-use crate::arch::mstatus::{self, MIE_FILTER, MPP_FILTER};
-use crate::arch::pmp::pmpcfg;
-use crate::arch::{Arch, HardwareCapability, PmpGroup};
+use super::{Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
+use crate::arch::mstatus::{self, MIE_FILTER};
+use crate::arch::{HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
-use crate::host::MiralisContext;
-use crate::virt::{VirtContext, VirtCsr};
+use crate::virt::VirtContext;
 use crate::{_bss_start, _bss_stop, _stack_start, main};
 
 /// Bare metal RISC-V runtime.
@@ -18,8 +16,8 @@ pub struct MetalArch {}
 impl MetalArch {
     fn install_handler(handler: usize) {
         // Set trap handler
-        unsafe { write_mtvec(handler) };
-        let mtvec = Self::read_mtvec();
+        unsafe { Self::write_csr(Csr::Mtvec, handler) };
+        let mtvec: usize = Self::read_csr(Csr::Mtvec);
         assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 }
@@ -27,7 +25,7 @@ impl MetalArch {
 impl Architecture for MetalArch {
     fn init() {
         // Install trap handler
-        MetalArch::install_handler(_raw_trap_handler as usize);
+        Self::install_handler(_raw_trap_handler as usize);
     }
 
     #[inline]
@@ -35,36 +33,145 @@ impl Architecture for MetalArch {
         unsafe { asm!("wfi") };
     }
 
-    fn read_misa() -> usize {
-        let misa: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, misa",
-                x = out(reg) misa);
+    unsafe fn write_csr(csr: Csr, value: usize) -> usize {
+        let mut prev_value: usize = 0;
+
+        macro_rules! asm_write_csr {
+            ($reg:literal) => {
+                asm!(
+                    concat!("csrrw {prev}, ", $reg, ", {val}"),
+                    val = in(reg) value,
+                    prev = out(reg) prev_value,
+                    options(nomem)
+                )
+            };
         }
-        return misa;
+
+        match csr {
+            Csr::Mhartid => asm_write_csr!("mhartid"),
+            Csr::Mstatus => asm_write_csr!("mstatus"),
+            Csr::Misa => asm_write_csr!("misa"),
+            Csr::Mie => asm_write_csr!("mie"),
+            Csr::Mtvec => asm_write_csr!("mtvec"),
+            Csr::Mscratch => asm_write_csr!("mscratch"),
+            Csr::Mip => asm_write_csr!("mip"),
+            Csr::Mvendorid => asm_write_csr!("mvendorid"),
+            Csr::Marchid => asm_write_csr!("marchid"),
+            Csr::Mimpid => asm_write_csr!("mimpid"),
+            Csr::Pmpcfg(_) => todo!(),
+            Csr::Pmpaddr(index) => write_pmpaddr(index, value),
+            Csr::Mcycle => asm_write_csr!("mcycle"),
+            Csr::Minstret => asm_write_csr!("minstret"),
+            Csr::Mhpmcounter(_) => todo!(),
+            Csr::Mcountinhibit => asm_write_csr!("mcountinhibit"),
+            Csr::Mhpmevent(_) => todo!(),
+            Csr::Mcounteren => asm_write_csr!("mcounteren"),
+            Csr::Menvcfg => asm_write_csr!("menvcfg"),
+            Csr::Mseccfg => asm_write_csr!("mseccfg"),
+            Csr::Mconfigptr => asm_write_csr!("mconfigptr"),
+            Csr::Medeleg => asm_write_csr!("medeleg"),
+            Csr::Mideleg => asm_write_csr!("mideleg"),
+            Csr::Mtinst => asm_write_csr!("mtinst"),
+            Csr::Mtval2 => asm_write_csr!("mtval2"),
+            Csr::Tselect => asm_write_csr!("tselect"),
+            Csr::Tdata1 => asm_write_csr!("tdata1"),
+            Csr::Tdata2 => asm_write_csr!("tdata2"),
+            Csr::Tdata3 => asm_write_csr!("tdata3"),
+            Csr::Mcontext => asm_write_csr!("mcontext"),
+            Csr::Dcsr => asm_write_csr!("dcsr"),
+            Csr::Dpc => asm_write_csr!("dpc"),
+            Csr::Dscratch0 => asm_write_csr!("dscratch0"),
+            Csr::Dscratch1 => asm_write_csr!("dscratch1"),
+            Csr::Mepc => asm_write_csr!("mepc"),
+            Csr::Mcause => asm_write_csr!("mcause"),
+            Csr::Mtval => asm_write_csr!("mtval"),
+            Csr::Sstatus => asm_write_csr!("sstatus"),
+            Csr::Sie => asm_write_csr!("sie"),
+            Csr::Stvec => asm_write_csr!("stvec"),
+            Csr::Scounteren => asm_write_csr!("scounteren"),
+            Csr::Senvcfg => asm_write_csr!("senvcfg"),
+            Csr::Sscratch => asm_write_csr!("sscratch"),
+            Csr::Sepc => asm_write_csr!("sepc"),
+            Csr::Scause => asm_write_csr!("scause"),
+            Csr::Stval => asm_write_csr!("stval"),
+            Csr::Sip => asm_write_csr!("sip"),
+            Csr::Satp => asm_write_csr!("satp"),
+            Csr::Scontext => asm_write_csr!("scontext"),
+            Csr::Unknown => (),
+        };
+
+        prev_value
     }
 
-    fn read_mstatus() -> usize {
-        let mstatus: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, mstatus",
-                x = out(reg) mstatus);
-        }
-        return mstatus;
-    }
+    fn read_csr(csr: Csr) -> usize {
+        let value: usize;
 
-    fn read_mhartid() -> usize {
-        let mhartid: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, mhartid",
-                x = out(reg) mhartid,
-                options(nomem)
-            );
+        macro_rules! asm_read_csr {
+            ($reg:literal) => {
+                unsafe {
+                    asm!(
+                        concat!("csrr {x}, ", $reg),
+                        x = out(reg) value,
+                        options(nomem)
+                    )
+                }
+            };
         }
-        return mhartid;
+
+        match csr {
+            Csr::Mhartid => asm_read_csr!("mhartid"),
+            Csr::Mstatus => asm_read_csr!("mstatus"),
+            Csr::Misa => asm_read_csr!("misa"),
+            Csr::Mie => asm_read_csr!("mie"),
+            Csr::Mtvec => asm_read_csr!("mtvec"),
+            Csr::Mscratch => asm_read_csr!("mscratch"),
+            Csr::Mip => asm_read_csr!("mip"),
+            Csr::Mvendorid => asm_read_csr!("mvendorid"),
+            Csr::Marchid => asm_read_csr!("marchid"),
+            Csr::Mimpid => asm_read_csr!("mimpid"),
+            Csr::Pmpcfg(_) => todo!(),
+            Csr::Pmpaddr(_) => todo!(),
+            Csr::Mcycle => asm_read_csr!("mcycle"),
+            Csr::Minstret => asm_read_csr!("minstret"),
+            Csr::Mhpmcounter(_) => todo!(),
+            Csr::Mcountinhibit => asm_read_csr!("mcountinhibit"),
+            Csr::Mhpmevent(_) => todo!(),
+            Csr::Mcounteren => asm_read_csr!("mcounteren"),
+            Csr::Menvcfg => asm_read_csr!("menvcfg"),
+            Csr::Mseccfg => asm_read_csr!("mseccfg"),
+            Csr::Mconfigptr => asm_read_csr!("mconfigptr"),
+            Csr::Medeleg => asm_read_csr!("medeleg"),
+            Csr::Mideleg => asm_read_csr!("mideleg"),
+            Csr::Mtinst => asm_read_csr!("mtinst"),
+            Csr::Mtval2 => asm_read_csr!("mtval2"),
+            Csr::Tselect => asm_read_csr!("tselect"),
+            Csr::Tdata1 => asm_read_csr!("tdata1"),
+            Csr::Tdata2 => asm_read_csr!("tdata2"),
+            Csr::Tdata3 => asm_read_csr!("tdata3"),
+            Csr::Mcontext => asm_read_csr!("mcontext"),
+            Csr::Dcsr => asm_read_csr!("dcsr"),
+            Csr::Dpc => asm_read_csr!("dpc"),
+            Csr::Dscratch0 => asm_read_csr!("dscratch0"),
+            Csr::Dscratch1 => asm_read_csr!("dscratch1"),
+            Csr::Mepc => asm_read_csr!("mepc"),
+            Csr::Mcause => asm_read_csr!("mcause"),
+            Csr::Mtval => asm_read_csr!("mtval"),
+            Csr::Sstatus => asm_read_csr!("sstatus"),
+            Csr::Sie => asm_read_csr!("sie"),
+            Csr::Stvec => asm_read_csr!("stvec"),
+            Csr::Scounteren => asm_read_csr!("scounteren"),
+            Csr::Senvcfg => asm_read_csr!("senvcfg"),
+            Csr::Sscratch => asm_read_csr!("sscratch"),
+            Csr::Sepc => asm_read_csr!("sepc"),
+            Csr::Scause => asm_read_csr!("scause"),
+            Csr::Stval => asm_read_csr!("stval"),
+            Csr::Sip => asm_read_csr!("sip"),
+            Csr::Satp => asm_read_csr!("satp"),
+            Csr::Scontext => asm_read_csr!("scontext"),
+            Csr::Unknown => value = 0,
+        };
+
+        value
     }
 
     unsafe fn detect_hardware() -> HardwareCapability {
@@ -72,7 +179,7 @@ impl Architecture for MetalArch {
              ($reg:expr) => {{
                  // Install "tracer" handler, it allows miralis to know if it executed an illegal instruction
                  // and thus detects which registers aren't available
-                 MetalArch::install_handler(_tracing_trap_handler as usize);
+                 Self::install_handler(_tracing_trap_handler as usize);
 
                  // Perform detection
                  let mut _dummy_variable: usize = 0;
@@ -88,7 +195,7 @@ impl Architecture for MetalArch {
                     }
 
                  // Restore normal handler
-                 MetalArch::install_handler(_raw_trap_handler as usize);
+                 Self::install_handler(_raw_trap_handler as usize);
 
                  // Present if value is 0
                  tracer_var == 0
@@ -106,25 +213,12 @@ impl Architecture for MetalArch {
             is_senvcfg_present,
         );
 
-        let mstatus: usize;
-        let mtvec: usize;
-
         // Save current CSRs
-        asm!(
-            "csrr {mstatus}, mstatus",
-            "csrr {mtvec}, mtvec",
-            mstatus = out(reg) mstatus,
-            mtvec = out(reg) mtvec,
-            options(nomem)
-        );
+        let mstatus = Self::read_csr(Csr::Mstatus);
+        let mtvec = Self::read_csr(Csr::Mtvec);
 
         // Read hart ID
-        let hart: usize;
-        asm!(
-            "csrr {hart}, mhartid",
-            hart = out(reg) hart,
-            options(nomem)
-        );
+        let hart = Self::read_csr(Csr::Mhartid);
 
         // Detect available interrupt IDs
         let available_int: usize;
@@ -140,13 +234,8 @@ impl Architecture for MetalArch {
         );
 
         // Restore CSRs
-        asm!(
-            "csrw mstatus, {mstatus}",
-            "csrw mtvec, {mtvec}",
-            mstatus = in(reg) mstatus,
-            mtvec = in(reg) mtvec,
-            options(nomem),
-        );
+        Self::write_csr(Csr::Mstatus, mstatus);
+        Self::write_csr(Csr::Mtvec, mtvec);
 
         // Return hardware configuration
         HardwareCapability {
@@ -161,24 +250,9 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn set_mpp(mode: Mode) {
-        const MPP_MASK: usize = 0b11_usize << 11;
-        let value = mode.to_bits() << 11;
-        let mstatus = Self::read_mstatus();
-        Self::write_mstatus((mstatus & !MPP_MASK) | value)
-    }
-
-    unsafe fn write_mstatus(mstatus: usize) {
-        asm!(
-            "csrw mstatus, {x}",
-            x = in(reg) mstatus
-        )
-    }
-
-    unsafe fn write_mie(mie: usize) {
-        asm!(
-            "csrw mie, {x}",
-            x = in(reg) mie
-        )
+        let value = mode.to_bits() << mstatus::MPP_OFFSET;
+        let mstatus = Self::read_csr(Csr::Mstatus);
+        Self::write_csr(Csr::Mstatus, (mstatus & !mstatus::MPP_FILTER) | value);
     }
 
     unsafe fn write_pmp(pmp: &PmpGroup) {
@@ -227,7 +301,7 @@ impl Architecture for MetalArch {
                 0
             };
             unsafe {
-                Arch::write_mie(mie_patched);
+                Self::write_csr(Csr::Mie, mie_patched);
             }
         }
 
@@ -274,231 +348,9 @@ impl Architecture for MetalArch {
             out("x30") _,
         );
     }
-
-    fn read_mtvec() -> usize {
-        let mtvec: usize;
-        unsafe {
-            asm!(
-                "csrr {x}, mtvec",
-                x = out(reg) mtvec
-            )
-        }
-        return mtvec;
-    }
-
-    /// Loads the S-mode CSR registers into the physical registers configures M-mode registers for
-    /// payload execution.
-    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
-        // First, restore S-mode registers
-        asm!(
-            "csrw stvec, {stvec}",
-            "csrw scounteren, {scounteren}",
-            "csrw satp, {satp}",
-            satp = in(reg) ctx.csr.satp,
-            stvec = in(reg) ctx.csr.stvec,
-            scounteren = in(reg) ctx.csr.scounteren,
-            options(nomem)
-        );
-        asm!(
-            "csrw sscratch, {sscratch}",
-            "csrw sepc, {sepc}",
-            "csrw scause, {scause}",
-            sscratch = in(reg) ctx.csr.sscratch,
-            sepc = in(reg) ctx.csr.sepc,
-            scause = in(reg) ctx.csr.scause,
-            options(nomem)
-        );
-        asm!(
-            "csrw stval, {stval}",
-            "csrw mcounteren, {mcounteren}",
-            stval = in(reg) ctx.csr.stval,
-            mcounteren = in(reg) ctx.csr.mcounteren,
-            options(nomem)
-        );
-
-        if mctx.hw.available_reg.senvcfg {
-            asm!(
-                "csrw senvcfg, {senvcfg}",
-                senvcfg = in(reg) ctx.csr.senvcfg,
-                options(nomem)
-            );
-        }
-
-        if mctx.hw.available_reg.menvcfg {
-            asm!(
-                "csrw menvcfg, {menvcfg}",
-                menvcfg = in(reg) ctx.csr.menvcfg,
-                options(nomem)
-            );
-        }
-
-        // Then configuring M-mode registers
-        let mut mstatus = ctx.csr.mstatus; // We need to set the next mode bits before mret
-        VirtCsr::set_csr_field(
-            &mut mstatus,
-            mstatus::MPP_OFFSET,
-            mstatus::MPP_FILTER,
-            ctx.mode.to_bits(),
-        );
-        asm!(
-            "csrw mstatus, {mstatus}",
-            "csrw mideleg, {mideleg}",
-            "csrw medeleg, {medeleg}",
-            mstatus = in(reg) mstatus,
-            mideleg = in(reg) ctx.csr.mideleg,
-            medeleg = in(reg) ctx.csr.medeleg,
-            options(nomem)
-        );
-
-        asm!(
-            "csrw mie, {mie}",
-            "csrw mip, {mip}",
-            mie = in(reg) ctx.csr.mie,
-            mip = in(reg) ctx.csr.mip,
-            options(nomem)
-        );
-
-        // Load virtual PMP registers into Miralis's own registers
-        mctx.pmp.load_with_offset(
-            &ctx.csr.pmpaddr,
-            &ctx.csr.pmpcfg,
-            mctx.virt_pmp_offset as usize,
-            ctx.nb_pmp,
-        );
-        // Deny all addresses by default if at least one PMP is implemented
-        if ctx.nb_pmp > 0 {
-            let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-            mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
-        }
-        // Commit the PMP to hardware
-        Self::write_pmp(&mctx.pmp);
-        Self::sfence_vma();
-    }
-
-    /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
-    /// 0) for running the virtual firmware in U-mode.
-    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
-        // Save the registers into the virtual context.
-        // We save them 3 by 3 to give the compiler more freedom to choose registers and re-order
-        // code (which is possible because of the `nomem` option).
-        let stvec: usize;
-        let scounteren: usize;
-        let senvcfg: usize;
-        let sscratch: usize;
-        let sepc: usize;
-        let scause: usize;
-        let stval: usize;
-        let satp: usize;
-        let menvcfg: usize;
-        let mcounteren: usize;
-        let mie: usize;
-        let mip: usize;
-
-        asm!(
-            "csrrw {stvec}, stvec, x0",
-            "csrrw {scounteren}, scounteren, x0",
-            "csrrw {satp}, satp, x0",
-            stvec = out(reg) stvec,
-            scounteren = out(reg) scounteren,
-            satp = out(reg) satp,
-            options(nomem)
-        );
-        ctx.csr.stvec = stvec;
-        ctx.csr.scounteren = scounteren;
-        ctx.csr.satp = satp;
-
-        asm!(
-            "csrrw {sscratch}, sscratch, x0",
-            "csrrw {sepc}, sepc, x0",
-            "csrrw {scause}, scause, x0",
-            sscratch = out(reg) sscratch,
-            sepc = out(reg) sepc,
-            scause = out(reg) scause,
-            options(nomem)
-        );
-        ctx.csr.sscratch = sscratch;
-        ctx.csr.sepc = sepc;
-        ctx.csr.scause = scause;
-
-        asm!(
-            "csrrw {stval}, stval, x0",
-            stval = out(reg) stval,
-            options(nomem)
-        );
-        ctx.csr.stval = stval;
-
-        if mctx.hw.available_reg.senvcfg {
-            asm!(
-                "csrrw {senvcfg}, senvcfg, x0",
-                senvcfg = out(reg) senvcfg,
-                options(nomem)
-            );
-            ctx.csr.senvcfg = senvcfg;
-        }
-
-        if mctx.hw.available_reg.menvcfg {
-            asm!(
-                "csrrw {menvcfg}, menvcfg, x0",
-                menvcfg = out(reg) menvcfg,
-                options(nomem)
-            );
-            ctx.csr.menvcfg = menvcfg;
-        }
-
-        asm!(
-            "csrrw {mcounteren}, mcounteren, x0",
-            mcounteren = out(reg) mcounteren,
-            options(nomem)
-        );
-        ctx.csr.mcounteren = mcounteren;
-
-        // Now save M-mode registers which are (partially) exposed as S-mode registers.
-        // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
-        // (virtual firmware) during the next mret.
-        let mstatus: usize;
-        let mpp_u_mode: usize = MPP_FILTER;
-        asm!(
-            "csrrc {mstatus}, mstatus, {mpp_u_mode}",
-            "csrw mideleg, x0", // Do not delegate any interrupts
-            "csrw medeleg, x0", // Do not delegate any exceptions
-            mstatus = out(reg) mstatus,
-            mpp_u_mode = in(reg) mpp_u_mode,
-            options(nomem)
-        );
-        ctx.csr.mstatus = mstatus;
-
-        asm!(
-            "csrr {mie}, mie",
-            "csrr {mip}, mip",
-            mie = out(reg) mie,
-            mip = out(reg) mip,
-            options(nomem)
-        );
-        ctx.csr.mie = mie;
-        ctx.csr.mip = mip;
-
-        // Remove Firmware PMP from the hardware
-        mctx.pmp
-            .clear_range(mctx.virt_pmp_offset as usize, ctx.nb_pmp);
-        // Allow all addresses by default
-        let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-        mctx.pmp
-            .set(last_pmp_idx, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
-        // Commit the PMP to hardware
-        Self::write_pmp(&mctx.pmp);
-        Self::sfence_vma();
-    }
-
     unsafe fn sfence_vma() {
         asm!("sfence.vma")
     }
-}
-
-unsafe fn write_mtvec(value: usize) {
-    asm!(
-        "csrw mtvec, {x}",
-        x = in(reg) value
-    )
 }
 
 unsafe fn write_pmpaddr(index: usize, pmpaddr: usize) {
@@ -732,7 +584,7 @@ _run_vcpu:
     ld x29,(8+8*29)(x31)
     ld x30,(8+8*30)(x31)
     ld x31,(8+8*31)(x31)
-    mret                      // Jump into firmware
+    mret                      // Jump into firmware or payload
 "#,
 );
 

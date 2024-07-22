@@ -16,7 +16,6 @@ pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
-use crate::host::MiralisContext;
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -35,18 +34,17 @@ pub type Arch = userspace::HostArch;
 /// Architecture abstraction layer.
 pub trait Architecture {
     fn init();
-    fn read_misa() -> usize;
-    fn read_mtvec() -> usize;
-    fn read_mstatus() -> usize;
-    fn read_mhartid() -> usize;
+
+    /// Read a csr value
+    fn read_csr(csr: Csr) -> usize;
+
+    /// Write into csr and return previous value
+    unsafe fn write_csr(csr: Csr, value: usize) -> usize;
+
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_pmp(pmp: &PmpGroup);
-    unsafe fn write_mstatus(mstatus: usize);
-    unsafe fn write_mie(mie: usize);
     unsafe fn sfence_vma();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
-    unsafe fn switch_from_firmware_to_payload(ctx: &mut VirtContext, mctx: &mut MiralisContext);
-    unsafe fn switch_from_payload_to_firmware(ctx: &mut VirtContext, mctx: &mut MiralisContext);
 
     /// Wait for interrupt
     fn wfi();

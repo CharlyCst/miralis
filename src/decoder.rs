@@ -262,7 +262,7 @@ fn decode_csr(csr: usize) -> Csr {
         0x320 => Csr::Mcountinhibit,
         0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
         0x306 => Csr::Mcounteren,
-        0x30a => Csr::Menvcgf,
+        0x30a => Csr::Menvcfg,
         0x747 => Csr::Mseccfg,
         0xF15 => Csr::Mconfigptr,
         0x302 => {

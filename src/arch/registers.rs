@@ -87,7 +87,7 @@ pub enum Csr {
     /// Machine counter enable
     Mcounteren,
     /// Machine environment configuration register
-    Menvcgf,
+    Menvcfg,
     /// Machine security configuration register
     Mseccfg,
     /// Ponter to configuration data structure
