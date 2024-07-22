@@ -408,7 +408,7 @@ unsafe fn find_nb_of_non_zero_pmp(nb_implemented: usize) -> usize {
                 concat!("csrrw {tmp}, pmpaddr", $idx, ", {addr}"),
                 concat!("csrrw {addr}, pmpaddr", $idx, ", {tmp}"),
                 tmp = out(reg) _,
-                addr = inout(reg) 1_usize => read_addr,
+                addr = inout(reg) usize::MAX => read_addr,
                 options(nomem)
             );
             if read_addr == 0 {
