@@ -7,7 +7,7 @@ use super::{Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
 use crate::arch::{mstatus, HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
 use crate::virt::VirtContext;
-use crate::{_stack_start, main};
+use crate::{_bss_start, _bss_stop, _stack_start, main};
 
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
@@ -602,6 +602,7 @@ unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
 
 global_asm!(
 r#"
+.align 4
 .text
 .global _start
 _start:
@@ -635,18 +636,37 @@ stack_fill_loop:
     j stack_fill_loop
 stack_fill_done:
 
+    // Now we need to zero-out the BSS section
+    // TODO: this is currently done by all cores, but we should have some sort of synchronization
+    // to avoid race conditions.
+    ld t4, __bss_start
+    ld t5, __bss_stop
+zero_bss_loop:
+    bgeu t4, t5, zero_bss_done
+    sb x0, 0(t4)
+    addi t4, t4, 1
+    j zero_bss_loop
+zero_bss_done:
+
     // And finally we load the stack pointer into sp and jump into main
     mv sp, t1
     j {main}
 
 // Store the address of the stack in memory
 // That way it can be loaded as an absolute value
+.align 8
 __stack_start:
     .dword {stack_start}
+__bss_start:
+    .dword {bss_start}
+__bss_stop:
+    .dword {bss_stop}
 "#,
     main = sym main,
     stack_start = sym _stack_start,
     stack_size = sym STACK_SIZE,
+    bss_start = sym _bss_start,
+    bss_stop = sym _bss_stop,
 );
 
 // NOTE: We need to use a static here because constant in `asm!` blocks are not yet supported.

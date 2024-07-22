@@ -33,6 +33,9 @@ use crate::virt::{ExecutionMode, VirtContext};
 #[cfg(not(feature = "userspace"))]
 extern "C" {
     pub(crate) static _stack_start: u8;
+    pub(crate) static _bss_start: u8;
+    pub(crate) static _bss_stop: u8;
+    pub(crate) static _stack_top: u8;
 }
 
 #[cfg(feature = "userspace")]
