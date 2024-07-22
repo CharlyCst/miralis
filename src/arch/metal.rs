@@ -10,7 +10,7 @@ use crate::arch::{Arch, HardwareCapability, PmpGroup};
 use crate::config::PLATFORM_STACK_SIZE;
 use crate::host::MiralisContext;
 use crate::virt::{VirtContext, VirtCsr};
-use crate::{_stack_start, main};
+use crate::{_bss_start, _bss_stop, _stack_start, main};
 
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
@@ -609,6 +609,7 @@ unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
 
 global_asm!(
 r#"
+.align 4
 .text
 .global _start
 _start:
@@ -621,27 +622,66 @@ _start:
     add t0, t0, t3       // The actual start of our stack
     add t1, t0, t1       // And the end of our stack
 
+    la t4, __bss_start
+    la t5, __bss_stop
+
     // Then we fill the stack with a known memory pattern
     li t2, 0x0BADBED0
+
 loop:
-    bgeu t0, t1, done // Exit when reaching the end address
+    bgeu t0, t1, zero_loop // Exit when reaching the end address
     sw t2, 0(t0)      // Write the pattern
     addi t0, t0, 4    // increment the cursor
     j loop
-done:
 
+zero_loop:
+    bgeu t4, t5, verify
+    sb x0, 0(t4)
+    addi t4, t4, 1
+    j zero_loop
+
+verify:
+    la t4, __bss_start
+    la t5, __bss_stop  
+    j verify_loop
+
+verify_loop:
+    bgeu t4, t5, done
+    lb t6, 0(t4)  
+    beqz t6, continue_verification
+
+continue_verification:
+    addi t4, t4, 1
+    j verify_loop
+
+halt_execution:
+    j halt_execution
+
+done:
     // And finally we load the stack pointer into sp and jump into main
     mv sp, t1
+    la t5, 0x43
+
+    lui t6, %hi(0x10000000)
+    addi t6, t6, %lo(0x10000000)
+    sb t5, 0(t6)
     j {main}
 
 // Store the address of the stack in memory
 // That way it can be loaded as an absolute value
+.align 8
 __stack_start:
     .dword {stack_start}
+__bss_start:
+    .dword {bss_start}
+__bss_stop:
+    .dword {bss_stop}
 "#,
     main = sym main,
     stack_start = sym _stack_start,
     stack_size = sym STACK_SIZE,
+    bss_start = sym _bss_start,
+    bss_stop = sym _bss_stop,
 );
 
 // NOTE: We need to use a static here because constant in `asm!` blocks are not yet supported.

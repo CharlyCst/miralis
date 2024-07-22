@@ -32,6 +32,8 @@ use crate::virt::{ExecutionMode, VirtContext};
 // Defined in the linker script
 extern "C" {
     pub(crate) static _stack_start: u8;
+    pub(crate) static _bss_start: u8;
+    pub(crate) static _bss_stop: u8;
 }
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {

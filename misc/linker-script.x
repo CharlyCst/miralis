@@ -25,10 +25,13 @@ SECTIONS
     *(.data)
     *(.data.*)
   }
+  . = ALIGN(0x8);
+  _bss_start = .;
   .bss : {
     *(.bss)
     *(.bss.*)
   }
+  _bss_stop = .;
 
   /* Then we mark the start of the stack (or the end, as the stack grows
    * downard). */

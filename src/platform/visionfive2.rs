@@ -14,8 +14,8 @@ use crate::driver::ClintDriver;
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const MIRALIS_START_ADDR: usize = 0x80000000;
-const FIRMWARE_START_ADDR: usize = 0x80200000;
+const MIRALIS_START_ADDR: usize = 0x40000000;
+const FIRMWARE_START_ADDR: usize = 0x40200000;
 const CLINT_BASE: usize = 0x2000000;
 const PMP_NUMBER: usize = 8;
 
@@ -57,7 +57,7 @@ impl Platform for VisionFive2Platform {
             serial_port
                 .write_fmt(args)
                 .expect("Printing to serial failed")
-        };
+        };     
     }
 
     fn exit_success() -> ! {
