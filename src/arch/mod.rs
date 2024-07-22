@@ -309,7 +309,13 @@ pub mod mie {
     /// Constant to filter out SIE bits of mstatus
     pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
 
-    // Mstatus fields constants
+    /// Constant to filter out writable bits of mie.
+    pub const MIE_WRITE_FILTER: usize = SIE_FILTER | MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
+
+    /// Constant to filter out writable bits of mip.
+    pub const MIP_WRITE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
+
+    // Mie fields constants
     /// SSIE
     pub const SSIE_OFFSET: usize = 1;
     pub const SSIE_FILTER: usize = 0b1 << SSIE_OFFSET;

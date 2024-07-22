@@ -522,7 +522,7 @@ impl VirtContext {
             mstatus::MPP_FILTER,
             self.mode.to_bits(),
         );
-        Arch::write_csr(Csr::Mstatus, mstatus);
+        Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
         Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
         Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
 
@@ -575,7 +575,8 @@ impl VirtContext {
         // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
         // (virtual firmware) during the next mret.
 
-        self.csr.mstatus = Arch::read_csr(Csr::Mstatus);
+        self.csr.mstatus = self.csr.mstatus & !mstatus::SSTATUS_FILTER
+            | Arch::read_csr(Csr::Mstatus) & mstatus::SSTATUS_FILTER;
         Arch::set_mpp(Mode::U);
         Arch::write_csr(Csr::Mideleg, 0); // Do not delegate any interrupts
         Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
@@ -830,16 +831,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.misa =
                     (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
             }
-            Csr::Mie => self.csr.mie = value & hw.interrupts,
-            Csr::Mip => {
-                // Only reset possible : interrupts are not yet supported
-                // TODO: handle mip emulation properly
-                if value != 0 {
-                    // We only support resetting mip for now
-                    panic!("mip emulation is not yet implemented");
-                }
-                self.csr.mip = value;
-            }
+            Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
+            Csr::Mip => self.csr.mip = value & hw.interrupts & mie::MIP_WRITE_FILTER,
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
             Csr::Mvendorid => (), // Read-only

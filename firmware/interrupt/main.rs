@@ -25,7 +25,7 @@ fn test_mie() {
     let res: usize;
     unsafe {
         asm!(
-            "li {0}, 0x42",
+            "li {0}, 0xbbb",
             "csrw mie, {0}",
             "csrr {1}, mie",
             out(reg) _,
@@ -33,7 +33,10 @@ fn test_mie() {
         );
     }
 
-    assert_eq!(res, 0x42);
+    assert_eq!(
+        res, 0xaaa,
+        "Mie need to be writable, and only on writable bits"
+    );
 }
 
 // Test sie: it should be masked by S-mode bit only
@@ -147,15 +150,14 @@ extern "C" fn trap_handler() {
         "Expected to receive a timer interrupt, got something else"
     );
 
-    // TODO: we do not have MIP emulation yet, enable this test once we support it
-    // let mip: usize;
-    // unsafe {
-    //     asm!(
-    //         "csrr {0}, mip",
-    //         out(reg) mip,
-    //     );
-    // }
-    // assert!(mip & 0x80 != 0, "MTIP flag set");
+    let mip: usize;
+    unsafe {
+        asm!(
+            "csrr {0}, mip",
+            out(reg) mip,
+        );
+    }
+    assert!(mip & 0x80 != 0, "MTIP flag set");
 
     log::debug!("Done!");
     success();
