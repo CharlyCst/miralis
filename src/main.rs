@@ -76,31 +76,40 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let mut mctx = MiralisContext::new(hw);
 
     // Configure PMP registers, if available
-    if mctx.pmp.nb_pmp >= 16 {
-        // Protect Miralis with the first pmp
-        let (start, size) = Plat::get_miralis_memory_start_and_size();
-        mctx.pmp
-            .set(0, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
-        // Protect CLINT memory to trap firmware read/writes there
-        mctx.pmp.set(
-            1,
-            pmp::build_napot(clint.start_addr, clint.size).unwrap(),
-            pmpcfg::NAPOT,
-        );
+    if mctx.pmp.nb_pmp >= 8 {
+        // List of devices to protect (the first one is Miralis itself)
+        let devices = [
+            Plat::get_miralis_memory_start_and_size(),
+            (clint.start_addr, clint.size),
+            // Add more here as needed
+        ];
+        // Protect memory to trap firmware read/writes
+        for (i, &(start, size)) in devices.iter().enumerate() {
+            mctx.pmp
+                .set(i, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
+        }
+
         // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-        mctx.pmp.set(2, 0, pmpcfg::INACTIVE);
+        let inactive_index = devices.len();
+        mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
+
         // Finally, set the last PMP to grant access to the whole memory
         mctx.pmp.set(
             (mctx.pmp.nb_pmp - 1) as usize,
             usize::MAX,
             pmpcfg::RWX | pmpcfg::NAPOT,
         );
-        // Give 8 PMPs to the firmware
-        mctx.virt_pmp_offset = 2;
+
+        // Set the offset of virtual PMPs (right after the inactive 0 entry)
+        mctx.virt_pmp_offset = (inactive_index + 1) as u8;
+
+        // Compute the number of virtual PMPs available
+        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 2;
+
         if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
-            nb_virt_pmp = core::cmp::min(8, max_virt_pmp);
+            nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
         } else {
-            nb_virt_pmp = 8;
+            nb_virt_pmp = remaining_pmp_entries;
         }
     } else {
         nb_virt_pmp = 0;
