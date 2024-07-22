@@ -456,7 +456,7 @@ impl VirtContext {
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
-            MCause::StoreAccessFault | MCause::LoadAccessFault | MCause::InstrAccessFault => {
+            MCause::StoreAccessFault | MCause::LoadAccessFault => {
                 // PMP faults
                 if let Some(device) =
                     device::find_matching_device(self.trap_info.mtval, &mctx.devices)
@@ -469,6 +469,9 @@ impl VirtContext {
                     log::trace!("No matching device found for address: {:x}", self.csr.mtval);
                     self.emulate_jump_trap_handler();
                 }
+            }
+            MCause::InstrAccessFault => {
+                self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
                 // Set mtimecmp > mtime to clear mip.mtip

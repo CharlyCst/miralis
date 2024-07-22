@@ -44,7 +44,7 @@ pub(crate) static _stack_start: u8 = 0;
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one
-    if hart_id != 0 {
+    if hart_id != Plat::get_primary_hart() {
         loop {
             Arch::wfi();
             core::hint::spin_loop();
@@ -65,6 +65,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();
+    log::debug!("Firmware loaded at: {:x}", firmware_addr);
+
     let nb_virt_pmp;
     let clint = Plat::create_clint_device();
 
@@ -123,6 +125,8 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         // Update the PMPs prior to first entry
         Arch::write_pmp(&mctx.pmp);
         Arch::sfence_vma();
+        // Initialize `medeleg` to ensure all exceptions trap to Miralis
+        Arch::write_csr(Csr::Medeleg, 0);
 
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);
@@ -292,8 +296,8 @@ fn log_ctx(ctx: &VirtContext) {
         ctx.get(Register::X30)
     );
     log::trace!(
-        "  x30 {:<16x}  mie {:<16x}  mip {:<16x}",
-        ctx.get(Register::X30),
+        "  x31 {:<16x}  mie {:<16x}  mip {:<16x}",
+        ctx.get(Register::X31),
         ctx.get(Csr::Mie),
         ctx.get(Csr::Mip)
     );
