@@ -369,6 +369,7 @@ impl Architecture for MetalArch {
             out("x30") _,
         );
     }
+
     unsafe fn sfence_vma() {
         asm!("sfence.vma")
     }
