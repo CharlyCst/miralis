@@ -1,7 +1,8 @@
 //! QEMU Virt board
 
+use core::arch::asm;
 use core::fmt::Write;
-use core::{fmt, hint};
+use core::{fmt, hint, ptr};
 
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
@@ -31,6 +32,7 @@ static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CL
 
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
+pub static WRITER: Mutex<Writer> = Mutex::new(Writer::new(SERIAL_PORT_BASE_ADDRESS));
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -52,12 +54,17 @@ impl Platform for VisionFive2Platform {
     }
 
     fn debug_print(args: fmt::Arguments) {
-        let mut serial_port = SERIAL_PORT.lock();
-        if let Some(ref mut serial_port) = serial_port.as_mut() {
-            serial_port
-                .write_fmt(args)
-                .expect("Printing to serial failed")
-        };     
+        let mut writer = WRITER.lock();
+        writer.write_fmt(args).unwrap();
+        writer.write_str("\r\n").unwrap();
+        drop(writer);
+
+        // let mut serial_port = SERIAL_PORT.lock();
+        // if let Some(ref mut serial_port) = serial_port.as_mut() {
+        //     serial_port
+        //         .write_fmt(shadow_args)
+        //         .expect("Printing to serial failed")
+        // };
     }
 
     fn exit_success() -> ! {
@@ -102,5 +109,35 @@ impl Platform for VisionFive2Platform {
 
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
+    }
+}
+
+pub struct Writer {
+    serial_port_base_addr: usize,
+}
+
+impl Writer {
+    pub const fn new(serial_port_base_addr: usize) -> Self {
+        Writer {
+            serial_port_base_addr,
+        }
+    }
+
+    fn write_char(&mut self, c: char) {
+        unsafe {
+            ptr::write_volatile(self.serial_port_base_addr as *mut char, c);
+            for _n in 1..10001 {
+                asm!("nop");
+            }
+        }
+    }
+}
+
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            self.write_char(c);
+        }
+        Ok(())
     }
 }

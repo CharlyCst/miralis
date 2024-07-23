@@ -25,9 +25,18 @@ SECTIONS
     *(.data)
     *(.data.*)
   }
+  .sdata : ALIGN(0x8) {
+    KEEP(*(__*))
+    *(.sdata)
+    *(.sdata.*)
+  }
   . = ALIGN(0x8);
   _bss_start = .;
-  .bss : {
+  .sbss : {
+    *(.sbss)
+    *(.sbss.*)
+  }
+  .bss : ALIGN(0x8) {
     *(.bss)
     *(.bss.*)
   }

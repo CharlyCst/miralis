@@ -38,7 +38,7 @@ extern "C" {
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one
-    if hart_id != 0 {
+    if hart_id != 1 {
         loop {
             Arch::wfi();
             core::hint::spin_loop();

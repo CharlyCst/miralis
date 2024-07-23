@@ -622,8 +622,8 @@ _start:
     add t0, t0, t3       // The actual start of our stack
     add t1, t0, t1       // And the end of our stack
 
-    la t4, __bss_start
-    la t5, __bss_stop
+    ld t4, __bss_start
+    ld t5, __bss_stop
 
     // Then we fill the stack with a known memory pattern
     li t2, 0x0BADBED0
@@ -641,8 +641,8 @@ zero_loop:
     j zero_loop
 
 verify:
-    la t4, __bss_start
-    la t5, __bss_stop  
+    ld t4, __bss_start
+    ld t5, __bss_stop
     j verify_loop
 
 verify_loop:
