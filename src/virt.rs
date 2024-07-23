@@ -48,16 +48,58 @@ pub struct VirtContext {
 }
 
 impl VirtContext {
-    pub fn new(hart_id: usize, nb_pmp: usize) -> Self {
+    pub const fn new(hart_id: usize, nb_pmp: usize) -> Self {
         assert!(nb_pmp <= 64, "Too many PMP registers");
 
         VirtContext {
             host_stack: 0,
-            regs: Default::default(),
-            csr: Default::default(),
+            regs: [0; 32],
+            csr: VirtCsr {
+                misa: 0,
+                mie: 0,
+                mip: 0,
+                mtvec: 0,
+                mscratch: 0,
+                mvendorid: 0,
+                marchid: 0,
+                mimpid: 0,
+                mcycle: 0,
+                minstret: 0,
+                mcountinhibit: 0,
+                mcounteren: 0,
+                menvcfg: 0,
+                mseccfg: 0,
+                mcause: 0,
+                mepc: 0,
+                mtval: 0,
+                mstatus: 0,
+                mtinst: 0,
+                mconfigptr: 0,
+                stvec: 0,
+                scounteren: 0,
+                senvcfg: 0,
+                sscratch: 0,
+                sepc: 0,
+                scause: 0,
+                stval: 0,
+                satp: 0,
+                scontext: 0,
+                medeleg: 0,
+                mideleg: 0,
+                pmpcfg: [0; 8],
+                pmpaddr: [0; 64],
+                mhpmcounter: [0; 29],
+                mhpmevent: [0; 29],
+            },
             pc: 0,
             mode: Mode::M,
-            trap_info: Default::default(),
+            trap_info: TrapInfo {
+                mepc: 0,
+                mstatus: 0,
+                mcause: 0,
+                mip: 0,
+                mtval: 0,
+            },
             nb_exits: 0,
             hart_id,
             nb_pmp,
@@ -104,48 +146,6 @@ pub struct VirtCsr {
     pub pmpaddr: [usize; 64],
     pub mhpmcounter: [usize; 29],
     pub mhpmevent: [usize; 29],
-}
-
-impl Default for VirtCsr {
-    fn default() -> VirtCsr {
-        VirtCsr {
-            misa: 0,
-            mie: 0,
-            mip: 0,
-            mtvec: 0,
-            mscratch: 0,
-            mvendorid: 0,
-            marchid: 0,
-            mimpid: 0,
-            mcycle: 0,
-            minstret: 0,
-            mcountinhibit: 0,
-            mcounteren: 0,
-            menvcfg: 0,
-            mseccfg: 0,
-            mcause: 0,
-            mepc: 0,
-            mtval: 0,
-            mstatus: 0,
-            mtinst: 0,
-            mconfigptr: 0,
-            stvec: 0,
-            scounteren: 0,
-            senvcfg: 0,
-            sscratch: 0,
-            sepc: 0,
-            scause: 0,
-            stval: 0,
-            satp: 0,
-            scontext: 0,
-            medeleg: 0,
-            mideleg: 0,
-            pmpcfg: [0; 8],
-            pmpaddr: [0; 64],
-            mhpmcounter: [0; 29],
-            mhpmevent: [0; 29],
-        }
-    }
 }
 
 impl VirtCsr {
@@ -995,5 +995,81 @@ where
     #[inline]
     fn set_csr(&mut self, register: &'a R, value: usize, hw: &HardwareCapability) {
         self.set_csr(*register, value, hw)
+    }
+}
+
+// ————————————————————————————————— Tests —————————————————————————————————— //
+
+#[cfg(test)]
+mod tests {
+    use core::usize;
+
+    use crate::arch::{mstatus, Arch, Architecture, Csr, Mode};
+    use crate::host::MiralisContext;
+    use crate::virt::VirtContext;
+
+    /// We test value of mstatus.MPP.
+    /// When switching from firmware to payload,
+    /// virtual mstatus.MPP must to be S (because we are jumping to payload)
+    /// and mstatus.MPP must be M (coming from Miralis).
+    ///
+    /// When switching from payload to firmware,
+    /// virtual mstatus.MPP must to be S (coming from payload)
+    /// and mstatus.MPP must be U (going to firmware).
+    #[test]
+    fn switch_context_mpp() {
+        let hw = unsafe { Arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw);
+        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+
+        ctx.csr.mstatus |= Mode::S.to_bits() << mstatus::MPP_OFFSET;
+
+        unsafe { ctx.switch_from_firmware_to_payload(&mut mctx) }
+
+        assert_eq!(
+            ctx.csr.mstatus & mstatus::MPP_FILTER,
+            Mode::S.to_bits() << mstatus::MPP_OFFSET,
+            "VirtContext Mstatus.MPP must be set to S mode (going to payload)"
+        );
+
+        assert_eq!(
+            Arch::read_csr(Csr::Mstatus) & mstatus::MPP_FILTER,
+            Mode::M.to_bits() << mstatus::MPP_OFFSET,
+            "Mstatus.MPP must be set to M mode (coming from Miralis)"
+        );
+
+        // Simulate a trap
+        unsafe { Arch::write_csr(Csr::Mstatus, Mode::S.to_bits() << mstatus::MPP_OFFSET) };
+
+        unsafe { ctx.switch_from_payload_to_firmware(&mut mctx) }
+
+        // VirtContext Mstatus.MPP has been set to M mode
+        assert_eq!(
+            ctx.csr.mstatus & mstatus::MPP_FILTER,
+            Mode::S.to_bits() << mstatus::MPP_OFFSET,
+            "VirtContext Mstatus.MPP has been set to S mode (coming from payload)"
+        );
+
+        // Mstatus.MPP has been set to U mode
+        assert_eq!(
+            Arch::read_csr(Csr::Mstatus) & mstatus::MPP_FILTER,
+            Mode::U.to_bits() << mstatus::MPP_OFFSET,
+            "Mstatus.MPP has been set to U mode (going to firmware)"
+        );
+    }
+
+    /// We test value of mideleg when switching from payload to firmware.
+    /// Mideleg must always be 0 when executing the firware.
+    #[test]
+    fn switch_to_firmware_mideleg() {
+        let hw = unsafe { Arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw);
+        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+
+        unsafe { Arch::write_csr(Csr::Mideleg, usize::MAX) };
+
+        unsafe { ctx.switch_from_payload_to_firmware(&mut mctx) }
+
+        assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "Mideleg must be 0");
     }
 }

@@ -31,12 +31,17 @@ use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
 
 // Defined in the linker script
+#[cfg(not(feature = "userspace"))]
 extern "C" {
     pub(crate) static _stack_start: u8;
     pub(crate) static _bss_start: u8;
     pub(crate) static _bss_stop: u8;
     pub(crate) static _stack_top: u8;
 }
+
+#[cfg(feature = "userspace")]
+#[allow(non_upper_case_globals)]
+pub(crate) static _stack_start: u8 = 0;
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one
@@ -294,4 +299,67 @@ fn log_ctx(ctx: &VirtContext) {
         ctx.get(Csr::Mie),
         ctx.get(Csr::Mip)
     );
+}
+
+// ————————————————————————————————— Tests —————————————————————————————————— //
+
+/// We test some properties after handling a trap from firmware.
+/// We simulate a trap by creating a dummy trap state for the context of the machine.
+///
+/// Mideleg must be 0: don't allow nested interrupts when running Miralis.
+/// ctx.pc must be set to the handler start address.
+/// Mie, vMie, vMideleg must not change.
+/// vMepc and vMstatus.MIE must be set to corresponding values in ctx.trap_info.
+/// vMip must be updated to the value of Mip.
+/// In case of an interrupt, Mip must be cleared: avoid Miralis to trap again.
+#[cfg(test)]
+mod tests {
+
+    use crate::arch::{mstatus, Arch, Architecture, Csr, MCause, Mode};
+    use crate::handle_trap;
+    use crate::host::MiralisContext;
+    use crate::virt::VirtContext;
+
+    #[test]
+    fn handle_trap_state() {
+        let hw = unsafe { Arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw);
+        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+
+        // Firmware is running
+        ctx.mode = Mode::M;
+
+        ctx.csr.mstatus = 0;
+        ctx.csr.mie = 0b1;
+        ctx.csr.mideleg = 0;
+        ctx.csr.mtvec = 0x80200024; // Dummy mtvec
+
+        // Simulating a trap
+        ctx.trap_info.mepc = 0x80200042; // Dummy address
+        ctx.trap_info.mstatus = 0b1000;
+        ctx.trap_info.mcause = MCause::Breakpoint as usize; // TODO : use a real int.
+        ctx.trap_info.mip = 0b1;
+        ctx.trap_info.mtval = 0;
+
+        unsafe {
+            Arch::write_csr(Csr::Mie, 0b1);
+            Arch::write_csr(Csr::Mip, 0b1);
+            Arch::write_csr(Csr::Mideleg, 0);
+        };
+        handle_trap(&mut ctx, &mut mctx);
+
+        assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "mideleg must be 0");
+        assert_eq!(Arch::read_csr(Csr::Mie), 0b1, "mie must be 1");
+        // assert_eq!(Arch::read_csr(Csr::Mip), 0, "mip must be 0"); // TODO : uncomment if using a real int.
+        assert_eq!(ctx.pc, 0x80200024, "pc must be at handler start");
+        assert_eq!(ctx.csr.mip, 0b1, "mip must to be updated");
+        assert_eq!(ctx.csr.mie, 1, "mie must not change");
+        assert_eq!(ctx.csr.mideleg, 0, "mideleg must not change");
+        assert_eq!(ctx.csr.mepc, 0x80200042);
+        assert_eq!(
+            (ctx.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET,
+            0b1,
+            "mstatus.MIE must be set to trap_info.mstatus.MIE"
+        );
+    }
 }

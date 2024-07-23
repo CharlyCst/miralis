@@ -5,6 +5,8 @@ use core::mem::size_of;
 
 // ————————————————————————————————— mcause ————————————————————————————————— //
 
+const INTERRUPT_BIT: usize = 1 << (size_of::<usize>() * 8 - 1);
+
 #[derive(Clone, Copy)]
 #[repr(usize)]
 pub enum MCause {
@@ -26,86 +28,68 @@ pub enum MCause {
     UnknownException = 16,
 
     // Interrupts
-    UserSoftInt,
-    SupervisorSoftInt,
-    MachineSoftInt,
-    UserTimerInt,
-    SupervisorTimerInt,
-    MachineTimerInt,
-    UserExternalInt,
-    SupervisorExternalInt,
-    MachineExternalInt,
+    UserSoftInt = INTERRUPT_BIT,
+    SupervisorSoftInt = INTERRUPT_BIT + 1,
+    MachineSoftInt = INTERRUPT_BIT + 3,
+    UserTimerInt = INTERRUPT_BIT + 4,
+    SupervisorTimerInt = INTERRUPT_BIT + 5,
+    MachineTimerInt = INTERRUPT_BIT + 7,
+    UserExternalInt = INTERRUPT_BIT + 8,
+    SupervisorExternalInt = INTERRUPT_BIT + 9,
+    MachineExternalInt = INTERRUPT_BIT + 11,
     UnknownInt,
 }
 
 impl MCause {
     pub fn new(cause: usize) -> Self {
+        MCause::try_from(cause).unwrap()
+    }
+
+    pub fn is_interrupt(self) -> bool {
+        self as usize & INTERRUPT_BIT != 0
+    }
+}
+
+// —————————————————————————————— Conversions ——————————————————————————————— //
+
+impl TryFrom<usize> for MCause {
+    type Error = ();
+
+    fn try_from(cause: usize) -> Result<Self, Self::Error> {
         if (cause as isize) < 0 {
             // Interrupt
             // set last bit to 0
-            match cause ^ 1 << (size_of::<usize>() * 8 - 1) {
-                0 => Self::UserSoftInt,
-                1 => Self::SupervisorSoftInt,
-                3 => Self::MachineSoftInt,
-                4 => Self::UserTimerInt,
-                5 => Self::SupervisorTimerInt,
-                7 => Self::MachineTimerInt,
-                8 => Self::UserExternalInt,
-                9 => Self::SupervisorExternalInt,
-                11 => Self::MachineExternalInt,
-                _ => Self::UnknownInt,
+            match cause ^ INTERRUPT_BIT {
+                0 => Ok(MCause::UserSoftInt),
+                1 => Ok(MCause::SupervisorSoftInt),
+                3 => Ok(MCause::MachineSoftInt),
+                4 => Ok(MCause::UserTimerInt),
+                5 => Ok(MCause::SupervisorTimerInt),
+                7 => Ok(MCause::MachineTimerInt),
+                8 => Ok(MCause::UserExternalInt),
+                9 => Ok(MCause::SupervisorExternalInt),
+                11 => Ok(MCause::MachineExternalInt),
+                _ => Ok(MCause::UnknownInt),
             }
         } else {
             // Trap
             match cause {
-                0 => Self::InstrAddrMisaligned,
-                1 => Self::InstrAccessFault,
-                2 => Self::IllegalInstr,
-                3 => Self::Breakpoint,
-                4 => Self::LoadAddrMisaligned,
-                5 => Self::LoadAccessFault,
-                6 => Self::StoreMisaligned,
-                7 => Self::StoreAccessFault,
-                8 => Self::EcallFromUMode,
-                9 => Self::EcallFromSMode,
-                11 => Self::EcallFromMMode,
-                12 => Self::InstrPageFault,
-                13 => Self::LoadPageFault,
-                15 => Self::StorePageFault,
-                _ => Self::UnknownException,
+                0 => Ok(MCause::InstrAddrMisaligned),
+                1 => Ok(MCause::InstrAccessFault),
+                2 => Ok(MCause::IllegalInstr),
+                3 => Ok(MCause::Breakpoint),
+                4 => Ok(MCause::LoadAddrMisaligned),
+                5 => Ok(MCause::LoadAccessFault),
+                6 => Ok(MCause::StoreMisaligned),
+                7 => Ok(MCause::StoreAccessFault),
+                8 => Ok(MCause::EcallFromUMode),
+                9 => Ok(MCause::EcallFromSMode),
+                11 => Ok(MCause::EcallFromMMode),
+                12 => Ok(MCause::InstrPageFault),
+                13 => Ok(MCause::LoadPageFault),
+                15 => Ok(MCause::StorePageFault),
+                _ => Ok(MCause::UnknownException),
             }
-        }
-    }
-
-    pub fn is_interrupt(self) -> bool {
-        match self {
-            // Interrupts
-            MCause::UserSoftInt => true,
-            MCause::SupervisorSoftInt => true,
-            MCause::MachineSoftInt => true,
-            MCause::UserTimerInt => true,
-            MCause::SupervisorTimerInt => true,
-            MCause::MachineTimerInt => true,
-            MCause::UserExternalInt => true,
-            MCause::SupervisorExternalInt => true,
-            MCause::MachineExternalInt => true,
-            MCause::UnknownInt => true,
-            // Traps
-            MCause::InstrAddrMisaligned => false,
-            MCause::InstrAccessFault => false,
-            MCause::IllegalInstr => false,
-            MCause::Breakpoint => false,
-            MCause::LoadAddrMisaligned => false,
-            MCause::LoadAccessFault => false,
-            MCause::StoreMisaligned => false,
-            MCause::StoreAccessFault => false,
-            MCause::EcallFromUMode => false,
-            MCause::EcallFromSMode => false,
-            MCause::EcallFromMMode => false,
-            MCause::InstrPageFault => false,
-            MCause::LoadPageFault => false,
-            MCause::StorePageFault => false,
-            MCause::UnknownException => false,
         }
     }
 }
