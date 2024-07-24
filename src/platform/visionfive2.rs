@@ -58,13 +58,6 @@ impl Platform for VisionFive2Platform {
         writer.write_fmt(args).unwrap();
         writer.write_str("\r\n").unwrap();
         drop(writer);
-
-        // let mut serial_port = SERIAL_PORT.lock();
-        // if let Some(ref mut serial_port) = serial_port.as_mut() {
-        //     serial_port
-        //         .write_fmt(shadow_args)
-        //         .expect("Printing to serial failed")
-        // };
     }
 
     fn exit_success() -> ! {
