@@ -46,11 +46,9 @@ impl Platform for VisionFive2Platform {
     }
 
     fn init() {
-        // Serial
-        let mut uart = SERIAL_PORT.lock();
-        let mut mmio = unsafe { MmioSerialPort::new(SERIAL_PORT_BASE_ADDRESS) };
-        mmio.init();
-        *uart = Some(mmio);
+        let mut writer = WRITER.lock();
+        writer.write_char('\n');
+        drop(writer);
     }
 
     fn debug_print(args: fmt::Arguments) {
