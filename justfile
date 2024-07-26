@@ -20,7 +20,7 @@ test:
 
 	# Checking configs...
 	cargo run -q --package runner -- check-config ./config/example.config.toml
-	cargo run -q --package runner -- check-config ./config/qemu_virt.toml
+	cargo run -q --package runner -- check-config ./config/qemu-virt.toml
 	cargo run -q --package runner -- check-config ./config/visionfive2.toml
 
 	# Running integration tests...
