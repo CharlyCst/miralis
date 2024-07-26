@@ -209,7 +209,7 @@ pub fn check_config(args: &CheckConfigArgs) {
         Ok(config) => config,
         Err(error) => {
             println!("Could not read config: {}", error);
-            return;
+            std::process::exit(1);
         }
     };
 
