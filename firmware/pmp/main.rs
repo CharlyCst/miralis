@@ -15,7 +15,6 @@ fn main() -> ! {
     // Test normal write to config
     unsafe {
         asm!(
-            "li {0}, 0b00000111",
             "csrw pmpcfg0, {0}",
             "csrr {1}, pmpcfg0",
             in(reg) secret_cfg,
@@ -27,10 +26,9 @@ fn main() -> ! {
     // Test invalid write to config
     unsafe {
         asm!(
-            "li {0}, 0b01100111",
             "csrw pmpcfg0, {0}",
             "csrr {1}, pmpcfg0",
-            in(reg) secret_cfg,
+            in(reg) 0b01100111,
             out(reg) res,
         );
     }
@@ -39,10 +37,9 @@ fn main() -> ! {
     // Test out of range write to config (with 8 PMP)
     unsafe {
         asm!(
-            "li {0}, 0b01100111",
             "csrw pmpcfg4, {0}",
             "csrr {1}, pmpcfg4",
-            in(reg) secret_cfg,
+            in(reg) 0b01100111,
             out(reg) res,
         );
     }
@@ -51,10 +48,9 @@ fn main() -> ! {
     // Test normal write to address
     unsafe {
         asm!(
-            "li {0}, 0x42",
             "csrw pmpaddr0, {0}",
             "csrr {1}, pmpaddr0",
-            in(reg) secret_cfg,
+            in(reg) 0x42,
             out(reg) res,
         );
     }
@@ -75,10 +71,9 @@ fn main() -> ! {
     // Test out of range write to address : for 16 pmp
     unsafe {
         asm!(
-            "li {0}, 0x42",
             "csrw pmpaddr17, {0}",
             "csrr {1}, pmpaddr9",
-            in(reg) secret_cfg,
+            in(reg) 0x42,
             out(reg) res,
         );
     }

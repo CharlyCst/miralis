@@ -17,7 +17,7 @@ platform_visionfive2 = []
 
 [profile.dev]
 panic = "abort"
-opt-level = 0
+opt-level = 3
 
 [profile.release]
 panic = "abort"
