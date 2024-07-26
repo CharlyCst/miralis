@@ -326,17 +326,19 @@ impl Architecture for MetalArch {
 
         asm!(
             // We need to save some registers manually, the compiler can't handle those
-            "sd x3, (8*1)(sp)",
-            "sd x4, (8*2)(sp)",
-            "sd x8, (8*3)(sp)",
-            "sd x9, (8*4)(sp)",
+            "add sp, sp, -32",
+            "sd x3, (8*0)(sp)",
+            "sd x4, (8*1)(sp)",
+            "sd x8, (8*2)(sp)",
+            "sd x9, (8*3)(sp)",
             // Jump into context switch code
             "jal x30, _run_vcpu",
             // Restore registers
-            "ld x3, (8*1)(sp)",
-            "ld x4, (8*2)(sp)",
-            "ld x8, (8*3)(sp)",
-            "ld x9, (8*4)(sp)",
+            "ld x3, (8*0)(sp)",
+            "ld x4, (8*1)(sp)",
+            "ld x8, (8*2)(sp)",
+            "ld x9, (8*3)(sp)",
+            "add sp, sp, 32",
             // Clobber all other registers, so that the compiler automatically
             // saves and restores the ones it needs
             inout("x31") ctx => _,

@@ -131,14 +131,15 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         );
         ctx.pc = firmware_addr;
     }
-    main_loop(ctx, mctx);
+
+    main_loop(&mut ctx, &mut mctx);
 }
 
-fn main_loop(mut ctx: VirtContext, mut mctx: MiralisContext) -> ! {
+fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
     loop {
         unsafe {
-            Arch::run_vcpu(&mut ctx);
-            handle_trap(&mut ctx, &mut mctx);
+            Arch::run_vcpu(ctx);
+            handle_trap(ctx, mctx);
         }
     }
 }
