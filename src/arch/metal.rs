@@ -618,34 +618,17 @@ _start:
     // Then we fill the stack with a known memory pattern
     li t2, 0x0BADBED0
 
-loop:
+stack_loop:
     bgeu t0, t1, zero_loop // Exit when reaching the end address
     sw t2, 0(t0)      // Write the pattern
     addi t0, t0, 4    // increment the cursor
-    j loop
+    j stack_loop
 
 zero_loop:
-    bgeu t4, t5, verify
+    bgeu t4, t5, done
     sb x0, 0(t4)
     addi t4, t4, 1
     j zero_loop
-
-verify:
-    ld t4, __bss_start
-    ld t5, __bss_stop
-    j verify_loop
-
-verify_loop:
-    bgeu t4, t5, done
-    lb t6, 0(t4)  
-    beqz t6, continue_verification
-
-continue_verification:
-    addi t4, t4, 1
-    j verify_loop
-
-halt_execution:
-    j halt_execution
 
 done:
     // And finally we load the stack pointer into sp and jump into main
@@ -689,7 +672,7 @@ global_asm!(
 .text
 .align 4
 .global _run_vcpu
-_run_vcpu:
+_run_vcpu:  
     csrw mscratch, x31        // Save context in mscratch
     sd x30, (0)(sp)           // Store return address
     sd sp,(8*0)(x31)          // Store host stack

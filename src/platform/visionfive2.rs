@@ -5,7 +5,6 @@ use core::fmt::Write;
 use core::{fmt, hint, ptr};
 
 use spin::Mutex;
-use uart_16550::MmioSerialPort;
 
 use super::Platform;
 use crate::arch::{Arch, Architecture};
@@ -18,10 +17,9 @@ const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const MIRALIS_START_ADDR: usize = 0x40000000;
 const FIRMWARE_START_ADDR: usize = 0x40200000;
 const CLINT_BASE: usize = 0x2000000;
+const PRIMARY_HART: usize = 1;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
-
-static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
 /// The physical CLINT driver.
 ///
@@ -45,6 +43,7 @@ impl Platform for VisionFive2Platform {
     }
 
     fn init() {
+        // uart_init(SERIAL_PORT_BASE_ADDRESS);
         let mut writer = WRITER.lock();
         writer.write_char('\n');
         drop(writer);
@@ -75,6 +74,11 @@ impl Platform for VisionFive2Platform {
         FIRMWARE_START_ADDR
     }
 
+
+    fn get_primary_hart() -> usize {
+        PRIMARY_HART
+    }
+    
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
         let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
         (MIRALIS_START_ADDR, size)
@@ -100,19 +104,30 @@ impl Platform for VisionFive2Platform {
 
 pub struct Writer {
     serial_port_base_addr: usize,
+    reg_lsr: usize,
+    lsr_thre: u8,
 }
 
 impl Writer {
     pub const fn new(serial_port_base_addr: usize) -> Self {
         Writer {
             serial_port_base_addr,
+            reg_lsr: 0x05,
+            lsr_thre: 0x20,
         }
     }
 
     fn write_char(&mut self, c: char) {
         unsafe {
+            // Wait until THR (Transmitter Holding Register) is ready
+            // For now that's disabled, on the boars this bit of LSR always reads as 0
+            // Which leads to an infinite wait cycle
+
+            // while (unsafe { ptr::read_volatile((self.serial_port_base_addr + self.reg_lsr) as *const u8) } & self.lsr_thre) == 0 {
+            // }
+
             ptr::write_volatile(self.serial_port_base_addr as *mut char, c);
-            for _n in 1..10001 {
+            for _n in 1..1001 {
                 asm!("nop");
             }
         }
@@ -125,5 +140,73 @@ impl fmt::Write for Writer {
             self.write_char(c);
         }
         Ok(())
+    }
+}
+
+fn uart_init(serial_port_base_addr: usize) {
+    let reg_lcr = 0x03;
+    let reg_brdl = 0x00;
+    let reg_brdh = 0x01;
+    let reg_mdc = 0x04;
+    let reg_fcr = 0x02;
+    let reg_ier = 0x01;
+
+    let lcr_dlab = 0x80;
+    let lcr_cs8 = 0x03;
+    let lcr_1_stb = 0x00;
+    let lcr_pdis = 0x00;
+    let fcr_fifo = 0x01;
+    let fcr_mode1 = 0x08;
+    let fcr_fifo_8 = 0x80;
+    let fcr_rcvrclr = 0x02;
+    let fcr_xmitclr = 0x04;
+
+    let divisor = 0x01;
+
+    // Read LCR and cache its value
+    let lcr_cache = unsafe { ptr::read_volatile((serial_port_base_addr + reg_lcr) as *const u8) };
+
+    // Enable DLAB (Divisor Latch Access Bit) to set the baud rate divisor
+    unsafe {
+        ptr::write_volatile(
+            (serial_port_base_addr + reg_lcr) as *mut u8,
+            lcr_dlab | lcr_cache,
+        );
+        ptr::write_volatile(
+            (serial_port_base_addr + reg_brdl) as *mut u8,
+            (divisor & 0xFF) as u8,
+        );
+        ptr::write_volatile(
+            (serial_port_base_addr + reg_brdh) as *mut u8,
+            ((divisor >> 8) & 0xFF) as u8,
+        );
+        ptr::write_volatile((serial_port_base_addr + reg_lcr) as *mut u8, lcr_cache);
+        // Restore LCR
+    }
+
+    // Configure UART: 8 data bits, 1 stop bit, no parity
+    unsafe {
+        ptr::write_volatile(
+            (serial_port_base_addr + reg_lcr) as *mut u8,
+            lcr_cs8 | lcr_1_stb | lcr_pdis,
+        );
+    }
+
+    // Disable flow control
+    unsafe {
+        ptr::write_volatile((serial_port_base_addr + reg_mdc) as *mut u8, 0);
+    }
+
+    // Configure FIFO: enabled, mode 0, generate interrupt at 8th byte, clear receive and transmit buffers
+    unsafe {
+        ptr::write_volatile(
+            (serial_port_base_addr + reg_fcr) as *mut u8,
+            fcr_fifo | fcr_mode1 | fcr_fifo_8 | fcr_rcvrclr | fcr_xmitclr,
+        );
+    }
+
+    // Disable UART interrupts
+    unsafe {
+        ptr::write_volatile((serial_port_base_addr + reg_ier) as *mut u8, 0);
     }
 }

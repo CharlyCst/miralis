@@ -189,7 +189,9 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             }
         }
         Target::Firmware(ref firmware) => {
-            build_cmd.env("RUSTFLAGS", "-C link-arg=-Tmisc/linker-script-firmware.x");
+            let firmware_address = cfg.platform.firmware_address.unwrap_or(0x80200000);
+            let linker_args = format!("-C link-arg=-Tmisc/linker-script-firmware.x -C link-arg=--defsym=_firmware_address={firmware_address}");
+            build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.arg("--package").arg(firmware);
         }
     }

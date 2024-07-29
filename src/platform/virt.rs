@@ -17,6 +17,7 @@ const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRALIS_START_ADDR: usize = 0x80000000;
 const FIRMWARE_START_ADDR: usize = 0x80200000;
 const CLINT_BASE: usize = 0x2000000;
+const PRIMARY_HART: usize = 0;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -70,6 +71,10 @@ impl Platform for VirtPlatform {
     fn load_firmware() -> usize {
         // We directly load the firmware from QEMU, nothing to do here.
         FIRMWARE_START_ADDR
+    }
+
+    fn get_primary_hart() -> usize {
+        PRIMARY_HART
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
