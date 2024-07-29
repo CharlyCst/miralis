@@ -609,18 +609,30 @@ _start:
     ld t0, __stack_start
     ld t1, {stack_size}  // Per-hart stack size
     csrr t2, mhartid     // Our current hart ID
-    mul t3, t2, t1       // How me space before our own stack 
+
+    // compute how much space we need to put before this hart's stack
+    add t3, x0, x0       // Initialize offset to zero
+    add t4, x0, x0       // Initialize counter to zero
+stack_start_loop:
+    // First we exit the loop once we made enough iterations (N iterations for hart N)
+    bgeu t4, t2, stack_start_done
+    add t3, t3, t1       // Add space for one more stack
+    addi t4, t4, 1       // Increment counter
+    j stack_start_done
+
+stack_start_done:
     add t0, t0, t3       // The actual start of our stack
     add t1, t0, t1       // And the end of our stack
 
     // Then we fill the stack with a known memory pattern
     li t2, 0x0BADBED0
-loop:
-    bgeu t0, t1, done // Exit when reaching the end address
+stack_fill_loop:
+    // Exit when reaching the end address
+    bgeu t0, t1, stack_fill_done
     sw t2, 0(t0)      // Write the pattern
     addi t0, t0, 4    // increment the cursor
-    j loop
-done:
+    j stack_fill_loop
+stack_fill_done:
 
     // And finally we load the stack pointer into sp and jump into main
     mv sp, t1
