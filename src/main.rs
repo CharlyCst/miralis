@@ -100,7 +100,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         mctx.virt_pmp_offset = (inactive_index + 1) as u8;
 
         // Calculate the number of virtual PMPs available
-        let remaining_pmp_entries = mctx.pmp.nb_pmp - devices.len().try_into().unwrap() - 2;
+        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 2;
 
         if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
             nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
@@ -111,7 +111,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         nb_virt_pmp = 0;
     }
     log::debug!("№ Pmps: {} | № VirtPmp:: {}", mctx.pmp.nb_pmp, nb_virt_pmp);
-    
+
     // Initialize the virtual context and configure architecture
     let mut ctx = VirtContext::new(hart_id, nb_virt_pmp);
     unsafe {
