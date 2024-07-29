@@ -82,9 +82,6 @@ impl log::Log for Logger {
 }
 pub fn init() {
     static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
-    // A temp crutch: for some reason w/o those two strings logger won't print (working on it)
-    Plat::debug_print(format_args!("Log init status: {:?}", IS_INITIALIZED));
-    let address: *const AtomicBool = &IS_INITIALIZED;
 
     match IS_INITIALIZED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
         Ok(_) => {

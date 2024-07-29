@@ -89,9 +89,10 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             (clint.start_addr, clint.size),
             // Add more here as needed
         ];
-        // Protect memory to trap firmware read/writes 
+        // Protect memory to trap firmware read/writes
         for (i, &(start, size)) in devices.iter().enumerate() {
-            mctx.pmp.set(i, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
+            mctx.pmp
+                .set(i, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
         }
 
         let inactive_index = devices.len();
@@ -99,8 +100,11 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
 
         // Finally, set the last PMP to grant access to the whole memory
-        mctx.pmp
-            .set((mctx.pmp.nb_pmp - 1) as usize, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
+        mctx.pmp.set(
+            (mctx.pmp.nb_pmp - 1) as usize,
+            usize::MAX,
+            pmpcfg::RWX | pmpcfg::NAPOT,
+        );
         // Give some PMPs to the firmware
         mctx.virt_pmp_offset = (inactive_index + 1) as u8;
 

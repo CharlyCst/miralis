@@ -74,11 +74,10 @@ impl Platform for VisionFive2Platform {
         FIRMWARE_START_ADDR
     }
 
-
     fn get_primary_hart() -> usize {
         PRIMARY_HART
     }
-    
+
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
         let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
         (MIRALIS_START_ADDR, size)
@@ -120,14 +119,14 @@ impl Writer {
     fn write_char(&mut self, c: char) {
         unsafe {
             // Wait until THR (Transmitter Holding Register) is ready
-            // For now that's disabled, on the boars this bit of LSR always reads as 0
+            // For now that's disabled, on the board this bit of LSR always reads as 0
             // Which leads to an infinite wait cycle
 
             // while (unsafe { ptr::read_volatile((self.serial_port_base_addr + self.reg_lsr) as *const u8) } & self.lsr_thre) == 0 {
             // }
 
             ptr::write_volatile(self.serial_port_base_addr as *mut char, c);
-            for _n in 1..1001 {
+            for _n in 1..1000001 {
                 asm!("nop");
             }
         }
