@@ -633,11 +633,6 @@ zero_loop:
 done:
     // And finally we load the stack pointer into sp and jump into main
     mv sp, t1
-    la t5, 0x43
-
-    lui t6, %hi(0x10000000)
-    addi t6, t6, %lo(0x10000000)
-    sb t5, 0(t6)
     j {main}
 
 // Store the address of the stack in memory
