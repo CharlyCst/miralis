@@ -20,7 +20,6 @@ mod platform;
 mod utils;
 mod virt;
 
-use core::arch::asm;
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
 use platform::{init, Plat, Platform};
@@ -68,9 +67,6 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
-    unsafe {
-        asm!("csrw medeleg, {}", in(reg) 0);
-    }
     let nb_virt_pmp;
     let clint = Plat::create_clint_device();
 
@@ -128,6 +124,7 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         Arch::set_mpp(arch::Mode::U);
         // Update the PMPs prior to first entry
         Arch::write_pmp(&mctx.pmp);
+        Arch::write_csr(Csr::Medeleg, 0);
         Arch::sfence_vma();
 
         // Configure the firmware context
