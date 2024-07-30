@@ -14,8 +14,8 @@ use crate::driver::ClintDriver;
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const MIRALIS_START_ADDR: usize = 0x40000000;
-const FIRMWARE_START_ADDR: usize = 0x40200000;
+const MIRALIS_START_ADDR: usize = 0x43000000;
+const FIRMWARE_START_ADDR: usize = 0x40000000;
 const CLINT_BASE: usize = 0x2000000;
 const PRIMARY_HART: usize = 1;
 
@@ -79,8 +79,8 @@ impl Platform for VisionFive2Platform {
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
-        let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
-        (MIRALIS_START_ADDR, size)
+        //let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
+        (MIRALIS_START_ADDR, 0x200000) // Temporary workaround, suggestions appreciated
     }
 
     fn get_max_valid_address() -> usize {
