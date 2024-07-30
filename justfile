@@ -37,6 +37,7 @@ test:
 
 	# Testing with external projects
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 
 # Run unit tests
 unit-test:
