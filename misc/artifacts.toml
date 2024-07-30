@@ -4,4 +4,4 @@
 opensbi = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.1.7/opensbi.bin"
 linux = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.0/opensbi-linux-kernel-exit.bin"
 linux-shell = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.0/opensbi-linux-kernel-shell.bin"
-zephyr = "https://github.com/CharlyCst/miralis-artifact-zephyr/releases/download/v0.0.6/zephyr.bin"
+zephyr = "https://github.com/CharlyCst/miralis-artifact-zephyr/releases/download/v0.1.1/zephyr.bin"
