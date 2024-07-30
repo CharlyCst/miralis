@@ -50,6 +50,9 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
             core::hint::spin_loop();
         }
     }
+    // On the VisionFive2 board there is an issue with a hart_id
+    // Identification, so we have to reassign it for now
+    let hart_id = Arch::read_csr(Csr::Mhartid);
 
     init();
     log::info!("Hello, world!");
