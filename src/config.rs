@@ -211,3 +211,5 @@ pub const PLATFORM_NB_HARTS: usize = {
 /// The stack size for each Miralis thread (one per hart).
 pub const PLATFORM_STACK_SIZE: usize =
     parse_usize_or(option_env!("MIRALIS_PLATFORM_STACK_SIZE"), 0x8000);
+
+pub const BENCHMARK: bool = is_enabled!("BENCHMARK");

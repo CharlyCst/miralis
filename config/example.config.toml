@@ -2,6 +2,8 @@
 #
 # To configure Miralis create a copy of that file named config.toml
 
+benchmark = false
+
 [log]
 # The default log level
 # Possible values are: trace, debug, info, warn, error, off

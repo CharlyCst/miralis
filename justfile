@@ -1,6 +1,8 @@
 default          := "default"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
+qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
+benchmark_folder := "./benchmark-out"
 
 # Print the list of commands
 help:
@@ -39,6 +41,9 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 
+	# Test benchmark code
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware default
+
 # Run unit tests
 unit-test:
 	cargo test --features userspace -p miralis
@@ -69,3 +74,7 @@ install-toolchain:
 
 # The following line gives highlighting on vim
 # vim: set ft=make :
+
+benchmark firmware=default:
+	cargo run --package runner -- run -v --config {{qemu_virt_benchmark}} --firmware {{firmware}} > bench.out
+	cargo run --package benchmark-analyzer

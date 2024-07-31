@@ -25,6 +25,7 @@ pub struct Config {
     pub vcpu: VCpu,
     #[serde(default)]
     pub platform: Platform,
+    pub benchmark: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -79,6 +80,10 @@ impl Config {
         envs.extend(self.debug.build_envs());
         envs.extend(self.vcpu.build_envs());
         envs.extend(self.platform.build_envs());
+        envs.insert(
+            String::from("BENCHMARK"),
+            format!("{}", self.benchmark.unwrap_or(false)),
+        );
         envs
     }
 }
