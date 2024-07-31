@@ -40,6 +40,14 @@ If `just gdb` can't locate such a binary it will provide a list of supported GDB
 
 The log level can be adjusted using a `config.toml` file. See `./config/example.config.toml` for reference.
 
+## Benchmark
+
+Different benchmark can be run with `just benchmark`.
+
+The default behaviour is counting the number of retired instructions of function `run_vcpu` and `handle_trap` called in `main.rs` with the `default` firmware. You can specify the binary you want to benchmark with `just benchmark <binaries>`. For example, if you want to benchmark `linux` you can run `just benchmark linux`. 
+
+The command will generate text files in a new folder `benchmark-out` with the name of the benchmarks and their output. Then, it will compute and print some statistics.
+
 ## Contributing
 
 See [docs/contributing.md](./docs/contributing.md).

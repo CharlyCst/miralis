@@ -42,7 +42,7 @@ members = [
     "crates/core",
 
     # Tooling
-    "runner",
+    "runner", "benchmark-analyzer",
 ]
 
 [workspace.dependencies]

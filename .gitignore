@@ -2,3 +2,4 @@
 config.toml
 artifacts
 /.vscode
+bench.out

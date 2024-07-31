@@ -9,6 +9,7 @@
 #![cfg_attr(not(test), no_main)]
 
 mod arch;
+mod benchmark;
 mod config;
 mod debug;
 mod decoder;
@@ -22,6 +23,7 @@ mod virt;
 
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
+use benchmark::Benchmark;
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
@@ -146,10 +148,26 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 }
 
 fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
+    let mut bench = Benchmark::new();
+
     loop {
         unsafe {
+            if config::BENCHMARK {
+                bench.start();
+            }
+
             Arch::run_vcpu(ctx);
+
+            if config::BENCHMARK {
+                bench.stop("main::run_vcpu");
+                bench.start();
+            }
+
             handle_trap(ctx, mctx);
+
+            if config::BENCHMARK {
+                bench.stop("main::handle_trap");
+            }
         }
     }
 }
