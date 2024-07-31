@@ -42,4 +42,4 @@ The log level can be adjusted using a `config.toml` file. See `./config/example.
 
 ## Contributing
 
-See [docs/readme.md](./docs/readme.md).
+See [docs/contributing.md](./docs/contributing.md).
