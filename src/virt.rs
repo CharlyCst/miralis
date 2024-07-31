@@ -313,57 +313,173 @@ impl VirtContext {
         }
     }
 
+    /// Handles a compressed load instruction.
+    ///
+    /// Calculates the memory address and reads a zero-extended value
+    /// from the device (after applying a mask to prevent memory leak).
+    /// - Compressed load&store instructions are 2 bytes long.
+    /// - The immediate (`imm`) value is always positive and has a multiplier applied.
+    fn handle_compressed_load(
+        &mut self,
+        device: &VirtDevice,
+        rd: Register,
+        rs1: Register,
+        imm: usize,
+        length: usize,
+    ) {
+        let multiplier = length / 8;
+        let address = self.get(rs1) + imm * multiplier;
+        let offset = address - device.start_addr;
+        match device.device_interface.read_device(offset) {
+            Ok(mut value) => {
+                let mask = if length < usize::BITS as usize {
+                    (1 << length) - 1
+                } else {
+                    usize::MAX
+                };
+                value &= mask;
+
+                self.set(rd, value);
+                self.pc += 2;
+            }
+            Err(err) => panic!("Error reading {}: {}", device.name, err),
+        }
+    }
+
+    /// Handles a compressed store instruction.
+    ///
+    /// Calculates the memory address and writes the value
+    /// to the device (after applying a mask to prevent overflow).
+    fn handle_compressed_store(
+        &mut self,
+        device: &VirtDevice,
+        rs1: Register,
+        rs2: Register,
+        imm: usize,
+        length: usize,
+    ) {
+        let multiplier = length / 8;
+        let address = self.get(rs1) + imm * multiplier;
+        let offset = address - device.start_addr;
+        let mut value = self.get(rs2);
+
+        let mask = if length < usize::BITS as usize {
+            (1 << length) - 1
+        } else {
+            usize::MAX
+        };
+
+        if value > mask {
+            log::warn!(
+                "Value {} exceeds allowed length {}. Trimming to fit.",
+                value,
+                length
+            );
+            value &= mask;
+        }
+        match device.device_interface.write_device(offset, value) {
+            Ok(()) => {
+                self.pc += 2;
+            }
+            Err(err) => panic!("Error writing {}: {}", device.name, err),
+        }
+    }
+
+    /// Handles a load instruction.
+    ///
+    /// Calculates the memory address, reads the value from the device,
+    /// sign-extends it to 32 bits if necessary (for 8 and 16-bit instructions),
+    /// applies a mask and writes the value to the device.
+    ///
+    /// - Normal load instructions are 4 bytes long.
+    /// - The immediate (`imm`) value can be positive or negative, but it has no multiplier.
+    fn handle_load(
+        &mut self,
+        device: &VirtDevice,
+        rd: Register,
+        rs1: Register,
+        imm: isize,
+        length: usize,
+    ) {
+        let address = utils::calculate_addr(self.get(rs1), imm);
+        let offset = address - device.start_addr;
+        match device.device_interface.read_device(offset) {
+            Ok(mut value) => {
+                // Sign-extend to 32 bits
+                if length < 32 && value < (1 << 31) {
+                    value = (value as i32) as usize;
+                }
+                let mask = if length < usize::BITS as usize {
+                    (1 << length) - 1
+                } else {
+                    usize::MAX
+                };
+
+                value &= mask;
+
+                self.set(rd, value);
+                self.pc += 4;
+            }
+            Err(err) => panic!("Error reading {}: {}", device.name, err),
+        }
+    }
+
+    /// Handles a store instruction.
+    ///
+    /// Calculates the memory address and writes the value
+    /// to the device (after applying a mask to prevent overflow).
+    fn handle_store(
+        &mut self,
+        device: &VirtDevice,
+        rs1: Register,
+        rs2: Register,
+        imm: isize,
+        length: usize,
+    ) {
+        let address = utils::calculate_addr(self.get(rs1), imm);
+        let offset = address - device.start_addr;
+        let mut value = self.get(rs2);
+
+        let mask = if length < usize::BITS as usize {
+            (1 << length) - 1
+        } else {
+            usize::MAX
+        };
+
+        if value > mask {
+            log::warn!(
+                "Value {} exceeds allowed length {}. Trimming to fit.",
+                value,
+                length
+            );
+            value &= mask;
+        }
+
+        match device.device_interface.write_device(offset, value) {
+            Ok(()) => {
+                self.pc += 4;
+            }
+            Err(err) => panic!("Error writing {}: {}", device.name, err),
+        }
+    }
+
     pub fn handle_device_access_fault(&mut self, instr: &Instr, device: &VirtDevice) {
         match instr {
-            Instr::Ld { rd, rs1, imm } => {
-                let address = utils::calculate_addr(self.get(rs1), *imm);
-                let offset = address - device.start_addr;
-                match device.device_interface.read_device(offset) {
-                    Ok(value) => {
-                        self.set(rd, value);
-                        self.pc += 4;
-                    }
-                    Err(err) => {
-                        panic!("Error reading {}: {}", device.name, err);
-                    }
-                }
-            }
-            Instr::CLd { rd, rs1, imm } => {
-                let address = self.get(rs1) + imm * 8;
-                let offset = address - device.start_addr;
-                match device.device_interface.read_device(offset) {
-                    Ok(value) => {
-                        self.set(rd, value);
-                        self.pc += 2;
-                    }
-                    Err(err) => {
-                        panic!("Error reading {}: {}", device.name, err);
-                    }
-                }
-            }
-            Instr::Sd { rs1, rs2, imm } => {
-                let address = utils::calculate_addr(self.get(rs1), *imm);
-                let offset = address - device.start_addr;
-                match device.device_interface.write_device(offset, self.get(rs2)) {
-                    Ok(()) => self.pc += 4,
-                    Err(err) => panic!("Error writing {}: {}", device.name, err),
-                }
-            }
+            Instr::Ld { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 64),
+            Instr::Lw { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 32),
+            Instr::Lh { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 16),
+            Instr::Lb { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 8),
+            Instr::Sd { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 64),
+            Instr::Sw { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 32),
+            Instr::Sh { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 16),
+            Instr::Sb { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 8),
+            Instr::CLd { rd, rs1, imm } => self.handle_compressed_load(device, *rd, *rs1, *imm, 64),
+            Instr::CLw { rd, rs1, imm } => self.handle_compressed_load(device, *rd, *rs1, *imm, 32),
             Instr::CSd { rs1, rs2, imm } => {
-                let address = self.get(rs1) + imm * 8;
-                let offset = address - device.start_addr;
-                match device.device_interface.write_device(offset, self.get(rs2)) {
-                    Ok(()) => self.pc += 2,
-                    Err(err) => panic!("Error writing {}: {}", device.name, err),
-                }
+                self.handle_compressed_store(device, *rs1, *rs2, *imm, 64)
             }
             Instr::CSw { rs1, rs2, imm } => {
-                let address = self.get(rs1) + imm * 4;
-                let offset = address - device.start_addr;
-                match device.device_interface.write_device(offset, self.get(rs2)) {
-                    Ok(()) => self.pc += 2,
-                    Err(err) => panic!("Error writing {}: {}", device.name, err),
-                }
+                self.handle_compressed_store(device, *rs1, *rs2, *imm, 32)
             }
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }

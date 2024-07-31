@@ -9,8 +9,8 @@ pub mod clint {
     pub const MTIMECMP_OFFSET: usize = 0x4000;
     pub const MTIME_OFFSET: usize = 0xBFF8;
 
-    pub const MSIP_WIDTH: usize = 32;
-    pub const MTIMECMP_WIDTH: usize = 64;
+    pub const MSIP_WIDTH: usize = 0x4;
+    pub const MTIMECMP_WIDTH: usize = 0x8;
 }
 
 #[derive(Clone, Debug)]
