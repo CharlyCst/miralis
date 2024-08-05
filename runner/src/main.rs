@@ -47,6 +47,9 @@ struct RunArgs {
     #[arg(long)]
     /// Path to the configuration file to use
     config: Option<PathBuf>,
+    #[arg(long, action)]
+    /// Activate benchmark analysis
+    benchmark: bool,
 }
 
 #[derive(Args)]
