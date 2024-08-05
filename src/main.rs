@@ -166,6 +166,9 @@ fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
             handle_trap(ctx, mctx);
 
             if config::BENCHMARK {
+                if config::BENCHMARK_NB_EXITS {
+                    Benchmark::record_entry("nb_exits", "nb_exits", ctx.nb_exits);
+                }
                 bench.stop("main::handle_trap");
             }
         }

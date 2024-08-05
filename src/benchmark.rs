@@ -6,6 +6,21 @@
 use core::arch::asm;
 
 use crate::arch::{Arch, Architecture, Csr};
+use crate::config;
+use crate::platform::{Plat, Platform};
+
+#[macro_export]
+macro_rules! _benchmark_print {
+    ($($arg:tt)*) => {
+        Plat::debug_print(core::format_args!($($arg)*))
+    };
+}
+
+#[macro_export]
+macro_rules! benchmark_print {
+    () => (if config::BENCHMARK { $crate::_benchmark_print!("\r\n")});
+    ($($arg:tt)*) => (if config::BENCHMARK { $crate::_benchmark_print!("{}\r\n", core::format_args!($($arg)*))})
+}
 
 pub struct Benchmark {
     // Does the benchmark started.
@@ -18,7 +33,6 @@ pub struct Benchmark {
 }
 
 impl Benchmark {
-    #[allow(dead_code)]
     pub fn new() -> Benchmark {
         Benchmark {
             is_running: false,
@@ -28,7 +42,6 @@ impl Benchmark {
     }
 
     /// Start benchmarking.
-    #[allow(dead_code)]
     pub fn start(&mut self) {
         if self.is_running {
             log::error!("already counting instr");
@@ -36,39 +49,46 @@ impl Benchmark {
             self.is_running = true;
 
             // instruction
-            self.previous_instr_count = Arch::read_csr(Csr::Minstret);
+            if config::BENCHMARK_INSTRUCTION {
+                self.previous_instr_count = Arch::read_csr(Csr::Minstret);
+            }
 
             // time
-            unsafe {
-                asm!(
-                    "rdtime {value}",
-                    value = out(reg) self.previous_timer
-                );
+            if config::BENCHMARK_TIME {
+                unsafe {
+                    asm!(
+                        "rdtime {value}",
+                        value = out(reg) self.previous_timer
+                    );
+                }
             }
         }
     }
 
     /// Stop benchmarking.
-    #[allow(dead_code)]
     pub fn stop(&mut self, tag: &str) {
         self.is_running = false;
 
-        // instructions
-        let stop_value = Arch::read_csr(Csr::Minstret);
-        Self::record_entry("instr", tag, stop_value - self.previous_instr_count);
+        // instruction
+        if config::BENCHMARK_INSTRUCTION {
+            let stop_value = Arch::read_csr(Csr::Minstret);
+            Self::record_entry("instr", tag, stop_value - self.previous_instr_count);
+        }
 
         // time
-        let stop_time: usize;
-        unsafe {
-            asm!(
-                "rdtime {value}", 
-                value = out(reg) stop_time);
+        if config::BENCHMARK_TIME {
+            let stop_time: usize;
+            unsafe {
+                asm!(
+                    "rdtime {value}", 
+                    value = out(reg) stop_time);
+            }
+            Self::record_entry("time", tag, stop_time - self.previous_timer);
         }
-        Self::record_entry("time", tag, stop_time - self.previous_timer);
     }
 
     /// Print formated string with value of the entry and a tag for identification.
-    fn record_entry(bench: &str, tag: &str, entry: usize) {
-        log::info!("|| {:>15} || {:25} || {}", bench, tag, entry);
+    pub fn record_entry(bench: &str, tag: &str, entry: usize) {
+        benchmark_print!("benchmark || {:>15} || {:25} || {}", bench, tag, entry);
     }
 }

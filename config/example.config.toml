@@ -2,8 +2,6 @@
 #
 # To configure Miralis create a copy of that file named config.toml
 
-benchmark = false
-
 [log]
 # The default log level
 # Possible values are: trace, debug, info, warn, error, off
@@ -53,3 +51,18 @@ nb_harts = 1
 # Size of the stack for each hart (i.e. core)
 # Default to 0x8000
 stack_size = 0x8000
+
+# Enable benchmark code and logs. Logs can then be collected to 
+# analyze a run of the program.
+[benchmark]
+# Enable all benchmark
+enable = false
+
+# Benchmark execution time
+time = false
+
+# Benchmark number of instruction
+instruction = false
+
+# Count number of total exits
+nb_exits = false

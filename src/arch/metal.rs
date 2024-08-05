@@ -678,6 +678,7 @@ __bss_stop:
 static STACK_SIZE: usize = PLATFORM_STACK_SIZE;
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
+
 global_asm!(
     r#"
 .text

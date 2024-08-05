@@ -24,6 +24,7 @@ test:
 	cargo run -q --package runner -- check-config ./config/example.config.toml
 	cargo run -q --package runner -- check-config ./config/qemu-virt.toml
 	cargo run -q --package runner -- check-config ./config/visionfive2.toml
+	cargo run -q --package runner -- check-config ./config/qemu-virt-benchmark.toml
 
 	# Running integration tests...
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
@@ -42,7 +43,7 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 
 	# Test benchmark code
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware default
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware default --benchmark
 
 # Run unit tests
 unit-test:
@@ -76,5 +77,7 @@ install-toolchain:
 # vim: set ft=make :
 
 benchmark firmware=default:
-	cargo run --package runner -- run -v --config {{qemu_virt_benchmark}} --firmware {{firmware}} > bench.out
-	cargo run --package benchmark-analyzer
+	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark
+
+analyze-benchmark input_path:
+	cargo run --package benchmark-analyzer -- {{input_path}}

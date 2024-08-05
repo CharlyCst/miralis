@@ -29,3 +29,14 @@ Those repos then expose artifacts as binary through releases, whose download lin
 When using `just run opensbi` the runner will check if we have a custom firmware in a crate named `opensbi`, and because that is not the case it will look-up the artifact manifest.
 We do have an artifact named `opensbi`, so the runner will check if it is already downloaded, and download it if that is not the case (or if the artifact manifest has been updated since then).
 
+## Benchmark
+
+Different benchmark can be run with `just benchmark`.
+This command computes and prints some statistics about a run of Miralis.
+
+The default behaviour is counting the number of retired instructions of function `run_vcpu` and `handle_trap` called in `main.rs` with the `default` firmware. You can specify the binary you want to benchmark with `just benchmark <binaries>`. For example, if you want to benchmark `linux` you can run `just benchmark linux`. 
+
+One can choose which benchmark to run in the `benchmark` section of the `config.toml` file. The field `enable` is overwritten to true when running this command.
+
+If you collect output of a run into a file, you can feed the file to the just `analyze-benchmark` command to get the statistics of the run.
+

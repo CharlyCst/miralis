@@ -3,6 +3,7 @@
 //! The run subcommand launches a Miralis instance in QEMU with the provided Miralis and firmware
 //! images.
 
+use core::str;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
@@ -30,7 +31,12 @@ const FIRMWARE_ADDR: u64 = 0x80200000;
 /// Run Miralis on QEMU
 pub fn run(args: &RunArgs) {
     println!("Running Miralis with '{}' firmware", &args.firmware);
-    let cfg = get_config(args);
+    let mut cfg = get_config(args);
+
+    // Overwrite benchmark config if runner runs benchmarks
+    if args.benchmark {
+        cfg.benchmark.enable = Some(true);
+    }
 
     // Build or retrieve the artifacts to run
     let miralis = build_target(Target::Miralis, &cfg);
@@ -74,9 +80,28 @@ pub fn run(args: &RunArgs) {
         println!();
     }
 
-    let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
-    if !exit_status.success() {
-        std::process::exit(exit_status.code().unwrap_or(1));
+    if args.benchmark {
+        let output: std::process::Output = qemu_cmd.output().expect("Failed to run QEMU");
+
+        if !output.status.success() {
+            std::process::exit(output.status.code().unwrap_or(1));
+        }
+
+        let lines = String::from_utf8(output.stdout)
+            .unwrap()
+            .lines()
+            .map(String::from)
+            .collect();
+
+        let map_type_tag_values = benchmark::parse_content(lines);
+
+        benchmark::compute_statistics(map_type_tag_values);
+    } else {
+        let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
+
+        if !exit_status.success() {
+            std::process::exit(exit_status.code().unwrap_or(1));
+        }
     }
 }
 

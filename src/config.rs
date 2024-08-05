@@ -212,4 +212,14 @@ pub const PLATFORM_NB_HARTS: usize = {
 pub const PLATFORM_STACK_SIZE: usize =
     parse_usize_or(option_env!("MIRALIS_PLATFORM_STACK_SIZE"), 0x8000);
 
-pub const BENCHMARK: bool = is_enabled!("BENCHMARK");
+/// Whether any benchmark is enable
+pub const BENCHMARK: bool = is_enabled!("MIRALIS_BENCHMARK");
+
+/// Whether execution time benchmarking is enabled
+pub const BENCHMARK_TIME: bool = is_enabled!("MIRALIS_BENCHMARK_TIME");
+
+/// Whether instruction count benchmarking is enabled
+pub const BENCHMARK_INSTRUCTION: bool = is_enabled!("MIRALIS_BENCHMARK_INSTRUCTION");
+
+/// Whether count or not total number of exits
+pub const BENCHMARK_NB_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_EXISTS");

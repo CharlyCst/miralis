@@ -25,7 +25,8 @@ pub struct Config {
     pub vcpu: VCpu,
     #[serde(default)]
     pub platform: Platform,
-    pub benchmark: Option<bool>,
+    #[serde(default)]
+    pub benchmark: Benchmark,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -71,6 +72,15 @@ pub enum Platforms {
     VisionFive2,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Benchmark {
+    pub enable: Option<bool>,
+    pub time: Option<bool>,
+    pub instruction: Option<bool>,
+    pub nb_exits: Option<bool>,
+}
+
 // ————————————————————————— Environment Variables —————————————————————————— //
 
 impl Config {
@@ -80,10 +90,7 @@ impl Config {
         envs.extend(self.debug.build_envs());
         envs.extend(self.vcpu.build_envs());
         envs.extend(self.platform.build_envs());
-        envs.insert(
-            String::from("BENCHMARK"),
-            format!("{}", self.benchmark.unwrap_or(false)),
-        );
+        envs.extend(self.benchmark.build_envs());
         envs
     }
 }
@@ -174,6 +181,31 @@ impl Platform {
             envs.insert(
                 String::from("MIRALIS_PLATFORM_STACK_SIZE"),
                 format!("{}", stack_size),
+            );
+        }
+        envs
+    }
+}
+
+impl Benchmark {
+    fn build_envs(&self) -> HashMap<String, String> {
+        let mut envs = HashMap::new();
+        if let Some(enable) = self.enable {
+            envs.insert(String::from("MIRALIS_BENCHMARK"), format!("{}", enable));
+        }
+        if let Some(time) = self.time {
+            envs.insert(String::from("MIRALIS_BENCHMARK_TIME"), format!("{}", time));
+        }
+        if let Some(instr) = self.instruction {
+            envs.insert(
+                String::from("MIRALIS_BENCHMARK_INSTRUCTION"),
+                format!("{}", instr),
+            );
+        }
+        if let Some(nb_exits) = self.nb_exits {
+            envs.insert(
+                String::from("MIRALIS_BENCHMARK_NB_EXISTS"),
+                format!("{}", nb_exits),
             );
         }
         envs
