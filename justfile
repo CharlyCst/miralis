@@ -1,4 +1,5 @@
 default          := "default"
+benchmark        := "ecall_benchmark"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
@@ -37,13 +38,15 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ctx_switch
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware sandbox
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware interrupt
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ecall
 
 	# Testing with external projects
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 
 	# Test benchmark code
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware default --benchmark
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark --benchmark
 
 # Run unit tests
 unit-test:
@@ -76,7 +79,7 @@ install-toolchain:
 # The following line gives highlighting on vim
 # vim: set ft=make :
 
-benchmark firmware=default:
+benchmark firmware=benchmark:
 	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark
 
 analyze-benchmark input_path:

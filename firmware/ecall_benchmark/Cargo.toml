@@ -1,0 +1,11 @@
+[package]
+name = "ecall_benchmark"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "ecall_benchmark"
+path = "main.rs"
+
+[dependencies]
+miralis_abi = { path = "../../crates/abi" }

@@ -143,6 +143,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecall_benchmark"
+version = "0.1.0"
+dependencies = [
+ "miralis_abi",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -235,6 +242,13 @@ dependencies = [
 
 [[package]]
 name = "os_ctx_switch"
+version = "0.1.0"
+dependencies = [
+ "miralis_abi",
+]
+
+[[package]]
+name = "os_ecall"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
