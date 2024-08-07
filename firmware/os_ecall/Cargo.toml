@@ -1,0 +1,11 @@
+[package]
+name = "os_ecall"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "os_ecall"
+path = "main.rs"
+
+[dependencies]
+miralis_abi = { path = "../../crates/abi" }

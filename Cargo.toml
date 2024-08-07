@@ -36,6 +36,8 @@ members = [
     "firmware/os_ctx_switch",
     "firmware/sandbox",
     "firmware/interrupt",
+    "firmware/ecall_benchmark",
+    "firmware/os_ecall",
 
     # Crates
     "crates/abi",
