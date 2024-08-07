@@ -4,6 +4,8 @@
 //! images.
 
 use core::str;
+use std::collections::HashMap;
+use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
@@ -81,21 +83,33 @@ pub fn run(args: &RunArgs) {
     }
 
     if args.benchmark {
-        let output: std::process::Output = qemu_cmd.output().expect("Failed to run QEMU");
+        let mut map_type_tag_values: HashMap<String, HashMap<String, Vec<usize>>> = HashMap::new();
 
-        if !output.status.success() {
-            std::process::exit(output.status.code().unwrap_or(1));
+        print!("Progress... [");
+        for i in 0..args.benchmark_iterations {
+            if i == args.benchmark_iterations - 1 {
+                print!("#]\nFinished. Results:\n")
+            } else {
+                print!("#")
+            }
+            let _ = stdout().flush();
+
+            let output: std::process::Output = qemu_cmd.output().expect("Failed to run QEMU");
+
+            if !output.status.success() {
+                std::process::exit(output.status.code().unwrap_or(1));
+            }
+
+            let lines = String::from_utf8(output.stdout)
+                .unwrap()
+                .lines()
+                .map(String::from)
+                .collect();
+
+            benchmark::parse_content(lines, &mut map_type_tag_values);
         }
 
-        let lines = String::from_utf8(output.stdout)
-            .unwrap()
-            .lines()
-            .map(String::from)
-            .collect();
-
-        let map_type_tag_values = benchmark::parse_content(lines);
-
-        benchmark::compute_statistics(map_type_tag_values);
+        benchmark::compute_statistics(&map_type_tag_values, args.benchmark_iterations);
     } else {
         let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
 

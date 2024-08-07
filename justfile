@@ -4,6 +4,8 @@ qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 benchmark_folder := "./benchmark-out"
+default_iterations := "1"
+
 
 # Print the list of commands
 help:
@@ -79,8 +81,8 @@ install-toolchain:
 # The following line gives highlighting on vim
 # vim: set ft=make :
 
-benchmark firmware=benchmark:
-	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark
+benchmark firmware=benchmark iterations=default_iterations:
+	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark --benchmark-iterations {{iterations}}
 
 analyze-benchmark input_path:
 	cargo run --package benchmark-analyzer -- {{input_path}}

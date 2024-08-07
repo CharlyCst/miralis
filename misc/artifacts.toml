@@ -2,6 +2,7 @@
 
 [bin]
 opensbi = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.1.7/opensbi.bin"
-linux = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.0/opensbi-linux-kernel-exit.bin"
-linux-shell = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.0/opensbi-linux-kernel-shell.bin"
+linux = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.1/opensbi-linux-kernel-exit.bin"
+linux-shell = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.1/opensbi-linux-kernel-shell.bin"
+linux-driver = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.1/opensbi-linux-kernel-driver.bin"
 zephyr = "https://github.com/CharlyCst/miralis-artifact-zephyr/releases/download/v0.1.1/zephyr.bin"
