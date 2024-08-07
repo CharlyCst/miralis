@@ -189,7 +189,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     ctx.nb_exits += 1;
     match exec_mode {
         ExecutionMode::Firmware => ctx.handle_firmware_trap(&mctx),
-        ExecutionMode::Payload => ctx.emulate_jump_trap_handler(),
+        ExecutionMode::Payload => ctx.handle_payload_trap(),
     }
 
     if exec_mode == ExecutionMode::Firmware {

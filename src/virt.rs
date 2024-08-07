@@ -8,6 +8,7 @@ use crate::arch::{
     mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
     MCause, Mode, Register, TrapInfo,
 };
+use crate::benchmark::{Benchmark, Counter};
 use crate::decoder::{decode, Instr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
@@ -168,8 +169,6 @@ impl VirtCsr {
         !0b0
     }
 }
-
-// —————————————————————————— Handle Payload Traps —————————————————————————— //
 
 impl VirtContext {
     fn emulate_privileged_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
@@ -397,55 +396,13 @@ impl VirtContext {
         let cause = self.trap_info.get_cause();
         match cause {
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
-                let fid = self.get(Register::X16);
-                match fid {
-                    abi::MIRALIS_FAILURE_FID => {
-                        log::error!("Payload panicked!");
-                        log::error!("  pc:    0x{:x}", self.pc);
-                        log::error!("  exits: {}", self.nb_exits);
-                        unsafe { debug::log_stack_usage() };
-                        Plat::exit_failure();
-                    }
-                    abi::MIRALIS_SUCCESS_FID => {
-                        log::info!("Success!");
-                        log::info!("Number of payload exits: {}", self.nb_exits);
-                        unsafe { debug::log_stack_usage() };
-                        Plat::exit_success();
-                    }
-                    abi::MIRALIS_LOG_FID => {
-                        let log_level = self.get(Register::X10);
-                        let addr = self.get(Register::X11);
-                        let size = self.get(Register::X12);
-
-                        // TODO: add proper validation that this memory range belongs to the
-                        // payload
-                        let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, size) };
-                        let message = core::str::from_utf8(bytes)
-                            .unwrap_or("note: invalid message, not utf-8");
-                        match log_level {
-                            abi::log::MIRALIS_ERROR => log::error!("> {}", message),
-                            abi::log::MIRALIS_WARN => log::warn!("> {}", message),
-                            abi::log::MIRALIS_INFO => log::info!("> {}", message),
-                            abi::log::MIRALIS_DEBUG => log::debug!("> {}", message),
-                            abi::log::MIRALIS_TRACE => log::trace!("> {}", message),
-                            _ => {
-                                log::info!("Miralis log SBI call with invalid level: {}", log_level)
-                            }
-                        }
-
-                        // For now we don't return error code or the lenght written
-                        self.set(Register::X10, 0);
-                        self.set(Register::X11, 0);
-                        self.pc += 4;
-                    }
-                    _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
-                }
+                self.handle_ecall()
             }
             MCause::EcallFromUMode => {
                 todo!("ecall is not yet supported for EID other than Miralis ABI");
             }
             MCause::EcallFromSMode => {
-                todo!("ecall from smode is not yet supported")
+                panic!("Firware should not be able to come from S-mode");
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
@@ -492,6 +449,72 @@ impl VirtContext {
                     todo!("Other traps are not yet implemented");
                 }
             }
+        }
+    }
+
+    /// Handle the trap coming from the payload
+    pub fn handle_payload_trap(&mut self) {
+        let cause = self.trap_info.get_cause();
+
+        // We only care about ecalls.
+        match cause {
+            MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
+                self.handle_ecall()
+            }
+            _ => self.emulate_jump_trap_handler(),
+        }
+    }
+
+    /// Ecalls may come from firmware or payload, resulting in different handling.
+    fn handle_ecall(&mut self) {
+        let fid = self.get(Register::X16);
+        match fid {
+            abi::MIRALIS_FAILURE_FID if self.mode == Mode::M => {
+                log::error!("Payload panicked!");
+                log::error!("  pc:    0x{:x}", self.pc);
+                log::error!("  exits: {}", self.nb_exits);
+                unsafe { debug::log_stack_usage() };
+                Plat::exit_failure();
+            }
+            abi::MIRALIS_SUCCESS_FID if self.mode == Mode::M => {
+                log::info!("Success!");
+                log::info!("Number of payload exits: {}", self.nb_exits);
+                unsafe { debug::log_stack_usage() };
+                Plat::exit_success();
+            }
+            abi::MIRALIS_LOG_FID if self.mode == Mode::M => {
+                let log_level = self.get(Register::X10);
+                let addr = self.get(Register::X11);
+                let size = self.get(Register::X12);
+
+                // TODO: add proper validation that this memory range belongs to the
+                // payload
+                let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, size) };
+                let message =
+                    core::str::from_utf8(bytes).unwrap_or("note: invalid message, not utf-8");
+                match log_level {
+                    abi::log::MIRALIS_ERROR => log::error!("> {}", message),
+                    abi::log::MIRALIS_WARN => log::warn!("> {}", message),
+                    abi::log::MIRALIS_INFO => log::info!("> {}", message),
+                    abi::log::MIRALIS_DEBUG => log::debug!("> {}", message),
+                    abi::log::MIRALIS_TRACE => log::trace!("> {}", message),
+                    _ => {
+                        log::info!("Miralis log SBI call with invalid level: {}", log_level)
+                    }
+                }
+
+                // For now we don't return error code or the lenght written
+                self.set(Register::X10, 0);
+                self.set(Register::X11, 0);
+                self.pc += 4;
+            }
+            abi::MIRALIS_BENCHMARK_FID => {
+                Benchmark::record_counter(Counter::FirmwareExits, "final firmware exits");
+                Benchmark::record_counter(Counter::TotalExits, "final exits");
+                Benchmark::record_counter(Counter::WorldSwitches, "final world switches");
+                Plat::exit_success();
+            }
+            _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
         }
     }
 

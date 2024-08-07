@@ -22,6 +22,8 @@ pub mod abi {
     pub const MIRALIS_SUCCESS_FID: usize = 1;
     /// Logging interface.
     pub const MIRALIS_LOG_FID: usize = 2;
+    /// Benchmark prints and exit.
+    pub const MIRALIS_BENCHMARK_FID: usize = 3;
 
     /// Log level constants, with the same semantic as the `log` crate.
     pub mod log {
