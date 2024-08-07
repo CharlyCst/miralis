@@ -66,3 +66,9 @@ instruction = false
 
 # Count number of total exits
 nb_exits = false
+
+# Count number of firmware exits
+nb_firmware_exits = false
+
+# Count number of world switches
+world_switches = false

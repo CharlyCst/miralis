@@ -131,7 +131,7 @@ impl Architecture for MetalArch {
             Csr::Pmpcfg(_) => todo!(),
             Csr::Pmpaddr(_) => todo!(),
             Csr::Mcycle => asm_read_csr!("mcycle"),
-            Csr::Minstret => asm_read_csr!("instret"),
+            Csr::Minstret => asm_read_csr!("minstret"),
             Csr::Mhpmcounter(_) => todo!(),
             Csr::Mcountinhibit => asm_read_csr!("mcountinhibit"),
             Csr::Mhpmevent(_) => todo!(),

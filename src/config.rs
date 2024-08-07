@@ -223,3 +223,9 @@ pub const BENCHMARK_INSTRUCTION: bool = is_enabled!("MIRALIS_BENCHMARK_INSTRUCTI
 
 /// Whether count or not total number of exits
 pub const BENCHMARK_NB_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_EXISTS");
+
+/// Whether count or not number of firmware exits
+pub const BENCHMARK_NB_FIRMWARE_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_FIRMWARE_EXITS");
+
+/// Whether count or not number of world switches
+pub const BENCHMARK_WORLD_SWITCHES: bool = is_enabled!("MIRALIS_BENCHMARK_WORLD_SWITCHES");

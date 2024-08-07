@@ -48,7 +48,7 @@ pub fn compute_statistics(map_type_tag_values: HashMap<String, HashMap<String, V
         println!("Benchmark for {}:", key);
         println!("--------------------");
 
-        if key == "nb_exits" {
+        if key == "counters" {
             for (tag, values) in map {
                 println!("{:.<24} count: {:>12}", tag, values.iter().max().unwrap());
                 println!();
