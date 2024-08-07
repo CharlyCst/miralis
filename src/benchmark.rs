@@ -216,7 +216,6 @@ impl Benchmark {
     }
 
     /// Log counter value. Tag allows to link different recordings together for analysis.
-    #[allow(dead_code)]
     pub fn record_counter(counter: Counter, tag: &str) {
         if !config::BENCHMARK {
             return;
