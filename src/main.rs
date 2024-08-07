@@ -23,7 +23,7 @@ mod virt;
 
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
-use benchmark::Benchmark;
+use benchmark::{Benchmark, Counter};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
@@ -148,29 +148,18 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 }
 
 fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
-    let mut bench = Benchmark::new();
-
     loop {
         unsafe {
-            if config::BENCHMARK {
-                bench.start();
-            }
+            Benchmark::start_interval_counters();
 
             Arch::run_vcpu(ctx);
 
-            if config::BENCHMARK {
-                bench.stop("main::run_vcpu");
-                bench.start();
-            }
+            Benchmark::stop_interval_counters("main::run_vcpu");
 
             handle_trap(ctx, mctx);
 
-            if config::BENCHMARK {
-                if config::BENCHMARK_NB_EXITS {
-                    Benchmark::record_entry("nb_exits", "nb_exits", ctx.nb_exits);
-                }
-                bench.stop("main::handle_trap");
-            }
+            Benchmark::stop_interval_counters("main::handle_trap");
+            Benchmark::increment_counter(Counter::TotalExits);
         }
     }
 }
@@ -201,6 +190,14 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     match exec_mode {
         ExecutionMode::Firmware => ctx.handle_firmware_trap(&mctx),
         ExecutionMode::Payload => ctx.emulate_jump_trap_handler(),
+    }
+
+    if exec_mode == ExecutionMode::Firmware {
+        Benchmark::increment_counter(Counter::FirmwareExits);
+    }
+
+    if exec_mode != ctx.mode.to_exec_mode() {
+        Benchmark::increment_counter(Counter::WorldSwitches);
     }
 
     // Check for execution mode change

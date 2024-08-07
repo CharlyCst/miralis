@@ -79,6 +79,8 @@ pub struct Benchmark {
     pub time: Option<bool>,
     pub instruction: Option<bool>,
     pub nb_exits: Option<bool>,
+    pub nb_firmware_exits: Option<bool>,
+    pub world_switches: Option<bool>,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //
@@ -206,6 +208,18 @@ impl Benchmark {
             envs.insert(
                 String::from("MIRALIS_BENCHMARK_NB_EXISTS"),
                 format!("{}", nb_exits),
+            );
+        }
+        if let Some(nb_firmware_exits) = self.nb_firmware_exits {
+            envs.insert(
+                String::from("MIRALIS_BENCHMARK_NB_FIRMWARE_EXITS"),
+                format!("{}", nb_firmware_exits),
+            );
+        }
+        if let Some(world_switches) = self.world_switches {
+            envs.insert(
+                String::from("MIRALIS_BENCHMARK_WORLD_SWITCHES"),
+                format!("{}", world_switches),
             );
         }
         envs
