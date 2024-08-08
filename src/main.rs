@@ -38,11 +38,23 @@ extern "C" {
     pub(crate) static _bss_start: u8;
     pub(crate) static _bss_stop: u8;
     pub(crate) static _stack_top: u8;
+    pub(crate) static _start_address: u8;
+}
+
+// When building for userspace (i.e. to run as a process on the host machine) we do not use the
+// custom linker script, so some of the variables from the linker scripts needs to be re-defined.
+//
+// We define them here with dummy values. The definitions are mutable statics to mimic the `extern
+// "C"` behavior.
+#[cfg(feature = "userspace")]
+#[allow(non_upper_case_globals)]
+mod userspace_linker_definitions {
+    pub(crate) static mut _stack_start: u8 = 0;
+    pub(crate) static mut _start_address: u8 = 0;
 }
 
 #[cfg(feature = "userspace")]
-#[allow(non_upper_case_globals)]
-pub(crate) static _stack_start: u8 = 0;
+use userspace_linker_definitions::*;
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one

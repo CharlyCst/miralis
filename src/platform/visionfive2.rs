@@ -8,8 +8,10 @@ use spin::Mutex;
 
 use super::Platform;
 use crate::arch::{Arch, Architecture};
+use crate::config::{PLATFORM_NB_HARTS, PLATFORM_STACK_SIZE};
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
+use crate::{_stack_start, _start_address};
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
@@ -79,8 +81,18 @@ impl Platform for VisionFive2Platform {
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
-        //let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
-        (MIRALIS_START_ADDR, 0x200000) // Temporary workaround, suggestions appreciated
+        let size: usize;
+        // SAFETY: The unsafe block is required to get the address of the stack and start of
+        // Miralis, which are external values defined by the linker.
+        // We also ensure that `size` is non-negative and within reasonable bounds
+        unsafe {
+            size = (_stack_start as usize)
+                .checked_sub(_start_address as usize)
+                .and_then(|diff| diff.checked_add(PLATFORM_STACK_SIZE * PLATFORM_NB_HARTS))
+                .unwrap();
+        }
+
+        (MIRALIS_START_ADDR, size.next_power_of_two())
     }
 
     fn get_max_valid_address() -> usize {
