@@ -331,7 +331,7 @@ impl VirtContext {
         let multiplier = length / 8;
         let address = self.get(rs1) + imm * multiplier;
         let offset = address - device.start_addr;
-        match device.device_interface.read_device(offset) {
+        match device.device_interface.read_device(offset, length.into()) {
             Ok(mut value) => {
                 let mask = if length < usize::BITS as usize {
                     (1 << length) - 1
@@ -378,7 +378,10 @@ impl VirtContext {
             );
             value &= mask;
         }
-        match device.device_interface.write_device(offset, value) {
+        match device
+            .device_interface
+            .write_device(offset, length.into(), value)
+        {
             Ok(()) => {
                 self.pc += 2;
             }
@@ -404,7 +407,7 @@ impl VirtContext {
     ) {
         let address = utils::calculate_addr(self.get(rs1), imm);
         let offset = address - device.start_addr;
-        match device.device_interface.read_device(offset) {
+        match device.device_interface.read_device(offset, length.into()) {
             Ok(mut value) => {
                 // Sign-extend to 32 bits
                 if length < 32 && value < (1 << 31) {
@@ -456,7 +459,10 @@ impl VirtContext {
             value &= mask;
         }
 
-        match device.device_interface.write_device(offset, value) {
+        match device
+            .device_interface
+            .write_device(offset, length.into(), value)
+        {
             Ok(()) => {
                 self.pc += 4;
             }
