@@ -5,12 +5,15 @@ use core::ptr;
 use crate::config::{self, PLATFORM_NB_HARTS};
 
 pub mod clint {
+    use crate::device::Width;
+
     pub const MSIP_OFFSET: usize = 0x0;
     pub const MTIMECMP_OFFSET: usize = 0x4000;
     pub const MTIME_OFFSET: usize = 0xBFF8;
 
-    pub const MSIP_WIDTH: usize = 0x4;
-    pub const MTIMECMP_WIDTH: usize = 0x8;
+    pub const MSIP_WIDTH: Width = Width::Byte4;
+    pub const MTIMECMP_WIDTH: Width = Width::Byte8;
+    pub const _MTIME_WIDTH: Width = Width::Byte8;
 }
 
 #[derive(Clone, Debug)]
@@ -65,7 +68,8 @@ impl ClintDriver {
             );
             return Err("Out of bounds MTIMECMP read attempt");
         }
-        let pointer = self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH);
+        let pointer =
+            self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MTIMECMP area of the CLINT.
@@ -84,7 +88,8 @@ impl ClintDriver {
             );
             return Err("Out of bounds MTIMECMP write attempt");
         }
-        let pointer = self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH);
+        let pointer =
+            self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MTIMECMP area of the CLINT. Moreover, we take `self`
@@ -104,7 +109,8 @@ impl ClintDriver {
             );
             return Err("Out of bounds MSIP read attempt");
         }
-        let pointer = self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH);
+        let pointer =
+            self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MSIP area of the CLINT.
@@ -127,7 +133,8 @@ impl ClintDriver {
             return Err("Out of bounds MSIP write attempt");
         }
         let msip_value = msip & 0x1;
-        let pointer = self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH);
+        let pointer =
+            self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MSIP area of the CLINT. Moreover, we take `self`
