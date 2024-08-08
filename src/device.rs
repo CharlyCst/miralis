@@ -6,7 +6,46 @@ use crate::driver::{clint, ClintDriver};
 
 // ———————————————————————————— Virtual Devices ————————————————————————————— //
 
-// Represents a virtual memory-mapped device
+/// Represents different data widths:
+///  - `Byte`: 8 bits (1 byte)
+///  - `Byte2`: 16 bits (2 bytes)
+///  - `Byte4`: 32 bits (4 bytes)
+///  - `Byte8`: 64 bits (8 bytes)
+pub enum Width {
+    Byte = 8,
+    Byte2 = 16,
+    Byte4 = 32,
+    Byte8 = 64,
+}
+
+impl Width {
+    pub fn to_bits(&self) -> usize {
+        match self {
+            Width::Byte => 8,
+            Width::Byte2 => 16,
+            Width::Byte4 => 32,
+            Width::Byte8 => 64,
+        }
+    }
+
+    pub fn to_bytes(&self) -> usize {
+        self.to_bits() / 8
+    }
+}
+
+impl From<usize> for Width {
+    fn from(value: usize) -> Self {
+        match value {
+            8 => Width::Byte,
+            16 => Width::Byte2,
+            32 => Width::Byte4,
+            64 => Width::Byte8,
+            _ => panic!("Invalid width value"),
+        }
+    }
+}
+
+/// Represents a virtual memory-mapped device
 pub struct VirtDevice {
     pub start_addr: usize,
     pub size: usize,
@@ -21,15 +60,16 @@ pub fn find_matching_device(address: usize, devices: &[VirtDevice]) -> Option<&V
 }
 
 pub trait DeviceAccess: Sync + Send {
-    fn read_device(&self, offset: usize) -> Result<usize, &'static str>;
-    fn write_device(&self, offset: usize, value: usize) -> Result<(), &'static str>;
+    fn read_device(&self, offset: usize, r_width: Width) -> Result<usize, &'static str>;
+    fn write_device(&self, offset: usize, w_width: Width, value: usize)
+        -> Result<(), &'static str>;
 }
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //
 
 pub const CLINT_SIZE: usize = 0x10000;
 
-// Represents a virtual CLINT (Core Local Interruptor) device
+/// Represents a virtual CLINT (Core Local Interruptor) device
 #[derive(Clone, Debug)]
 pub struct VirtClint {
     /// A driver for the physical CLINT
@@ -37,12 +77,17 @@ pub struct VirtClint {
 }
 
 impl DeviceAccess for VirtClint {
-    fn read_device(&self, offset: usize) -> Result<usize, &'static str> {
-        self.read_clint(offset)
+    fn read_device(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
+        self.read_clint(offset, r_width)
     }
 
-    fn write_device(&self, offset: usize, value: usize) -> Result<(), &'static str> {
-        self.write_clint(offset, value)
+    fn write_device(
+        &self,
+        offset: usize,
+        w_width: Width,
+        value: usize,
+    ) -> Result<(), &'static str> {
+        self.write_clint(offset, w_width, value)
     }
 }
 
@@ -61,26 +106,31 @@ impl VirtClint {
         }
     }
 
-    pub fn read_clint(&self, offset: usize) -> Result<usize, &'static str> {
+    pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
         log::trace!("Read from CLINT at offset 0x{:x}", offset);
         self.validate_offset(offset)?;
         let driver = self.driver.lock();
 
-        match offset {
-            o if o >= clint::MSIP_OFFSET && o < clint::MTIMECMP_OFFSET => {
-                let hart = (o - clint::MSIP_OFFSET) / clint::MSIP_WIDTH;
+        match (offset, r_width) {
+            (o, Width::Byte4) if o >= clint::MSIP_OFFSET && o < clint::MTIMECMP_OFFSET => {
+                let hart = (o - clint::MSIP_OFFSET) / clint::MSIP_WIDTH.to_bytes();
                 driver.read_msip(hart)
             }
-            o if o >= clint::MTIMECMP_OFFSET && o < clint::MTIME_OFFSET => {
-                let hart = (o - clint::MTIMECMP_OFFSET) / clint::MTIMECMP_WIDTH;
+            (o, Width::Byte8) if o >= clint::MTIMECMP_OFFSET && o < clint::MTIME_OFFSET => {
+                let hart = (o - clint::MTIMECMP_OFFSET) / clint::MTIMECMP_WIDTH.to_bytes();
                 driver.read_mtimecmp(hart)
             }
-            o if o == clint::MTIME_OFFSET => Ok(driver.read_mtime()),
+            (o, Width::Byte8) if o == clint::MTIME_OFFSET => Ok(driver.read_mtime()),
             _ => Err("Invalid CLINT offset"),
         }
     }
 
-    pub fn write_clint(&self, offset: usize, value: usize) -> Result<(), &'static str> {
+    pub fn write_clint(
+        &self,
+        offset: usize,
+        w_width: Width,
+        value: usize,
+    ) -> Result<(), &'static str> {
         log::trace!(
             "Write to CLINT at offset 0x{:x} with a value 0x{:x}",
             offset,
@@ -89,16 +139,16 @@ impl VirtClint {
         self.validate_offset(offset)?;
         let mut driver = self.driver.lock();
 
-        match offset {
-            o if o >= clint::MSIP_OFFSET && o < clint::MTIMECMP_OFFSET => {
-                let hart = (o - clint::MSIP_OFFSET) / clint::MSIP_WIDTH;
+        match (offset, w_width) {
+            (o, Width::Byte4) if o >= clint::MSIP_OFFSET && o < clint::MTIMECMP_OFFSET => {
+                let hart = (o - clint::MSIP_OFFSET) / clint::MSIP_WIDTH.to_bytes();
                 driver.write_msip(hart, value as u32)
             }
-            o if o >= clint::MTIMECMP_OFFSET && o < clint::MTIME_OFFSET => {
-                let hart = (o - clint::MTIMECMP_OFFSET) / clint::MTIMECMP_WIDTH;
+            (o, Width::Byte8) if o >= clint::MTIMECMP_OFFSET && o < clint::MTIME_OFFSET => {
+                let hart = (o - clint::MTIMECMP_OFFSET) / clint::MTIMECMP_WIDTH.to_bytes();
                 driver.write_mtimecmp(hart, value)
             }
-            o if o == clint::MTIME_OFFSET => {
+            (o, Width::Byte8) if o == clint::MTIME_OFFSET => {
                 driver.write_mtime(value);
                 Ok(())
             }
