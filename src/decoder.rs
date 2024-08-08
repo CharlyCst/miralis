@@ -628,6 +628,60 @@ mod tests {
         );
 
         assert_eq!(
+            decode(0xff87a703),
+            Instr::Lw {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xfee7ac23),
+            Instr::Sw {
+                rs1: Register::X15,
+                rs2: Register::X14,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xff879703),
+            Instr::Lh {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xfee79c23),
+            Instr::Sh {
+                rs1: Register::X15,
+                rs2: Register::X14,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xff878703),
+            Instr::Lb {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
+            decode(0xfee78c23),
+            Instr::Sb {
+                rs1: Register::X15,
+                rs2: Register::X14,
+                imm: -8
+            }
+        );
+
+        assert_eq!(
             decode(0xffffe71c),
             Instr::CSd {
                 rs1: Register::X14,
