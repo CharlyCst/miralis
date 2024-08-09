@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 /// Parse a benchmark file in order to get a map from tags to list of usize values.
-pub fn parse_content(content: Vec<String>) -> HashMap<String, HashMap<String, Vec<usize>>> {
-    let mut map_type_tag_values: HashMap<String, HashMap<String, Vec<usize>>> = HashMap::new();
-
+pub fn parse_content(
+    content: Vec<String>,
+    map_type_tag_values: &mut HashMap<String, HashMap<String, Vec<usize>>>,
+) {
     // keep only benchark logs
     content
         .iter()
@@ -33,12 +34,13 @@ pub fn parse_content(content: Vec<String>) -> HashMap<String, HashMap<String, Ve
                 .entry(tag)
                 .or_insert(Vec::new())
                 .push(value.unwrap())
-        });
-
-    map_type_tag_values
+        })
 }
 
-pub fn compute_statistics(map_type_tag_values: HashMap<String, HashMap<String, Vec<usize>>>) {
+pub fn compute_statistics(
+    map_type_tag_values: &HashMap<String, HashMap<String, Vec<usize>>>,
+    iteration: usize,
+) {
     if map_type_tag_values.is_empty() {
         println!("Nothing has been benchmarked !")
     } else {
@@ -48,16 +50,21 @@ pub fn compute_statistics(map_type_tag_values: HashMap<String, HashMap<String, V
         println!("Benchmark for {}:", key);
         println!("--------------------");
 
-        if key == "counters" {
-            for (tag, values) in map {
-                println!("{:.<24} count: {:>12}", tag, values.iter().max().unwrap());
-                println!();
-            }
-        } else {
-            for (tag, values) in map {
+        for (tag, values) in map {
+            if values.len() == 1 {
+                println!("{:.<25}     : {:>12}", tag, values.iter().max().unwrap());
+            } else {
                 println!("{:.<25}  Min: {:>12}", tag, values.iter().min().unwrap());
                 println!("{:.<25}  Max: {:>12}", tag, values.iter().max().unwrap());
-                println!("{:.<25}  Sum: {:>12}", tag, values.iter().sum::<usize>());
+                if iteration == 1 {
+                    println!("{:.<25}  Sum: {:>12}", tag, values.iter().sum::<usize>());
+                } else {
+                    println!(
+                        "{:.<21} Avg. sum: {:>12}",
+                        tag,
+                        values.iter().sum::<usize>() / iteration
+                    );
+                }
                 println!(
                     "{:.<25} Mean: {:12}",
                     tag,
@@ -66,5 +73,7 @@ pub fn compute_statistics(map_type_tag_values: HashMap<String, HashMap<String, V
                 println!();
             }
         }
+
+        println!();
     }
 }

@@ -1,5 +1,6 @@
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::{env, fs};
 
@@ -21,10 +22,24 @@ fn main() {
         return;
     }
 
-    let content = read_file_content(path);
-    let map_type_tag_values = parse_content(content);
+    // Map of Benchmark type -> Tag -> values
+    let mut map_type_tag_values: HashMap<String, HashMap<String, Vec<usize>>> = HashMap::new();
 
-    compute_statistics(map_type_tag_values);
+    if path.is_dir() {
+        path.read_dir()
+            .unwrap()
+            .map(|res| res.map(|e| e.path()).unwrap())
+            .filter(|file_path| file_path.is_file())
+            .map(|file_path| read_file_content(&file_path))
+            .for_each(|c| parse_content(c, &mut map_type_tag_values));
+
+        compute_statistics(&map_type_tag_values, path.read_dir().unwrap().count());
+    } else {
+        let content = read_file_content(path);
+        parse_content(content, &mut map_type_tag_values);
+
+        compute_statistics(&map_type_tag_values, 1);
+    }
 }
 
 fn read_file_content(file_path: &Path) -> Vec<String> {
