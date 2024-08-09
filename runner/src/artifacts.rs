@@ -63,8 +63,8 @@ struct Bin {
     linux: Option<String>,
     #[serde(rename = "linux-shell")]
     linux_shell: Option<String>,
-    #[serde(rename = "linux-driver")]
-    linux_driver: Option<String>,
+    #[serde(rename = "linux-boot-benchmark")]
+    linux_boot_benchmark: Option<String>,
 }
 
 fn read_artifact_manifest() -> ArtifactManifest {
@@ -110,7 +110,11 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
     append_artifact("zephyr", &manifest.bin.zephyr, &mut map);
     append_artifact("linux", &manifest.bin.linux, &mut map);
     append_artifact("linux-shell", &manifest.bin.linux_shell, &mut map);
-    append_artifact("linux-driver", &manifest.bin.linux_driver, &mut map);
+    append_artifact(
+        "linux-boot-benchmark",
+        &manifest.bin.linux_boot_benchmark,
+        &mut map,
+    );
     map
 }
 
