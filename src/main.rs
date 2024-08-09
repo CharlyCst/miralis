@@ -38,11 +38,16 @@ extern "C" {
     pub(crate) static _bss_start: u8;
     pub(crate) static _bss_stop: u8;
     pub(crate) static _stack_top: u8;
+    pub(crate) static _start_address: u8;
 }
 
 #[cfg(feature = "userspace")]
 #[allow(non_upper_case_globals)]
 pub(crate) static _stack_start: u8 = 0;
+
+#[cfg(feature = "userspace")]
+#[allow(non_upper_case_globals)]
+pub(crate) static _start_address: u8 = 0;
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one

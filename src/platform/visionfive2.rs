@@ -8,14 +8,16 @@ use spin::Mutex;
 
 use super::Platform;
 use crate::arch::{Arch, Architecture};
+use crate::config::{PLATFORM_NB_HARTS, PLATFORM_STACK_SIZE};
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
+use crate::{_stack_start, _start_address};
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const MIRALIS_START_ADDR: usize = 0x40000000;
-const FIRMWARE_START_ADDR: usize = 0x40200000;
+const MIRALIS_START_ADDR: usize = 0x43000000;
+const FIRMWARE_START_ADDR: usize = 0x40000000;
 const CLINT_BASE: usize = 0x2000000;
 const PRIMARY_HART: usize = 1;
 
@@ -79,8 +81,23 @@ impl Platform for VisionFive2Platform {
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
-        let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
-        (MIRALIS_START_ADDR, size)
+        let size: usize;
+        // SAFETY: The arithmetic operations within the unsafe block will not cause undefined behavior
+        // We also ensure that `size` is non-negative and within reasonable bounds
+        unsafe {
+            size = (_stack_start as usize)
+                .checked_sub(_start_address as usize)
+                .and_then(|diff| diff.checked_add(PLATFORM_STACK_SIZE * PLATFORM_NB_HARTS))
+                .unwrap();
+        }
+
+        // Find the next power of two greater than or equal to the original size
+        let mut aligned_size = 1;
+        while aligned_size < size {
+            aligned_size <<= 1;
+        }
+
+        (MIRALIS_START_ADDR, aligned_size)
     }
 
     fn get_max_valid_address() -> usize {

@@ -328,6 +328,19 @@ impl VirtContext {
                     }
                 }
             }
+            Instr::CLd { rd, rs1, imm } => {
+                let address = self.get(rs1) + imm * 8;
+                let offset = address - device.start_addr;
+                match device.device_interface.read_device(offset) {
+                    Ok(value) => {
+                        self.set(rd, value);
+                        self.pc += 2;
+                    }
+                    Err(err) => {
+                        panic!("Error reading {}: {}", device.name, err);
+                    }
+                }
+            }
             Instr::Sd { rs1, rs2, imm } => {
                 let address = utils::calculate_addr(self.get(rs1), *imm);
                 let offset = address - device.start_addr;
