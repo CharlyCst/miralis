@@ -38,6 +38,7 @@ members = [
     "firmware/interrupt",
     "firmware/ecall_benchmark",
     "firmware/os_ecall",
+    "firmware/csr_write_benchmark",
 
     # Crates
     "crates/abi",

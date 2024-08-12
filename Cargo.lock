@@ -128,6 +128,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "csr_write_benchmark"
+version = "0.1.0"
+dependencies = [
+ "miralis_abi",
+]
+
+[[package]]
 name = "default"
 version = "0.1.0"
 dependencies = [
