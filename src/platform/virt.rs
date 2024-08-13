@@ -7,15 +7,19 @@ use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
 use super::Platform;
+use crate::config::{
+    PLATFORM_FIRMWARE_ADDRESS, PLATFORM_NB_HARTS, PLATFORM_STACK_SIZE, PLATFORM_START_ADDRESS,
+};
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
+use crate::{_stack_start, _start_address};
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
-const MIRALIS_START_ADDR: usize = 0x80000000;
-const FIRMWARE_START_ADDR: usize = 0x80200000;
+const MIRALIS_START_ADDR: usize = PLATFORM_START_ADDRESS;
+const FIRMWARE_START_ADDR: usize = PLATFORM_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const PRIMARY_HART: usize = 0;
 
@@ -78,8 +82,18 @@ impl Platform for VirtPlatform {
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
-        let size = FIRMWARE_START_ADDR - MIRALIS_START_ADDR;
-        (MIRALIS_START_ADDR, size)
+        let size: usize;
+        // SAFETY: The unsafe block is required to get the address of the stack and start of
+        // Miralis, which are external values defined by the linker.
+        // We also ensure that `size` is non-negative and within reasonable bounds
+        unsafe {
+            size = (_stack_start as usize)
+                .checked_sub(_start_address as usize)
+                .and_then(|diff| diff.checked_add(PLATFORM_STACK_SIZE * PLATFORM_NB_HARTS))
+                .unwrap();
+        }
+
+        (MIRALIS_START_ADDR, size.next_power_of_two())
     }
 
     fn get_max_valid_address() -> usize {
