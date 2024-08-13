@@ -51,20 +51,18 @@ pub enum Artifact {
 #[serde(deny_unknown_fields)]
 struct ArtifactManifest {
     #[serde(default)]
-    bin: Bin,
+    bin: HashMap<String, Bin>,
 }
 
 /// Binaries artifacts.
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 struct Bin {
-    opensbi: Option<String>,
-    zephyr: Option<String>,
-    linux: Option<String>,
-    #[serde(rename = "linux-shell")]
-    linux_shell: Option<String>,
-    #[serde(rename = "linux-boot-benchmark")]
-    linux_boot_benchmark: Option<String>,
+    #[allow(dead_code)] // TODO: remove when eventually used
+    description: Option<String>,
+    url: Option<String>,
+    #[allow(dead_code)] // TODO: remove when eventually used
+    repo: Option<String>,
 }
 
 fn read_artifact_manifest() -> ArtifactManifest {
@@ -106,15 +104,9 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
     let manifest = read_artifact_manifest();
     let mut map = HashMap::new();
 
-    append_artifact("opensbi", &manifest.bin.opensbi, &mut map);
-    append_artifact("zephyr", &manifest.bin.zephyr, &mut map);
-    append_artifact("linux", &manifest.bin.linux, &mut map);
-    append_artifact("linux-shell", &manifest.bin.linux_shell, &mut map);
-    append_artifact(
-        "linux-boot-benchmark",
-        &manifest.bin.linux_boot_benchmark,
-        &mut map,
-    );
+    for (key, bin) in manifest.bin {
+        append_artifact(key.as_str(), &bin.url, &mut map)
+    }
     map
 }
 
