@@ -26,10 +26,22 @@ SECTIONS
     *(.data)
     *(.data.*)
   }
-  .bss : {
+  .sdata : ALIGN(0x8) {
+    KEEP(*(__*))
+    *(.sdata)
+    *(.sdata.*)
+  }
+  . = ALIGN(0x8);
+  _firmware_bss_start = .;
+  .sbss : {
+    *(.sbss)
+    *(.sbss.*)
+  }
+  .bss : ALIGN(0x8) {
     *(.bss)
     *(.bss.*)
   }
+  _firmware_bss_stop = .;
 
 
   /* Then we allocate some stack space */
