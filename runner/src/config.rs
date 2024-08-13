@@ -185,6 +185,18 @@ impl Platform {
                 format!("{}", stack_size),
             );
         }
+        if let Some(stack_size) = self.firmware_address {
+            envs.insert(
+                String::from("MIRALIS_PLATFORM_FIRMWARE_ADDRESS"),
+                format!("{}", stack_size),
+            );
+        }
+        if let Some(stack_size) = self.start_address {
+            envs.insert(
+                String::from("MIRALIS_PLATFORM_START_ADDRESS"),
+                format!("{}", stack_size),
+            );
+        }
         envs
     }
 }

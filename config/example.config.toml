@@ -44,6 +44,14 @@ max_pmp = 8
 # Default to "qemu_virt"
 name = "qemu_virt"
 
+# Miralis binary will be compiled with this value as a start address
+# Default to "0x80000000"
+start_address = 0x80000000
+
+# Firmware binary will be compiled with this value as a start address
+# Default to "0x80200000"
+firmware_address = 0x80200000
+
 # Nuber of harts (i.e. cores).
 # Default to 1.
 nb_harts = 1

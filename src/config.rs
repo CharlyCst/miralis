@@ -229,3 +229,11 @@ pub const BENCHMARK_NB_FIRMWARE_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_
 
 /// Whether count or not number of world switches
 pub const BENCHMARK_WORLD_SWITCHES: bool = is_enabled!("MIRALIS_BENCHMARK_WORLD_SWITCHES");
+
+/// Start address of Miralis
+pub const PLATFORM_START_ADDRESS: usize =
+    parse_usize_or(option_env!("MIRALIS_PLATFORM_START_ADDRESS"), 0x80000000);
+
+/// Start address of firmware
+pub const PLATFORM_FIRMWARE_ADDRESS: usize =
+    parse_usize_or(option_env!("MIRALIS_PLATFORM_FIRMWARE_ADDRESS"), 0x80200000);
