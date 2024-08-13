@@ -19,3 +19,4 @@ enable = true
 time = true
 instruction = true
 nb_exits = true
+nb_iter = 10

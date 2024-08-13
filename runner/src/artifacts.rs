@@ -124,7 +124,37 @@ pub fn locate_artifact(name: &str) -> Option<Artifact> {
         "Could not find 'firmware' directory"
     );
 
-    // Check if one entry match the name
+    // Look for artifact inside benchmark folder
+    let artifact = find_artifact(&firmware_path, name);
+    if artifact.is_some() {
+        return artifact;
+    }
+
+    // Get the path to the firmware/benchmark directory
+    firmware_path.push("benchmark");
+    assert!(
+        firmware_path.is_dir(),
+        "Could not find 'firmware/benchmark' directory"
+    );
+
+    // Look for artifact inside benchmark folder
+    let artifact = find_artifact(&firmware_path, name);
+    if artifact.is_some() {
+        return artifact;
+    }
+
+    // Else check if the artifact is defined in the manifest
+    let external = get_external_artifacts();
+    if let Some(artifact) = external.get(name) {
+        return Some(artifact.clone());
+    }
+
+    // Could not find artifact
+    None
+}
+
+/// Check if one entry match the name
+fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
     for entry in fs::read_dir(&firmware_path).unwrap() {
         let Ok(file_path) = entry.map(|e| e.path()) else {
             continue;
@@ -136,16 +166,8 @@ pub fn locate_artifact(name: &str) -> Option<Artifact> {
             return Some(Artifact::Source {
                 name: name.to_string(),
             });
-        }
+        };
     }
-
-    // Else check if the artifact is defined in the manifest
-    let external = get_external_artifacts();
-    if let Some(artifact) = external.get(name) {
-        return Some(artifact.clone());
-    }
-
-    // Could not find artifact
     None
 }
 
@@ -192,6 +214,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             let firmware_address = cfg.platform.firmware_address.unwrap_or(0x80200000);
             let linker_args = format!("-C link-arg=-Tmisc/linker-script-firmware.x -C link-arg=--defsym=_firmware_address={firmware_address}");
             build_cmd.env("RUSTFLAGS", linker_args);
+            build_cmd.envs(cfg.benchmark.build_envs());
             build_cmd.arg("--package").arg(firmware);
         }
     }

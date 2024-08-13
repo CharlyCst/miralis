@@ -80,3 +80,7 @@ nb_firmware_exits = false
 
 # Count number of world switches
 world_switches = false
+
+# Number of iterations to be used by benchmark firmware.
+# What is iterated on may vary from one firmware to another.
+nb_iter = 1000

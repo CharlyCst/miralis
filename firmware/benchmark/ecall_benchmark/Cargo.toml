@@ -8,4 +8,4 @@ name = "ecall_benchmark"
 path = "main.rs"
 
 [dependencies]
-miralis_abi = { path = "../../crates/abi" }
+miralis_abi = { path = "../../../crates/abi" }

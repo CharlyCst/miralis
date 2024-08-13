@@ -40,7 +40,6 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ctx_switch
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware sandbox
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware interrupt
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ecall
 
 	# Testing with external projects
@@ -48,6 +47,7 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 
 	# Test benchmark code
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware csr_write --benchmark
 	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark --benchmark
 
 	# Test firmware build
@@ -89,7 +89,7 @@ benchmark firmware=benchmark iterations=default_iterations:
 	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark --benchmark-iterations {{iterations}}
 
 analyze-benchmark input_path:
-	cargo run --package benchmark-analyzer -- {{input_path}}
+	cargo run --package benchmark_analyzer -- {{input_path}}
 
 # The following line gives highlighting on vim
 # vim: set ft=make :
