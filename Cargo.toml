@@ -8,6 +8,7 @@ uart_16550 = "0.3.0"
 spin = "0.5.2"
 log = { workspace = true }
 miralis_core = { path = "crates/core" }
+config_helpers = { path = "crates/config_helpers" }
 
 [features]
 # When running on host architecture as a userspace application, such as when
@@ -36,16 +37,18 @@ members = [
     "firmware/os_ctx_switch",
     "firmware/sandbox",
     "firmware/interrupt",
-    "firmware/ecall_benchmark",
     "firmware/os_ecall",
-    "firmware/csr_write_benchmark",
+    "firmware/benchmark/ecall_benchmark",
+    "firmware/benchmark/csr_write",
 
     # Crates
     "crates/abi",
     "crates/core",
+    "crates/config_helpers",
 
     # Tooling
-    "runner", "benchmark-analyzer",
+    "runner",
+    "benchmark_analyzer",
 ]
 
 [workspace.dependencies]

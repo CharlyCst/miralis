@@ -10,6 +10,7 @@
 use core::arch::asm;
 use core::hint;
 
+use config_helpers::parse_usize_or;
 use miralis_core::abi;
 
 pub mod logger;
@@ -138,3 +139,8 @@ unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
         Ok(value)
     }
 }
+
+// ——————————————————————————————— Constants ———————————————————————————————— //
+
+/// Number of iterations to be used by benchmark firmware.
+pub const BENCHMARK_NB_ITER: usize = parse_usize_or(option_env!("MIRALIS_BENCHMARK_NB_ITER"), 1);

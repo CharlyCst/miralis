@@ -51,7 +51,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "benchmark-analyzer"
+name = "benchmark_analyzer"
 version = "0.1.0"
 
 [[package]]
@@ -120,6 +120,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "config_helpers"
+version = "0.1.0"
+
+[[package]]
 name = "csr_ops"
 version = "0.1.0"
 dependencies = [
@@ -128,7 +132,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "csr_write_benchmark"
+name = "csr_write"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -222,6 +226,7 @@ dependencies = [
 name = "miralis"
 version = "0.1.0"
 dependencies = [
+ "config_helpers",
  "log",
  "miralis_core",
  "spin",
@@ -232,6 +237,7 @@ dependencies = [
 name = "miralis_abi"
 version = "0.1.0"
 dependencies = [
+ "config_helpers",
  "log",
  "miralis_core",
 ]
@@ -299,8 +305,9 @@ dependencies = [
 name = "runner"
 version = "0.1.0"
 dependencies = [
- "benchmark-analyzer",
+ "benchmark_analyzer",
  "clap",
+ "config_helpers",
  "serde",
  "toml",
 ]

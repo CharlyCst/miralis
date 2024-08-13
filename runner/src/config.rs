@@ -81,6 +81,7 @@ pub struct Benchmark {
     pub nb_exits: Option<bool>,
     pub nb_firmware_exits: Option<bool>,
     pub world_switches: Option<bool>,
+    pub nb_iter: Option<usize>,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //
@@ -202,7 +203,7 @@ impl Platform {
 }
 
 impl Benchmark {
-    fn build_envs(&self) -> HashMap<String, String> {
+    pub fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = HashMap::new();
         if let Some(enable) = self.enable {
             envs.insert(String::from("MIRALIS_BENCHMARK"), format!("{}", enable));
@@ -232,6 +233,12 @@ impl Benchmark {
             envs.insert(
                 String::from("MIRALIS_BENCHMARK_WORLD_SWITCHES"),
                 format!("{}", world_switches),
+            );
+        }
+        if let Some(nb_iter) = self.nb_iter {
+            envs.insert(
+                String::from("MIRALIS_BENCHMARK_NB_ITER"),
+                format!("{}", nb_iter),
             );
         }
         envs
