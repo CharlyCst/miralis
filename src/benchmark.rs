@@ -2,6 +2,7 @@
 //!
 //! This is useful for creating different benchmark on time of execution or
 //! the number of instruction for example.
+use core::usize;
 
 use spin::Mutex;
 
@@ -28,7 +29,7 @@ const NB_COUNTER: usize = 3;
 
 /// Benchmark counters.
 /// This kind of counter aims to be incremented to count occurences of an event.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum Counter {
     TotalExits = 0,
     FirmwareExits = 1,
@@ -37,12 +38,45 @@ pub enum Counter {
 
 const NB_INTERVAL_COUNTER: usize = 2;
 
+const NB_SCOPES: usize = 2;
+
 /// Benchmark interval counters.
 /// This kind of counter aims to measure difference beetween two events.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum IntervalCounter {
     ExecutionTime = 0,
     InstructionRet = 1,
+}
+
+#[derive(Copy, Clone)]
+struct IntervalCounterStats {
+    previous: usize,
+    count: usize,
+    min: usize,
+    max: usize,
+    mean: usize,
+    sum: usize,
+}
+
+pub enum Scope {
+    HandleTrap,
+    RunVCPU,
+}
+
+impl Scope {
+    fn base(&self) -> usize {
+        match self {
+            Self::HandleTrap => 0,
+            Self::RunVCPU => 1,
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::HandleTrap => "handle_trap",
+            Self::RunVCPU => "run_vcpu",
+        }
+    }
 }
 
 enum Either {
@@ -83,10 +117,14 @@ impl Either {
     /// The name of the counter. Name are intended to be used to regroup measures.
     fn name(&self) -> &'static str {
         match self {
-            Either::Counter(_) => "counters",
+            Either::Counter(c) => match c {
+                Counter::TotalExits => "Total exits",
+                Counter::FirmwareExits => "Firmware exits",
+                Counter::WorldSwitches => "World Switches",
+            },
             Either::IntervalCounter(c) => match c {
-                IntervalCounter::ExecutionTime => "time",
-                IntervalCounter::InstructionRet => "instruction ret",
+                IntervalCounter::ExecutionTime => " Execution time ",
+                IntervalCounter::InstructionRet => " Instruction retired ",
             },
         }
     }
@@ -94,7 +132,7 @@ impl Either {
 
 pub struct Benchmark {
     // Temporary value to store previous state (e.g. state when the benchmark started to compare).
-    interval_counters: [usize; NB_INTERVAL_COUNTER],
+    interval_counters: [IntervalCounterStats; NB_INTERVAL_COUNTER * NB_SCOPES],
 
     // Counters that could be incremented and reset to 0.
     counters: [usize; NB_COUNTER],
@@ -103,53 +141,50 @@ pub struct Benchmark {
 impl Benchmark {
     pub const fn new() -> Benchmark {
         Benchmark {
-            interval_counters: [0; NB_INTERVAL_COUNTER],
+            interval_counters: [IntervalCounterStats {
+                previous: 0,
+                count: 0,
+                min: usize::MAX,
+                max: 0,
+                mean: 0,
+                sum: 0,
+            }; NB_INTERVAL_COUNTER * 2],
+
             counters: [0; NB_COUNTER],
         }
     }
 
     /// Reset counter value to default and return previous one.
-    fn reset(&mut self, counter: Either) -> usize {
+    fn reset(&mut self, counter: &Either, scope: &Scope) -> usize {
         let value = counter.reset_value();
-        self.set(counter, value)
-    }
-
-    /// Increment counter by one. Mainly useful for occurence counters.
-    fn increment(&mut self, counter: Either) {
-        match counter {
-            Either::Counter(c) => self.counters[c as usize] += 1,
-            Either::IntervalCounter(c) => self.interval_counters[c as usize] += 1,
-        }
-    }
-
-    /// Set value of a counter and return previous value.
-    fn set(&mut self, counter: Either, value: usize) -> usize {
         match counter {
             Either::Counter(c) => {
-                let index = c as usize;
+                let index = *c as usize;
                 let previous = self.counters[index];
                 self.counters[index] = value;
                 previous
             }
             Either::IntervalCounter(c) => {
-                let index = c as usize;
-                let previous = self.interval_counters[index];
-                self.interval_counters[index] = value;
+                let index = Self::interval_counter_index(c, scope);
+                let previous = self.interval_counters[index].previous;
+                self.interval_counters[index].previous = value;
                 previous
             }
         }
     }
 
+    fn interval_counter_index(counter: &IntervalCounter, scope: &Scope) -> usize {
+        *counter as usize + scope.base() * NB_INTERVAL_COUNTER
+    }
+
     /// Read value of a counter.
-    fn read(&self, counter: Either) -> usize {
-        match counter {
-            Either::Counter(c) => self.counters[c as usize],
-            Either::IntervalCounter(c) => self.interval_counters[c as usize],
-        }
+    fn read_interval_counters(&self, counter: &IntervalCounter, scope: &Scope) -> usize {
+        let index = Self::interval_counter_index(counter, scope);
+        self.interval_counters[index].previous
     }
 
     /// Reset interval counters.
-    pub fn start_interval_counters() {
+    pub fn start_interval_counters(scope: Scope) {
         if !config::BENCHMARK {
             return;
         }
@@ -161,15 +196,15 @@ impl Benchmark {
         .map(Either::IntervalCounter)
         {
             if !counter.is_enabled() {
-                return;
+                continue;
             }
 
-            BENCH.lock().reset(counter);
+            BENCH.lock().reset(&counter, &scope);
         }
     }
 
     /// Stop and record interval counter.
-    pub fn stop_interval_counters(tag: &str) {
+    pub fn stop_interval_counters(scope: Scope) {
         if !config::BENCHMARK {
             return;
         }
@@ -177,18 +212,38 @@ impl Benchmark {
         for counter in [
             IntervalCounter::ExecutionTime,
             IntervalCounter::InstructionRet,
-        ]
-        .map(Either::IntervalCounter)
-        {
-            if !counter.is_enabled() {
-                return;
+        ] {
+            let wrapped_counter = Either::IntervalCounter(counter);
+
+            if !wrapped_counter.is_enabled() {
+                continue;
             }
 
-            let bench = counter.name();
-            let value = counter.reset_value() - BENCH.lock().reset(counter);
+            let mut bench = BENCH.lock();
+            let value =
+                wrapped_counter.reset_value() - bench.read_interval_counters(&counter, &scope);
 
-            Self::record_entry(bench, tag, value);
+            bench.update_inteval_counter_stats(&counter, &scope, value);
+
+            if config::BENCHMARK_LOG_EVERYTHING {
+                Self::record_entry(&wrapped_counter.name(), &scope.name(), value);
+            }
         }
+    }
+
+    fn update_inteval_counter_stats(
+        &mut self,
+        counter: &IntervalCounter,
+        scope: &Scope,
+        value: usize,
+    ) {
+        let index = Self::interval_counter_index(counter, scope);
+        let stats = &mut self.interval_counters[index];
+        stats.count += 1;
+        stats.sum += value;
+        stats.mean = stats.sum / stats.count;
+        stats.min = if value < stats.min { value } else { stats.min };
+        stats.max = if value > stats.max { value } else { stats.max };
     }
 
     /// Increment counter's value.
@@ -197,39 +252,62 @@ impl Benchmark {
             return;
         }
 
+        let index = counter as usize;
+
         let wrapped_counter = Either::Counter(counter);
 
         if !wrapped_counter.is_enabled() {
             return;
         }
 
-        BENCH.lock().increment(wrapped_counter)
+        BENCH.lock().counters[index] += 1;
     }
 
-    #[allow(dead_code)] // TODO: remove this when eventually used
-    pub fn reset_counter(counter: Counter) {
+    /// Print formated string with value of the counters
+    pub fn record_counters() {
         if !config::BENCHMARK {
             return;
         }
 
-        BENCH.lock().reset(Either::Counter(counter));
-    }
+        let bench = BENCH.lock();
 
-    /// Log counter value. Tag allows to link different recordings together for analysis.
-    pub fn record_counter(counter: Counter, tag: &str) {
-        if !config::BENCHMARK {
-            return;
-        }
-        let wrapped_counter = Either::Counter(counter);
+        benchmark_print!("\nBenchmark results\n---");
 
-        if !wrapped_counter.is_enabled() {
-            return;
+        // Regular counters
+        for counter in [
+            Counter::FirmwareExits,
+            Counter::TotalExits,
+            Counter::WorldSwitches,
+        ] {
+            let wrapped_counter = Either::Counter(counter);
+            benchmark_print!(
+                "{:15}: {:>12}",
+                wrapped_counter.name(),
+                bench.counters[counter as usize]
+            );
         }
-        Benchmark::record_entry(
-            wrapped_counter.name(),
-            tag,
-            BENCH.lock().read(wrapped_counter),
-        )
+
+        // Interval counters
+        for scope in [Scope::HandleTrap, Scope::RunVCPU] {
+            benchmark_print!("╔{:─>30}╗", "");
+            benchmark_print!("│{:^30}│", scope.name());
+
+            for counter in [
+                IntervalCounter::ExecutionTime,
+                IntervalCounter::InstructionRet,
+            ] {
+                let index = Self::interval_counter_index(&counter, &scope);
+                let stats = bench.interval_counters[index];
+                let wrapped_counter = Either::IntervalCounter(counter);
+                benchmark_print!("│╔{:─^28}╗│", wrapped_counter.name());
+                benchmark_print!("││  Min: {:>20} ││", stats.min);
+                benchmark_print!("││  Max: {:>20} ││", stats.max);
+                benchmark_print!("││  Sum: {:>20} ││", stats.sum);
+                benchmark_print!("││  Mean: {:>19} ││", stats.mean);
+                benchmark_print!("│╚{:─>28}╝│", "");
+            }
+            benchmark_print!("╚{:─>30}╝", "");
+        }
     }
 
     /// Print formated string with value of the entry and a tag for identification.

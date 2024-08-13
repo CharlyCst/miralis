@@ -75,6 +75,7 @@ pub enum Platforms {
 #[serde(deny_unknown_fields)]
 pub struct Benchmark {
     pub enable: Option<bool>,
+    pub log_everything: Option<bool>,
     pub time: Option<bool>,
     pub instruction: Option<bool>,
     pub nb_exits: Option<bool>,
@@ -213,6 +214,12 @@ impl Benchmark {
         let mut envs = HashMap::new();
         if let Some(enable) = self.enable {
             envs.insert(String::from("MIRALIS_BENCHMARK"), format!("{}", enable));
+        }
+        if let Some(log_everything) = self.log_everything {
+            envs.insert(
+                String::from("MIRALIS_BENCHMARK_LOG_EVERYTHING"),
+                format!("{}", log_everything),
+            );
         }
         if let Some(time) = self.time {
             envs.insert(String::from("MIRALIS_BENCHMARK_TIME"), format!("{}", time));

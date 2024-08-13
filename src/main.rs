@@ -20,10 +20,9 @@ mod logger;
 mod platform;
 mod utils;
 mod virt;
-
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
-use benchmark::{Benchmark, Counter};
+use benchmark::{Benchmark, Counter, Scope};
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
@@ -161,18 +160,19 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
 
 fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
     loop {
+        Benchmark::start_interval_counters(Scope::RunVCPU);
+
         unsafe {
-            Benchmark::start_interval_counters();
-
             Arch::run_vcpu(ctx);
-
-            Benchmark::stop_interval_counters("main::run_vcpu");
-
-            handle_trap(ctx, mctx);
-
-            Benchmark::stop_interval_counters("main::handle_trap");
-            Benchmark::increment_counter(Counter::TotalExits);
         }
+
+        Benchmark::stop_interval_counters(Scope::RunVCPU);
+        Benchmark::start_interval_counters(Scope::HandleTrap);
+
+        handle_trap(ctx, mctx);
+
+        Benchmark::stop_interval_counters(Scope::HandleTrap);
+        Benchmark::increment_counter(Counter::TotalExits);
     }
 }
 

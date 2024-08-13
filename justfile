@@ -88,8 +88,12 @@ install-toolchain:
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
 
+# The following line gives highlighting on vim
+# vim: set ft=make :
+
+# Run a firwmare with benchmark settings. The firmware should call for benchmark printing before exiting
 benchmark firmware=benchmark iterations=default_iterations:
-	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark --benchmark-iterations {{iterations}}
+	cargo run --package runner -- run -v --config {{qemu_virt_benchmark}} --firmware {{firmware}} --benchmark --benchmark-iterations {{iterations}}
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}

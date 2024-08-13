@@ -8,7 +8,7 @@ use crate::arch::{
     mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
     MCause, Mode, Register, TrapInfo,
 };
-use crate::benchmark::{Benchmark, Counter};
+use crate::benchmark::Benchmark;
 use crate::decoder::{decode, Instr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
@@ -656,9 +656,7 @@ impl VirtContext {
                 self.pc += 4;
             }
             abi::MIRALIS_BENCHMARK_FID => {
-                Benchmark::record_counter(Counter::FirmwareExits, "final firmware exits");
-                Benchmark::record_counter(Counter::TotalExits, "final exits");
-                Benchmark::record_counter(Counter::WorldSwitches, "final world switches");
+                Benchmark::record_counters();
                 Plat::exit_success();
             }
             _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
