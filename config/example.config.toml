@@ -54,6 +54,9 @@ nb_harts = 1
 # Enable all benchmark
 enable = false
 
+# Benchmarking will log every value
+log_everything = true
+
 # Benchmark execution time
 time = false
 
