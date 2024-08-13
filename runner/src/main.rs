@@ -62,6 +62,9 @@ struct BuildArgs {
     #[arg(long)]
     /// Path to the configuration file to use
     config: Option<PathBuf>,
+    /// Build a firmware instead of Miralis
+    #[arg(short, long)]
+    firmware: Option<String>,
 }
 
 #[derive(Args)]

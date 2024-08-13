@@ -50,6 +50,9 @@ test:
 	# Test benchmark code
 	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark --benchmark
 
+	# Test firmware build
+	just build-firmware {{qemu_virt}} default
+
 # Run unit tests
 unit-test:
 	cargo test --features userspace -p miralis
@@ -61,6 +64,10 @@ run firmware=default:
 # Build Miralis with the provided config
 build config:
 	cargo run --package runner -- build --config {{config}}
+
+# Build a given firmware with the provided config
+build-firmware config firmware:
+	cargo run --package runner -- build -v --config {{config}} --firmware {{firmware}}
 
 # Run Miralis but wait for a debugger to connect
 debug firmware=default:
@@ -78,11 +85,11 @@ install-toolchain:
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
 
-# The following line gives highlighting on vim
-# vim: set ft=make :
-
 benchmark firmware=benchmark iterations=default_iterations:
 	cargo run --package runner -- run -v --firmware {{firmware}} --benchmark --benchmark-iterations {{iterations}}
 
 analyze-benchmark input_path:
 	cargo run --package benchmark-analyzer -- {{input_path}}
+
+# The following line gives highlighting on vim
+# vim: set ft=make :
