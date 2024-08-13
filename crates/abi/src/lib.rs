@@ -53,17 +53,32 @@ macro_rules! setup_firmware {
             .align 4
             .global _start
             _start:
+                ld t4, __fw_bss_start
+                ld t5, __fw_bss_stop
+            zero_fw_bss_loop:
+                bgeu t4, t5, zero_fw_bss_done
+                sd x0, 0(t4)
+                addi t4, t4, 8
+                j zero_fw_bss_loop
+            zero_fw_bss_done:
                 // Load the stack pointer and jump into main
                 ld sp, __stack_top
                 j {entry}
 
                 // Store the address of the stack in memory
                 // That way it can be loaded as an absolute value
-                __stack_top:
-                    .dword {stack_top}
+            .align 8
+            __stack_top:
+                .dword {stack_top}
+            __fw_bss_start:
+                .dword {fw_bss_start}
+            __fw_bss_stop:
+                .dword {fw_bss_stop}
             "#,
             entry = sym _firmware_start,
             stack_top = sym _stack_top,
+            fw_bss_start = sym _firmware_bss_start,
+            fw_bss_stop = sym _firmware_bss_stop,
         );
 
         pub extern "C" fn _firmware_start() -> ! {
@@ -79,6 +94,8 @@ macro_rules! setup_firmware {
         // Defined in the linker script
         extern "C" {
             pub(crate) static _stack_top: u8;
+            pub(crate) static _firmware_bss_start: u8;
+            pub(crate) static _firmware_bss_stop: u8;
         }
 
         // Also include the panic handler
