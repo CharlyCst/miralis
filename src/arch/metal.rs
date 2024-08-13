@@ -643,8 +643,8 @@ stack_fill_done:
     ld t5, __bss_stop
 zero_bss_loop:
     bgeu t4, t5, zero_bss_done
-    sb x0, 0(t4)
-    addi t4, t4, 1
+    sd x0, 0(t4)
+    addi t4, t4, 8
     j zero_bss_loop
 zero_bss_done:
 

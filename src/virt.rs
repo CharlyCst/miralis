@@ -578,10 +578,18 @@ impl VirtContext {
             _ => {
                 if cause.is_interrupt() {
                     // TODO : For now, only care for MTIP bit
-                    todo!("Other interrupt are not yet implemented {:?}", cause);
+                    todo!(
+                        "Other interrupts are not yet implemented {:?} at {:x}",
+                        cause,
+                        self.trap_info.mepc
+                    );
                 } else {
                     // TODO : Need to match other traps
-                    todo!("Other traps are not yet implemented");
+                    todo!(
+                        "Other traps are not yet implemented {:?} at {:x}",
+                        cause,
+                        self.trap_info.mepc
+                    );
                 }
             }
         }
