@@ -32,11 +32,13 @@ We do have an artifact named `opensbi`, so the runner will check if it is alread
 ## Benchmark
 
 Different benchmark can be run with `just benchmark`.
-This command computes and prints some statistics about a run of Miralis.
+This command computes and prints some statistics about a run of Miralis with a given binary.
 
-The default behaviour is counting the number of retired instructions of function `run_vcpu` and `handle_trap` called in `main.rs` with the `default` firmware. You can specify the binary you want to benchmark with `just benchmark <binaries>`. For example, if you want to benchmark `linux` you can run `just benchmark linux`. 
+The binary should call Miralis to print the benchmark results at the end of its execution. Statistics are computed during the runtime in a streaming maner.
 
-One can choose which benchmark to run in the `benchmark` section of the `config.toml` file. The field `enable` is overwritten to true when running this command.
+You can specify the binary you want to benchmark with `just benchmark <binaries>` (by default it is `ecall_benchmark`). For example, if you want to benchmark `linux` you can run `just benchmark linux`. 
 
-If you collect output of a run into a file, you can feed the file to the just `analyze-benchmark` command to get the statistics of the run.
+One can choose what to benchmark in the `benchmark` section of the `config.toml` file. The field `enable` is overwritten to true when running this command.
+
+If you collect output of a run into file (should be in csv format using `csv_format` in the config), you can feed the file to the just `analyze-benchmark` command to get the statistics of the run. You can also put multiple files of multiple runs into a folder and give the path of the folder. This will compute the average of all runs.
 

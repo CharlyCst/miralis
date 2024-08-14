@@ -75,7 +75,7 @@ pub enum Platforms {
 #[serde(deny_unknown_fields)]
 pub struct Benchmark {
     pub enable: Option<bool>,
-    pub log_everything: Option<bool>,
+    pub csv_format: Option<bool>,
     pub time: Option<bool>,
     pub instruction: Option<bool>,
     pub nb_exits: Option<bool>,
@@ -215,10 +215,10 @@ impl Benchmark {
         if let Some(enable) = self.enable {
             envs.insert(String::from("MIRALIS_BENCHMARK"), format!("{}", enable));
         }
-        if let Some(log_everything) = self.log_everything {
+        if let Some(csv_format) = self.csv_format {
             envs.insert(
-                String::from("MIRALIS_BENCHMARK_LOG_EVERYTHING"),
-                format!("{}", log_everything),
+                String::from("MIRALIS_BENCHMARK_CSV_FORMAT"),
+                format!("{}", csv_format),
             );
         }
         if let Some(time) = self.time {

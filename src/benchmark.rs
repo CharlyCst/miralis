@@ -2,8 +2,6 @@
 //!
 //! This is useful for creating different benchmark on time of execution or
 //! the number of instruction for example.
-use core::usize;
-
 use spin::Mutex;
 
 use crate::arch::{Arch, Architecture, Csr};
@@ -224,10 +222,6 @@ impl Benchmark {
                 wrapped_counter.reset_value() - bench.read_interval_counters(&counter, &scope);
 
             bench.update_inteval_counter_stats(&counter, &scope, value);
-
-            if config::BENCHMARK_LOG_EVERYTHING {
-                Self::record_entry(&wrapped_counter.name(), &scope.name(), value);
-            }
         }
     }
 
@@ -242,8 +236,8 @@ impl Benchmark {
         stats.count += 1;
         stats.sum += value;
         stats.mean = stats.sum / stats.count;
-        stats.min = if value < stats.min { value } else { stats.min };
-        stats.max = if value > stats.max { value } else { stats.max };
+        stats.min = core::cmp::min(value, stats.min);
+        stats.max = core::cmp::max(value, stats.max);
     }
 
     /// Increment counter's value.
@@ -271,7 +265,11 @@ impl Benchmark {
 
         let bench = BENCH.lock();
 
-        benchmark_print!("\nBenchmark results\n---");
+        if config::BENCHMARK_CSV_FORMAT {
+            benchmark_print!("START BENCHMARK\ncounter,min,max,sum,mean");
+        } else {
+            benchmark_print!("\nBenchmark results\n---");
+        }
 
         // Regular counters
         for counter in [
@@ -280,48 +278,58 @@ impl Benchmark {
             Counter::WorldSwitches,
         ] {
             let wrapped_counter = Either::Counter(counter);
-            benchmark_print!(
-                "{:15}: {:>12}",
-                wrapped_counter.name(),
-                bench.counters[counter as usize]
-            );
+            if !wrapped_counter.is_enabled() {
+                continue;
+            }
+            let value = bench.counters[counter as usize];
+            let name = wrapped_counter.name();
+            if config::BENCHMARK_CSV_FORMAT {
+                benchmark_print!("{},{},{},{},{}", name, value, value, value, value);
+            } else {
+                benchmark_print!("{:15}: {:>12}", name, value);
+            }
         }
 
         // Interval counters
         for scope in [Scope::HandleTrap, Scope::RunVCPU] {
-            benchmark_print!("╔{:─>30}╗", "");
-            benchmark_print!("│{:^30}│", scope.name());
+            if !config::BENCHMARK_CSV_FORMAT {
+                benchmark_print!("╔{:─>30}╗", "");
+                benchmark_print!("│{:^30}│", scope.name());
+            }
 
             for counter in [
                 IntervalCounter::ExecutionTime,
                 IntervalCounter::InstructionRet,
             ] {
-                let index = Self::interval_counter_index(&counter, &scope);
-                let stats = bench.interval_counters[index];
                 let wrapped_counter = Either::IntervalCounter(counter);
-                benchmark_print!("│╔{:─^28}╗│", wrapped_counter.name());
-                benchmark_print!("││  Min: {:>20} ││", stats.min);
-                benchmark_print!("││  Max: {:>20} ││", stats.max);
-                benchmark_print!("││  Sum: {:>20} ││", stats.sum);
-                benchmark_print!("││  Mean: {:>19} ││", stats.mean);
-                benchmark_print!("│╚{:─>28}╝│", "");
+                if !wrapped_counter.is_enabled() {
+                    continue;
+                }
+                let index: usize = Self::interval_counter_index(&counter, &scope);
+                let stats = bench.interval_counters[index];
+                let name = wrapped_counter.name();
+                if config::BENCHMARK_CSV_FORMAT {
+                    benchmark_print!(
+                        "{}::{},{},{},{},{}",
+                        name.trim(),
+                        scope.name(),
+                        stats.min,
+                        stats.max,
+                        stats.sum,
+                        stats.mean
+                    );
+                } else {
+                    benchmark_print!("│╔{:─^28}╗│", name);
+                    benchmark_print!("││  Min: {:>20} ││", stats.min);
+                    benchmark_print!("││  Max: {:>20} ││", stats.max);
+                    benchmark_print!("││  Sum: {:>20} ││", stats.sum);
+                    benchmark_print!("││  Mean: {:>19} ││", stats.mean);
+                    benchmark_print!("│╚{:─>28}╝│", "");
+                }
             }
-            benchmark_print!("╚{:─>30}╝", "");
+            if !config::BENCHMARK_CSV_FORMAT {
+                benchmark_print!("╚{:─>30}╝", "");
+            }
         }
-    }
-
-    /// Print formated string with value of the entry and a tag for identification.
-    /// "benchmark" section allows to filter lines of benchmarking in the output.
-    ///
-    /// bench: what kind of benchmark it is
-    /// (e.g. execution time, instruction count, number of exits...)
-    ///
-    /// tag: unique identifier of a measure that can be used to add more context
-    /// (e.g. time when we measured, in which part of the code...)
-    pub fn record_entry(bench: &str, tag: &str, entry: usize) {
-        if !config::BENCHMARK {
-            return;
-        }
-        benchmark_print!("benchmark || {:>15} || {:25} || {}", bench, tag, entry);
     }
 }

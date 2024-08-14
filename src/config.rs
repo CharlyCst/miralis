@@ -58,7 +58,8 @@ pub const PLATFORM_NB_HARTS: usize = {
 /// Whether any benchmark is enable
 pub const BENCHMARK: bool = is_enabled!("MIRALIS_BENCHMARK");
 
-pub const BENCHMARK_LOG_EVERYTHING: bool = is_enabled!("MIRALIS_BENCHMARK_LOG_EVERYTHING");
+/// Whether print in csv format or not
+pub const BENCHMARK_CSV_FORMAT: bool = is_enabled!("MIRALIS_BENCHMARK_CSV_FORMAT");
 
 /// Whether execution time benchmarking is enabled
 pub const BENCHMARK_TIME: bool = is_enabled!("MIRALIS_BENCHMARK_TIME");

@@ -83,7 +83,8 @@ pub fn run(args: &RunArgs) {
     }
 
     if args.benchmark {
-        let mut map_type_tag_values: HashMap<String, HashMap<String, Vec<usize>>> = HashMap::new();
+        let mut stat_counter_values_map: HashMap<String, HashMap<String, Vec<usize>>> =
+            HashMap::new();
 
         print!("Progress... [");
         for i in 0..args.benchmark_iterations {
@@ -106,10 +107,10 @@ pub fn run(args: &RunArgs) {
                 .map(String::from)
                 .collect();
 
-            benchmark::parse_content(lines, &mut map_type_tag_values);
+            benchmark::parse_content(lines, &mut stat_counter_values_map);
         }
 
-        benchmark::compute_statistics(&map_type_tag_values, args.benchmark_iterations);
+        benchmark::compute_statistics(&stat_counter_values_map);
     } else {
         let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
 
