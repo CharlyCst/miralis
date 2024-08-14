@@ -3,7 +3,7 @@
 
 use core::arch::asm;
 
-use miralis_abi::{setup_firmware, success, BENCHMARK_NB_ITER};
+use miralis_abi::{miralis_end_benchmark, setup_firmware, BENCHMARK_NB_ITER};
 
 setup_firmware!(main);
 
@@ -15,5 +15,6 @@ fn main() -> ! {
             );
         }
     }
-    success();
+
+    miralis_end_benchmark()
 }

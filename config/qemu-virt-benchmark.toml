@@ -15,6 +15,7 @@ nb_harts = 1
 
 [benchmark]
 enable = true
+csv_format = true
 time = true
 instruction = true
 nb_exits = true

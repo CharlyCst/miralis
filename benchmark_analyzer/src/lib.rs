@@ -1,79 +1,112 @@
 use std::collections::HashMap;
 
+const CSV_SEPARATOR: char = ',';
+const SCOPE_SEPARATOR: &str = "::";
+const COUNTER_SCOPE: &str = "counters";
+const START_TOKEN: &str = "START BENCHMARK";
+
 /// Parse a benchmark file in order to get a map from tags to list of usize values.
 pub fn parse_content(
     content: Vec<String>,
-    map_type_tag_values: &mut HashMap<String, HashMap<String, Vec<usize>>>,
+    stat_counter_values_map: &mut HashMap<String, HashMap<String, Vec<usize>>>,
 ) {
-    // keep only benchark logs
-    content
+    let mut results = content
         .iter()
-        .filter(|s| s.contains("benchmark"))
-        // remove separators "||" and collect tuples (bench_type, tag, value)
-        .map(|line| {
-            let mut split = line.split("||").map(|s| s.trim()).skip(1);
-            (
-                split
-                    .next()
-                    .expect("Wrong file format: no benchmark type")
-                    .to_string(),
-                split.next().expect("Wrong file format: no tag").to_string(),
-                split
-                    .next()
-                    .expect("Wrong file format: no value")
-                    .parse::<usize>(),
-            )
-        })
-        // filter incorrect usize transformation
-        .filter(|(_, _, value)| value.is_ok())
-        // add tuple to the map
-        .for_each(|(bench_type, tag, value)| {
-            map_type_tag_values
-                .entry(bench_type)
+        .skip_while(|s| !s.contains(START_TOKEN))
+        .skip(1);
+
+    // Retrieve statistics names
+    let stats: Vec<&str> = results
+        .next()
+        .expect("Not a benchmark-compatible firmware!")
+        .split(CSV_SEPARATOR)
+        .skip(1)
+        .collect();
+
+    results.for_each(|line| {
+        let mut split = line.split(CSV_SEPARATOR).map(|s| s.trim());
+        let counter_name = split.next().expect("Missing counter name."); // Counter name
+
+        stats.iter().for_each(|key| {
+            stat_counter_values_map
+                .entry(key.to_string())
                 .or_insert(HashMap::new())
-                .entry(tag)
+                .entry(counter_name.to_string())
                 .or_insert(Vec::new())
-                .push(value.unwrap())
-        })
+                .push(
+                    split
+                        .next()
+                        .expect("Wrong file format: no value")
+                        .parse::<usize>()
+                        .expect("Wrong file format: value is not an usize"),
+                )
+        });
+    });
 }
 
-pub fn compute_statistics(
-    map_type_tag_values: &HashMap<String, HashMap<String, Vec<usize>>>,
-    iteration: usize,
-) {
-    if map_type_tag_values.is_empty() {
-        println!("Nothing has been benchmarked !")
-    } else {
-        println!("\n================= BENCHMARK =================");
-    }
-    for (key, map) in map_type_tag_values {
-        println!("Benchmark for {}:", key);
-        println!("--------------------");
+#[derive(Default, Debug)]
+struct CounterStats {
+    min: usize,
+    max: usize,
+    mean: usize,
+    avg_sum: usize,
+}
 
-        for (tag, values) in map {
-            if values.len() == 1 {
-                println!("{:.<25}     : {:>12}", tag, values.iter().max().unwrap());
-            } else {
-                println!("{:.<25}  Min: {:>12}", tag, values.iter().min().unwrap());
-                println!("{:.<25}  Max: {:>12}", tag, values.iter().max().unwrap());
-                if iteration == 1 {
-                    println!("{:.<25}  Sum: {:>12}", tag, values.iter().sum::<usize>());
-                } else {
-                    println!(
-                        "{:.<21} Avg. sum: {:>12}",
-                        tag,
-                        values.iter().sum::<usize>() / iteration
-                    );
-                }
-                println!(
-                    "{:.<25} Mean: {:12}",
-                    tag,
-                    values.iter().sum::<usize>() / values.len()
-                );
-                println!();
+/// Compute average of all parameters to have statistics over all runs.
+pub fn compute_statistics(stat_counter_values_map: &HashMap<String, HashMap<String, Vec<usize>>>) {
+    if stat_counter_values_map.is_empty() {
+        println!("Nothing has been benchmarked !");
+        return;
+    }
+
+    let mut scope_stats_counters: HashMap<String, HashMap<String, CounterStats>> = HashMap::new();
+
+    for (stat, map) in stat_counter_values_map {
+        for (counter_names, values) in map {
+            let mut split = counter_names.split(SCOPE_SEPARATOR);
+            let counter_name = split.next().expect("No counter name!");
+            let scope_name = split.next().unwrap_or(COUNTER_SCOPE);
+            let a = scope_stats_counters
+                .entry(scope_name.to_string())
+                .or_insert(HashMap::new())
+                .entry(counter_name.to_string())
+                .or_insert(Default::default());
+
+            if stat == "min" {
+                a.min = *values.iter().min().unwrap()
+            } else if stat == "max" {
+                a.max = *values.iter().max().unwrap()
+            } else if stat == "sum" {
+                a.avg_sum = values.iter().sum::<usize>() / values.len();
+            } else if stat == "mean" {
+                a.mean = values.iter().sum::<usize>() / values.len();
             }
         }
+    }
 
-        println!();
+    print_stats(&scope_stats_counters);
+}
+
+/// Print formatted statistics and numbers.
+fn print_stats(scope_stats_counters: &HashMap<String, HashMap<String, CounterStats>>) {
+    for (scope, map) in scope_stats_counters {
+        println!("╔{:─>30}╗", "");
+        println!("│{:^30}│", scope);
+
+        for (counter, stats) in map {
+            println!("│╔{:─^28}╗│", format!(" {} ", counter));
+
+            if scope == COUNTER_SCOPE {
+                println!("││  Count: {:>18} ││", stats.max);
+            } else {
+                println!("││  Min: {:>20} ││", stats.min);
+                println!("││  Max: {:>20} ││", stats.max);
+                println!("││  Avg. sum: {:>15} ││", stats.avg_sum);
+                println!("││  Mean: {:>19} ││", stats.mean);
+            }
+
+            println!("│╚{:─>28}╝│", "");
+        }
+        println!("╚{:─>30}╝", "");
     }
 }

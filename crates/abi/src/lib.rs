@@ -39,6 +39,16 @@ pub fn failure() -> ! {
     }
 }
 
+/// Ask Miralis to end benchmark and print results.
+pub fn miralis_end_benchmark() -> ! {
+    unsafe { miralis_ecall(abi::MIRALIS_BENCHMARK_FID).ok() };
+
+    // Loop forever, this should never happen as Miralis will terminate the execution before.
+    loop {
+        hint::spin_loop();
+    }
+}
+
 // ————————————————————————————— Firmware Setup ————————————————————————————— //
 
 /// Configure the firmware entry point and panic handler.

@@ -54,8 +54,8 @@ nb_harts = 1
 # Enable all benchmark
 enable = false
 
-# Benchmarking will log every value
-log_everything = true
+# Print in csv_format, useful for analysis
+csv_format = true
 
 # Benchmark execution time
 time = false

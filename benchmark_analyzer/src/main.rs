@@ -33,12 +33,12 @@ fn main() {
             .map(|file_path| read_file_content(&file_path))
             .for_each(|c| parse_content(c, &mut map_type_tag_values));
 
-        compute_statistics(&map_type_tag_values, path.read_dir().unwrap().count());
+        compute_statistics(&map_type_tag_values);
     } else {
         let content = read_file_content(path);
         parse_content(content, &mut map_type_tag_values);
 
-        compute_statistics(&map_type_tag_values, 1);
+        compute_statistics(&map_type_tag_values);
     }
 }
 
