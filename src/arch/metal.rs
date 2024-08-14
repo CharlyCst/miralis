@@ -373,6 +373,138 @@ impl Architecture for MetalArch {
     unsafe fn sfence_vma() {
         asm!("sfence.vma")
     }
+
+    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {
+        macro_rules! asm_clear_csr_bits {
+            ($reg:literal) => {
+                asm!(
+                    concat!("csrc ", $reg, ", {x}"),
+                    x = in(reg) bits_mask,
+                    options(nomem)
+                )
+            };
+        }
+
+        match csr {
+            Csr::Mhartid => asm_clear_csr_bits!("mhartid"),
+            Csr::Mstatus => asm_clear_csr_bits!("mstatus"),
+            Csr::Misa => asm_clear_csr_bits!("misa"),
+            Csr::Mie => asm_clear_csr_bits!("mie"),
+            Csr::Mtvec => asm_clear_csr_bits!("mtvec"),
+            Csr::Mscratch => asm_clear_csr_bits!("mscratch"),
+            Csr::Mip => asm_clear_csr_bits!("mip"),
+            Csr::Mvendorid => asm_clear_csr_bits!("mvendorid"),
+            Csr::Marchid => asm_clear_csr_bits!("marchid"),
+            Csr::Mimpid => asm_clear_csr_bits!("mimpid"),
+            Csr::Pmpcfg(_) => todo!(),
+            Csr::Pmpaddr(_) => todo!(),
+            Csr::Mcycle => asm_clear_csr_bits!("mcycle"),
+            Csr::Minstret => asm_clear_csr_bits!("minstret"),
+            Csr::Mhpmcounter(_) => todo!(),
+            Csr::Mcountinhibit => asm_clear_csr_bits!("mcountinhibit"),
+            Csr::Mhpmevent(_) => todo!(),
+            Csr::Mcounteren => asm_clear_csr_bits!("mcounteren"),
+            Csr::Menvcfg => asm_clear_csr_bits!("menvcfg"),
+            Csr::Mseccfg => asm_clear_csr_bits!("mseccfg"),
+            Csr::Mconfigptr => asm_clear_csr_bits!("mconfigptr"),
+            Csr::Medeleg => asm_clear_csr_bits!("medeleg"),
+            Csr::Mideleg => asm_clear_csr_bits!("mideleg"),
+            Csr::Mtinst => asm_clear_csr_bits!("mtinst"),
+            Csr::Mtval2 => asm_clear_csr_bits!("mtval2"),
+            Csr::Tselect => asm_clear_csr_bits!("tselect"),
+            Csr::Tdata1 => asm_clear_csr_bits!("tdata1"),
+            Csr::Tdata2 => asm_clear_csr_bits!("tdata2"),
+            Csr::Tdata3 => asm_clear_csr_bits!("tdata3"),
+            Csr::Mcontext => asm_clear_csr_bits!("mcontext"),
+            Csr::Dcsr => asm_clear_csr_bits!("dcsr"),
+            Csr::Dpc => asm_clear_csr_bits!("dpc"),
+            Csr::Dscratch0 => asm_clear_csr_bits!("dscratch0"),
+            Csr::Dscratch1 => asm_clear_csr_bits!("dscratch1"),
+            Csr::Mepc => asm_clear_csr_bits!("mepc"),
+            Csr::Mcause => asm_clear_csr_bits!("mcause"),
+            Csr::Mtval => asm_clear_csr_bits!("mtval"),
+            Csr::Sstatus => asm_clear_csr_bits!("sstatus"),
+            Csr::Sie => asm_clear_csr_bits!("sie"),
+            Csr::Stvec => asm_clear_csr_bits!("stvec"),
+            Csr::Scounteren => asm_clear_csr_bits!("scounteren"),
+            Csr::Senvcfg => asm_clear_csr_bits!("senvcfg"),
+            Csr::Sscratch => asm_clear_csr_bits!("sscratch"),
+            Csr::Sepc => asm_clear_csr_bits!("sepc"),
+            Csr::Scause => asm_clear_csr_bits!("scause"),
+            Csr::Stval => asm_clear_csr_bits!("stval"),
+            Csr::Sip => asm_clear_csr_bits!("sip"),
+            Csr::Satp => asm_clear_csr_bits!("satp"),
+            Csr::Scontext => asm_clear_csr_bits!("scontext"),
+            Csr::Unknown => (),
+        };
+    }
+
+    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) {
+        macro_rules! asm_set_csr_bits {
+            ($reg:literal) => {
+                unsafe {
+                    asm!(
+                        concat!("csrs ", $reg, ", {x}"),
+                        x = in(reg) bits_mask,
+                        options(nomem)
+                    )
+                }
+            };
+        }
+
+        match csr {
+            Csr::Mhartid => asm_set_csr_bits!("mhartid"),
+            Csr::Mstatus => asm_set_csr_bits!("mstatus"),
+            Csr::Misa => asm_set_csr_bits!("misa"),
+            Csr::Mie => asm_set_csr_bits!("mie"),
+            Csr::Mtvec => asm_set_csr_bits!("mtvec"),
+            Csr::Mscratch => asm_set_csr_bits!("mscratch"),
+            Csr::Mip => asm_set_csr_bits!("mip"),
+            Csr::Mvendorid => asm_set_csr_bits!("mvendorid"),
+            Csr::Marchid => asm_set_csr_bits!("marchid"),
+            Csr::Mimpid => asm_set_csr_bits!("mimpid"),
+            Csr::Pmpcfg(_) => todo!(),
+            Csr::Pmpaddr(_) => todo!(),
+            Csr::Mcycle => asm_set_csr_bits!("mcycle"),
+            Csr::Minstret => asm_set_csr_bits!("minstret"),
+            Csr::Mhpmcounter(_) => todo!(),
+            Csr::Mcountinhibit => asm_set_csr_bits!("mcountinhibit"),
+            Csr::Mhpmevent(_) => todo!(),
+            Csr::Mcounteren => asm_set_csr_bits!("mcounteren"),
+            Csr::Menvcfg => asm_set_csr_bits!("menvcfg"),
+            Csr::Mseccfg => asm_set_csr_bits!("mseccfg"),
+            Csr::Mconfigptr => asm_set_csr_bits!("mconfigptr"),
+            Csr::Medeleg => asm_set_csr_bits!("medeleg"),
+            Csr::Mideleg => asm_set_csr_bits!("mideleg"),
+            Csr::Mtinst => asm_set_csr_bits!("mtinst"),
+            Csr::Mtval2 => asm_set_csr_bits!("mtval2"),
+            Csr::Tselect => asm_set_csr_bits!("tselect"),
+            Csr::Tdata1 => asm_set_csr_bits!("tdata1"),
+            Csr::Tdata2 => asm_set_csr_bits!("tdata2"),
+            Csr::Tdata3 => asm_set_csr_bits!("tdata3"),
+            Csr::Mcontext => asm_set_csr_bits!("mcontext"),
+            Csr::Dcsr => asm_set_csr_bits!("dcsr"),
+            Csr::Dpc => asm_set_csr_bits!("dpc"),
+            Csr::Dscratch0 => asm_set_csr_bits!("dscratch0"),
+            Csr::Dscratch1 => asm_set_csr_bits!("dscratch1"),
+            Csr::Mepc => asm_set_csr_bits!("mepc"),
+            Csr::Mcause => asm_set_csr_bits!("mcause"),
+            Csr::Mtval => asm_set_csr_bits!("mtval"),
+            Csr::Sstatus => asm_set_csr_bits!("sstatus"),
+            Csr::Sie => asm_set_csr_bits!("sie"),
+            Csr::Stvec => asm_set_csr_bits!("stvec"),
+            Csr::Scounteren => asm_set_csr_bits!("scounteren"),
+            Csr::Senvcfg => asm_set_csr_bits!("senvcfg"),
+            Csr::Sscratch => asm_set_csr_bits!("sscratch"),
+            Csr::Sepc => asm_set_csr_bits!("sepc"),
+            Csr::Scause => asm_set_csr_bits!("scause"),
+            Csr::Stval => asm_set_csr_bits!("stval"),
+            Csr::Sip => asm_set_csr_bits!("sip"),
+            Csr::Satp => asm_set_csr_bits!("satp"),
+            Csr::Scontext => asm_set_csr_bits!("scontext"),
+            Csr::Unknown => (),
+        };
+    }
 }
 
 /// Finds the number of non-zero PMP registers, i.e. the effective number of PMP registers

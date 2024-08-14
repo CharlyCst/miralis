@@ -210,3 +210,31 @@ Miralis receives interrupt i when executing payload:
   ⟹ virtual context is set as a tap occured to the firmware,
      we can forward interrupt handling to firmware. 
 ```
+
+### Software external interrupt virtualization
+
+Supervisor-level external pending interrupts are a particular case. The specification of RISC-V says that the `csrr` instruction is modified when reading the **SEIP** (supervisor-level external pending interrupts) bit of the `mip` register.
+
+From the RISC-V Instruction Set Manual: Volume II:
+
+> Supervisor-level external interrupts are made pending based on the logical-OR of the software-writable SEIP bit and the signal from the external interrupt controller. When mip is read with a CSR instruction, the value of the SEIP bit returned in the rd destination register is the logical-OR of the software-writable bit and the interrupt signal from the interrupt controller, but the signal from the interrupt controller is not used to calculate the value written to SEIP.
+
+The value of **SEIP** read by `csrr` is then not exactly what is inside the `mip` register. It is a logical-OR of *the software-writable bit and the interrupt signal from the interrupt controller*. This means that on world-switch between the payload and the firmware, we should not put the value of **SEIP** using only `csrr` as it doesm't represent the real value of the physical register.
+
+**SEIP** is read-only by S-Mode (and U-Mode). Then, M-Mode is the only one that can change the value of SEIP. So we have to keep it as it is in the virtual `mip` register when world-switching.
+
+Another thing to consider is the following scenario:
+
+```
+  Int. sig. mip.SEIP vmip.SEIP
+  ┌──────┐ ┌──────┐ ┌──────┐
+  │   0  │ │   1  │ │  *0  │ *Cleared by firmware
+  └──────┘ └──────┘ └──────┘   but not installed.
+      │        │  ∧     ╎
+ csrr └──[OR]──┘  └╶╶X╶╶┘
+           │
+          {1} Wrong value!
+```
+
+If the firmware wants to read the `mip` register after cleaning `vmip.SEIP`, and we don't sync `vmip.SEIP` with `mip.SEIP`, it can't know if there is an interrupt signal from the interrupt controller as the CSR read will be a logical-OR of the signal and `mip.SEIP` (which is one), and so always 1. If vmip.SEIP is 0, CSR read of mip.SEIP should return the interrupt signal.
+Then, we need to synchronize vmip.SEIP with mip.SEIP.
