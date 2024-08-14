@@ -41,6 +41,11 @@ pub trait Architecture {
     /// Write into csr and return previous value
     unsafe fn write_csr(csr: Csr, value: usize) -> usize;
 
+    /// Clear csr_bits with mask
+    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize);
+
+    /// Set csr_bits with mask
+    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_pmp(pmp: &PmpGroup);
     unsafe fn sfence_vma();

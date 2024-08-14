@@ -151,8 +151,6 @@ impl Architecture for HostArch {
     unsafe fn write_csr(csr: Csr, value: usize) -> usize {
         let prev_val = Self::read_csr(csr);
         let mut ctx = HOST_CTX.lock();
-
-        log::debug!("Write {:?} with value 0x{:x}", csr, value);
         match csr {
             Csr::Mhartid => ctx.csr.marchid = value,
             Csr::Mstatus => ctx.csr.mstatus = value,
@@ -209,5 +207,13 @@ impl Architecture for HostArch {
             Csr::Unknown => panic!("Unkown csr!"),
         }
         prev_val
+    }
+
+    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {
+        Self::write_csr(csr, Self::read_csr(csr) & !bits_mask);
+    }
+
+    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) {
+        Self::write_csr(csr, Self::read_csr(csr) | bits_mask);
     }
 }

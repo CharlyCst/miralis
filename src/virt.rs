@@ -497,8 +497,12 @@ impl VirtContext {
         self.csr.mcause = self.trap_info.mcause;
         self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
-        self.csr.mip = self.trap_info.mip;
         self.csr.mepc = self.trap_info.mepc;
+
+        // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
+        // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
+        // controller. (refer to documentation for further detail).
+        self.csr.mip = self.trap_info.mip & !mie::SEIE_FILTER | self.csr.mip & mie::SEIE_FILTER;
 
         match self.mode {
             Mode::M => {
@@ -751,7 +755,12 @@ impl VirtContext {
         Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
 
         self.csr.mie = Arch::read_csr(Csr::Mie);
-        self.csr.mip = Arch::read_csr(Csr::Mip);
+
+        // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
+        // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
+        // controller. (refer to documentation for further detail).
+        self.csr.mip =
+            Arch::read_csr(Csr::Mip) & (!mie::SEIE_FILTER) | self.csr.mip & mie::SEIE_FILTER;
 
         // Remove Firmware PMP from the hardware
         mctx.pmp
@@ -819,7 +828,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mstatus => self.csr.mstatus & mstatus::MSTATUS_FILTER,
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
-            Csr::Mip => self.csr.mip,
+            Csr::Mip => self.csr.mip | Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER, // Allows to read the interrupt signal from interrupt controller.
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
             Csr::Mvendorid => self.csr.mvendorid,
@@ -1001,7 +1010,27 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
             }
             Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
-            Csr::Mip => self.csr.mip = value & hw.interrupts & mie::MIP_WRITE_FILTER,
+            Csr::Mip => {
+                let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
+
+                // If the firmware wants to read the mip register after cleaning vmip.SEIP, and we don't sync
+                // vmip.SEIP with mip.SEIP, it can't know if there is an interrupt signal from the interrupt
+                // controller as the CSR read will be a logical-OR of the signal and mip.SEIP (which is one)
+                // so always 1. If vmip.SEIP is 0, CSR read of mip.SEIP should return the interrupt signal.
+                // Then, we need to synchronize vmip.SEIP with mip.SEIP.
+                if (self.csr.mip ^ value) & mie::SEIE_FILTER != 0 {
+                    if value & mie::SEIE_FILTER == 0 {
+                        unsafe {
+                            Arch::clear_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                        }
+                    } else {
+                        unsafe {
+                            Arch::set_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                        }
+                    }
+                }
+                self.csr.mip = value;
+            }
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
             Csr::Mvendorid => (), // Read-only
@@ -1170,9 +1199,10 @@ where
 mod tests {
     use core::usize;
 
-    use crate::arch::{mstatus, Arch, Architecture, Csr, Mode};
+    use crate::arch::{mie, mstatus, Arch, Architecture, Csr, Mode};
     use crate::host::MiralisContext;
     use crate::virt::VirtContext;
+    use crate::HwRegisterContextSetter;
 
     /// We test value of mstatus.MPP.
     /// When switching from firmware to payload,
@@ -1237,5 +1267,37 @@ mod tests {
         unsafe { ctx.switch_from_payload_to_firmware(&mut mctx) }
 
         assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "Mideleg must be 0");
+    }
+
+    /// If the firmware wants to read the `mip` register after cleaning `vmip.SEIP`,
+    /// and we don't sync `vmip.SEIP` with `mip.SEIP`, it can't know if there is an interrupt
+    /// signal from the interrupt controller as the CSR read will be a logical-OR of the
+    /// signal and `mip.SEIP` (which is one), and so always 1.
+    /// If vmip.SEIP is 0, CSR read of mip.SEIP should return the interrupt signal.
+    ///
+    /// Then, we need to synchronize vmip.SEIP with mip.SEIP.
+    #[test]
+    fn csrr_external_interrupt() {
+        let hw = unsafe { Arch::detect_hardware() };
+        let mctx = MiralisContext::new(hw);
+        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+
+        // This should set mip.SEIP
+        ctx.set_csr(Csr::Mip, mie::SEIE_FILTER, &mctx.hw);
+
+        assert_eq!(
+            Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
+            mie::SEIE_FILTER,
+            "mip.SEIP must be 1"
+        );
+
+        // This should clear mip.SEIP
+        ctx.set_csr(Csr::Mip, 0, &mctx.hw);
+
+        assert_eq!(
+            Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
+            0,
+            "mip.SEIP must be 0"
+        );
     }
 }
