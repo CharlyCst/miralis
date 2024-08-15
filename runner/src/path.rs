@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET};
+use crate::artifacts::{Mode, Target, FIRMWARE_TARGET, MIRALIS_TARGET};
 
 /// Return the root of the workspace.
 pub fn get_workspace_path() -> PathBuf {
@@ -15,14 +15,22 @@ pub fn get_workspace_path() -> PathBuf {
 }
 
 /// Return the target directory.
-pub fn get_target_dir_path(target: &Target) -> PathBuf {
+pub fn get_target_dir_path(target: &Target, mode: Mode) -> PathBuf {
     let mut path = get_workspace_path();
     path.push("target");
     match target {
         Target::Miralis => path.push(MIRALIS_TARGET),
         Target::Firmware(_) => path.push(FIRMWARE_TARGET),
     }
-    path.push("debug"); // TODO: add support for release mode
+    match mode {
+        Mode::Debug => {
+            path.push("debug");
+        }
+        Mode::Release => {
+            path.push("release");
+        }
+    }
+
     path
 }
 

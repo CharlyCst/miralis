@@ -45,6 +45,7 @@ pub struct Log {
 #[serde(deny_unknown_fields)]
 pub struct Debug {
     pub max_firmware_exits: Option<usize>,
+    pub debug: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]

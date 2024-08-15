@@ -1,4 +1,5 @@
 default          := "default"
+config           := "config.toml"
 benchmark        := "ecall_benchmark"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
@@ -51,22 +52,22 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark --benchmark
 
 	# Test firmware build
-	just build-firmware {{qemu_virt}} default
+	just build-firmware default {{qemu_virt}}
 
 # Run unit tests
 unit-test:
 	cargo test --features userspace -p miralis
 
 # Run Miralis
-run firmware=default:
-	cargo run --package runner -- run -v --firmware {{firmware}}
+run firmware=default config=config:
+	cargo run --package runner -- run -v --config {{config}} --firmware {{firmware}} 
 
 # Build Miralis with the provided config
 build config:
 	cargo run --package runner -- build --config {{config}}
 
 # Build a given firmware with the provided config
-build-firmware config firmware:
+build-firmware firmware config=config:
 	cargo run --package runner -- build -v --config {{config}} --firmware {{firmware}}
 
 # Run Miralis but wait for a debugger to connect
