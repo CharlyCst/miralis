@@ -59,7 +59,7 @@ unit-test:
 
 # Run Miralis
 run firmware=default config=config:
-	cargo run --package runner -- run -v --config {{config}} --firmware {{firmware}} 
+	cargo run --package runner -- run -v --config {{config}} --firmware {{firmware}}
 
 # Build Miralis with the provided config
 build config:

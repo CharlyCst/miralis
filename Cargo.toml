@@ -42,6 +42,9 @@ members = [
     "firmware/benchmark/ecall_benchmark",
     "firmware/benchmark/csr_write",
 
+    # Payload
+    "payload/hello_world",
+
     # Crates
     "crates/abi",
     "crates/core",

@@ -26,6 +26,9 @@ const QEMU_ARGS: &[&str] = &[
 /// Address at which the firmware is loaded in memory.
 const FIRMWARE_ADDR: u64 = 0x80200000;
 
+/// Address at which the payload is loaded in memory.
+const PAYLOAD_ADDR: u64 = 0x80400000;
+
 // —————————————————————————————————— Run ——————————————————————————————————— //
 
 /// Run Miralis on QEMU
@@ -53,6 +56,23 @@ pub fn run(args: &RunArgs) {
             firmware.to_str().unwrap(),
             FIRMWARE_ADDR
         ));
+
+    // If a payload is defined in the config, try to load it at the specified address.
+    if let Some(payload) = &cfg.target.payload {
+        if let Some(payload_name) = &payload.name {
+            let payload = match locate_artifact(&payload_name) {
+                Some(Artifact::Source { name }) => build_target(Target::Payload(name), &cfg),
+                Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
+                None => PathBuf::from_str(&payload_name).expect("Invalid payload path"),
+            };
+
+            qemu_cmd.arg("-device").arg(format!(
+                "loader,file={},addr=0x{:x},force-raw=on",
+                payload.to_str().unwrap(),
+                PAYLOAD_ADDR
+            ));
+        }
+    }
 
     if let Some(nb_harts) = cfg.platform.nb_harts {
         assert!(nb_harts > 0, "Must use at least one core");

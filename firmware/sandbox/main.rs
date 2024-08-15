@@ -9,9 +9,9 @@
 use core::arch::{asm, global_asm};
 use core::ptr;
 
-use miralis_abi::{setup_firmware, success};
+use miralis_abi::{setup_binary, success};
 
-setup_firmware!(main);
+setup_binary!(main);
 
 fn main() -> ! {
     let mut mcause: usize;

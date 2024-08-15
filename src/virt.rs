@@ -616,20 +616,20 @@ impl VirtContext {
     fn handle_ecall(&mut self) {
         let fid = self.get(Register::X16);
         match fid {
-            abi::MIRALIS_FAILURE_FID if self.mode == Mode::M => {
-                log::error!("Payload panicked!");
+            abi::MIRALIS_FAILURE_FID => {
+                log::error!("Firmware or payload panicked!");
                 log::error!("  pc:    0x{:x}", self.pc);
                 log::error!("  exits: {}", self.nb_exits);
                 unsafe { debug::log_stack_usage() };
                 Plat::exit_failure();
             }
-            abi::MIRALIS_SUCCESS_FID if self.mode == Mode::M => {
+            abi::MIRALIS_SUCCESS_FID => {
                 log::info!("Success!");
-                log::info!("Number of payload exits: {}", self.nb_exits);
+                log::info!("Number of exits: {}", self.nb_exits);
                 unsafe { debug::log_stack_usage() };
                 Plat::exit_success();
             }
-            abi::MIRALIS_LOG_FID if self.mode == Mode::M => {
+            abi::MIRALIS_LOG_FID => {
                 let log_level = self.get(Register::X10);
                 let addr = self.get(Register::X11);
                 let size = self.get(Register::X12);

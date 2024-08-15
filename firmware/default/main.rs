@@ -3,9 +3,9 @@
 
 use core::arch::asm;
 
-use miralis_abi::{setup_firmware, success};
+use miralis_abi::{setup_binary, success};
 
-setup_firmware!(main);
+setup_binary!(main);
 
 fn main() -> ! {
     log::info!("Hello from default firmware!");

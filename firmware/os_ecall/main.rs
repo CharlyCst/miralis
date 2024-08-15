@@ -3,9 +3,9 @@
 
 use core::arch::{asm, global_asm};
 
-use miralis_abi::{failure, setup_firmware};
+use miralis_abi::{failure, setup_binary};
 
-setup_firmware!(main);
+setup_binary!(main);
 
 fn main() -> ! {
     // Setup some values                : firmware

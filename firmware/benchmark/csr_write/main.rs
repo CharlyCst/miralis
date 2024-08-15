@@ -3,9 +3,9 @@
 
 use core::arch::asm;
 
-use miralis_abi::{miralis_end_benchmark, setup_firmware, BENCHMARK_NB_ITER};
+use miralis_abi::{miralis_end_benchmark, setup_binary, BENCHMARK_NB_ITER};
 
-setup_firmware!(main);
+setup_binary!(main);
 
 fn main() -> ! {
     for _ in 0..BENCHMARK_NB_ITER {
