@@ -36,6 +36,22 @@ pub enum Target {
     Firmware(String),
 }
 
+#[derive(Clone, Copy)]
+pub enum Mode {
+    Debug,
+    Release,
+}
+
+impl Mode {
+    pub fn from_bool(debug: bool) -> Self {
+        if debug {
+            Mode::Debug
+        } else {
+            Mode::Release
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Artifact {
     /// Artifacts that are built from sources.
@@ -177,7 +193,8 @@ fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
 ///
 /// Returns the path of the resulting binary.
 pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
-    let path = get_target_dir_path(&target);
+    let mode = Mode::from_bool(cfg.debug.debug.unwrap_or(true));
+    let path = get_target_dir_path(&target, mode);
     println!("{:?}", path);
 
     let mut build_cmd = Command::new(env!("CARGO"));
@@ -186,6 +203,16 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         .args(CARGO_ARGS)
         .arg("--target")
         .arg(get_target_config_path(&target));
+
+    build_cmd.arg("--profile");
+    match mode {
+        Mode::Debug => {
+            build_cmd.arg("dev");
+        }
+        Mode::Release => {
+            build_cmd.arg("release");
+        }
+    }
 
     match target {
         Target::Miralis => {
@@ -222,14 +249,14 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     if !build_cmd.status().unwrap().success() {
         panic!("build failed");
     }
-    objcopy(&target)
+    objcopy(&target, mode)
 }
 
 /// Extract raw binary from elf file.
 ///
 /// Returns the path of the resulting binary.
-fn objcopy(target: &Target) -> PathBuf {
-    let path = get_target_dir_path(target);
+fn objcopy(target: &Target, mode: Mode) -> PathBuf {
+    let path = get_target_dir_path(target, mode);
     let mut elf_path = path.clone();
     let mut bin_path = path.clone();
 

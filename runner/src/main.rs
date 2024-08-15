@@ -74,7 +74,11 @@ struct CheckConfigArgs {
 }
 
 #[derive(Args)]
-struct GdbArgs {}
+struct GdbArgs {
+    #[arg(long)]
+    /// Path to the configuration file to use
+    config: Option<PathBuf>,
+}
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 

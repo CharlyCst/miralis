@@ -29,6 +29,8 @@ color = true
 # Maximum number of firmware exits before terminating.
 # No maximum cap if not present
 max_firmware_exits = 400
+# Option to compile using release profile (dev profile is set by default)
+debug = false
 
 [vcpu]
 # Enable support for S_mode
