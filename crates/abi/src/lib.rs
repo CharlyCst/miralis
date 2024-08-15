@@ -10,7 +10,7 @@
 use core::arch::asm;
 use core::hint;
 
-pub use config_helpers::parse_usize_or;
+pub use config_helpers::{is_enabled, parse_usize_or};
 use miralis_core::abi;
 
 pub mod logger;
@@ -49,13 +49,13 @@ pub fn miralis_end_benchmark() -> ! {
     }
 }
 
-// ————————————————————————————— Firmware Setup ————————————————————————————— //
+// —————————————————————————————— Binary Setup —————————————————————————————— //
 
-/// Configure the firmware entry point and panic handler.
+/// Configure the binary entry point and panic handler.
 ///
-/// This macro prepares all the boiler plate required by Miralis's firmware.
+/// This macro prepares all the boiler plate required by Miralis's firmware or payload.
 #[macro_export]
-macro_rules! setup_firmware {
+macro_rules! setup_binary {
     ($path:path) => {
         // The assembly entry point
         core::arch::global_asm!(
@@ -65,8 +65,7 @@ macro_rules! setup_firmware {
             .global _start
             _start:
                 ld t0, __stack_start
-                ld t1, {fw_stack_size}  // Per-hart stack size
-                csrr t2, mhartid        // Our current hart ID
+                ld t1, {_stack_size}  // Per-hart stack size
 
                 // compute how much space we need to put before this hart's stack
                 add t3, x0, x0       // Initialize offset to zero
@@ -74,7 +73,7 @@ macro_rules! setup_firmware {
             
             stack_start_loop:
                 // First we exit the loop once we made enough iterations (N iterations for hart N)
-                bgeu t4, t2, stack_start_done
+                bgeu t4, a0, stack_start_done
                 add t3, t3, t1       // Add space for one more stack
                 addi t4, t4, 1       // Increment counter
                 j stack_start_loop
@@ -84,14 +83,14 @@ macro_rules! setup_firmware {
                 add t1, t0, t1       // And the end of our stack
                             
                 // Zero out the BSS section
-                ld t4, __fw_bss_start
-                ld t5, __fw_bss_stop
-            zero_fw_bss_loop:
-                bgeu t4, t5, zero_fw_bss_done
+                ld t4, __bss_start
+                ld t5, __bss_stop
+            zero_bss_loop:
+                bgeu t4, t5, zero_bss_done
                 sd x0, 0(t4)
                 addi t4, t4, 8
-                j zero_fw_bss_loop
-            zero_fw_bss_done:
+                j zero_bss_loop
+            zero_bss_done:
                 // Load the stack pointer and jump into main
                 mv sp, t1
                 j {entry}
@@ -100,22 +99,28 @@ macro_rules! setup_firmware {
                 // That way it can be loaded as an absolute value
             .align 8
             __stack_start:
-                .dword {fw_stack_start}
-            __fw_bss_start:
-                .dword {fw_bss_start}
-            __fw_bss_stop:
-                .dword {fw_bss_stop}
+                .dword {_stack_start}
+            __bss_start:
+                .dword {_bss_start}
+            __bss_stop:
+                .dword {_bss_stop}
             "#,
-            entry = sym _firmware_start,
-            fw_stack_start = sym _stack_bottom,
-            fw_stack_size = sym FW_STACK_SIZE,
-            fw_bss_start = sym _firmware_bss_start,
-            fw_bss_stop = sym _firmware_bss_stop,
+            entry = sym _start,
+            _stack_start = sym _stack_start,
+            _stack_size = sym STACK_SIZE,
+            _bss_start = sym _bss_start,
+            _bss_stop = sym _bss_stop,
         );
 
-        static FW_STACK_SIZE: usize = $crate::parse_usize_or(option_env!("MIRALIS_TARGET_FIRMWARE_STACK_SIZE"), 0x8000);
+        static STACK_SIZE: usize = $crate::parse_usize_or(
+            if $crate::is_enabled!("IS_TARGET_FIRMWARE") {
+                option_env!("MIRALIS_TARGET_FIRMWARE_STACK_SIZE")
+            } else {
+                option_env!("MIRALIS_TARGET_PAYLOAD_STACK_SIZE")
+            }
+        , 0x8000);
 
-        pub extern "C" fn _firmware_start() -> ! {
+        pub extern "C" fn _start() -> ! {
             // Validate the signature of the entry point.
             let f: fn() -> ! = $path;
 
@@ -127,9 +132,9 @@ macro_rules! setup_firmware {
 
         // Defined in the linker script
         extern "C" {
-            pub(crate) static _stack_bottom: u8;
-            pub(crate) static _firmware_bss_start: u8;
-            pub(crate) static _firmware_bss_stop: u8;
+            pub(crate) static _stack_start: u8;
+            pub(crate) static _bss_start: u8;
+            pub(crate) static _bss_stop: u8;
         }
 
         // Also include the panic handler

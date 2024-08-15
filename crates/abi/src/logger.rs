@@ -59,7 +59,7 @@ impl log::Log for Logger {
 
 /// Initialize the firmware logger
 ///
-/// This function is called automatically bu `setup_firmware!`.
+/// This function is called automatically by `setup_binary!`.
 pub fn init() {
     static LOGGER: Logger = Logger {};
 

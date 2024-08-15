@@ -22,8 +22,8 @@ use crate::path::{
 /// Target triple used to build the monitor.
 pub const MIRALIS_TARGET: &str = "riscv-unknown-miralis";
 
-/// Target triple used to build the firmware.
-pub const FIRMWARE_TARGET: &str = "riscv-unknown-firmware";
+/// Target triple used to build the firmware or the payload.
+pub const UNPRIVILEGED_TARGET: &str = "riscv-unknown-unprivileged";
 
 /// Extra cargo arguments.
 const CARGO_ARGS: &[&str] = &[
@@ -34,6 +34,7 @@ const CARGO_ARGS: &[&str] = &[
 pub enum Target {
     Miralis,
     Firmware(String),
+    Payload(String),
 }
 
 #[derive(Clone, Debug)]
@@ -143,6 +144,26 @@ pub fn locate_artifact(name: &str) -> Option<Artifact> {
         return artifact;
     }
 
+    // Get the path to the payload directory
+    let mut payload_path = get_workspace_path();
+    payload_path.push("payload");
+    assert!(payload_path.is_dir(), "Could not find 'payload' directory");
+
+    // Check if one entry match the name
+    for entry in fs::read_dir(&payload_path).unwrap() {
+        let Ok(file_path) = entry.map(|e| e.path()) else {
+            continue;
+        };
+        let Some(file_name) = file_path.file_name() else {
+            continue;
+        };
+        if file_name == name {
+            return Some(Artifact::Source {
+                name: name.to_string(),
+            });
+        }
+    }
+
     // Else check if the artifact is defined in the manifest
     let external = get_external_artifacts();
     if let Some(artifact) = external.get(name) {
@@ -180,6 +201,13 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     let mode = match target {
         Target::Miralis => cfg.target.miralis.profile.unwrap_or(Profiles::Debug),
         Target::Firmware(_) => cfg.target.firmware.profile.unwrap_or(Profiles::Debug),
+        Target::Payload(_) => {
+            if let Some(payload) = &cfg.target.payload {
+                payload.profile.unwrap_or(Profiles::Debug)
+            } else {
+                panic!("No payload in config.")
+            }
+        }
     };
     let path = get_target_dir_path(&target, mode);
     println!("{:?}", path);
@@ -226,10 +254,21 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 
         Target::Firmware(ref firmware) => {
             let firmware_address = cfg.target.firmware.start_address.unwrap_or(0x80200000);
-            let linker_args = format!("-C link-arg=-Tmisc/linker-script-firmware.x -C link-arg=--defsym=_firmware_address={firmware_address}");
+            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={firmware_address}");
             build_cmd.env("RUSTFLAGS", linker_args);
+            build_cmd.env("IS_TARGET_FIRMWARE", "true");
             build_cmd.envs(cfg.benchmark.build_envs());
             build_cmd.arg("--package").arg(firmware);
+        }
+
+        Target::Payload(ref payload_name) => {
+            if let Some(payload) = &cfg.target.payload {
+                let payload_address: usize = payload.start_address.unwrap_or(0x80400000);
+                let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={payload_address}");
+                build_cmd.env("RUSTFLAGS", linker_args);
+                build_cmd.env("IS_TARGET_FIRMWARE", "false");
+                build_cmd.arg("--package").arg(payload_name);
+            }
         }
     }
 
@@ -255,6 +294,10 @@ fn objcopy(target: &Target, mode: Profiles) -> PathBuf {
         Target::Firmware(firmware) => {
             elf_path.push(firmware);
             bin_path.push(format!("{}.img", firmware));
+        }
+        Target::Payload(payload) => {
+            elf_path.push(payload);
+            bin_path.push(format!("{}.img", payload));
         }
     }
 

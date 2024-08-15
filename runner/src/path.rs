@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET};
+use crate::artifacts::{Target, MIRALIS_TARGET, UNPRIVILEGED_TARGET};
 use crate::config::Profiles;
 
 /// Return the root of the workspace.
@@ -21,7 +21,7 @@ pub fn get_target_dir_path(target: &Target, mode: Profiles) -> PathBuf {
     path.push("target");
     match target {
         Target::Miralis => path.push(MIRALIS_TARGET),
-        Target::Firmware(_) => path.push(FIRMWARE_TARGET),
+        Target::Payload(_) | Target::Firmware(_) => path.push(UNPRIVILEGED_TARGET),
     }
     match mode {
         Profiles::Debug => {
@@ -60,10 +60,10 @@ pub fn get_artifacts_path() -> PathBuf {
 pub fn get_target_config_path(target: &Target) -> PathBuf {
     let mut path = get_misc_path();
     match target {
-        Target::Miralis => {
-            path.push(format!("{}.json", MIRALIS_TARGET));
+        Target::Miralis => path.push(format!("{}.json", MIRALIS_TARGET)),
+        Target::Firmware(_) | Target::Payload(_) => {
+            path.push(format!("{}.json", UNPRIVILEGED_TARGET))
         }
-        Target::Firmware(_) => path.push(format!("{}.json", FIRMWARE_TARGET)),
     }
     path
 }

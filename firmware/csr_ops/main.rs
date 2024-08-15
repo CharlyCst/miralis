@@ -3,12 +3,12 @@
 
 use core::arch::asm;
 
-use miralis_abi::{setup_firmware, success};
+use miralis_abi::{setup_binary, success};
 
 mod perf_counters;
 use perf_counters::test_perf_counters;
 
-setup_firmware!(main);
+setup_binary!(main);
 
 fn main() -> ! {
     log::debug!("Testing mscratch register");

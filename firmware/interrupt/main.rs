@@ -3,9 +3,9 @@
 
 use core::arch::{asm, global_asm};
 
-use miralis_abi::{failure, setup_firmware, success};
+use miralis_abi::{failure, setup_binary, success};
 
-setup_firmware!(main);
+setup_binary!(main);
 
 fn main() -> ! {
     log::debug!("Testing mie register");

@@ -91,11 +91,13 @@ pub struct Benchmark {
 pub struct Targets {
     pub miralis: Target,
     pub firmware: Target,
+    pub payload: Option<Target>,
 }
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Target {
+    pub name: Option<String>,
     pub profile: Option<Profiles>,
     pub start_address: Option<usize>,
     pub stack_size: Option<usize>,
