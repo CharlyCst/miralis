@@ -29,8 +29,6 @@ color = true
 # Maximum number of firmware exits before terminating.
 # No maximum cap if not present
 max_firmware_exits = 400
-# Option to compile using release profile (dev profile is set by default)
-debug = false
 
 [vcpu]
 # Enable support for S_mode
@@ -45,14 +43,6 @@ max_pmp = 8
 # Name of the platform (i.e. board) to compile for.
 # Default to "qemu_virt"
 name = "qemu_virt"
-
-# Miralis binary will be compiled with this value as a start address
-# Default to "0x80000000"
-start_address = 0x80000000
-
-# Firmware binary will be compiled with this value as a start address
-# Default to "0x80200000"
-firmware_address = 0x80200000
 
 # Nuber of harts (i.e. cores).
 # Default to 1.
@@ -86,3 +76,19 @@ world_switches = false
 # Number of iterations to be used by benchmark firmware.
 # What is iterated on may vary from one firmware to another.
 nb_iter = 1000
+
+[target.miralis]
+# Build profile for Miralis (dev profile is set by default)
+profile = "dev"
+
+# Miralis binary will be compiled with this value as a start address
+# Default to "0x80000000"
+start_address = 0x80000000
+
+[target.firmware]
+# Build profile for the firmware (dev profile is set by default)
+profile = "dev"
+
+# Firmware binary will be compiled with this value as a start address
+# Default to "0x80200000"
+start_address = 0x80200000

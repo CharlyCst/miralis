@@ -5,8 +5,8 @@
 use std::io;
 use std::process::{exit, Command, Stdio};
 
-use crate::artifacts::{Mode, Target};
-use crate::config::read_config;
+use crate::artifacts::Target;
+use crate::config::{read_config, Profiles};
 use crate::path::get_target_dir_path;
 use crate::GdbArgs;
 
@@ -25,7 +25,7 @@ static GDB_EXECUTABLES: &[&'static str] = &[
 ///
 /// GDB can be distributed under different names, depending on the available targets, hence the
 /// need for such a function.
-fn build_gdb_command(gdb_executable: &str, mode: Mode) -> Command {
+fn build_gdb_command(gdb_executable: &str, mode: Profiles) -> Command {
     // Retrieve the path of Miralis's binary
     let mut miralis_path = get_target_dir_path(&Target::Miralis, mode);
     miralis_path.push("miralis");
@@ -45,7 +45,8 @@ fn build_gdb_command(gdb_executable: &str, mode: Mode) -> Command {
 /// Start a GDB session
 pub fn gdb(args: &GdbArgs) -> ! {
     let cfg = read_config(&args.config);
-    let mode = Mode::from_bool(cfg.debug.debug.unwrap_or(true));
+    let mode = cfg.target.miralis.profile.unwrap_or_default();
+
     for gdb in GDB_EXECUTABLES {
         let mut gdb_cmd = build_gdb_command(gdb, mode);
         match gdb_cmd.output() {
