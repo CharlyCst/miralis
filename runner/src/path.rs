@@ -3,7 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::artifacts::{Mode, Target, FIRMWARE_TARGET, MIRALIS_TARGET};
+use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET};
+use crate::config::Profiles;
 
 /// Return the root of the workspace.
 pub fn get_workspace_path() -> PathBuf {
@@ -15,7 +16,7 @@ pub fn get_workspace_path() -> PathBuf {
 }
 
 /// Return the target directory.
-pub fn get_target_dir_path(target: &Target, mode: Mode) -> PathBuf {
+pub fn get_target_dir_path(target: &Target, mode: Profiles) -> PathBuf {
     let mut path = get_workspace_path();
     path.push("target");
     match target {
@@ -23,10 +24,10 @@ pub fn get_target_dir_path(target: &Target, mode: Mode) -> PathBuf {
         Target::Firmware(_) => path.push(FIRMWARE_TARGET),
     }
     match mode {
-        Mode::Debug => {
+        Profiles::Debug => {
             path.push("debug");
         }
-        Mode::Release => {
+        Profiles::Release => {
             path.push("release");
         }
     }

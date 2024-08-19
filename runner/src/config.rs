@@ -27,6 +27,8 @@ pub struct Config {
     pub platform: Platform,
     #[serde(default)]
     pub benchmark: Benchmark,
+    #[serde(default)]
+    pub target: Targets,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -45,7 +47,6 @@ pub struct Log {
 #[serde(deny_unknown_fields)]
 pub struct Debug {
     pub max_firmware_exits: Option<usize>,
-    pub debug: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -61,8 +62,6 @@ pub struct Platform {
     pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
     pub stack_size: Option<usize>,
-    pub start_address: Option<usize>,
-    pub firmware_address: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -85,6 +84,42 @@ pub struct Benchmark {
     pub nb_iter: Option<usize>,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Targets {
+    pub miralis: Target,
+    pub firmware: Target,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Target {
+    pub profile: Option<Profiles>,
+    pub start_address: Option<usize>,
+}
+
+#[derive(Deserialize, Debug, Clone, Copy, Default)]
+pub enum Profiles {
+    #[serde(rename = "dev")]
+    #[default]
+    Debug,
+    #[serde(rename = "release")]
+    Release,
+}
+
+#[derive(Deserialize, Debug, Default, Clone, Copy)]
+#[serde(deny_unknown_fields)]
+pub struct Address {
+    pub miralis: Option<StartAddress>,
+    pub firmware: Option<StartAddress>,
+}
+
+#[derive(Deserialize, Debug, Default, Clone, Copy)]
+#[serde(deny_unknown_fields)]
+pub struct StartAddress {
+    pub start_address: Option<usize>,
+}
+
 // ————————————————————————— Environment Variables —————————————————————————— //
 
 impl Config {
@@ -95,6 +130,7 @@ impl Config {
         envs.extend(self.vcpu.build_envs());
         envs.extend(self.platform.build_envs());
         envs.extend(self.benchmark.build_envs());
+        envs.extend(self.target.build_envs());
         envs
     }
 }
@@ -187,18 +223,6 @@ impl Platform {
                 format!("{}", stack_size),
             );
         }
-        if let Some(stack_size) = self.firmware_address {
-            envs.insert(
-                String::from("MIRALIS_PLATFORM_FIRMWARE_ADDRESS"),
-                format!("{}", stack_size),
-            );
-        }
-        if let Some(stack_size) = self.start_address {
-            envs.insert(
-                String::from("MIRALIS_PLATFORM_START_ADDRESS"),
-                format!("{}", stack_size),
-            );
-        }
         envs
     }
 }
@@ -242,6 +266,23 @@ impl Benchmark {
                 format!("{}", nb_iter),
             );
         }
+        envs
+    }
+}
+
+impl Targets {
+    fn build_envs(&self) -> HashMap<String, String> {
+        let mut envs = HashMap::new();
+        let firmware_address = self.firmware.start_address.unwrap_or(0x80200000);
+        envs.insert(
+            String::from("MIRALIS_PLATFORM_FIRMWARE_ADDRESS"),
+            format!("{}", firmware_address),
+        );
+        let start_address = self.miralis.start_address.unwrap_or(0x80000000);
+        envs.insert(
+            String::from("MIRALIS_PLATFORM_START_ADDRESS"),
+            format!("{}", start_address),
+        );
         envs
     }
 }

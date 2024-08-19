@@ -4,6 +4,7 @@ benchmark        := "ecall_benchmark"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
+qemu_virt_release := "./config/test/qemu-virt-release.toml"
 benchmark_folder := "./benchmark-out"
 default_iterations := "1"
 
@@ -42,6 +43,7 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware sandbox
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware interrupt
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ecall
+	cargo run --package runner -- run --config {{qemu_virt_release}} --firmware default
 
 	# Testing with external projects
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi

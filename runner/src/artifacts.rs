@@ -11,7 +11,7 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
-use crate::config::{Config, Platforms};
+use crate::config::{Config, Platforms, Profiles};
 use crate::path::{
     get_artifact_manifest_path, get_artifacts_path, get_target_config_path, get_target_dir_path,
     get_workspace_path, is_older,
@@ -34,22 +34,6 @@ const CARGO_ARGS: &[&str] = &[
 pub enum Target {
     Miralis,
     Firmware(String),
-}
-
-#[derive(Clone, Copy)]
-pub enum Mode {
-    Debug,
-    Release,
-}
-
-impl Mode {
-    pub fn from_bool(debug: bool) -> Self {
-        if debug {
-            Mode::Debug
-        } else {
-            Mode::Release
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -193,7 +177,10 @@ fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
 ///
 /// Returns the path of the resulting binary.
 pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
-    let mode = Mode::from_bool(cfg.debug.debug.unwrap_or(true));
+    let mode = match target {
+        Target::Miralis => cfg.target.miralis.profile.unwrap_or(Profiles::Debug),
+        Target::Firmware(_) => cfg.target.firmware.profile.unwrap_or(Profiles::Debug),
+    };
     let path = get_target_dir_path(&target, mode);
     println!("{:?}", path);
 
@@ -206,10 +193,10 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 
     build_cmd.arg("--profile");
     match mode {
-        Mode::Debug => {
+        Profiles::Debug => {
             build_cmd.arg("dev");
         }
-        Mode::Release => {
+        Profiles::Release => {
             build_cmd.arg("release");
         }
     }
@@ -217,7 +204,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     match target {
         Target::Miralis => {
             // Linker arguments
-            let start_address = cfg.platform.start_address.unwrap_or(0x80000000);
+            let start_address = cfg.target.miralis.start_address.unwrap_or(0x80000000);
             let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={start_address}");
             build_cmd.env("RUSTFLAGS", linker_args);
 
@@ -238,7 +225,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         }
 
         Target::Firmware(ref firmware) => {
-            let firmware_address = cfg.platform.firmware_address.unwrap_or(0x80200000);
+            let firmware_address = cfg.target.firmware.start_address.unwrap_or(0x80200000);
             let linker_args = format!("-C link-arg=-Tmisc/linker-script-firmware.x -C link-arg=--defsym=_firmware_address={firmware_address}");
             build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.envs(cfg.benchmark.build_envs());
@@ -255,7 +242,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 /// Extract raw binary from elf file.
 ///
 /// Returns the path of the resulting binary.
-fn objcopy(target: &Target, mode: Mode) -> PathBuf {
+fn objcopy(target: &Target, mode: Profiles) -> PathBuf {
     let path = get_target_dir_path(target, mode);
     let mut elf_path = path.clone();
     let mut bin_path = path.clone();
