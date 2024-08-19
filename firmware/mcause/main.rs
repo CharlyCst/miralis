@@ -22,14 +22,14 @@ fn main() -> ! {
 
     read_test(res, 0);
 
-    let secret2: usize = 0x9;
+    let mut secret2: usize;
 
     unsafe {
         asm!(
             "li {0}, 0x9",
             "csrw mcause, {0}",
             "csrr {1}, mcause",
-            in(reg) secret2,
+            out(reg) secret2,
             out(reg) res,
         );
     }
@@ -41,7 +41,7 @@ fn main() -> ! {
             "li {0}, 0x8000000000000009",
             "csrw mcause, {0}",
             "csrr {1}, mcause",
-            in(reg) secret2,
+            out(reg) secret2,
             out(reg) res,
         );
     }

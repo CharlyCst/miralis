@@ -1090,10 +1090,6 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Mcause => {
                 let cause = MCause::new(value);
-                if cause.is_interrupt() {
-                    // TODO : does not support interrupts
-                    return;
-                }
                 match cause {
                     // Can only contain supported exception codes
                     MCause::UnknownException => (),
