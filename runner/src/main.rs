@@ -47,12 +47,6 @@ struct RunArgs {
     #[arg(long)]
     /// Path to the configuration file to use
     config: Option<PathBuf>,
-    #[arg(long, action)]
-    /// Activate benchmark analysis
-    benchmark: bool,
-    #[arg(long, default_value = "1")]
-    /// Number of iterations for the benchmark
-    benchmark_iterations: usize,
 }
 
 #[derive(Args)]

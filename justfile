@@ -50,8 +50,8 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 
 	# Test benchmark code
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware csr_write --benchmark
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark --benchmark
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware csr_write
+	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
@@ -87,10 +87,6 @@ install-toolchain:
 	rustup component add rust-src --toolchain "$(cat rust-toolchain)"
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
-
-# Run a firwmare with benchmark settings. The firmware should call for benchmark printing before exiting
-benchmark firmware=benchmark iterations=default_iterations:
-	cargo run --package runner -- run -v --config {{qemu_virt_benchmark}} --firmware {{firmware}} --benchmark --benchmark-iterations {{iterations}}
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}

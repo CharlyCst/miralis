@@ -4,8 +4,6 @@
 //! images.
 
 use core::str;
-use std::collections::HashMap;
-use std::io::{stdout, Write};
 use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
@@ -33,12 +31,7 @@ const FIRMWARE_ADDR: u64 = 0x80200000;
 /// Run Miralis on QEMU
 pub fn run(args: &RunArgs) {
     println!("Running Miralis with '{}' firmware", &args.firmware);
-    let mut cfg = get_config(args);
-
-    // Overwrite benchmark config if runner runs benchmarks
-    if args.benchmark {
-        cfg.benchmark.enable = Some(true);
-    }
+    let cfg = get_config(args);
 
     // Build or retrieve the artifacts to run
     let miralis = build_target(Target::Miralis, &cfg);
@@ -82,41 +75,10 @@ pub fn run(args: &RunArgs) {
         println!();
     }
 
-    if args.benchmark {
-        let mut stat_counter_values_map: HashMap<String, HashMap<String, Vec<usize>>> =
-            HashMap::new();
+    let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
 
-        print!("Progress... [");
-        for i in 0..args.benchmark_iterations {
-            if i == args.benchmark_iterations - 1 {
-                print!("#]\nFinished. Results:\n")
-            } else {
-                print!("#")
-            }
-            let _ = stdout().flush();
-
-            let output: std::process::Output = qemu_cmd.output().expect("Failed to run QEMU");
-
-            if !output.status.success() {
-                std::process::exit(output.status.code().unwrap_or(1));
-            }
-
-            let lines = String::from_utf8(output.stdout)
-                .unwrap()
-                .lines()
-                .map(String::from)
-                .collect();
-
-            benchmark::parse_content(lines, &mut stat_counter_values_map);
-        }
-
-        benchmark::compute_statistics(&stat_counter_values_map);
-    } else {
-        let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
-
-        if !exit_status.success() {
-            std::process::exit(exit_status.code().unwrap_or(1));
-        }
+    if !exit_status.success() {
+        std::process::exit(exit_status.code().unwrap_or(1));
     }
 }
 
