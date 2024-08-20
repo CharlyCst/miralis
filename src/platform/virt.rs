@@ -8,7 +8,7 @@ use uart_16550::MmioSerialPort;
 
 use super::Platform;
 use crate::config::{
-    PLATFORM_FIRMWARE_ADDRESS, PLATFORM_NB_HARTS, PLATFORM_STACK_SIZE, PLATFORM_START_ADDRESS,
+    PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
 };
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
@@ -18,8 +18,8 @@ use crate::{_stack_start, _start_address};
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
-const MIRALIS_START_ADDR: usize = PLATFORM_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = PLATFORM_FIRMWARE_ADDRESS;
+const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
+const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const PRIMARY_HART: usize = 0;
 
@@ -89,7 +89,7 @@ impl Platform for VirtPlatform {
         unsafe {
             size = (_stack_start as usize)
                 .checked_sub(_start_address as usize)
-                .and_then(|diff| diff.checked_add(PLATFORM_STACK_SIZE * PLATFORM_NB_HARTS))
+                .and_then(|diff| diff.checked_add(TARGET_STACK_SIZE * PLATFORM_NB_HARTS))
                 .unwrap();
         }
 

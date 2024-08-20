@@ -61,7 +61,6 @@ pub struct VCpu {
 pub struct Platform {
     pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
-    pub stack_size: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -96,6 +95,7 @@ pub struct Targets {
 pub struct Target {
     pub profile: Option<Profiles>,
     pub start_address: Option<usize>,
+    pub stack_size: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy, Default)]
@@ -105,19 +105,6 @@ pub enum Profiles {
     Debug,
     #[serde(rename = "release")]
     Release,
-}
-
-#[derive(Deserialize, Debug, Default, Clone, Copy)]
-#[serde(deny_unknown_fields)]
-pub struct Address {
-    pub miralis: Option<StartAddress>,
-    pub firmware: Option<StartAddress>,
-}
-
-#[derive(Deserialize, Debug, Default, Clone, Copy)]
-#[serde(deny_unknown_fields)]
-pub struct StartAddress {
-    pub start_address: Option<usize>,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //
@@ -217,12 +204,6 @@ impl Platform {
                 format!("{}", nb_harts),
             );
         }
-        if let Some(stack_size) = self.stack_size {
-            envs.insert(
-                String::from("MIRALIS_PLATFORM_STACK_SIZE"),
-                format!("{}", stack_size),
-            );
-        }
         envs
     }
 }
@@ -275,13 +256,23 @@ impl Targets {
         let mut envs = HashMap::new();
         let firmware_address = self.firmware.start_address.unwrap_or(0x80200000);
         envs.insert(
-            String::from("MIRALIS_PLATFORM_FIRMWARE_ADDRESS"),
+            String::from("MIRALIS_TARGET_FIRMWARE_ADDRESS"),
             format!("{}", firmware_address),
         );
         let start_address = self.miralis.start_address.unwrap_or(0x80000000);
         envs.insert(
-            String::from("MIRALIS_PLATFORM_START_ADDRESS"),
+            String::from("MIRALIS_TARGET_START_ADDRESS"),
             format!("{}", start_address),
+        );
+        let firmware_stack_size = self.firmware.stack_size.unwrap_or(0x8000);
+        envs.insert(
+            String::from("MIRALIS_TARGET_STACK_SIZE"),
+            format!("{}", firmware_stack_size),
+        );
+        let stack_size = self.miralis.stack_size.unwrap_or(0x8000);
+        envs.insert(
+            String::from("MIRALIS_TARGET_FIRMWARE_STACK_SIZE"),
+            format!("{}", stack_size),
         );
         envs
     }

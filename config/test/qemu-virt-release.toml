@@ -12,13 +12,13 @@ max_pmp = 8
 
 [platform]
 nb_harts = 1
-stack_size = 0x8000
 
 [benchmark]
 enable = false
 
 [target.miralis]
 profile = "release"
+stack_size = 0x8000
 
 [target.firmware]
 profile = "release"

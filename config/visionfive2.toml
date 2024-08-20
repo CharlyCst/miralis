@@ -13,13 +13,13 @@ max_pmp = 0
 [platform]
 name = "visionfive2"
 nb_harts = 5
-stack_size = 0x8000
 
 [benchmark]
 enable = false
 
 [target.miralis]
 start_address = 0x43000000
+stack_size = 0x8000
 
 [target.firmware]
 start_address = 0x40000000
