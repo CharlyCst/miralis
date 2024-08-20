@@ -55,10 +55,6 @@ pub const PLATFORM_NB_HARTS: usize = {
     }
 };
 
-/// The stack size for each Miralis thread (one per hart).
-pub const PLATFORM_STACK_SIZE: usize =
-    parse_usize_or(option_env!("MIRALIS_PLATFORM_STACK_SIZE"), 0x8000);
-
 /// Whether any benchmark is enable
 pub const BENCHMARK: bool = is_enabled!("MIRALIS_BENCHMARK");
 
@@ -78,9 +74,13 @@ pub const BENCHMARK_NB_FIRMWARE_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_
 pub const BENCHMARK_WORLD_SWITCHES: bool = is_enabled!("MIRALIS_BENCHMARK_WORLD_SWITCHES");
 
 /// Start address of Miralis
-pub const PLATFORM_START_ADDRESS: usize =
-    parse_usize_or(option_env!("MIRALIS_PLATFORM_START_ADDRESS"), 0x80000000);
+pub const TARGET_START_ADDRESS: usize =
+    parse_usize_or(option_env!("MIRALIS_TARGET_START_ADDRESS"), 0x80000000);
 
 /// Start address of firmware
-pub const PLATFORM_FIRMWARE_ADDRESS: usize =
-    parse_usize_or(option_env!("MIRALIS_PLATFORM_FIRMWARE_ADDRESS"), 0x80200000);
+pub const TARGET_FIRMWARE_ADDRESS: usize =
+    parse_usize_or(option_env!("MIRALIS_TARGET_FIRMWARE_ADDRESS"), 0x80200000);
+
+/// The stack size for each Miralis thread (one per hart)
+pub const TARGET_STACK_SIZE: usize =
+    parse_usize_or(option_env!("MIRALIS_TARGET_STACK_SIZE"), 0x8000);

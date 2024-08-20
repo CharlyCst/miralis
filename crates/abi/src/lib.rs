@@ -10,7 +10,7 @@
 use core::arch::asm;
 use core::hint;
 
-use config_helpers::parse_usize_or;
+pub use config_helpers::parse_usize_or;
 use miralis_core::abi;
 
 pub mod logger;
@@ -54,6 +54,26 @@ macro_rules! setup_firmware {
             .align 4
             .global _start
             _start:
+                ld t0, __stack_start
+                ld t1, {fw_stack_size}  // Per-hart stack size
+                csrr t2, mhartid        // Our current hart ID
+
+                // compute how much space we need to put before this hart's stack
+                add t3, x0, x0       // Initialize offset to zero
+                add t4, x0, x0       // Initialize counter to zero
+            
+            stack_start_loop:
+                // First we exit the loop once we made enough iterations (N iterations for hart N)
+                bgeu t4, t2, stack_start_done
+                add t3, t3, t1       // Add space for one more stack
+                addi t4, t4, 1       // Increment counter
+                j stack_start_loop
+
+            stack_start_done:
+                add t0, t0, t3       // The actual start of our stack
+                add t1, t0, t1       // And the end of our stack
+                            
+                // Zero out the BSS section
                 ld t4, __fw_bss_start
                 ld t5, __fw_bss_stop
             zero_fw_bss_loop:
@@ -63,24 +83,27 @@ macro_rules! setup_firmware {
                 j zero_fw_bss_loop
             zero_fw_bss_done:
                 // Load the stack pointer and jump into main
-                ld sp, __stack_top
+                mv sp, t1
                 j {entry}
 
                 // Store the address of the stack in memory
                 // That way it can be loaded as an absolute value
             .align 8
-            __stack_top:
-                .dword {stack_top}
+            __stack_start:
+                .dword {fw_stack_start}
             __fw_bss_start:
                 .dword {fw_bss_start}
             __fw_bss_stop:
                 .dword {fw_bss_stop}
             "#,
             entry = sym _firmware_start,
-            stack_top = sym _stack_top,
+            fw_stack_start = sym _stack_bottom,
+            fw_stack_size = sym FW_STACK_SIZE,
             fw_bss_start = sym _firmware_bss_start,
             fw_bss_stop = sym _firmware_bss_stop,
         );
+
+        static FW_STACK_SIZE: usize = $crate::parse_usize_or(option_env!("MIRALIS_TARGET_FIRMWARE_STACK_SIZE"), 0x8000);
 
         pub extern "C" fn _firmware_start() -> ! {
             // Validate the signature of the entry point.
@@ -94,7 +117,7 @@ macro_rules! setup_firmware {
 
         // Defined in the linker script
         extern "C" {
-            pub(crate) static _stack_top: u8;
+            pub(crate) static _stack_bottom: u8;
             pub(crate) static _firmware_bss_start: u8;
             pub(crate) static _firmware_bss_stop: u8;
         }

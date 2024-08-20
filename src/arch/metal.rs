@@ -5,7 +5,7 @@ use core::{ptr, usize};
 
 use super::{Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
 use crate::arch::{mstatus, HardwareCapability, PmpGroup};
-use crate::config::PLATFORM_STACK_SIZE;
+use crate::config::TARGET_STACK_SIZE;
 use crate::virt::VirtContext;
 use crate::{_bss_start, _bss_stop, _stack_start, main};
 
@@ -807,7 +807,7 @@ __bss_stop:
 //
 // This can be removed once `asm_const` gets stabilized. See:
 // https://github.com/rust-lang/rust/issues/93332
-static STACK_SIZE: usize = PLATFORM_STACK_SIZE;
+static STACK_SIZE: usize = TARGET_STACK_SIZE;
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
 

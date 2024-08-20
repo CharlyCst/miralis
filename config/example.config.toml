@@ -48,10 +48,6 @@ name = "qemu_virt"
 # Default to 1.
 nb_harts = 1
 
-# Size of the stack for each hart (i.e. core)
-# Default to 0x8000
-stack_size = 0x8000
-
 # Enable benchmark code and logs. Logs can then be collected to 
 # analyze a run of the program.
 [benchmark]
@@ -85,6 +81,10 @@ profile = "dev"
 # Default to "0x80000000"
 start_address = 0x80000000
 
+# Size of the Miralis' stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000
+
 [target.firmware]
 # Build profile for the firmware (dev profile is set by default)
 profile = "dev"
@@ -92,3 +92,7 @@ profile = "dev"
 # Firmware binary will be compiled with this value as a start address
 # Default to "0x80200000"
 start_address = 0x80200000
+
+# Size of the firmware stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000

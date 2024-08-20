@@ -1,5 +1,3 @@
-STACK_SIZE = 0x8000;
-
 SECTIONS
 {
   /* Start address */
@@ -45,13 +43,7 @@ SECTIONS
 
 
   /* Then we allocate some stack space */
-  .stack : ALIGN(0x1000)
-   {
-      . = ALIGN(8);
-      _stack_bottom = .;
-      . = . + STACK_SIZE;
-      . = ALIGN(8);
-      _stack_top = .;
-   }
+  . = ALIGN(0x1000);
+  _stack_bottom = .;
 }
 
