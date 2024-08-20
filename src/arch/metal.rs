@@ -752,7 +752,7 @@ stack_start_loop:
     bgeu t4, t2, stack_start_done
     add t3, t3, t1       // Add space for one more stack
     addi t4, t4, 1       // Increment counter
-    j stack_start_done
+    j stack_start_loop
 
 stack_start_done:
     add t0, t0, t3       // The actual start of our stack
