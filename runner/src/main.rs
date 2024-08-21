@@ -63,7 +63,7 @@ struct BuildArgs {
 
 #[derive(Args)]
 struct CheckConfigArgs {
-    /// Path to the configuration
+    /// Path to the configuration file or directory
     config: PathBuf,
 }
 

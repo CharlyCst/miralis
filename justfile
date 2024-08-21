@@ -26,10 +26,7 @@ test:
 	cargo fmt --all -- --check
 
 	# Checking configs...
-	cargo run -q --package runner -- check-config ./config/example.config.toml
-	cargo run -q --package runner -- check-config ./config/qemu-virt.toml
-	cargo run -q --package runner -- check-config ./config/visionfive2.toml
-	cargo run -q --package runner -- check-config ./config/qemu-virt-benchmark.toml
+	cargo run -q --package runner -- check-config ./config
 
 	# Running integration tests...
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
