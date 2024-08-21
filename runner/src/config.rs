@@ -5,9 +5,10 @@
 
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
+use walkdir::WalkDir;
 
 use crate::path::get_workspace_path;
 use crate::CheckConfigArgs;
@@ -316,16 +317,33 @@ pub fn read_config(path: &Option<PathBuf>) -> Config {
 
 /// Print an error if the config is not valid.
 pub fn check_config(args: &CheckConfigArgs) {
-    let config = match fs::read_to_string(&args.config) {
-        Ok(config) => config,
+    if args.config.is_file() {
+        check_config_file(&args.config)
+    } else {
+        for entry in WalkDir::new(&args.config)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().unwrap_or_default() == "toml")
+        {
+            check_config_file(entry.path())
+        }
+    }
+}
+
+fn check_config_file(config: &Path) {
+    let content = match fs::read_to_string(config) {
+        Ok(content) => content,
         Err(error) => {
             println!("Could not read config: {}", error);
             std::process::exit(1);
         }
     };
 
-    match toml::from_str::<Config>(&config) {
-        Ok(_) => println!("Config is valid"),
-        Err(err) => println!("Config is not valid: {:?}", err),
+    match toml::from_str::<Config>(&content) {
+        Ok(_) => println!("Config {} is valid", config.display()),
+        Err(err) => {
+            println!("Config {} is not valid:\n{:?}", config.display(), err);
+            std::process::exit(1);
+        }
     }
 }
