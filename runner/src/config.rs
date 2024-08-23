@@ -62,6 +62,7 @@ pub struct VCpu {
 pub struct Platform {
     pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
+    pub boot_hart_id: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -204,6 +205,12 @@ impl Platform {
             envs.insert(
                 String::from("MIRALIS_PLATFORM_NB_HARTS"),
                 format!("{}", nb_harts),
+            );
+        }
+        if let Some(boot_hart_id) = self.boot_hart_id {
+            envs.insert(
+                String::from("MIRALIS_PLATFORM_BOOT_HART_ID"),
+                format!("{}", boot_hart_id),
             );
         }
         envs

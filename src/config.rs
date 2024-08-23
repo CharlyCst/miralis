@@ -55,6 +55,11 @@ pub const PLATFORM_NB_HARTS: usize = {
     }
 };
 
+/// Boot hart id
+#[allow(dead_code)] // Because rust analyzer doesn't understand that it is used in metals.rs
+pub const PLATFORM_BOOT_HART_ID: usize =
+    parse_usize_or(option_env!("MIRALIS_PLATFORM_BOOT_HART_ID"), 0);
+
 /// Whether any benchmark is enable
 pub const BENCHMARK: bool = is_enabled!("MIRALIS_BENCHMARK");
 

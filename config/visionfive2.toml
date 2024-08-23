@@ -13,6 +13,7 @@ max_pmp = 0
 [platform]
 name = "visionfive2"
 nb_harts = 5
+boot_hart_id = 1
 
 [benchmark]
 enable = false

@@ -48,6 +48,10 @@ name = "qemu_virt"
 # Default to 1.
 nb_harts = 1
 
+# Id of the boot hart
+# Default to 0
+boot_hart_id = 0
+
 # Enable benchmark code and logs. Logs can then be collected to 
 # analyze a run of the program.
 [benchmark]

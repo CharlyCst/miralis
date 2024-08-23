@@ -22,7 +22,6 @@ const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 
 const CLINT_BASE: usize = 0x2000000;
-const PRIMARY_HART: usize = 1;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -77,10 +76,6 @@ impl Platform for VisionFive2Platform {
 
     fn load_firmware() -> usize {
         FIRMWARE_START_ADDR
-    }
-
-    fn get_primary_hart() -> usize {
-        PRIMARY_HART
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
