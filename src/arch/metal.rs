@@ -5,7 +5,7 @@ use core::{ptr, usize};
 
 use super::{Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
 use crate::arch::{mstatus, HardwareCapability, PmpGroup};
-use crate::config::TARGET_STACK_SIZE;
+use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
 use crate::virt::VirtContext;
 use crate::{_bss_start, _bss_stop, _stack_start, main};
 
@@ -734,6 +734,7 @@ unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
 
 global_asm!(
 r#"
+.attribute arch, "rv64imac"
 .align 4
 .text
 .global _start
@@ -769,8 +770,13 @@ stack_fill_loop:
 stack_fill_done:
 
     // Now we need to zero-out the BSS section
-    // TODO: this is currently done by all cores, but we should have some sort of synchronization
-    // to avoid race conditions.
+    // Only the boot hart set the BSS section to avoid race condition.
+
+    csrr t0, mhartid         // Our current hart ID
+    ld t2, {boot_hart_id}    // Boot hart ID
+    ld t3, __boot_bss_set    // Shared boolean, set to 1 to say to other harts that the BSS is not initialized yet
+    bne t0, t2, wait_bss_end // Only the boot hart initializes the bss
+
     ld t4, __bss_start
     ld t5, __bss_stop
 zero_bss_loop:
@@ -779,6 +785,19 @@ zero_bss_loop:
     addi t4, t4, 8
     j zero_bss_loop
 zero_bss_done:
+
+    // Say to other harts that the initialization is done.
+    // This is atomic and memory is ordered in a way that the 
+    // initialization will then be visible as soon as the
+    // boolean is reset. .aqrl means that it is done sequentially.
+    amoswap.w.aqrl x0, x0, (t3)
+    j end_wait
+    
+    // Wait until initialization is done
+wait_bss_end:
+    lw t2, (t3)
+    bnez t2, wait_bss_end
+end_wait:
 
     // And finally we load the stack pointer into sp and jump into main
     mv sp, t1
@@ -793,12 +812,16 @@ __bss_start:
     .dword {bss_start}
 __bss_stop:
     .dword {bss_stop}
+__boot_bss_set:
+    .dword {boot_bss_set}
 "#,
     main = sym main,
     stack_start = sym _stack_start,
     stack_size = sym STACK_SIZE,
     bss_start = sym _bss_start,
     bss_stop = sym _bss_stop,
+    boot_hart_id = sym BOOT_HART_ID,
+    boot_bss_set = sym BOOT_BSS_SET,
 );
 
 // NOTE: We need to use a static here because constant in `asm!` blocks are not yet supported.
@@ -808,6 +831,12 @@ __bss_stop:
 // This can be removed once `asm_const` gets stabilized. See:
 // https://github.com/rust-lang/rust/issues/93332
 static STACK_SIZE: usize = TARGET_STACK_SIZE;
+
+// Boot hart ID
+static BOOT_HART_ID: usize = PLATFORM_BOOT_HART_ID;
+
+// Boolean to synchronized harts
+static BOOT_BSS_SET: usize = 1;
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
 

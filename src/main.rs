@@ -57,7 +57,7 @@ use userspace_linker_definitions::*;
 
 pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one
-    if hart_id != Plat::get_primary_hart() {
+    if hart_id != config::PLATFORM_BOOT_HART_ID {
         loop {
             Arch::wfi();
             core::hint::spin_loop();

@@ -30,9 +30,6 @@ pub trait Platform {
     /// Load the firmware (virtual M-mode software) and return its address.
     fn load_firmware() -> usize;
 
-    // Return the ID of a hart for Miralis's boot
-    fn get_primary_hart() -> usize;
-
     /// Returns the start and size of Miralis's own memory.
     fn get_miralis_memory_start_and_size() -> (usize, usize);
 
