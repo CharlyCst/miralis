@@ -43,6 +43,9 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ecall
 	cargo run --package runner -- run --config {{qemu_virt_release}} --firmware default
 
+	# Testing with Miralis as firmware
+	cargo run --package runner -- run --config {{qemu_virt}} --firmware miralis
+
 	# Testing with external projects
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000

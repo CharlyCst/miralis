@@ -2,11 +2,11 @@
 //!
 //! This is a logger implementation that uses the Miralis SBI to log messages.
 
-use core::arch::asm;
 use core::fmt::Write;
 
 use log::{LevelFilter, Metadata, Record};
-use miralis_core::abi;
+
+use crate::miralis_log;
 
 // ————————————————————————————————— Logger ————————————————————————————————— //
 
@@ -27,30 +27,7 @@ impl log::Log for Logger {
             let mut buff: StackBuffer<300> = StackBuffer::new();
             write!(&mut buff, "{}", record.args()).ok();
 
-            // Prepare ecall arguments
-            let eid = abi::MIRALIS_EID;
-            let fid = abi::MIRALIS_LOG_FID;
-            let level = match record.level() {
-                log::Level::Error => abi::log::MIRALIS_ERROR,
-                log::Level::Warn => abi::log::MIRALIS_WARN,
-                log::Level::Info => abi::log::MIRALIS_INFO,
-                log::Level::Debug => abi::log::MIRALIS_DEBUG,
-                log::Level::Trace => abi::log::MIRALIS_TRACE,
-            };
-            let addr = buff.buff.as_ptr() as usize;
-            let len = buff.cursor;
-
-            // The actual call
-            unsafe {
-                asm!(
-                    "ecall",
-                    inout("a0") level => _,
-                    inout("a1") addr => _,
-                    inout("a2") len => _,
-                    inout("a6") fid => _,
-                    inout("a7") eid => _,
-                );
-            }
+            miralis_log(record.level(), buff.as_str());
         }
     }
 
@@ -70,17 +47,22 @@ pub fn init() {
 // —————————————————————————————— Stack Buffer —————————————————————————————— //
 
 /// A simple buffer than can be stask allocated and implement the Write trait.
-struct StackBuffer<const N: usize> {
+pub(crate) struct StackBuffer<const N: usize> {
     buff: [u8; N],
     cursor: usize,
 }
 
 impl<const N: usize> StackBuffer<N> {
-    const fn new() -> Self {
+    pub const fn new() -> Self {
         StackBuffer {
             buff: [0u8; N],
             cursor: 0,
         }
+    }
+
+    pub fn as_str(&self) -> &str {
+        // NOTE: we only ever put valid strings in this buffer, so this will never panic
+        core::str::from_utf8(&self.buff[..self.cursor]).unwrap()
     }
 }
 

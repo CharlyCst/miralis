@@ -235,6 +235,7 @@ version = "0.1.0"
 dependencies = [
  "config_helpers",
  "log",
+ "miralis_abi",
  "miralis_core",
  "spin",
  "uart_16550",

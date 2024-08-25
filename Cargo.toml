@@ -8,6 +8,7 @@ uart_16550 = "0.3.0"
 spin = "0.5.2"
 log = { workspace = true }
 miralis_core = { path = "crates/core" }
+miralis_abi = { path = "crates/abi" }
 config_helpers = { path = "crates/config_helpers" }
 
 [features]
@@ -15,6 +16,7 @@ config_helpers = { path = "crates/config_helpers" }
 # running unit tests.
 userspace = []
 platform_visionfive2 = []
+platform_miralis = []
 
 [profile.dev]
 panic = "abort"

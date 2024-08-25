@@ -1,8 +1,10 @@
+mod miralis;
 pub mod virt;
 pub mod visionfive2;
 
 use core::fmt;
 
+use log::Level;
 use spin::Mutex;
 
 // Re-export virt platform by default for now
@@ -12,16 +14,19 @@ use crate::{config, device, logger};
 
 /// Export the current platform.
 /// For now, only QEMU's Virt board is supported
-#[cfg(not(feature = "platform_visionfive2"))]
+#[cfg(not(any(feature = "platform_visionfive2", feature = "platform_miralis")))]
 pub type Plat = virt::VirtPlatform;
 
-#[cfg(feature = "platform_visionfive2")]
+#[cfg(all(feature = "platform_visionfive2", not(feature = "platform_miralis")))]
 pub type Plat = visionfive2::VisionFive2Platform;
+
+#[cfg(feature = "platform_miralis")]
+pub type Plat = miralis::MiralisPlatform;
 
 pub trait Platform {
     fn name() -> &'static str;
     fn init();
-    fn debug_print(args: fmt::Arguments);
+    fn debug_print(level: Level, args: fmt::Arguments);
     fn exit_success() -> !;
     fn exit_failure() -> !;
     fn create_clint_device() -> device::VirtDevice;

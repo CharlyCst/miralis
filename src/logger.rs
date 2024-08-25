@@ -69,12 +69,21 @@ impl log::Log for Logger {
 
         if global_level_mask || module_level_mask {
             // Writes the log
-            Plat::debug_print(format_args!(
-                "[{} | {}] {}\n",
-                level_display(record.level()),
-                record.target(),
-                record.args()
-            ))
+            if Plat::name() == "Miralis" {
+                // No need for formatting, the host Miralis will handle it
+                Plat::debug_print(record.level(), format_args!("{}", record.args()))
+            } else {
+                // Otherwise we format the logs proprely
+                Plat::debug_print(
+                    record.level(),
+                    format_args!(
+                        "[{} | {}] {}\n",
+                        level_display(record.level()),
+                        record.target(),
+                        record.args()
+                    ),
+                )
+            }
         }
     }
 

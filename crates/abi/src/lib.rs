@@ -7,11 +7,14 @@
 //! See: https://github.com/riscv-non-isa/riscv-sbi-doc
 #![no_std]
 
-use core::arch::asm;
+use core::fmt::{self, Write};
 use core::hint;
 
 pub use config_helpers::{is_enabled, parse_usize_or};
+use log::Level;
 use miralis_core::abi;
+
+use crate::logger::StackBuffer;
 
 pub mod logger;
 
@@ -47,6 +50,30 @@ pub fn miralis_end_benchmark() -> ! {
     loop {
         hint::spin_loop();
     }
+}
+
+/// Ask Miralis to log a string with the provided log level.
+pub fn miralis_log(level: Level, message: &str) {
+    // Prepare ecall arguments
+    let fid = abi::MIRALIS_LOG_FID;
+    let level = match level {
+        log::Level::Error => abi::log::MIRALIS_ERROR,
+        log::Level::Warn => abi::log::MIRALIS_WARN,
+        log::Level::Info => abi::log::MIRALIS_INFO,
+        log::Level::Debug => abi::log::MIRALIS_DEBUG,
+        log::Level::Trace => abi::log::MIRALIS_TRACE,
+    };
+    let addr = message.as_ptr() as usize;
+    let len = message.len();
+
+    unsafe { miralis_ecall3(fid, level, addr, len).expect("Failed to log") };
+}
+
+/// Ask Miralis to log a formatted string with the provided log level.
+pub fn miralis_log_fmt(level: Level, args: fmt::Arguments) {
+    let mut buff: StackBuffer<300> = StackBuffer::new();
+    buff.write_fmt(args).unwrap();
+    miralis_log(level, buff.as_str());
 }
 
 // —————————————————————————————— Binary Setup —————————————————————————————— //
@@ -159,16 +186,51 @@ macro_rules! firmware_panic {
 // ————————————————————————————————— Utils —————————————————————————————————— //
 
 #[inline]
+#[cfg(not(target_arch = "riscv64"))]
+unsafe fn miralis_ecall(_fid: usize) -> Result<usize, usize> {
+    panic!("Tried to use `miralis ecall` on non RISC-V archiecture");
+}
+
+#[inline]
+#[cfg(target_arch = "riscv64")]
 unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
     let error: usize;
     let value: usize;
 
-    asm!(
+    core::arch::asm!(
         "ecall",
         in("a6") fid,
         in("a7") abi::MIRALIS_EID,
         out("a0") error,
         out("a1") value,
+    );
+
+    if error != 0 {
+        Err(error)
+    } else {
+        Ok(value)
+    }
+}
+
+#[inline]
+#[cfg(not(target_arch = "riscv64"))]
+unsafe fn miralis_ecall3(_fid: usize, _a: usize, _b: usize, _c: usize) -> Result<usize, usize> {
+    panic!("Tried to use `miralis ecall` on non RISC-V archiecture");
+}
+
+#[inline]
+#[cfg(target_arch = "riscv64")]
+unsafe fn miralis_ecall3(fid: usize, a: usize, b: usize, c: usize) -> Result<usize, usize> {
+    let error: usize;
+    let value: usize;
+
+    core::arch::asm!(
+        "ecall",
+        inout("a0") a => error,
+        inout("a1") b => value,
+        in("a2") c,
+        in("a6") fid,
+        in("a7") abi::MIRALIS_EID,
     );
 
     if error != 0 {

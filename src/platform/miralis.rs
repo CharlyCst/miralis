@@ -1,31 +1,25 @@
-//! QEMU Virt board
+//! Running on top of an host Miralis
 
-use core::fmt::Write;
-use core::{fmt, ptr};
+use core::fmt;
 
 use log::Level;
+use miralis_abi::{failure, miralis_log_fmt, success};
 use spin::Mutex;
-use uart_16550::MmioSerialPort;
 
-use super::Platform;
 use crate::config::{
-    PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
+    PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_PAYLOAD_ADDRESS, TARGET_STACK_SIZE,
 };
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
-use crate::{_stack_start, _start_address};
+use crate::{Platform, _stack_start, _start_address};
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
-const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const TEST_MMIO_ADDRESS: usize = 0x100000;
-const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
+const MIRALIS_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
+const FIRMWARE_START_ADDR: usize = TARGET_PAYLOAD_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
-
-static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 
 /// The physical CLINT driver.
 ///
@@ -38,38 +32,27 @@ static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
-pub struct VirtPlatform {}
+pub struct MiralisPlatform {}
 
-impl Platform for VirtPlatform {
+impl Platform for MiralisPlatform {
     const NB_HARTS: usize = usize::MAX;
 
     fn name() -> &'static str {
-        "QEMU virt"
+        "Miralis"
     }
 
-    fn init() {
-        // Serial
-        let mut uart = SERIAL_PORT.lock();
-        let mut mmio = unsafe { MmioSerialPort::new(SERIAL_PORT_BASE_ADDRESS) };
-        mmio.init();
-        *uart = Some(mmio);
-    }
+    fn init() {}
 
-    fn debug_print(_level: Level, args: fmt::Arguments) {
-        let mut serial_port = SERIAL_PORT.lock();
-        if let Some(ref mut serial_port) = serial_port.as_mut() {
-            serial_port
-                .write_fmt(args)
-                .expect("Printing to serial failed")
-        };
+    fn debug_print(level: Level, args: fmt::Arguments) {
+        miralis_log_fmt(level, args)
     }
 
     fn exit_success() -> ! {
-        exit_qemu(true)
+        success();
     }
 
     fn exit_failure() -> ! {
-        exit_qemu(false)
+        failure();
     }
 
     fn load_firmware() -> usize {
@@ -107,19 +90,5 @@ impl Platform for VirtPlatform {
 
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
-    }
-}
-
-fn exit_qemu(success: bool) -> ! {
-    let code = if success { 0x5555 } else { (1 << 16) | 0x3333 };
-
-    unsafe {
-        let mmio_addr = TEST_MMIO_ADDRESS as *mut i32;
-        ptr::write_volatile(mmio_addr, code);
-    }
-
-    // Loop forever if shutdown failed
-    loop {
-        core::hint::spin_loop();
     }
 }
