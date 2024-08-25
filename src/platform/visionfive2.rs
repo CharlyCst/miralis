@@ -4,17 +4,16 @@ use core::arch::asm;
 use core::fmt::Write;
 use core::{fmt, hint, ptr};
 
+use log::Level;
 use spin::Mutex;
 
-use super::Platform;
 use crate::arch::{Arch, Architecture};
 use crate::config::{
     PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
 };
 use crate::device::{self, VirtClint};
 use crate::driver::ClintDriver;
-use crate::{_stack_start, _start_address};
-
+use crate::{Platform, _stack_start, _start_address};
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
@@ -54,7 +53,7 @@ impl Platform for VisionFive2Platform {
         writer.write_char('\n');
     }
 
-    fn debug_print(args: fmt::Arguments) {
+    fn debug_print(_level: Level, args: fmt::Arguments) {
         let mut writer = WRITER.lock();
         writer.write_fmt(args).unwrap();
         writer.write_str("\r\n").unwrap();

@@ -31,6 +31,7 @@ const CARGO_ARGS: &[&str] = &[
     "-Zbuild-std-features=compiler-builtins-mem",
 ];
 
+#[derive(PartialEq, Eq)]
 pub enum Target {
     Miralis,
     Firmware(String),
@@ -117,6 +118,13 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
 ///
 /// Artifacts can be either available as sources, or as external binaries that can be downloaded.
 pub fn locate_artifact(name: &str) -> Option<Artifact> {
+    // Miralis as firmware?
+    if name == "miralis" {
+        return Some(Artifact::Source {
+            name: String::from(name),
+        });
+    }
+
     // Get the path to the firmware directory
     let mut firmware_path = get_workspace_path();
     firmware_path.push("firmware");
@@ -258,7 +266,12 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.env("IS_TARGET_FIRMWARE", "true");
             build_cmd.envs(cfg.benchmark.build_envs());
-            build_cmd.arg("--package").arg(firmware);
+
+            if firmware == "miralis" {
+                build_cmd.arg("--features").arg("platform_miralis");
+            } else {
+                build_cmd.arg("--package").arg(firmware);
+            }
         }
 
         Target::Payload(ref payload_name) => {
@@ -273,7 +286,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     }
 
     if !build_cmd.status().unwrap().success() {
-        panic!("build failed");
+        panic!("build failed with command : {:?}", build_cmd);
     }
     objcopy(&target, mode)
 }

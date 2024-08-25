@@ -11,7 +11,7 @@ use crate::platform::{Plat, Platform};
 #[macro_export]
 macro_rules! _benchmark_print {
     ($($arg:tt)*) => {
-        Plat::debug_print(core::format_args!($($arg)*))
+        Plat::debug_print(log::Level::Info, core::format_args!($($arg)*))
     };
 }
 
