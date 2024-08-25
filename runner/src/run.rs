@@ -37,6 +37,7 @@ pub fn run(args: &RunArgs) {
     let miralis = build_target(Target::Miralis, &cfg);
     let firmware = match locate_artifact(&args.firmware) {
         Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
+        Some(Artifact::MIRALIS) => build_target(Target::MiralisAsFirmware, &cfg),
         Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
         None => PathBuf::from_str(&args.firmware).expect("Invalid firmware path"),
     };

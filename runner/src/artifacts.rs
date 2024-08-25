@@ -31,8 +31,10 @@ const CARGO_ARGS: &[&str] = &[
     "-Zbuild-std-features=compiler-builtins-mem",
 ];
 
+#[derive(PartialEq)]
 pub enum Target {
     Miralis,
+    MiralisAsFirmware,
     Firmware(String),
 }
 
@@ -40,6 +42,8 @@ pub enum Target {
 pub enum Artifact {
     /// Artifacts that are built from sources.
     Source { name: String },
+    /// Miralis as firmware.
+    MIRALIS,
     /// Artifacts that are downloaded.
     Downloaded { name: String, url: String },
 }
@@ -116,6 +120,11 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
 ///
 /// Artifacts can be either available as sources, or as external binaries that can be downloaded.
 pub fn locate_artifact(name: &str) -> Option<Artifact> {
+    // Miralis as firmware?
+    if name == "miralis" {
+        return Some(Artifact::MIRALIS);
+    }
+
     // Get the path to the firmware directory
     let mut firmware_path = get_workspace_path();
     firmware_path.push("firmware");
@@ -179,7 +188,9 @@ fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
 pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     let mode = match target {
         Target::Miralis => cfg.target.miralis.profile.unwrap_or(Profiles::Debug),
-        Target::Firmware(_) => cfg.target.firmware.profile.unwrap_or(Profiles::Debug),
+        Target::Firmware(_) | Target::MiralisAsFirmware => {
+            cfg.target.firmware.profile.unwrap_or(Profiles::Debug)
+        }
     };
     let path = get_target_dir_path(&target, mode);
     println!("{:?}", path);
@@ -202,11 +213,28 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     }
 
     match target {
-        Target::Miralis => {
+        Target::Miralis | Target::MiralisAsFirmware => {
+            // Start addresses of Miralis & Miralis as firmware aren't the same
+            let default_start_address = if target == Target::Miralis {
+                0x80000000
+            } else {
+                0x80200000
+            };
+
             // Linker arguments
-            let start_address = cfg.target.miralis.start_address.unwrap_or(0x80000000);
-            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={start_address}");
-            build_cmd.env("RUSTFLAGS", linker_args);
+            let start_address = cfg
+                .target
+                .miralis
+                .start_address
+                .unwrap_or(default_start_address);
+            let mut rust_flags_arguments = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={start_address}");
+
+            // Enable extra flag if build as a firmware
+            if target == Target::MiralisAsFirmware {
+                rust_flags_arguments = format!("{} --cfg as_firmware", rust_flags_arguments);
+            }
+
+            build_cmd.env("RUSTFLAGS", rust_flags_arguments);
 
             // Environment variables
             build_cmd.envs(cfg.build_envs());
@@ -234,7 +262,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
     }
 
     if !build_cmd.status().unwrap().success() {
-        panic!("build failed");
+        panic!("build failed with command : {:?}", build_cmd);
     }
     objcopy(&target, mode)
 }
@@ -248,7 +276,7 @@ fn objcopy(target: &Target, mode: Profiles) -> PathBuf {
     let mut bin_path = path.clone();
 
     match target {
-        Target::Miralis => {
+        Target::Miralis | Target::MiralisAsFirmware => {
             elf_path.push("miralis");
             bin_path.push("miralis.img");
         }

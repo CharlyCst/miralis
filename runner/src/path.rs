@@ -21,6 +21,7 @@ pub fn get_target_dir_path(target: &Target, mode: Profiles) -> PathBuf {
     path.push("target");
     match target {
         Target::Miralis => path.push(MIRALIS_TARGET),
+        Target::MiralisAsFirmware => path.push(FIRMWARE_TARGET),
         Target::Firmware(_) => path.push(FIRMWARE_TARGET),
     }
     match mode {
@@ -63,6 +64,7 @@ pub fn get_target_config_path(target: &Target) -> PathBuf {
         Target::Miralis => {
             path.push(format!("{}.json", MIRALIS_TARGET));
         }
+        Target::MiralisAsFirmware => path.push(format!("{}.json", FIRMWARE_TARGET)),
         Target::Firmware(_) => path.push(format!("{}.json", FIRMWARE_TARGET)),
     }
     path

@@ -155,6 +155,23 @@ pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> !
         ctx.pc = firmware_addr;
     }
 
+    // In case we compile Miralis as firmware, we stop execution at that point for the moment
+    // This allows us to run Miralis on top as an integration test for the moment
+    // In the future, we plan to run Miralis "as firmware" running a firmware
+    #[cfg(as_firmware)]
+    {
+        use core::arch::asm;
+        // Exit with success
+        unsafe {
+            asm!(
+                "ecall",
+                in("a6") 1,
+                in("a7") 0x08475bcd,
+            );
+        }
+    }
+
+    #[allow(dead_code)]
     main_loop(&mut ctx, &mut mctx);
 }
 
