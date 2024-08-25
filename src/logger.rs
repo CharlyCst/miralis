@@ -55,6 +55,22 @@ impl Logger {
     fn filter_by_global_level(&self, record: &Record) -> bool {
         Self::GLOBAL_LOG_LEVEL >= record.metadata().level()
     }
+
+    fn print_log(record: &Record) {
+        let display_from_firmware: &'static str = if cfg!(feature = "miralis_as_firmware") {
+            " (\x1b[34;3mfirmware\x1b[0m)"
+        } else {
+            ""
+        };
+
+        Plat::debug_print(format_args!(
+            "[{} | {}{}] {}\n",
+            level_display(record.level()),
+            record.target(),
+            display_from_firmware,
+            record.args()
+        ));
+    }
 }
 
 impl log::Log for Logger {
@@ -69,12 +85,7 @@ impl log::Log for Logger {
 
         if global_level_mask || module_level_mask {
             // Writes the log
-            Plat::debug_print(format_args!(
-                "[{} | {}] {}\n",
-                level_display(record.level()),
-                record.target(),
-                record.args()
-            ))
+            Self::print_log(record);
         }
     }
 

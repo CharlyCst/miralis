@@ -250,6 +250,10 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
                     }
                 }
             }
+
+            if target == Target::MiralisAsFirmware {
+                build_cmd.arg("--features").arg("miralis_as_firmware");
+            }
         }
 
         Target::Firmware(ref firmware) => {
