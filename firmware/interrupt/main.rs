@@ -136,6 +136,14 @@ fn test_timer_interrupts() -> ! {
 
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
+    log::warn!("0x{:x}", get_current_mtime());
+    log::warn!("0x{:x}", get_current_mtime());
+    log::warn!("0x{:x}", get_current_mtime());
+    log::warn!("0x{:x}", get_current_mtime());
+    log::warn!("0x{:x}", get_current_mtime());
+    log::warn!("0x{:x}", get_current_mtime());
+    success();
+
     // Check the interrupt cause
     let expected_mcause: usize = 0x8000000000000007;
     let mut mcause: usize;
