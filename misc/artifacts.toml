@@ -5,19 +5,24 @@ description = "An OpenSBI image with a dummy payload that immediately exits."
 url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.1.7/opensbi.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
+[bin.opensbi-jump]
+description = "An OpenSBI image which jump to address 0x80400000, where a payload is supposed to be loaded."
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi_jump.bin"
+repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
+
 [bin.linux]
 description = "An OpenSBI image with a Linux kernel payload that exits after boot."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.1/opensbi-linux-kernel-exit.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-exit.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.linux-shell]
 description = "An OpenSBI image with a Linux kernel payload that spawn a shell after boot."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.1/opensbi-linux-kernel-shell.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-shell.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.linux-benchmark]
 description = "An OpenSBI image with a Linux kernel payload that charge a driver to ecall benchmark printing in Miralis."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.1/opensbi-linux-kernel-driver.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-driver.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.zephyr]
