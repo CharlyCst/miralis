@@ -140,7 +140,7 @@ impl ClintDriver {
         // the read is contained within the MSIP area of the CLINT. Moreover, we take `self`
         // with a &mut reference to enforce aliasing rules.
         unsafe { ptr::write_volatile((pointer) as *mut u32, msip_value) };
-        log::trace!("MSIP value written: 0x{:x}", msip_value);
+        log::trace!("MSIP value written: 0x{:x} for hart {hart}", msip_value);
         Ok(())
     }
 }
