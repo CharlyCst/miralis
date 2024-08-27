@@ -35,39 +35,36 @@ impl Logger {
         return false;
     }
 
-    fn filter_by_module(&self, record: &Record) -> bool {
+    fn filter_by_module(&self, metadata: &Metadata) -> bool {
         let mut specific_module_enabled: bool = false;
 
-        specific_module_enabled |= record.metadata().level() <= LevelFilter::Trace
-            && Self::contains_target(config::LOG_TRACE, record.target());
-        specific_module_enabled |= record.metadata().level() <= LevelFilter::Debug
-            && Self::contains_target(config::LOG_DEBUG, record.target());
-        specific_module_enabled |= record.metadata().level() <= LevelFilter::Info
-            && Self::contains_target(config::LOG_INFO, record.target());
-        specific_module_enabled |= record.metadata().level() <= LevelFilter::Warn
-            && Self::contains_target(config::LOG_WARN, record.target());
-        specific_module_enabled |= record.metadata().level() <= LevelFilter::Error
-            && Self::contains_target(config::LOG_ERROR, record.target());
+        specific_module_enabled |= metadata.level() <= LevelFilter::Trace
+            && Self::contains_target(config::LOG_TRACE, metadata.target());
+        specific_module_enabled |= metadata.level() <= LevelFilter::Debug
+            && Self::contains_target(config::LOG_DEBUG, metadata.target());
+        specific_module_enabled |= metadata.level() <= LevelFilter::Info
+            && Self::contains_target(config::LOG_INFO, metadata.target());
+        specific_module_enabled |= metadata.level() <= LevelFilter::Warn
+            && Self::contains_target(config::LOG_WARN, metadata.target());
+        specific_module_enabled |= metadata.level() <= LevelFilter::Error
+            && Self::contains_target(config::LOG_ERROR, metadata.target());
 
         specific_module_enabled
     }
 
-    fn filter_by_global_level(&self, record: &Record) -> bool {
-        Self::GLOBAL_LOG_LEVEL >= record.metadata().level()
+    fn filter_by_global_level(&self, metadata: &Metadata) -> bool {
+        Self::GLOBAL_LOG_LEVEL >= metadata.level()
     }
 }
 
 impl log::Log for Logger {
-    fn enabled(&self, _: &Metadata) -> bool {
-        // We set to true such that each logs arrives in the log function and then we filter
-        true
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        // We filter depending on the current log level.
+        self.filter_by_global_level(metadata) || self.filter_by_module(metadata)
     }
 
     fn log(&self, record: &Record) {
-        let global_level_mask: bool = self.filter_by_global_level(record);
-        let module_level_mask: bool = self.filter_by_module(record);
-
-        if global_level_mask || module_level_mask {
+        if self.enabled(record.metadata()) {
             // Writes the log
             if Plat::name() == "Miralis" {
                 // No need for formatting, the host Miralis will handle it
