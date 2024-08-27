@@ -502,7 +502,11 @@ impl VirtContext {
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
-        self.csr.mip = self.trap_info.mip & !mie::SEIE_FILTER | self.csr.mip & mie::SEIE_FILTER;
+        // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
+        // the firmware want to read virtual mip.
+        self.csr.mip = self.trap_info.mip
+            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+            | self.csr.mip & mie::SEIE_FILTER;
 
         match self.mode {
             Mode::M => {
@@ -757,8 +761,11 @@ impl VirtContext {
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
-        self.csr.mip =
-            Arch::read_csr(Csr::Mip) & (!mie::SEIE_FILTER) | self.csr.mip & mie::SEIE_FILTER;
+        // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
+        // the firmware want to read virtual mip.
+        self.csr.mip = Arch::read_csr(Csr::Mip)
+            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+            | self.csr.mip & mie::SEIE_FILTER;
 
         // Remove Firmware PMP from the hardware
         mctx.pmp
@@ -826,7 +833,11 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mstatus => self.csr.mstatus & mstatus::MSTATUS_FILTER,
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
-            Csr::Mip => self.csr.mip | Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER, // Allows to read the interrupt signal from interrupt controller.
+            Csr::Mip => {
+                self.csr.mip
+                    | Arch::read_csr(Csr::Mip)
+                        & (mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+            } // Allows to read the interrupt signal from interrupt controller.
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
             Csr::Mvendorid => self.csr.mvendorid,

@@ -238,3 +238,7 @@ Another thing to consider is the following scenario:
 
 If the firmware wants to read the `mip` register after cleaning `vmip.SEIP`, and we don't sync `vmip.SEIP` with `mip.SEIP`, it can't know if there is an interrupt signal from the interrupt controller as the CSR read will be a logical-OR of the signal and `mip.SEIP` (which is one), and so always 1. If vmip.SEIP is 0, CSR read of mip.SEIP should return the interrupt signal.
 Then, we need to synchronize vmip.SEIP with mip.SEIP.
+
+### Mutliharts interrupt
+
+To wake up harts, firmware might use a machine software interrupt (`MSI`) or am machine external interrupt (`MEI`). These interrupts need to be fetched from hardware (`mip`) for each virtual read of `vmip`, as they can occur asynchronously with the execution of the firmware. During a world switch, we need to take care that these interrupts are not installed in the virtual `vmip`, to avoid having an interrupt that can't be cleared by firmware in the virtual context.
