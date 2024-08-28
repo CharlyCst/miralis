@@ -30,6 +30,8 @@ pub struct Config {
     pub benchmark: Benchmark,
     #[serde(default)]
     pub target: Targets,
+    #[serde(default)]
+    pub devices: Devices,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -103,6 +105,12 @@ pub struct Target {
     pub stack_size: Option<usize>,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Devices {
+    pub passthrough: Option<bool>,
+}
+
 #[derive(Deserialize, Debug, Clone, Copy, Default)]
 pub enum Profiles {
     #[serde(rename = "dev")]
@@ -123,6 +131,7 @@ impl Config {
         envs.extend(self.platform.build_envs());
         envs.extend(self.benchmark.build_envs());
         envs.extend(self.target.build_envs());
+        envs.extend(self.devices.build_envs());
         envs
     }
 }
@@ -290,6 +299,18 @@ impl Targets {
         envs.insert(
             String::from("MIRALIS_TARGET_FIRMWARE_STACK_SIZE"),
             format!("{}", stack_size),
+        );
+        envs
+    }
+}
+
+impl Devices {
+    fn build_envs(&self) -> HashMap<String, String> {
+        let mut envs = HashMap::new();
+        let passthough = self.passthrough.unwrap_or(false);
+        envs.insert(
+            String::from("PASS_THROUGH"),
+            format!("{}",  passthough),
         );
         envs
     }
