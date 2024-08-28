@@ -29,7 +29,7 @@ pub trait Platform {
     fn debug_print(level: Level, args: fmt::Arguments);
     fn exit_success() -> !;
     fn exit_failure() -> !;
-    fn create_clint_device() -> device::VirtDevice;
+    fn create_virtual_devices() -> [device::VirtDevice; 2];
     fn get_clint() -> &'static Mutex<ClintDriver>;
 
     /// Load the firmware (virtual M-mode software) and return its address.

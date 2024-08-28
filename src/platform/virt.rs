@@ -11,10 +11,11 @@ use super::Platform;
 use crate::config::{
     PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
 };
-use crate::device::{self, VirtClint};
+use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
+use crate::device::{self, VirtDevice};
 use crate::driver::ClintDriver;
 use crate::{_stack_start, _start_address};
-
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
@@ -22,6 +23,7 @@ const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
+const TEST_DEVICE_BASE: usize = 0x3000000;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -35,6 +37,9 @@ static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CL
 
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
+
+/// The virtual test device.
+static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -96,13 +101,22 @@ impl Platform for VirtPlatform {
         usize::MAX
     }
 
-    fn create_clint_device() -> device::VirtDevice {
-        device::VirtDevice {
+    fn create_virtual_devices() -> [VirtDevice; 2] {
+        let virtual_clint: device::VirtDevice = VirtDevice {
             start_addr: CLINT_BASE,
-            size: device::CLINT_SIZE,
+            size: CLINT_SIZE,
             name: "CLINT",
             device_interface: &VIRT_CLINT,
-        }
+        };
+
+        let virtual_test_device: device::VirtDevice = VirtDevice {
+            start_addr: TEST_DEVICE_BASE,
+            size: TEST_DEVICE_SIZE,
+            name: "TEST",
+            device_interface: &VIRT_TEST_DEVICE,
+        };
+
+        [virtual_clint, virtual_test_device]
     }
 
     fn get_clint() -> &'static Mutex<ClintDriver> {

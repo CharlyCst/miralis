@@ -147,6 +147,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "device"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "miralis_abi",
+]
+
+[[package]]
 name = "ecall"
 version = "0.1.0"
 dependencies = [
