@@ -5,8 +5,8 @@ use miralis_core::abi;
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{
-    mie, misa, mstatus, parse_mpp_return_mode, satp, Arch, Architecture, Csr, HardwareCapability,
-    MCause, Mode, Register, TrapInfo,
+    mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr,
+    HardwareCapability, MCause, Mode, Register, TrapInfo,
 };
 use crate::benchmark::Benchmark;
 use crate::decoder::{decode, Instr};
@@ -525,11 +525,20 @@ impl VirtContext {
         }
 
         // Go to firmware trap handler
-        assert!(
-            self.csr.mtvec & 0b11 == 0,
-            "Only direct mode is supported for mtvec"
-        );
-        self.pc = self.csr.mtvec
+        self.pc = match mtvec::get_mode(self.csr.mtvec) {
+            // If Direct mode: just jump to BASE directly
+            mtvec::Mode::Direct => self.csr.mtvec & mtvec::BASE_FILTER,
+            // If Vectored mode: if synchronous exception, jump to the BASE directly
+            // else, jump to BASE + 4 * cause
+            mtvec::Mode::Vectored => {
+                if MCause::is_interrupt(MCause::new(self.csr.mcause)) {
+                    (self.csr.mtvec & mtvec::BASE_FILTER)
+                        + 4 * MCause::cause_number(self.csr.mcause)
+                } else {
+                    self.csr.mtvec & mtvec::BASE_FILTER
+                }
+            }
+        }
     }
 
     /// Handle the trap coming from the firmware
