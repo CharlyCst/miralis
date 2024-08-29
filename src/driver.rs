@@ -5,7 +5,7 @@ use core::ptr;
 use crate::config::{self, PLATFORM_NB_HARTS};
 
 pub mod clint {
-    use crate::device::Width;
+    use crate::arch::Width;
 
     pub const MSIP_OFFSET: usize = 0x0;
     pub const MTIMECMP_OFFSET: usize = 0x4000;

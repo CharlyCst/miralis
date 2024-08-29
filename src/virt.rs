@@ -313,117 +313,50 @@ impl VirtContext {
         }
     }
 
-    /// Handles a compressed load instruction.
-    ///
-    /// Calculates the memory address and reads a zero-extended value
-    /// from the device (after applying a mask to prevent memory leak).
-    /// - Compressed load&store instructions are 2 bytes long.
-    /// - The immediate (`imm`) value is always positive and has a multiplier applied.
-    fn handle_compressed_load(
-        &mut self,
-        device: &VirtDevice,
-        rd: Register,
-        rs1: Register,
-        imm: usize,
-        length: usize,
-    ) {
-        let multiplier = length / 8;
-        let address = self.get(rs1) + imm * multiplier;
-        let offset = address - device.start_addr;
-        match device.device_interface.read_device(offset, length.into()) {
-            Ok(mut value) => {
-                let mask = if length < usize::BITS as usize {
-                    (1 << length) - 1
-                } else {
-                    usize::MAX
-                };
-                value &= mask;
-
-                self.set(rd, value);
-                self.pc += 2;
-            }
-            Err(err) => panic!("Error reading {}: {}", device.name, err),
-        }
-    }
-
-    /// Handles a compressed store instruction.
-    ///
-    /// Calculates the memory address and writes the value
-    /// to the device (after applying a mask to prevent overflow).
-    fn handle_compressed_store(
-        &mut self,
-        device: &VirtDevice,
-        rs1: Register,
-        rs2: Register,
-        imm: usize,
-        length: usize,
-    ) {
-        let multiplier = length / 8;
-        let address = self.get(rs1) + imm * multiplier;
-        let offset = address - device.start_addr;
-        let mut value = self.get(rs2);
-
-        let mask = if length < usize::BITS as usize {
-            (1 << length) - 1
-        } else {
-            usize::MAX
-        };
-
-        if value > mask {
-            log::warn!(
-                "Value {} exceeds allowed length {}. Trimming to fit.",
-                value,
-                length
-            );
-            value &= mask;
-        }
-        match device
-            .device_interface
-            .write_device(offset, length.into(), value)
-        {
-            Ok(()) => {
-                self.pc += 2;
-            }
-            Err(err) => panic!("Error writing {}: {}", device.name, err),
-        }
-    }
-
     /// Handles a load instruction.
     ///
     /// Calculates the memory address, reads the value from the device,
-    /// sign-extends it to 32 bits if necessary (for 8 and 16-bit instructions),
+    /// sign-extends (normal load) or zero-extends (unsigned load) it to 64 bits if necessary,
     /// applies a mask and writes the value to the device.
     ///
-    /// - Normal load instructions are 4 bytes long.
-    /// - The immediate (`imm`) value can be positive or negative, but it has no multiplier.
-    fn handle_load(
-        &mut self,
-        device: &VirtDevice,
-        rd: Register,
-        rs1: Register,
-        imm: isize,
-        length: usize,
-    ) {
-        let address = utils::calculate_addr(self.get(rs1), imm);
-        let offset = address - device.start_addr;
-        match device.device_interface.read_device(offset, length.into()) {
-            Ok(mut value) => {
-                // Sign-extend to 32 bits
-                if length < 32 && value < (1 << 31) {
-                    value = (value as i32) as usize;
+    /// - Normal load&store instructions are 4 bytes long.
+    /// - The immediate (`imm`) value can be positive or negative.
+    /// - Compressed load&store instructions are 2 bytes long.
+    /// - The immediate (`imm`) value is always positive.
+    fn handle_load(&mut self, device: &VirtDevice, instr: &Instr) {
+        match instr {
+            Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len,
+                is_compressed,
+                is_unsigned,
+            } => {
+                let address = utils::calculate_addr(self.get(*rs1), *imm);
+                let offset = address - device.start_addr;
+
+                match device.device_interface.read_device(offset, *len) {
+                    Ok(mut value) => {
+                        value = if *is_unsigned {
+                            (value as u64).try_into().unwrap()
+                        } else {
+                            (value as i64 as u64).try_into().unwrap()
+                        };
+
+                        let mask = if len.to_bits() < usize::BITS as usize {
+                            (1 << len.to_bits()) - 1
+                        } else {
+                            usize::MAX
+                        };
+
+                        self.set(*rd, value & mask);
+                        self.pc += if *is_compressed { 2 } else { 4 };
+                    }
+                    Err(err) => panic!("Error reading {}: {}", device.name, err),
                 }
-                let mask = if length < usize::BITS as usize {
-                    (1 << length) - 1
-                } else {
-                    usize::MAX
-                };
-
-                value &= mask;
-
-                self.set(rd, value);
-                self.pc += 4;
             }
-            Err(err) => panic!("Error reading {}: {}", device.name, err),
+            _ => panic!("Not a load instruction in a load handler"),
         }
     }
 
@@ -431,62 +364,53 @@ impl VirtContext {
     ///
     /// Calculates the memory address and writes the value
     /// to the device (after applying a mask to prevent overflow).
-    fn handle_store(
-        &mut self,
-        device: &VirtDevice,
-        rs1: Register,
-        rs2: Register,
-        imm: isize,
-        length: usize,
-    ) {
-        let address = utils::calculate_addr(self.get(rs1), imm);
-        let offset = address - device.start_addr;
-        let mut value = self.get(rs2);
+    fn handle_store(&mut self, device: &VirtDevice, instr: &Instr) {
+        match instr {
+            Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len,
+                is_compressed,
+            } => {
+                let address = utils::calculate_addr(self.get(*rs1), *imm);
+                let offset = address - device.start_addr;
 
-        let mask = if length < usize::BITS as usize {
-            (1 << length) - 1
-        } else {
-            usize::MAX
-        };
+                let value = self.get(*rs2);
 
-        if value > mask {
-            log::warn!(
-                "Value {} exceeds allowed length {}. Trimming to fit.",
-                value,
-                length
-            );
-            value &= mask;
-        }
+                let mask = if len.to_bits() < usize::BITS as usize {
+                    (1 << len.to_bits()) - 1
+                } else {
+                    usize::MAX
+                };
 
-        match device
-            .device_interface
-            .write_device(offset, length.into(), value)
-        {
-            Ok(()) => {
-                self.pc += 4;
+                if value > mask {
+                    log::warn!(
+                        "Value {} exceeds allowed length {}. Trimming to fit.",
+                        value,
+                        len.to_bits()
+                    );
+                }
+
+                match device
+                    .device_interface
+                    .write_device(offset, *len, value & mask)
+                {
+                    Ok(()) => {
+                        // Update the program counter (pc) based on compression
+                        self.pc += if *is_compressed { 2 } else { 4 };
+                    }
+                    Err(err) => panic!("Error writing {}: {}", device.name, err),
+                }
             }
-            Err(err) => panic!("Error writing {}: {}", device.name, err),
+            _ => panic!("Not a store instruction in a store handler"),
         }
     }
 
     pub fn handle_device_access_fault(&mut self, instr: &Instr, device: &VirtDevice) {
         match instr {
-            Instr::Ld { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 64),
-            Instr::Lw { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 32),
-            Instr::Lh { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 16),
-            Instr::Lb { rd, rs1, imm } => self.handle_load(device, *rd, *rs1, *imm, 8),
-            Instr::Sd { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 64),
-            Instr::Sw { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 32),
-            Instr::Sh { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 16),
-            Instr::Sb { rs1, rs2, imm } => self.handle_store(device, *rs1, *rs2, *imm, 8),
-            Instr::CLd { rd, rs1, imm } => self.handle_compressed_load(device, *rd, *rs1, *imm, 64),
-            Instr::CLw { rd, rs1, imm } => self.handle_compressed_load(device, *rd, *rs1, *imm, 32),
-            Instr::CSd { rs1, rs2, imm } => {
-                self.handle_compressed_store(device, *rs1, *rs2, *imm, 64)
-            }
-            Instr::CSw { rs1, rs2, imm } => {
-                self.handle_compressed_store(device, *rs1, *rs2, *imm, 32)
-            }
+            Instr::Load { .. } => self.handle_load(device, instr),
+            Instr::Store { .. } => self.handle_store(device, instr),
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
     }
