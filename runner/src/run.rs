@@ -47,6 +47,12 @@ pub fn run(args: &RunArgs) {
     // Prepare the actual command
     let mut qemu_cmd = Command::new(QEMU);
     qemu_cmd.args(QEMU_ARGS);
+    if let Some(machine) = &cfg.qemu.machine {
+        qemu_cmd.arg("-machine").arg(machine);
+    }
+    if let Some(cpu) = &cfg.qemu.cpu {
+        qemu_cmd.arg("-cpu").arg(cpu);
+    }
     qemu_cmd
         .arg("-bios")
         .arg(miralis)
@@ -112,6 +118,10 @@ fn get_config(args: &RunArgs) -> Config {
     }
     if let Some(nb_harts) = args.smp {
         cfg.platform.nb_harts = Some(nb_harts);
+    }
+
+    if cfg.qemu.cpu == Some(String::from("none")) {
+        cfg.qemu.cpu = None;
     }
 
     cfg
