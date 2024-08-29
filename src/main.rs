@@ -55,14 +55,9 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 
-pub(crate) extern "C" fn main(hart_id: usize, device_tree_blob_addr: usize) -> ! {
+pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one
-    if hart_id != config::PLATFORM_BOOT_HART_ID {
-        loop {
-            Arch::wfi();
-            core::hint::spin_loop();
-        }
-    }
+
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
     let hart_id = Arch::read_csr(Csr::Mhartid);
