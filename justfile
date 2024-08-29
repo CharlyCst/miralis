@@ -7,6 +7,7 @@ qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
 qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
+qemu_virt_rustsbi_test_kernel := "./config/test/qemu-rustsbi-test-kernel.toml"
 benchmark_folder := "./benchmark-out"
 default_iterations := "1"
 
@@ -53,6 +54,7 @@ test:
 	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
 	cargo run --package runner -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
 	cargo run --package runner -- run --config {{qemu_virt_sifive_u54}} --firmware linux
+	cargo run --package runner -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
 
 	# Test benchmark code
 	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware csr_write

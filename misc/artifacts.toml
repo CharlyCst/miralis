@@ -29,3 +29,13 @@ repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 description = "A Zephyr image which summons two threads that print in round-robin several times before exiting."
 url = "https://github.com/CharlyCst/miralis-artifact-zephyr/releases/download/v0.1.1/zephyr.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-zephyr"
+
+[bin.rustsbi-qemu]
+description = "A RustSBI image mode for qemu. It is supposed to work in pairs with a test-kenel."
+url = "https://github.com/CharlyCst/miralis-artifact-rustsbi/releases/download/v0.1.3/rustsbi-qemu.bin"
+repo = "https://github.com/CharlyCst/miralis-artifact-rustsbi"
+
+[bin.rustsbi-test-kernel]
+description = "A test-kernel for RustSBI on qemu."
+url = "https://github.com/CharlyCst/miralis-artifact-rustsbi/releases/download/v0.1.3/test-kernel.bin"
+repo = "https://github.com/CharlyCst/miralis-artifact-rustsbi"
