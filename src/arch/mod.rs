@@ -373,3 +373,41 @@ pub mod mtvec {
         }
     }
 }
+
+// ——————————————————————— Width of Access Instructions —————————————————————— //
+
+/// Represents different data widths:
+///  - `Byte`: 8 bits (1 byte)
+///  - `Byte2`: 16 bits (2 bytes)
+///  - `Byte4`: 32 bits (4 bytes)
+///  - `Byte8`: 64 bits (8 bytes)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Width {
+    Byte = 8,
+    Byte2 = 16,
+    Byte4 = 32,
+    Byte8 = 64,
+}
+
+impl Width {
+    pub fn to_bits(&self) -> usize {
+        *self as usize
+    }
+
+    pub fn to_bytes(&self) -> usize {
+        self.to_bits() / 8
+    }
+}
+
+impl From<usize> for Width {
+    fn from(value: usize) -> Self {
+        match value {
+            8 => Width::Byte,
+            16 => Width::Byte2,
+            32 => Width::Byte4,
+            64 => Width::Byte8,
+            _ => panic!("Invalid width value"),
+        }
+    }
+}
