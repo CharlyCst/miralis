@@ -48,6 +48,14 @@ impl MCause {
     pub fn is_interrupt(self) -> bool {
         self as usize & INTERRUPT_BIT != 0
     }
+
+    pub fn cause_number(cause: usize) -> usize {
+        if (cause as isize) < 0 {
+            cause ^ INTERRUPT_BIT
+        } else {
+            cause
+        }
+    }
 }
 
 // —————————————————————————————— Conversions ——————————————————————————————— //

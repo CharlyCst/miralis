@@ -1,0 +1,12 @@
+[package]
+name = "vectored_mtvec"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "vectored_mtvec"
+path = "main.rs"
+
+[dependencies]
+miralis_abi = { path = "../../crates/abi" }
+log = { workspace = true }

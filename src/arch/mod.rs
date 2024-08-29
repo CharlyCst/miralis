@@ -345,3 +345,31 @@ pub mod mie {
     pub const LCOFIE_OFFSET: usize = 13;
     pub const LCOFIE_FILTER: usize = 0b1 << LCOFIE_OFFSET;
 }
+
+// ———————————————————— Machine Trap-Vector Base-Address ———————————————————— //
+
+#[allow(unused)]
+pub mod mtvec {
+    /// Constant to filter out MODE bits of mtvec
+    pub const MODE_FILTER: usize = 0b11;
+
+    /// Constant to filter out BASE bits of mtvec
+    pub const BASE_FILTER: usize = usize::MAX & !MODE_FILTER;
+
+    /// Privilege modes
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum Mode {
+        /// User
+        Direct = 0,
+        /// Machine
+        Vectored = 1,
+    }
+
+    pub fn get_mode(mtvec: usize) -> Mode {
+        match mtvec & MODE_FILTER {
+            0 => Mode::Direct,
+            1 => Mode::Vectored,
+            _ => panic!("Invalid trap-vector mode."),
+        }
+    }
+}
