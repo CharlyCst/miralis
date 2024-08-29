@@ -27,6 +27,8 @@ pub struct Config {
     #[serde(default)]
     pub platform: Platform,
     #[serde(default)]
+    pub qemu: Qemu,
+    #[serde(default)]
     pub benchmark: Benchmark,
     #[serde(default)]
     pub target: Targets,
@@ -63,6 +65,13 @@ pub struct Platform {
     pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
     pub boot_hart_id: Option<usize>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Qemu {
+    pub machine: Option<String>,
+    pub cpu: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]

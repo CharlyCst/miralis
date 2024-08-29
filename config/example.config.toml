@@ -52,6 +52,18 @@ nb_harts = 1
 # Default to 0
 boot_hart_id = 0
 
+[qemu]
+
+# Qemu machine (virt, sifive_u, spike...) 
+# Full list given by qemu-system-riscv64 --machine help
+# Default to "virt"
+machine = "virt"
+
+# Qemu cpu (rv64, sifive_u54, thread-c906...)
+# Full list given by qemu-system-riscv64 --cpu help
+# Default to "none"
+cpu = "none"
+
 # Enable benchmark code and logs. Logs can then be collected to 
 # analyze a run of the program.
 [benchmark]
