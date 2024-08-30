@@ -136,171 +136,126 @@ impl Config {
     }
 }
 
-fn format_env_array(text: &Vec<String>) -> String {
-    format!("{}", text.join(","))
+struct EnvVars {
+    envs: HashMap<String, String>,
+}
+
+impl EnvVars {
+    fn new() -> Self {
+        EnvVars {
+            envs: HashMap::new(),
+        }
+    }
+
+    pub fn insert<T: std::fmt::Display>(&mut self, var_name: &str, option: &Option<T>) {
+        if let Some(value) = option {
+            self.envs
+                .insert(String::from(var_name), format!("{}", value));
+        }
+    }
+
+    pub fn insert_array(&mut self, var_name: &str, option: &Option<Vec<String>>) {
+        if let Some(values) = option {
+            self.envs
+                .insert(String::from(var_name), format!("{}", values.join(",")));
+        }
+    }
 }
 
 impl Log {
     fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = HashMap::new();
+        let mut envs = EnvVars::new();
 
         // Global log level
-        if let Some(level) = &self.level {
-            envs.insert(String::from("MIRALIS_LOG_LEVEL"), level.clone());
-        }
+        envs.insert("MIRALIS_LOG_LEVEL", &self.level);
 
         // Decides between colored and gray output
-        if let Some(color) = self.color {
-            envs.insert(String::from("MIRALIS_LOG_COLOR"), format!("{}", color));
-        }
+        envs.insert("MIRALIS_LOG_COLOR", &self.color);
 
         // Modules logged at error level
-        if let Some(error) = &self.error {
-            envs.insert(String::from("MIRALIS_LOG_ERROR"), format_env_array(error));
-        }
+        envs.insert_array("MIRALIS_LOG_ERROR", &self.error);
 
         // Modules logged at warn level
-        if let Some(warn) = &self.warn {
-            envs.insert(String::from("MIRALIS_LOG_WARN"), format_env_array(warn));
-        }
+        envs.insert_array("MIRALIS_LOG_WARN", &self.warn);
 
         // Modules logged at info level
-        if let Some(info) = &self.info {
-            envs.insert(String::from("MIRALIS_LOG_INFO"), format_env_array(info));
-        }
+        envs.insert_array("MIRALIS_LOG_INFO", &self.info);
 
         // Modules logged at debug level
-        if let Some(debug) = &self.debug {
-            envs.insert(String::from("MIRALIS_LOG_DEBUG"), format_env_array(debug));
-        }
+        envs.insert_array("MIRALIS_LOG_DEBUG", &self.debug);
 
         // Modules logged at trace level
-        if let Some(trace) = &self.trace {
-            envs.insert(String::from("MIRALIS_LOG_TRACE"), format_env_array(trace));
-        }
+        envs.insert_array("MIRALIS_LOG_TRACE", &self.trace);
 
-        envs
+        envs.envs
     }
 }
 
 impl Debug {
     fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = HashMap::new();
-        if let Some(max_firmware_exits) = self.max_firmware_exits {
-            envs.insert(
-                String::from("MIRALIS_DEBUG_MAX_FIRMWARE_EXITS"),
-                format!("{}", max_firmware_exits),
-            );
-        }
-        envs
+        let mut envs = EnvVars::new();
+        envs.insert("MIRALIS_DEBUG_MAX_FIRMWARE_EXITS", &self.max_firmware_exits);
+        envs.envs
     }
 }
 
 impl VCpu {
     fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = HashMap::new();
-        if let Some(s_mode) = self.s_mode {
-            envs.insert(String::from("MIRALIS_VCPU_S_MODE"), format!("{}", s_mode));
-        }
-        if let Some(max_pmp) = self.max_pmp {
-            envs.insert(String::from("MIRALIS_VCPU_MAX_PMP"), format!("{}", max_pmp));
-        }
-        envs
+        let mut envs = EnvVars::new();
+        envs.insert("MIRALIS_VCPU_S_MODE", &self.s_mode);
+        envs.insert("MIRALIS_VCPU_MAX_PMP", &self.max_pmp);
+        envs.envs
     }
 }
 
 impl Platform {
     fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = HashMap::new();
-        if let Some(nb_harts) = self.nb_harts {
-            envs.insert(
-                String::from("MIRALIS_PLATFORM_NB_HARTS"),
-                format!("{}", nb_harts),
-            );
-        }
-        if let Some(boot_hart_id) = self.boot_hart_id {
-            envs.insert(
-                String::from("MIRALIS_PLATFORM_BOOT_HART_ID"),
-                format!("{}", boot_hart_id),
-            );
-        }
-        envs
+        let mut envs = EnvVars::new();
+        envs.insert("MIRALIS_PLATFORM_NB_HARTS", &self.nb_harts);
+        envs.insert("MIRALIS_PLATFORM_BOOT_HART_ID", &self.boot_hart_id);
+        envs.envs
     }
 }
 
 impl Benchmark {
     pub fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = HashMap::new();
-        if let Some(enable) = self.enable {
-            envs.insert(String::from("MIRALIS_BENCHMARK"), format!("{}", enable));
-        }
-        if let Some(csv_format) = self.csv_format {
-            envs.insert(
-                String::from("MIRALIS_BENCHMARK_CSV_FORMAT"),
-                format!("{}", csv_format),
-            );
-        }
-        if let Some(time) = self.time {
-            envs.insert(String::from("MIRALIS_BENCHMARK_TIME"), format!("{}", time));
-        }
-        if let Some(instr) = self.instruction {
-            envs.insert(
-                String::from("MIRALIS_BENCHMARK_INSTRUCTION"),
-                format!("{}", instr),
-            );
-        }
-        if let Some(nb_exits) = self.nb_exits {
-            envs.insert(
-                String::from("MIRALIS_BENCHMARK_NB_EXISTS"),
-                format!("{}", nb_exits),
-            );
-        }
-        if let Some(nb_firmware_exits) = self.nb_firmware_exits {
-            envs.insert(
-                String::from("MIRALIS_BENCHMARK_NB_FIRMWARE_EXITS"),
-                format!("{}", nb_firmware_exits),
-            );
-        }
-        if let Some(world_switches) = self.world_switches {
-            envs.insert(
-                String::from("MIRALIS_BENCHMARK_WORLD_SWITCHES"),
-                format!("{}", world_switches),
-            );
-        }
-        if let Some(nb_iter) = self.nb_iter {
-            envs.insert(
-                String::from("MIRALIS_BENCHMARK_NB_ITER"),
-                format!("{}", nb_iter),
-            );
-        }
-        envs
+        let mut envs = EnvVars::new();
+        envs.insert("MIRALIS_BENCHMARK", &self.enable);
+        envs.insert("MIRALIS_BENCHMARK_CSV_FORMAT", &self.csv_format);
+        envs.insert("MIRALIS_BENCHMARK_TIME", &self.time);
+        envs.insert("MIRALIS_BENCHMARK_INSTRUCTION", &self.instruction);
+        envs.insert("MIRALIS_BENCHMARK_NB_EXISTS", &self.nb_exits);
+        envs.insert(
+            "MIRALIS_BENCHMARK_NB_FIRMWARE_EXITS",
+            &self.nb_firmware_exits,
+        );
+        envs.insert("MIRALIS_BENCHMARK_WORLD_SWITCHES", &self.world_switches);
+        envs.insert("MIRALIS_BENCHMARK_NB_ITER", &self.nb_iter);
+        envs.envs
     }
 }
 
 impl Targets {
     fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = HashMap::new();
-        let firmware_address = self.firmware.start_address.unwrap_or(0x80200000);
+        let mut envs = EnvVars::new();
         envs.insert(
-            String::from("MIRALIS_TARGET_FIRMWARE_ADDRESS"),
-            format!("{}", firmware_address),
+            "MIRALIS_TARGET_START_ADDRESS",
+            &self.miralis.start_address.or(Some(0x80000000)),
         );
-        let start_address = self.miralis.start_address.unwrap_or(0x80000000);
         envs.insert(
-            String::from("MIRALIS_TARGET_START_ADDRESS"),
-            format!("{}", start_address),
+            "MIRALIS_TARGET_FIRMWARE_ADDRESS",
+            &self.firmware.start_address.or(Some(0x80200000)),
         );
-        let firmware_stack_size = self.firmware.stack_size.unwrap_or(0x8000);
         envs.insert(
-            String::from("MIRALIS_TARGET_STACK_SIZE"),
-            format!("{}", firmware_stack_size),
+            "MIRALIS_TARGET_STACK_SIZE",
+            &self.firmware.stack_size.or(Some(0x8000)),
         );
-        let stack_size = self.miralis.stack_size.unwrap_or(0x8000);
         envs.insert(
-            String::from("MIRALIS_TARGET_FIRMWARE_STACK_SIZE"),
-            format!("{}", stack_size),
+            "MIRALIS_TARGET_FIRMWARE_STACK_SIZE",
+            &self.miralis.stack_size.or(Some(0x8000)),
         );
-        envs
+
+        envs.envs
     }
 }
 
