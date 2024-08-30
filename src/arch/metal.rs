@@ -370,8 +370,29 @@ impl Architecture for MetalArch {
         );
     }
 
-    unsafe fn sfence_vma() {
-        asm!("sfence.vma")
+    unsafe fn sfence_vma(vaddr: Option<usize>, asid: Option<usize>) {
+        match (vaddr, asid) {
+            (None, None) => asm!("sfence.vma"),
+            (None, Some(asid)) => {
+                asm!(
+                    "sfence.vma x0, {asid}",
+                    asid = in(reg) asid,
+                )
+            }
+            (Some(vaddr), None) => {
+                asm!(
+                    "sfence.vma {vaddr}, x0",
+                    vaddr = in(reg) vaddr
+                )
+            }
+            (Some(vaddr), Some(asid)) => {
+                asm!(
+                    "sfence.vma {vaddr}, {asid}",
+                    vaddr = in(reg) vaddr,
+                    asid = in(reg) asid
+                )
+            }
+        }
     }
 
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {

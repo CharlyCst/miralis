@@ -75,7 +75,7 @@ impl Architecture for HostArch {
         instr as usize
     }
 
-    unsafe fn sfence_vma() {
+    unsafe fn sfence_vma(_vaddr: Option<usize>, _asid: Option<usize>) {
         log::debug!("Userspace sfence.vma");
     }
 
