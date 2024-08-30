@@ -48,7 +48,7 @@ pub trait Architecture {
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_pmp(pmp: &PmpGroup);
-    unsafe fn sfence_vma();
+    unsafe fn sfence_vma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn run_vcpu(ctx: &mut VirtContext);
 
     /// Wait for interrupt

@@ -305,11 +305,24 @@ impl VirtContext {
                 // Jump back to firmware
                 self.pc = self.csr.mepc;
             }
-            Instr::Vfencevma => unsafe {
-                Arch::sfence_vma();
+            Instr::Vfencevma { rs1, rs2 } => unsafe {
+                let vaddr = match rs1 {
+                    Register::X0 => None,
+                    reg => Some(self.get(reg)),
+                };
+                let asid = match rs2 {
+                    Register::X0 => None,
+                    reg => Some(self.get(reg)),
+                };
+                Arch::sfence_vma(vaddr, asid);
                 self.pc += 4;
             },
-            _ => todo!("Instruction not yet implemented: {:?}", instr),
+            _ => todo!(
+                "Instruction not yet implemented: {:?} {:x} {:x}",
+                instr,
+                self.csr.mepc,
+                self.csr.mtval
+            ),
         }
     }
 
@@ -651,7 +664,7 @@ impl VirtContext {
         }
         // Commit the PMP to hardware
         Arch::write_pmp(&mctx.pmp);
-        Arch::sfence_vma();
+        Arch::sfence_vma(None, None);
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -709,7 +722,7 @@ impl VirtContext {
             .set(last_pmp_idx, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
         // Commit the PMP to hardware
         Arch::write_pmp(&mctx.pmp);
-        Arch::sfence_vma();
+        Arch::sfence_vma(None, None);
     }
 }
 

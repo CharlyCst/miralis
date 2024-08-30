@@ -48,7 +48,10 @@ pub enum Instr {
     },
     Mret,
     Sret,
-    Vfencevma,
+    Vfencevma {
+        rs1: Register,
+        rs2: Register,
+    },
     /// Load (register-based)
     Load {
         rd: Register,
@@ -305,6 +308,7 @@ fn decode_system(raw: usize) -> Instr {
     let func3 = (raw >> 12) & 0b111;
     let rs1 = (raw >> 15) & 0b11111;
     let imm = (raw >> 20) & 0b111111111111;
+    let func7 = (raw >> 25) & 0b1111111;
     if func3 == 0b000 {
         return match imm {
             0b000000000000 => Instr::Ecall,
@@ -312,7 +316,12 @@ fn decode_system(raw: usize) -> Instr {
             0b000100000101 => Instr::Wfi,
             0b001100000010 => Instr::Mret,
             0b000100000010 => Instr::Sret,
-            0b000100100000 => Instr::Vfencevma,
+            _ if func7 == 0b0001001 => {
+                let rs1 = Register::from(rs1);
+                let rs2 = (raw >> 20) & 0b11111;
+                let rs2 = Register::from(rs2);
+                return Instr::Vfencevma { rs1, rs2 };
+            }
             _ => Instr::Unknown,
         };
     }
@@ -591,7 +600,20 @@ mod tests {
         // WFI: Wait for interrupt.
         assert_eq!(decode(0x10500073), Instr::Wfi);
         // SFENCE.VMA: Supervisor memory-management fence.
-        assert_eq!(decode(0x12000073), Instr::Vfencevma);
+        assert_eq!(
+            decode(0x12000073),
+            Instr::Vfencevma {
+                rs1: Register::X0,
+                rs2: Register::X0
+            }
+        );
+        assert_eq!(
+            decode(0x13300073),
+            Instr::Vfencevma {
+                rs1: Register::X0,
+                rs2: Register::X19
+            }
+        );
     }
 
     #[test]

@@ -135,7 +135,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Arch::set_mpp(arch::Mode::U);
         // Update the PMPs prior to first entry
         Arch::write_pmp(&mctx.pmp);
-        Arch::sfence_vma();
+        Arch::sfence_vma(None, None);
         // Initialize `medeleg` to ensure all exceptions trap to Miralis
         Arch::write_csr(Csr::Medeleg, 0);
 
