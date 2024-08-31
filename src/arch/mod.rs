@@ -381,7 +381,7 @@ pub mod mtvec {
 ///  - `Byte2`: 16 bits (2 bytes)
 ///  - `Byte4`: 32 bits (4 bytes)
 ///  - `Byte8`: 64 bits (8 bytes)
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Width {
     Byte = 8,
