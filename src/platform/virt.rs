@@ -12,6 +12,7 @@ use crate::config::{
     PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
 };
 use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::passthrough::PassThroughModule;
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::{self, VirtDevice};
 use crate::driver::ClintDriver;
@@ -24,6 +25,8 @@ const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
+const PASSTHROUGH_BASE: usize = 0x2000000;
+const PASSTHROUGH_SIZE: usize = 0x2000000;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -40,6 +43,9 @@ static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
+
+/// Passthrough module
+static mut PASS_THROUGH_MODULE: PassThroughModule = PassThroughModule::new(PASSTHROUGH_BASE);
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -121,6 +127,19 @@ impl Platform for VirtPlatform {
 
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
+    }
+
+    fn create_passthrough_device() -> VirtDevice {
+        unsafe {
+            PASS_THROUGH_MODULE.attach_devices();
+
+            VirtDevice {
+                start_addr: PASSTHROUGH_BASE,
+                size: PASSTHROUGH_SIZE,
+                name: "passthrough_module",
+                device_interface: &PASS_THROUGH_MODULE,
+            }
+        }
     }
 }
 

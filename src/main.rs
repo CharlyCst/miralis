@@ -55,6 +55,8 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 
+use crate::device::empty::EmptyDevice;
+
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // For now we simply park all the harts other than the boot one
 
@@ -79,7 +81,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
     let nb_virt_pmp;
-    let virtual_devices = Plat::create_virtual_devices();
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
@@ -90,41 +91,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     // Configure PMP registers, if available
     if mctx.pmp.nb_pmp >= 8 {
-        // List of devices to protect (the first one is Miralis itself)
-        let devices = [
-            Plat::get_miralis_memory_start_and_size(),
-            (virtual_devices[0].start_addr, virtual_devices[0].size),
-            (virtual_devices[1].start_addr, virtual_devices[1].size),
-            // Add more here as needed
-        ];
-        // Protect memory to trap firmware read/writes
-        for (i, &(start, size)) in devices.iter().enumerate() {
-            mctx.pmp
-                .set(i, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
+        if config::PASS_THROUGH_ENABLED {
+            mctx.devices = [Plat::create_passthrough_device(), EmptyDevice::new()];
         }
 
-        // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-        let inactive_index = devices.len();
-        mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
-
-        // Finally, set the last PMP to grant access to the whole memory
-        mctx.pmp.set(
-            (mctx.pmp.nb_pmp - 1) as usize,
-            usize::MAX,
-            pmpcfg::RWX | pmpcfg::NAPOT,
-        );
-
-        // Set the offset of virtual PMPs (right after the inactive 0 entry)
-        mctx.virt_pmp_offset = (inactive_index + 1) as u8;
-
-        // Compute the number of virtual PMPs available
-        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 2;
-
-        if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
-            nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
-        } else {
-            nb_virt_pmp = remaining_pmp_entries;
-        }
+        nb_virt_pmp = install_virtual_devices(&mut mctx);
     } else {
         nb_virt_pmp = 0;
     }
@@ -160,6 +131,62 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     }
 
     main_loop(&mut ctx, &mut mctx);
+}
+
+fn install_virtual_devices(mctx: &mut MiralisContext) -> usize {
+    // Firrst protect Miralis
+    let (miralis_start, miralis_size) = Plat::get_miralis_memory_start_and_size();
+    mctx.pmp.set(
+        0,
+        pmp::build_napot(miralis_start, miralis_size).unwrap(),
+        pmpcfg::NAPOT,
+    );
+
+    // Then protec the virtual devices
+    // Protect memory to trap firmware read/writes
+    if config::PASS_THROUGH_ENABLED {
+        mctx.pmp.set(
+            1,
+            pmp::build_napot(mctx.devices[0].start_addr, mctx.devices[0].size).unwrap(),
+            pmpcfg::NAPOT,
+        );
+
+        configure_pmp(mctx, 2)
+    } else {
+        for (i, device) in mctx.devices.iter().enumerate() {
+            mctx.pmp.set(
+                i + 1,
+                pmp::build_napot(device.start_addr, device.size).unwrap(),
+                pmpcfg::NAPOT,
+            );
+        }
+
+        configure_pmp(mctx, 1 + mctx.devices.len())
+    }
+}
+
+fn configure_pmp(mctx: &mut MiralisContext, inactive_index: usize) -> usize {
+    // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
+    mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
+
+    // Finally, set the last PMP to grant access to the whole memory
+    mctx.pmp.set(
+        (mctx.pmp.nb_pmp - 1) as usize,
+        usize::MAX,
+        pmpcfg::RWX | pmpcfg::NAPOT,
+    );
+
+    // Set the offset of virtual PMPs (right after the inactive 0 entry)
+    mctx.virt_pmp_offset = (inactive_index + 1) as u8;
+
+    // Compute the number of virtual PMPs available
+    let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - inactive_index - 2;
+
+    if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
+        core::cmp::min(remaining_pmp_entries, max_virt_pmp)
+    } else {
+        remaining_pmp_entries
+    }
 }
 
 fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {

@@ -15,7 +15,7 @@ pub struct MiralisContext {
     pub virt_pmp_offset: u8,
     /// Hardware capabilities of the core (hart).
     pub hw: HardwareCapability,
-    /// List of device with PMP
+    /// List of devices with PMP
     pub devices: [device::VirtDevice; 2],
 }
 
