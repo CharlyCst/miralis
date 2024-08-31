@@ -96,3 +96,6 @@ pub const TARGET_PAYLOAD_ADDRESS: usize =
 /// The stack size for each Miralis thread (one per hart)
 pub const TARGET_STACK_SIZE: usize =
     parse_usize_or(option_env!("MIRALIS_TARGET_STACK_SIZE"), 0x8000);
+
+/// Whether we want a pass through device in Miralis
+pub const PASS_THROUGH_ENABLED: bool = is_enabled!("PASS_THROUGH");

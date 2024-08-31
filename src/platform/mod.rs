@@ -30,6 +30,7 @@ pub trait Platform {
     fn exit_success() -> !;
     fn exit_failure() -> !;
     fn create_virtual_devices() -> [device::VirtDevice; 2];
+    fn create_passthrough_device() -> device::VirtDevice;
     fn get_clint() -> &'static Mutex<ClintDriver>;
 
     /// Load the firmware (virtual M-mode software) and return its address.

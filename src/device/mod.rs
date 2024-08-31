@@ -3,6 +3,8 @@
 use crate::arch::Width;
 
 pub mod clint;
+pub mod empty;
+pub mod passthrough;
 pub mod tester;
 
 // ———————————————————————————— Virtual Devices ————————————————————————————— //
@@ -18,7 +20,7 @@ pub struct VirtDevice {
 pub fn find_matching_device(address: usize, devices: &[VirtDevice]) -> Option<&VirtDevice> {
     devices
         .iter()
-        .find(|device| address >= device.start_addr && address < device.start_addr + device.size)
+        .find(|device| device.start_addr <= address && address < device.start_addr + device.size)
 }
 
 pub trait DeviceAccess: Sync + Send {
