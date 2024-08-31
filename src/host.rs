@@ -15,8 +15,8 @@ pub struct MiralisContext {
     pub virt_pmp_offset: u8,
     /// Hardware capabilities of the core (hart).
     pub hw: HardwareCapability,
-    /// List of devices with PMP
-    pub devices: [device::VirtDevice; 1],
+    /// List of device with PMP
+    pub devices: [device::VirtDevice; 2],
 }
 
 impl MiralisContext {
@@ -26,7 +26,7 @@ impl MiralisContext {
             pmp: PmpGroup::new(hw.available_reg.nb_pmp),
             virt_pmp_offset: 0,
             hw,
-            devices: [Plat::create_clint_device()],
+            devices: Plat::create_virtual_devices(),
         }
     }
 }

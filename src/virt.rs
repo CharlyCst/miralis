@@ -572,10 +572,17 @@ impl VirtContext {
                 {
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                     let instr = decode(instr);
-                    log::trace!("Accessed device: {} | With instr: {:?}", device.name, instr);
+                    log::trace!(
+                        "Accessed devices: {} | With instr: {:?}",
+                        device.name,
+                        instr
+                    );
                     self.handle_device_access_fault(&instr, &device);
                 } else {
-                    log::trace!("No matching device found for address: {:x}", self.csr.mtval);
+                    log::trace!(
+                        "No matching devices found for address: {:x}",
+                        self.csr.mtval
+                    );
                     self.emulate_jump_trap_handler();
                 }
             }
