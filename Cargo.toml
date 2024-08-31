@@ -41,6 +41,7 @@ members = [
     "firmware/sandbox",
     "firmware/interrupt",
     "firmware/os_ecall",
+    "firmware/device",
     "firmware/vectored_mtvec",
     "firmware/benchmark/ecall_benchmark",
     "firmware/benchmark/csr_write",

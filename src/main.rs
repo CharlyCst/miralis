@@ -79,7 +79,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
     let nb_virt_pmp;
-    let clint = Plat::create_clint_device();
+    let virtual_devices = Plat::create_virtual_devices();
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
@@ -93,7 +93,8 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         // List of devices to protect (the first one is Miralis itself)
         let devices = [
             Plat::get_miralis_memory_start_and_size(),
-            (clint.start_addr, clint.size),
+            (virtual_devices[0].start_addr, virtual_devices[0].size),
+            (virtual_devices[1].start_addr, virtual_devices[1].size),
             // Add more here as needed
         ];
         // Protect memory to trap firmware read/writes
