@@ -7,7 +7,8 @@ Miralis is an experimental system that virtualises firmware to enforce strong is
 The Miralis project uses [`just`](https://github.com/casey/just) to easily build, run, and test code.
 You can easily install `just` with your favorite package manager or `cargo` by following [the instructions](https://just.systems/man/en/chapter_4.html).
 
-Miralis is primary developed and tested on QEMU, therefore you will need to install `qemu-system-riscv64` on your system.
+Miralis is primary developed and tested on QEMU, therefore you will need to install `qemu-system-riscv64` on your system.  Please note that the minimum required version is 9.0.0, as tests fail with version 8.0.4. On Ubuntu, the version available through sudo apt-get is 8.0.0, which is incompatible with Miralis. Therefore, you will need to build QEMU from source. You can find detailed instructions on how to do this on the QEMU download page (https://www.qemu.org/download/). You can check your ``qemu`` version using the following command ``qemu-system-riscv64 --version``.
+
 Then you will need to install the rust toolchain, if rust is installed through rustup on the machine this can be done by running `just install-toolchain`
 
 Then running Miralis is as simple as invoking `just run`.
