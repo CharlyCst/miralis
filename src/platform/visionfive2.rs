@@ -8,42 +8,15 @@ use log::Level;
 use spin::Mutex;
 
 use crate::arch::{Arch, Architecture};
-use crate::config::{
-    PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
-};
-use crate::device::clint::{VirtClint, CLINT_SIZE};
-use crate::device::passthrough::PassThroughModule;
-use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
-use crate::device::{self, VirtDevice};
+use crate::device::VirtDevice;
 use crate::driver::ClintDriver;
-use crate::{Platform, _stack_start, _start_address};
-// —————————————————————————— Platform Parameters ——————————————————————————— //
-
-const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
-
-const CLINT_BASE: usize = 0x2000000;
-const TEST_DEVICE_BASE: usize = 0x3000000;
-const PASSTHROUGH_BASE: usize = 0x2000000;
-const PASSTHROUGH_SIZE: usize = 0x2000000;
-
-// ———————————————————————————— Platform Devices ———————————————————————————— //
-
-/// The physical CLINT driver.
-///
-/// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
-/// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
-
-/// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
-
-/// The virtual test device.
-static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
-
-/// Passthrough module
-static mut PASS_THROUGH_MODULE: PassThroughModule = PassThroughModule::new(PASSTHROUGH_BASE);
+use crate::platform::parameters::{MIRALIS_START_ADDR, SERIAL_PORT_BASE_ADDRESS};
+use crate::platform::utils::{
+    compute_miralis_memory_start_and_size, create_passthrough_device_default,
+    create_virtual_devices_default, get_clint_default, get_max_valid_address_default,
+    load_firmware_default,
+};
+use crate::Platform;
 
 pub static WRITER: Mutex<Writer> = Mutex::new(Writer::new(SERIAL_PORT_BASE_ADDRESS));
 
@@ -87,61 +60,27 @@ impl Platform for VisionFive2Platform {
     }
 
     fn load_firmware() -> usize {
-        FIRMWARE_START_ADDR
+        load_firmware_default()
     }
 
     fn get_miralis_memory_start_and_size() -> (usize, usize) {
-        let size: usize;
-        // SAFETY: The unsafe block is required to get the address of the stack and start of
-        // Miralis, which are external values defined by the linker.
-        // We also ensure that `size` is non-negative and within reasonable bounds
-        unsafe {
-            size = (_stack_start as usize)
-                .checked_sub(_start_address as usize)
-                .and_then(|diff| diff.checked_add(TARGET_STACK_SIZE * PLATFORM_NB_HARTS))
-                .unwrap();
-        }
-
-        (MIRALIS_START_ADDR, size.next_power_of_two())
+        compute_miralis_memory_start_and_size(MIRALIS_START_ADDR)
     }
 
     fn get_max_valid_address() -> usize {
-        usize::MAX
+        get_max_valid_address_default()
     }
 
     fn create_virtual_devices() -> [VirtDevice; 2] {
-        let virtual_clint: device::VirtDevice = VirtDevice {
-            start_addr: CLINT_BASE,
-            size: CLINT_SIZE,
-            name: "CLINT",
-            device_interface: &VIRT_CLINT,
-        };
-
-        let virtual_test_device: device::VirtDevice = VirtDevice {
-            start_addr: TEST_DEVICE_BASE,
-            size: TEST_DEVICE_SIZE,
-            name: "TEST",
-            device_interface: &VIRT_TEST_DEVICE,
-        };
-
-        [virtual_clint, virtual_test_device]
+        create_virtual_devices_default()
     }
 
     fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
+        get_clint_default()
     }
 
     fn create_passthrough_device() -> VirtDevice {
-        unsafe {
-            PASS_THROUGH_MODULE.attach_devices();
-
-            VirtDevice {
-                start_addr: PASSTHROUGH_BASE,
-                size: PASSTHROUGH_SIZE,
-                name: "passthrough_module",
-                device_interface: &PASS_THROUGH_MODULE,
-            }
-        }
+        create_passthrough_device_default()
     }
 }
 
