@@ -1,6 +1,4 @@
 //! Firmware Virtualisation
-use core::usize;
-
 use miralis_core::abi;
 
 use crate::arch::pmp::pmpcfg;
@@ -13,6 +11,7 @@ use crate::decoder::{decode, Instr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
+use crate::utils::sign_extend;
 use crate::{debug, device, utils};
 
 /// The execution mode, either virtualized firmware or native payload.
@@ -350,20 +349,14 @@ impl VirtContext {
                 let offset = address - device.start_addr;
 
                 match device.device_interface.read_device(offset, *len) {
-                    Ok(mut value) => {
-                        value = if *is_unsigned {
-                            (value as u64).try_into().unwrap()
+                    Ok(value) => {
+                        let value = if !is_unsigned {
+                            sign_extend(value, *len)
                         } else {
-                            (value as i64 as u64).try_into().unwrap()
+                            value
                         };
 
-                        let mask = if len.to_bits() < usize::BITS as usize {
-                            (1 << len.to_bits()) - 1
-                        } else {
-                            usize::MAX
-                        };
-
-                        self.set(*rd, value & mask);
+                        self.set(*rd, value);
                         self.pc += if *is_compressed { 2 } else { 4 };
                     }
                     Err(err) => panic!("Error reading {}: {}", device.name, err),
