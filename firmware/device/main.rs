@@ -14,8 +14,8 @@ fn main() -> ! {
     unsafe {
         // Test read
         assert_eq!(
-            (TEST_DEVICE_MAGIC_REGISTER as *const u32).read_volatile(),
-            0xbeef
+            (TEST_DEVICE_MAGIC_REGISTER as *const u32).read_volatile() as usize,
+            0xbeef as usize
         );
         assert_eq!(
             (TEST_DEVICE_REMOTE_REGISTER as *const u32).read_volatile(),
