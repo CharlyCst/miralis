@@ -1,0 +1,40 @@
+name: Push Stats
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  Miralis:
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: --deny warnings
+    steps:
+      # Checkout the Miralis repository
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }} # Ignore automatic merge commit
+      # Checkout the Miralis stats repository 
+    - uses: actions/checkout@v4
+      with:
+        repository: 'CharlyCst/miralis-commit-stats'
+        token: '${{ secrets.MIRALIS_STATS_REPO }}'
+        path: 'stats'
+    - uses: extractions/setup-just@v2 # Install `just`
+    - name: Setup Toolchain
+      run: just install-toolchain
+    - name: Push stats
+      shell: bash
+      run: |
+        ./misc/push_stats.sh --commit
+        cd stats
+        git config user.name "Miralis Bot"
+        git config user.email "<>"
+        git add .
+        git commit -m "[Automated] push stats from Miralis CI"
+        git push
+
+
