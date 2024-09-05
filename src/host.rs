@@ -29,4 +29,8 @@ impl MiralisContext {
             devices: Plat::create_virtual_devices(),
         }
     }
+
+    pub fn get_pmp(&mut self) -> &mut PmpGroup {
+        &mut self.pmp
+    }
 }

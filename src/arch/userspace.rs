@@ -10,6 +10,7 @@ use spin::Mutex;
 
 use super::{mie, mstatus, Architecture, Csr, MCause, Mode};
 use crate::arch::{HardwareCapability, PmpGroup};
+use crate::decoder::Instr;
 use crate::main;
 use crate::virt::VirtContext;
 
@@ -215,5 +216,9 @@ impl Architecture for HostArch {
 
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) {
         Self::write_csr(csr, Self::read_csr(csr) | bits_mask);
+    }
+
+    unsafe fn handle_virtual_load_store(_instr: Instr, _ctx: &mut VirtContext) {
+        todo!();
     }
 }

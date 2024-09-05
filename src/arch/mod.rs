@@ -16,6 +16,7 @@ pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
+use crate::decoder::Instr;
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -73,6 +74,10 @@ pub trait Architecture {
     /// SAFETY:
     /// The trap info must correspond to a valid trap info, no further checks are performed.
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize;
+
+    /// SAFETY:
+    /// None so far, TODO
+    unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext);
 }
 
 // ——————————————————————————— Hardware Detection ——————————————————————————— //
