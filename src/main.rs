@@ -60,8 +60,6 @@ mod userspace_linker_definitions {
 use userspace_linker_definitions::*;
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
-    // For now we simply park all the harts other than the boot one
-
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
     let hart_id = Arch::read_csr(Csr::Mhartid);
@@ -95,6 +93,9 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     // Configure PMP registers, if available
     if mctx.pmp.nb_pmp >= 8 {
+        // By activating this entry it's possible to catch all memory accesses
+        mctx.pmp.set(0, usize::MAX, pmpcfg::INACTIVE);
+
         // List of devices to protect (the first one is Miralis itself)
         let devices = [
             Plat::get_miralis_memory_start_and_size(),
@@ -105,11 +106,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         // Protect memory to trap firmware read/writes
         for (i, &(start, size)) in devices.iter().enumerate() {
             mctx.pmp
-                .set(i, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
+                .set(i + 1, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
         }
 
         // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-        let inactive_index = devices.len();
+        let inactive_index = devices.len() + 2;
         mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
 
         // Finally, set the last PMP to grant access to the whole memory
@@ -123,7 +124,9 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         mctx.virt_pmp_offset = (inactive_index + 1) as u8;
 
         // Compute the number of virtual PMPs available
-        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 2;
+        // It's whatever is left after setting pmp's for devices, pmp for address translation,
+        // inactive entry and the last pmp to allow all the access
+        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 3;
 
         if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
             nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
@@ -149,7 +152,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         ctx.set_csr(
             Csr::Misa,
             Arch::read_csr(Csr::Misa) & !misa::DISABLED,
-            &mctx.hw,
+            &mut mctx,
         );
         ctx.pc = firmware_addr;
     }
@@ -207,7 +210,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     match exec_mode {
-        ExecutionMode::Firmware => ctx.handle_firmware_trap(&mctx),
+        ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx),
         ExecutionMode::Payload => ctx.handle_payload_trap(),
     }
 

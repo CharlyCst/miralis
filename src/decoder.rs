@@ -5,7 +5,7 @@ use crate::platform::{Plat, Platform};
 const OPCODE_MASK: usize = 0b1111111 << 0;
 
 /// A RISC-V instruction.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instr {
     Ecall,
     Ebreak,
@@ -109,7 +109,7 @@ fn decode_opcode(raw: usize) -> Opcode {
                 _ => Opcode::Unknown,
             }
         }
-        // Register-based load and store instruction for C set start with 0b00
+        // Register-based load and store instructions for C set start with 0b00
         0b00 => Opcode::Compressed,
         _ => Opcode::Unknown,
     }

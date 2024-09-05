@@ -4,11 +4,13 @@ use core::marker::PhantomData;
 use core::{ptr, usize};
 
 use super::{Arch, Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
-use crate::arch::{mstatus, HardwareCapability, PmpGroup};
+use crate::arch::{mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
 use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
+use crate::decoder::Instr;
 use crate::virt::VirtContext;
-use crate::{_bss_start, _bss_stop, _stack_start, main};
-
+use crate::{
+    _bss_start, _bss_stop, _stack_start, main, utils, RegisterContextGetter, RegisterContextSetter,
+};
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
 
@@ -531,6 +533,131 @@ impl Architecture for MetalArch {
             Csr::Unknown => (),
         };
     }
+
+    unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext) {
+        // Cannot use a raw_trap_handler because of MPRV=1, addresses would be translated
+        let trap: usize = _mprv_trap_handler as usize;
+
+        // Zero out mcause to check if a trap occured during emulation
+        Self::write_csr(Csr::Mcause, 0);
+
+        let saved_satp = Self::read_csr(Csr::Satp);
+        let saved_mpp = parse_mpp_return_mode(Self::read_csr(Csr::Mstatus));
+
+        Self::set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+        Self::write_csr(Csr::Satp, ctx.csr.satp);
+        Self::sfence_vma(None, None);
+
+        let mut _rd_value: usize; //without "_" compiler warns that the value is never read in case of a store macro
+        let addr: usize;
+        let mut cause: usize;
+        let mut mtval: usize;
+        let mut mstatus: usize;
+        let mut mip: usize;
+        let fw_pc = ctx.trap_info.mepc;
+
+        macro_rules! construct_asm {
+            ($instr:literal) => {
+                asm!(
+                    "csrr {1}, mtvec",
+                    "csrw mtvec, {mtvec}",
+
+                    "li {0}, 1",           // Set MPRV bit to 1
+                    "slli {0}, {0}, 17",
+                    "csrs mstatus, {0}",
+
+                    concat!($instr, " {rd}, 0({addr})"),
+
+                    "csrc mstatus, {0}",
+                    "csrw mtvec, {1}",
+                    out(reg) _,
+                    out(reg) _,
+                    out("t1") cause,
+                    out("t2") mtval,
+                    out("t4") mstatus,
+                    out("t6") mip,
+                    mtvec = in(reg) trap,
+                    addr = in(reg) addr,
+                    rd = inout(reg) _rd_value,
+                )
+            };
+        }
+
+        match instr {
+            Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len,
+                is_compressed,
+                is_unsigned,
+            } => {
+                addr = utils::calculate_addr(ctx.get(rs1), imm);
+                _rd_value = 0;
+
+                match (len, is_unsigned) {
+                    (Width::Byte, false) => construct_asm!("lb"),
+                    (Width::Byte2, false) => construct_asm!("lh"),
+                    (Width::Byte4, false) => construct_asm!("lw"),
+                    (Width::Byte8, false) => construct_asm!("ld"),
+                    (Width::Byte, true) => construct_asm!("lbu"),
+                    (Width::Byte2, true) => construct_asm!("lhu"),
+                    (Width::Byte4, true) => construct_asm!("lwu"),
+                    _ => panic!("Unknown load instruction"),
+                };
+
+                if Self::read_csr(Csr::Mcause) != 0 {
+                    // Unsure if a trap might happen here with a correct emulation, probably not?
+
+                    ctx.trap_info.mcause = cause;
+                    ctx.trap_info.mstatus = mstatus;
+                    ctx.trap_info.mtval = mtval;
+                    ctx.trap_info.mepc = fw_pc;
+                    ctx.trap_info.mip = mip;
+
+                    ctx.emulate_jump_trap_handler();
+                } else {
+                    ctx.set(rd, _rd_value);
+                    ctx.pc += if is_compressed { 2 } else { 4 };
+                }
+            }
+            Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len,
+                is_compressed,
+            } => {
+                addr = utils::calculate_addr(ctx.get(rs1), imm);
+                _rd_value = ctx.get(rs2);
+
+                match len {
+                    Width::Byte => construct_asm!("sb"),
+                    Width::Byte2 => construct_asm!("sh"),
+                    Width::Byte4 => construct_asm!("sw"),
+                    Width::Byte8 => construct_asm!("sd"),
+                };
+
+                if Self::read_csr(Csr::Mcause) != 0 {
+                    ctx.trap_info.mcause = cause;
+                    ctx.trap_info.mstatus = mstatus;
+                    ctx.trap_info.mtval = mtval;
+                    ctx.trap_info.mepc = fw_pc;
+                    ctx.trap_info.mip = mip;
+
+                    ctx.emulate_jump_trap_handler();
+                } else {
+                    ctx.pc += if is_compressed { 2 } else { 4 };
+                }
+            }
+            _ => todo!("Instruction not yet implemented: {:?}", instr),
+        }
+
+        // Restore the changed values
+        Self::write_csr(Csr::Satp, saved_satp);
+        Self::set_mpp(saved_mpp);
+        Self::sfence_vma(None, None);
+    }
 }
 
 /// Finds the number of non-zero PMP registers, i.e. the effective number of PMP registers
@@ -997,7 +1124,25 @@ _tracing_trap_handler:
 #"
 );
 
+global_asm!(
+    r#"
+.text
+.align 4
+.global _mprv_trap_handler
+_mprv_trap_handler:
+    csrr t5, mepc
+    addi t5, t5, 4
+    csrrw t5, mepc, t5
+    csrr t1, mcause 
+    csrr t2, mtval
+    csrr t4, mstatus
+    csrr t6, mip
+    mret
+"#,
+);
+
 extern "C" {
     fn _raw_trap_handler();
     fn _tracing_trap_handler();
+    fn _mprv_trap_handler();
 }

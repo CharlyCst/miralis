@@ -3,8 +3,8 @@ use miralis_core::abi;
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{
-    mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr,
-    HardwareCapability, MCause, Mode, Register, TrapInfo,
+    mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr, MCause, Mode,
+    Register, TrapInfo,
 };
 use crate::benchmark::Benchmark;
 use crate::decoder::{decode, Instr};
@@ -171,7 +171,7 @@ impl VirtCsr {
 }
 
 impl VirtContext {
-    fn emulate_privileged_instr(&mut self, instr: &Instr, hw: &HardwareCapability) {
+    fn emulate_privileged_instr(&mut self, instr: &Instr, mctx: &mut MiralisContext) {
         match instr {
             Instr::Wfi => {
                 // NOTE: for now there is no safeguard which guarantees that we will eventually get
@@ -198,47 +198,47 @@ impl VirtContext {
             }
             Instr::Csrrw { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
-                self.set_csr(csr, self.get(rs1), hw);
+                self.set_csr(csr, self.get(rs1), mctx);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrs { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
-                self.set_csr(csr, tmp | self.get(rs1), hw);
+                self.set_csr(csr, tmp | self.get(rs1), mctx);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrwi { csr, rd, uimm } => {
                 self.set(rd, self.get(csr));
-                self.set_csr(csr, *uimm, hw);
+                self.set_csr(csr, *uimm, mctx);
                 self.pc += 4;
             }
             Instr::Csrrsi { csr, rd, uimm } => {
                 let tmp = self.get(csr);
-                self.set_csr(csr, tmp | uimm, hw);
+                self.set_csr(csr, tmp | uimm, mctx);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrc { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
-                self.set_csr(csr, tmp & !self.get(rs1), hw);
+                self.set_csr(csr, tmp & !self.get(rs1), mctx);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrci { csr, rd, uimm } => {
                 let tmp = self.get(csr);
-                self.set_csr(csr, tmp & !uimm, hw);
+                self.set_csr(csr, tmp & !uimm, mctx);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Mret => {
                 match parse_mpp_return_mode(self.csr.mstatus) {
                     Mode::M => {
-                        log::trace!("mret to m-mode");
+                        log::trace!("mret to m-mode to {:x}", self.trap_info.mepc);
                         // Mret is jumping back to machine mode, do nothing
                     }
                     Mode::S if Plat::HAS_S_MODE => {
-                        log::trace!("mret to s-mode with MPP");
+                        log::trace!("mret to s-mode with MPP to {:x}", self.trap_info.mepc);
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         self.mode = Mode::S;
 
@@ -473,9 +473,7 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the firmware
-    pub fn handle_firmware_trap(&mut self, mctx: &MiralisContext) {
-        let hw = &mctx.hw;
-
+    pub fn handle_firmware_trap(&mut self, mctx: &mut MiralisContext) {
         let cause = self.trap_info.get_cause();
         match cause {
             MCause::EcallFromSMode if Policy::ecall_from_firmware(self).overwrites() => {
@@ -494,7 +492,7 @@ impl VirtContext {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_privileged_instr(&instr, hw);
+                self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
@@ -512,15 +510,27 @@ impl VirtContext {
                         instr
                     );
                     self.handle_device_access_fault(&instr, &device);
+                } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
+                    // Can an access to device be legally requested with a virtual address?
+                    let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                    let instr = decode(instr);
+                    let instr_clone = instr.clone();
+                    log::trace!("Access fault with a virtual address: {:x?}", instr);
+                    unsafe {
+                        Arch::handle_virtual_load_store(instr_clone, self);
+                    }
                 } else {
                     log::trace!(
-                        "No matching devices found for address: {:x}",
-                        self.csr.mtval
+                        "No matching device found for address: {:x}",
+                        self.trap_info.mtval
                     );
                     self.emulate_jump_trap_handler();
                 }
             }
             MCause::InstrAccessFault => {
+                let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                let instr = decode(instr);
+                log::trace!("Instruction access fault: {:x?}", instr);
                 self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
@@ -759,7 +769,7 @@ pub trait RegisterContextSetter<R> {
 /// A trait implemented by virtual contexts to write registers whose value depends on
 /// hardware capabilities..
 pub trait HwRegisterContextSetter<R> {
-    fn set_csr(&mut self, register: R, value: usize, hw: &HardwareCapability);
+    fn set_csr(&mut self, register: R, value: usize, mctx: &mut MiralisContext);
 }
 
 impl RegisterContextGetter<Register> for VirtContext {
@@ -860,7 +870,8 @@ impl RegisterContextGetter<Csr> for VirtContext {
 }
 
 impl HwRegisterContextSetter<Csr> for VirtContext {
-    fn set_csr(&mut self, register: Csr, value: usize, hw: &HardwareCapability) {
+    fn set_csr(&mut self, register: Csr, value: usize, mctx: &mut MiralisContext) {
+        let hw = &mctx.hw;
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
@@ -895,6 +906,29 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
 
                 // MPRV : 17 : write anything
+                let mprv = (value & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
+                let previous_mprv =
+                    (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
+
+                let pmp = mctx.get_pmp();
+
+                if mprv != previous_mprv {
+                    log::trace!("vMPRV set to {:b}", mprv);
+                    let config = if mprv != 0 {
+                        pmpcfg::TOR | pmpcfg::X
+                    } else {
+                        pmpcfg::INACTIVE
+                    };
+                    pmp.set(0, usize::MAX, config);
+                    unsafe { Arch::sfence_vma(None, None) };
+                }
+
+                VirtCsr::set_csr_field(
+                    &mut new_value,
+                    mstatus::MPRV_OFFSET,
+                    mstatus::MPRV_FILTER,
+                    mprv,
+                );
                 // MBE : 37 : write anything
                 let mbe: usize = (self.csr.mstatus & mstatus::MBE_FILTER) >> mstatus::MBE_OFFSET;
                 // SBE : 36 : equals MBE
@@ -1067,14 +1101,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.set_csr(
                     Csr::Mstatus,
                     mstatus | (value & mstatus::SSTATUS_FILTER),
-                    hw,
+                    mctx,
                 );
             }
             Csr::Sie => {
                 // Clear S bits
                 let mie = self.get(Csr::Mie) & !mie::SIE_FILTER;
                 // Set S bits to new value
-                self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), hw);
+                self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), mctx);
             }
             Csr::Stvec => self.csr.stvec = value,
             Csr::Scounteren => (), // Read-only 0
@@ -1103,7 +1137,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // Clear S bits
                 let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
                 // Set S bits to new value
-                self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), hw);
+                self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
             }
             Csr::Satp => {
                 self.csr.satp = value & satp::SATP_CHANGE_FILTER;
@@ -1146,8 +1180,8 @@ where
     VirtContext: HwRegisterContextSetter<R>,
 {
     #[inline]
-    fn set_csr(&mut self, register: &'a R, value: usize, hw: &HardwareCapability) {
-        self.set_csr(*register, value, hw)
+    fn set_csr(&mut self, register: &'a R, value: usize, mctx: &mut MiralisContext) {
+        self.set_csr(*register, value, mctx)
     }
 }
 
@@ -1237,11 +1271,11 @@ mod tests {
     #[test]
     fn csrr_external_interrupt() {
         let hw = unsafe { Arch::detect_hardware() };
-        let mctx = MiralisContext::new(hw);
+        let mut mctx = MiralisContext::new(hw);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
 
         // This should set mip.SEIP
-        ctx.set_csr(Csr::Mip, mie::SEIE_FILTER, &mctx.hw);
+        ctx.set_csr(Csr::Mip, mie::SEIE_FILTER, &mut mctx);
 
         assert_eq!(
             Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
@@ -1250,7 +1284,7 @@ mod tests {
         );
 
         // This should clear mip.SEIP
-        ctx.set_csr(Csr::Mip, 0, &mctx.hw);
+        ctx.set_csr(Csr::Mip, 0, &mut mctx);
 
         assert_eq!(
             Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,

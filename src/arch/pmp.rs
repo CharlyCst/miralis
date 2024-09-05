@@ -98,7 +98,7 @@ impl PmpGroup {
         &self.pmpcfg
     }
 
-    fn set_pmpcfg(&mut self, index: usize, cfg: u8) {
+    pub fn set_pmpcfg(&mut self, index: usize, cfg: u8) {
         let reg_idx = index / 8;
         let inner_idx = index % 8;
         let shift = inner_idx * 8;
@@ -108,7 +108,7 @@ impl PmpGroup {
         self.pmpcfg[reg_idx] |= (cfg as usize) << shift
     }
 
-    fn get_cfg(&self, index: usize) -> u8 {
+    pub fn get_cfg(&self, index: usize) -> u8 {
         let reg_idx = index / 8;
         let inner_idx = index % 8;
         let reg = self.pmpcfg[reg_idx];
