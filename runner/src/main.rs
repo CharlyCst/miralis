@@ -27,6 +27,8 @@ enum Subcommands {
     CheckConfig(CheckConfigArgs),
     /// Start GDB and connect to a running instance
     Gdb(GdbArgs),
+    /// List the artifacts
+    Artifact(ArtifactArgs),
 }
 
 #[derive(Args)]
@@ -74,6 +76,13 @@ struct GdbArgs {
     config: Option<PathBuf>,
 }
 
+#[derive(Args)]
+struct ArtifactArgs {
+    #[arg(long, action)]
+    /// Print the list of artifacts in markdown format
+    markdown: bool,
+}
+
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
 fn main() {
@@ -83,5 +92,6 @@ fn main() {
         Subcommands::Build(args) => build::build(&args),
         Subcommands::Gdb(args) => gdb::gdb(&args),
         Subcommands::CheckConfig(args) => config::check_config(&args),
+        Subcommands::Artifact(args) => artifacts::list_artifacts(&args),
     };
 }

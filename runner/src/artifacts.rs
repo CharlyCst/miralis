@@ -16,6 +16,7 @@ use crate::path::{
     get_artifact_manifest_path, get_artifacts_path, get_target_config_path, get_target_dir_path,
     get_workspace_path, is_older,
 };
+use crate::ArtifactArgs;
 
 // —————————————————————————— Target & Build Info ——————————————————————————— //
 
@@ -60,10 +61,8 @@ struct ArtifactManifest {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 struct Bin {
-    #[allow(dead_code)] // TODO: remove when eventually used
     description: Option<String>,
     url: Option<String>,
-    #[allow(dead_code)] // TODO: remove when eventually used
     repo: Option<String>,
 }
 
@@ -360,4 +359,34 @@ pub fn download_artifact(name: &str, url: &str) -> PathBuf {
     }
 
     artifact
+}
+
+// ————————————————————————————— List artifacts ————————————————————————————— //
+
+pub fn list_artifacts(args: &ArtifactArgs) {
+    // Collect and sort the artifacts
+    let manifest = read_artifact_manifest();
+    let mut artifacts: Vec<(&String, &Bin)> = manifest.bin.iter().collect();
+    artifacts.sort_by_key(|(name, _)| *name);
+
+    // Display the list
+    for (name, metadata) in artifacts {
+        if args.markdown {
+            // Print as markdown
+            println!("## {}\n", name);
+            if let Some(ref desc) = metadata.description {
+                println!("{}", desc);
+            }
+            if let Some(ref url) = metadata.url {
+                println!("- [Download link]({})", url);
+            }
+            if let Some(ref repo) = metadata.repo {
+                println!("- [Source repository]({})", repo)
+            }
+            println!("");
+        } else {
+            // Otherwise simply print the name
+            println!("{}", name)
+        }
+    }
 }
