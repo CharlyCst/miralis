@@ -23,13 +23,13 @@ impl MetalArch {
 
 impl Architecture for MetalArch {
     fn init() {
+        // Install trap handler
+        Self::install_handler(_raw_trap_handler as usize);
         // Initialize `medeleg` to ensure all exceptions trap to Miralis
         unsafe { Arch::write_csr(Csr::Medeleg, 0) };
         // Ensure that there are no PT set, so that firmware in U-mode
         // Wouldn't try to read physical address as virtual (with jump, for example)
         unsafe { Arch::write_csr(Csr::Satp, 0) };
-        // Install trap handler
-        Self::install_handler(_raw_trap_handler as usize);
     }
 
     #[inline]
