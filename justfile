@@ -29,37 +29,37 @@ test:
 	cargo fmt --all -- --check
 
 	# Checking configs...
-	cargo run -q --package runner -- check-config ./config
+	cargo run -q -- check-config ./config
 
 	# Running integration tests...
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware ecall
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware csr_ops
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware pmp
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware breakpoint
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware mepc
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware mcause
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware mret
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ctx_switch
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware sandbox
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware interrupt
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware os_ecall
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware vectored_mtvec
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware device
-	cargo run --package runner -- run --config {{qemu_virt_release}} --firmware default
+	cargo run -- run --config {{qemu_virt}} --firmware ecall
+	cargo run -- run --config {{qemu_virt}} --firmware csr_ops
+	cargo run -- run --config {{qemu_virt}} --firmware pmp
+	cargo run -- run --config {{qemu_virt}} --firmware breakpoint
+	cargo run -- run --config {{qemu_virt}} --firmware mepc
+	cargo run -- run --config {{qemu_virt}} --firmware mcause
+	cargo run -- run --config {{qemu_virt}} --firmware mret
+	cargo run -- run --config {{qemu_virt}} --firmware os_ctx_switch
+	cargo run -- run --config {{qemu_virt}} --firmware sandbox
+	cargo run -- run --config {{qemu_virt}} --firmware interrupt
+	cargo run -- run --config {{qemu_virt}} --firmware os_ecall
+	cargo run -- run --config {{qemu_virt}} --firmware vectored_mtvec
+	cargo run -- run --config {{qemu_virt}} --firmware device
+	cargo run -- run --config {{qemu_virt_release}} --firmware default
 
 	# Testing with Miralis as firmware
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware miralis
+	cargo run -- run --config {{qemu_virt}} --firmware miralis
 
 	# Testing with external projects
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware opensbi
-	cargo run --package runner -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
-	cargo run --package runner -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
-	cargo run --package runner -- run --config {{qemu_virt_sifive_u54}} --firmware linux
-	cargo run --package runner -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
+	cargo run -- run --config {{qemu_virt}} --firmware opensbi
+	cargo run -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
+	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
+	cargo run -- run --config {{qemu_virt_sifive_u54}} --firmware linux
+	cargo run -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
 
 	# Test benchmark code
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware csr_write
-	cargo run --package runner -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
+	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
+	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
@@ -70,23 +70,23 @@ unit-test:
 
 # Run Miralis
 run firmware=default config=config:
-	cargo run --package runner -- run -v --config {{config}} --firmware {{firmware}}
+	cargo run -- run -v --config {{config}} --firmware {{firmware}}
 
 # Build Miralis with the provided config
 build config:
-	cargo run --package runner -- build --config {{config}}
+	cargo run -- build --config {{config}}
 
 # Build a given firmware with the provided config
 build-firmware firmware config=config:
-	cargo run --package runner -- build -v --config {{config}} --firmware {{firmware}}
+	cargo run -- build -v --config {{config}} --firmware {{firmware}}
 
 # Run Miralis but wait for a debugger to connect
 debug firmware=default:
-	cargo run --package runner -- run -v --firmware {{firmware}} --debug --stop
+	cargo run -- run -v --firmware {{firmware}} --debug --stop
 
 # Connect a debugger to a running Miralis instance
 gdb:
-	cargo run --package runner -- gdb
+	cargo run -- gdb
 
 # Install the rust toolchain and required components
 install-toolchain:
