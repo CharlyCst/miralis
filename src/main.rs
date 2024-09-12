@@ -18,13 +18,16 @@ mod driver;
 mod host;
 mod logger;
 mod platform;
+mod policy;
 mod utils;
 mod virt;
+
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
 use platform::{init, Plat, Platform};
+use policy::{Policy, PolicyModule};
 
 use crate::arch::{misa, Csr, Register};
 use crate::host::MiralisContext;
@@ -66,14 +69,15 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     init();
     log::info!("Hello, world!");
     log::info!("Platform name: {}", Plat::name());
+    log::info!("Policy module: {}", Policy::name());
     log::info!("Hart ID: {}", hart_id);
-    log::info!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
-    log::info!(
+    log::debug!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
+    log::debug!(
         "vmisa:   0x{:x}",
         Arch::read_csr(Csr::Misa) & !misa::DISABLED
     );
-    log::info!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
-    log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
+    log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
+    log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();

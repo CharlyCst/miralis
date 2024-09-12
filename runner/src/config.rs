@@ -32,6 +32,8 @@ pub struct Config {
     pub benchmark: Benchmark,
     #[serde(default)]
     pub target: Targets,
+    #[serde(default)]
+    pub policy: Policy,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -124,6 +126,29 @@ pub struct Target {
     pub stack_size: Option<usize>,
 }
 
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Policy {
+    pub name: Option<PolicyModule>,
+}
+
+#[derive(Deserialize, Debug, Clone, Copy)]
+pub enum PolicyModule {
+    #[serde(rename = "default")]
+    Default,
+    #[serde(rename = "keystone")]
+    Keystone,
+}
+
+impl fmt::Display for PolicyModule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PolicyModule::Default => write!(f, "default"),
+            PolicyModule::Keystone => write!(f, "keystone"),
+        }
+    }
+}
+
 #[derive(Deserialize, Debug, Clone, Copy, Default)]
 pub enum Profiles {
     #[serde(rename = "dev")]
@@ -144,6 +169,7 @@ impl Config {
         envs.extend(self.platform.build_envs());
         envs.extend(self.benchmark.build_envs());
         envs.extend(self.target.build_envs());
+        envs.extend(self.policy.buid_envs());
         envs
     }
 }
@@ -268,6 +294,14 @@ impl Targets {
             &self.miralis.stack_size.or(Some(0x8000)),
         );
 
+        envs.envs
+    }
+}
+
+impl Policy {
+    fn buid_envs(&self) -> HashMap<String, String> {
+        let mut envs = EnvVars::new();
+        envs.insert("MIRALIS_POLICY_NAME", &self.name);
         envs.envs
     }
 }

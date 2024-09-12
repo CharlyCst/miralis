@@ -11,6 +11,7 @@ use crate::decoder::{decode, Instr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
+use crate::policy::{Policy, PolicyModule};
 use crate::utils::sign_extend;
 use crate::{debug, device, utils};
 
@@ -477,6 +478,9 @@ impl VirtContext {
 
         let cause = self.trap_info.get_cause();
         match cause {
+            MCause::EcallFromSMode if Policy::ecall_from_firmware(self).overwrites() => {
+                // Nothing to do, the Policy module handles those ecalls
+            }
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
             }
@@ -555,6 +559,9 @@ impl VirtContext {
 
         // We only care about ecalls.
         match cause {
+            MCause::EcallFromSMode if Policy::ecall_from_payload(self).overwrites() => {
+                // Nothing to do, the Policy module handles those ecalls
+            }
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
             }

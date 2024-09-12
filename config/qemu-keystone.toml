@@ -1,0 +1,18 @@
+# A simple configuration to run on QEMU with the Keystone policy
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 1
+boot_hart_id = 0
+
+[benchmark]
+enable = false
+
+[policy]
+name = "keystone"
