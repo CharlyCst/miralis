@@ -1,0 +1,24 @@
+[package]
+name = "miralis"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "miralis"
+path = "main.rs"
+
+[dependencies]
+uart_16550 = "0.3.0"
+spin = "0.5.2"
+log = { workspace = true }
+miralis_core = { path = "../crates/core" }
+miralis_abi = { path = "../crates/abi" }
+config_helpers = { path = "../crates/config_helpers" }
+
+[features]
+# When running on host architecture as a userspace application, such as when
+# running unit tests.
+userspace = []
+platform_visionfive2 = []
+platform_miralis = []
+
