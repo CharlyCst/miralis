@@ -9,14 +9,14 @@ use uart_16550::MmioSerialPort;
 
 use super::Platform;
 use crate::config::{
-    PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE, TARGET_START_ADDRESS,
+    PLATFORM_NAME, PLATFORM_NB_HARTS, TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE,
+    TARGET_START_ADDRESS,
 };
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::{self, VirtDevice};
 use crate::driver::ClintDriver;
 use crate::{_stack_start, _start_address};
-// —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
@@ -24,6 +24,18 @@ const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
+
+// —————————————————————————— Spike Parameters ——————————————————————————— //
+
+/// Symbol used by the Spike simulator.
+#[no_mangle]
+#[used]
+static mut tohost: u64 = 0;
+
+/// Symbol used by the Spike simulator.
+#[no_mangle]
+#[used]
+static mut fromhost: u64 = 0;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -49,7 +61,10 @@ impl Platform for VirtPlatform {
     const NB_HARTS: usize = usize::MAX;
 
     fn name() -> &'static str {
-        "QEMU virt"
+        match PLATFORM_NAME {
+            "spike" => "Spike",
+            _ => "QEMU virt",
+        }
     }
 
     fn init() {
@@ -70,11 +85,17 @@ impl Platform for VirtPlatform {
     }
 
     fn exit_success() -> ! {
-        exit_qemu(true)
+        match PLATFORM_NAME {
+            "spike" => exit_spike(true),
+            _ => exit_qemu(true),
+        }
     }
 
     fn exit_failure() -> ! {
-        exit_qemu(false)
+        match PLATFORM_NAME {
+            "spike" => exit_spike(false),
+            _ => exit_qemu(false),
+        }
     }
 
     fn load_firmware() -> usize {
@@ -124,6 +145,7 @@ impl Platform for VirtPlatform {
     }
 }
 
+/// Exit the QEMU emulator.
 fn exit_qemu(success: bool) -> ! {
     let code = if success { 0x5555 } else { (1 << 16) | 0x3333 };
 
@@ -133,6 +155,22 @@ fn exit_qemu(success: bool) -> ! {
     }
 
     // Loop forever if shutdown failed
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
+/// Exit the spike emulator
+fn exit_spike(success: bool) -> ! {
+    let code: i32 = if success { 0x1 } else { 0x3 };
+
+    // Requests spike exit by writing exit code to .tohost
+    // The write must be volatile to ensure it is not optimized away.
+    unsafe {
+        ptr::write_volatile(&mut tohost as *mut u64, code as u64);
+    }
+
+    // Wait until spike shuts down
     loop {
         core::hint::spin_loop();
     }

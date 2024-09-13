@@ -9,12 +9,13 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
-use crate::config::{read_config, Config};
+use crate::config::{read_config, Config, Platforms};
 use crate::RunArgs;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
 const QEMU: &str = "qemu-system-riscv64";
+const SPIKE: &str = "spike";
 
 #[rustfmt::skip]
 const QEMU_ARGS: &[&str] = &[
@@ -44,7 +45,36 @@ pub fn run(args: &RunArgs) {
         None => PathBuf::from_str(&args.firmware).expect("Invalid firmware path"),
     };
 
-    // Prepare the actual command
+    match cfg.platform.name.unwrap_or(Platforms::QemuVirt) {
+        Platforms::QemuVirt => launch_qemu(args, miralis, firmware),
+        Platforms::Spike => launch_spike(args, miralis, firmware),
+        Platforms::VisionFive2 => {
+            panic!("We can't run VisionFive2 on simulator.")
+        }
+    }
+}
+
+fn get_config(args: &RunArgs) -> Config {
+    // Read config and build (or download) artifacts
+    let mut cfg = read_config(&args.config);
+
+    // Override some aspect of the config, if required by the arguments
+    if let Some(max_exits) = args.max_exits {
+        cfg.debug.max_firmware_exits = Some(max_exits);
+    }
+    if let Some(nb_harts) = args.smp {
+        cfg.platform.nb_harts = Some(nb_harts);
+    }
+
+    if cfg.qemu.cpu == Some(String::from("none")) {
+        cfg.qemu.cpu = None;
+    }
+
+    cfg
+}
+
+fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
+    let cfg = get_config(args);
     let mut qemu_cmd = Command::new(QEMU);
     qemu_cmd.args(QEMU_ARGS);
     if let Some(machine) = &cfg.qemu.machine {
@@ -108,21 +138,27 @@ pub fn run(args: &RunArgs) {
     }
 }
 
-fn get_config(args: &RunArgs) -> Config {
-    // Read config and build (or download) artifacts
-    let mut cfg = read_config(&args.config);
+fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
+    let cfg = get_config(args);
+    let mut spike_cmd = Command::new(SPIKE);
 
-    // Override some aspect of the config, if required by the arguments
-    if let Some(max_exits) = args.max_exits {
-        cfg.debug.max_firmware_exits = Some(max_exits);
-    }
-    if let Some(nb_harts) = args.smp {
-        cfg.platform.nb_harts = Some(nb_harts);
-    }
+    spike_cmd.arg("--kernel");
 
-    if cfg.qemu.cpu == Some(String::from("none")) {
-        cfg.qemu.cpu = None;
+    spike_cmd.arg(firmware.to_str().unwrap());
+    spike_cmd.arg(raw_to_elf(miralis.to_str().unwrap()));
+
+    if let Some(nb_harts) = cfg.platform.nb_harts {
+        assert!(nb_harts > 0, "Must use at least one core");
+        spike_cmd.arg("-smp").arg(format!("{}", nb_harts));
     }
 
-    cfg
+    let exit_status = spike_cmd.status().expect("Failed to run SPIKE");
+
+    if !exit_status.success() {
+        std::process::exit(exit_status.code().unwrap_or(1));
+    }
+}
+
+fn raw_to_elf(raw_path: &str) -> &str {
+    &raw_path[..raw_path.len() - 4]
 }
