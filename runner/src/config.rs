@@ -4,8 +4,8 @@
 //! appropriate environment variables during Miralis's build.
 
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{fmt, fs};
 
 use serde::Deserialize;
 use walkdir::WalkDir;
@@ -80,6 +80,18 @@ pub enum Platforms {
     QemuVirt,
     #[serde(rename = "visionfive2")]
     VisionFive2,
+    #[serde(rename = "spike")]
+    Spike,
+}
+
+impl fmt::Display for Platforms {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Platforms::QemuVirt => write!(f, "qemu_virt"),
+            Platforms::VisionFive2 => write!(f, "visionfive2"),
+            Platforms::Spike => write!(f, "spike"),
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -211,6 +223,7 @@ impl VCpu {
 impl Platform {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
+        envs.insert("MIRALIS_PLATFORM_NAME", &self.name);
         envs.insert("MIRALIS_PLATFORM_NB_HARTS", &self.nb_harts);
         envs.insert("MIRALIS_PLATFORM_BOOT_HART_ID", &self.boot_hart_id);
         envs.envs

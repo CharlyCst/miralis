@@ -1,0 +1,12 @@
+# A simple configuration to run on the Spike platform
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+name = "spike"
+

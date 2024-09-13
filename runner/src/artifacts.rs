@@ -250,7 +250,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             // Features
             if let Some(plat) = cfg.platform.name {
                 match plat {
-                    Platforms::QemuVirt => {
+                    Platforms::QemuVirt | Platforms::Spike => {
                         // Nothing to do, default platform
                     }
                     Platforms::VisionFive2 => {
