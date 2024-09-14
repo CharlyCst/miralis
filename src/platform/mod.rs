@@ -4,6 +4,7 @@ pub mod visionfive2;
 
 use core::fmt;
 
+use config_select::select_env;
 use log::Level;
 use spin::Mutex;
 
@@ -13,15 +14,15 @@ use crate::driver::ClintDriver;
 use crate::{config, device, logger};
 
 /// Export the current platform.
-/// For now, only QEMU's Virt board is supported
-#[cfg(not(any(feature = "platform_visionfive2", feature = "platform_miralis")))]
-pub type Plat = virt::VirtPlatform;
-
-#[cfg(all(feature = "platform_visionfive2", not(feature = "platform_miralis")))]
-pub type Plat = visionfive2::VisionFive2Platform;
-
-#[cfg(feature = "platform_miralis")]
-pub type Plat = miralis::MiralisPlatform;
+///
+/// We use a custom proc macro that checks the value of an environment variable and select the
+/// appropriate platform accordingly. This makes it possible to avoid adding an ever increasing set
+/// of features and `#[cfg]` guards to select a platform.
+pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
+    "miralis"     => miralis::MiralisPlatform
+    "visionfive2" => visionfive2::VisionFive2Platform
+    _             => virt::VirtPlatform
+];
 
 pub trait Platform {
     fn name() -> &'static str;

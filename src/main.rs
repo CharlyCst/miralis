@@ -23,6 +23,7 @@ mod virt;
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
+use config::PLATFORM_NAME;
 use platform::{init, Plat, Platform};
 
 use crate::arch::{misa, Csr, Register};
@@ -152,7 +153,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // In case we compile Miralis as firmware, we stop execution at that point for the moment
     // This allows us to run Miralis on top as an integration test for the moment
     // In the future, we plan to run Miralis "as firmware" running a firmware
-    if cfg!(feature = "platform_miralis") {
+    if PLATFORM_NAME == "miralis" {
         log::info!("Successfully initialized Miralis as a firmware");
         Plat::exit_success();
     }
