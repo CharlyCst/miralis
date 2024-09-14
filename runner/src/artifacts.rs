@@ -11,7 +11,7 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
-use crate::config::{Config, Platforms, Profiles};
+use crate::config::{Config, Profiles};
 use crate::path::{
     get_artifact_manifest_path, get_artifacts_path, get_target_config_path, get_target_dir_path,
     get_workspace_path, is_older,
@@ -246,18 +246,6 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 
             // Environment variables
             build_cmd.envs(cfg.build_envs());
-
-            // Features
-            if let Some(plat) = cfg.platform.name {
-                match plat {
-                    Platforms::QemuVirt | Platforms::Spike => {
-                        // Nothing to do, default platform
-                    }
-                    Platforms::VisionFive2 => {
-                        build_cmd.arg("--features").arg("platform_visionfive2");
-                    }
-                }
-            }
         }
 
         Target::Firmware(ref firmware) => {
@@ -269,7 +257,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             build_cmd.arg("--package").arg(firmware);
 
             if firmware == "miralis" {
-                build_cmd.arg("--features").arg("platform_miralis");
+                build_cmd.env("MIRALIS_PLATFORM_NAME", "miralis");
             }
         }
 

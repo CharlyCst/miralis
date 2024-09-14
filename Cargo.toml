@@ -29,6 +29,7 @@ members = [
     "crates/abi",
     "crates/core",
     "crates/config_helpers",
+    "crates/config_select",
 
     # Tooling
     "runner",

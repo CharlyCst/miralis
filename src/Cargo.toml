@@ -14,11 +14,10 @@ log = { workspace = true }
 miralis_core = { path = "../crates/core" }
 miralis_abi = { path = "../crates/abi" }
 config_helpers = { path = "../crates/config_helpers" }
+config_select = { path = "../crates/config_select/" }
 
 [features]
 # When running on host architecture as a userspace application, such as when
 # running unit tests.
 userspace = []
-platform_visionfive2 = []
-platform_miralis = []
 
