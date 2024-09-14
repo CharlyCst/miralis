@@ -149,7 +149,7 @@ fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
 
     if let Some(nb_harts) = cfg.platform.nb_harts {
         assert!(nb_harts > 0, "Must use at least one core");
-        spike_cmd.arg("-smp").arg(format!("{}", nb_harts));
+        spike_cmd.arg("-p").arg(format!("{}", nb_harts));
     }
 
     let exit_status = spike_cmd.status().expect("Failed to run SPIKE");
