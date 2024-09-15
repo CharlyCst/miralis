@@ -74,6 +74,10 @@ fn get_config(args: &RunArgs) -> Config {
 }
 
 fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
+    if !simulator_exists(QEMU) {
+        return;
+    };
+
     let cfg = get_config(args);
     let mut qemu_cmd = Command::new(QEMU);
     qemu_cmd.args(QEMU_ARGS);
@@ -139,6 +143,10 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
 }
 
 fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
+    if !simulator_exists(SPIKE) {
+        return;
+    };
+
     let cfg = get_config(args);
     let mut spike_cmd = Command::new(SPIKE);
 
@@ -161,4 +169,27 @@ fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
 
 fn raw_to_elf(raw_path: &str) -> &str {
     &raw_path[..raw_path.len() - 4]
+}
+
+fn simulator_exists(program: &str) -> bool {
+    // Use the "command -v" shell command to check if the program exists
+    let status = Command::new("sh")
+        .arg("-c")
+        .arg(format!("command -v {}", program))
+        .status();
+
+    let exists: bool = match status {
+        Ok(exit_status) => exit_status.success(),
+        Err(_) => false,
+    };
+
+    if !exists {
+        println!("======================================");
+        println!("|                                     ");
+        println!("|        {} not installed    ", program);
+        println!("|                                     ");
+        println!("======================================");
+    }
+
+    return exists;
 }

@@ -1,6 +1,7 @@
 default          := "default"
 config           := "config.toml"
 benchmark        := "ecall_benchmark"
+spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
@@ -56,6 +57,29 @@ test:
 	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
 	cargo run -- run --config {{qemu_virt_sifive_u54}} --firmware linux
 	cargo run -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
+
+	# Run all tests again with spike tests - they will be ignored if spike isn't installed
+	cargo run -- run --config {{spike}} --firmware ecall
+	cargo run -- run --config {{spike}} --firmware csr_ops
+	cargo run -- run --config {{spike}} --firmware pmp
+	cargo run -- run --config {{spike}} --firmware breakpoint
+	cargo run -- run --config {{spike}} --firmware mepc
+	cargo run -- run --config {{spike}} --firmware mcause
+	cargo run -- run --config {{spike}} --firmware mret
+	cargo run -- run --config {{spike}} --firmware os_ctx_switch
+	cargo run -- run --config {{spike}} --firmware sandbox
+	cargo run -- run --config {{spike}} --firmware interrupt
+	cargo run -- run --config {{spike}} --firmware os_ecall
+	cargo run -- run --config {{spike}} --firmware vectored_mtvec
+	cargo run -- run --config {{spike}} --firmware device
+	cargo run -- run --config {{spike}} --firmware default
+
+	# Testing with Miralis as firmware
+	cargo run -- run --config {{spike}} --firmware miralis
+
+	# Testing with external projects
+	cargo run -- run --config {{spike}} --firmware opensbi
+	cargo run -- run --config {{spike}} --firmware zephyr --max-exits 1000000
 
 	# Test benchmark code
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
