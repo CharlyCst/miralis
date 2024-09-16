@@ -12,6 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: --deny warnings
+    container:
+      image: frolvlad/alpine-mono
+      ports:
+        - 80
+      volumes:
+        - my_docker_volume:/volume_mount
     steps:
     - uses: actions/checkout@v4
       with:
@@ -20,14 +26,6 @@ jobs:
     - uses: extractions/setup-just@v2 # Install `just`
     - name: Setup Toolchain SPIKE
       run: |
-         git clone https://github.com/riscv-software-src/riscv-isa-sim
-         cd riscv-isa-sim
-         sudo apt-get install device-tree-compiler libboost-regex-dev libboost-system-dev
-         mkdir build
-         cd build
-         sudo ../configure --prefix=$RISCV
-         sudo make
-         sudo make install
          sudo apt-get update -y && sudo apt-get install -y git gcc make g++ device-tree-compiler
          sudo apt-get install -y build-essential gcc g++ libstdc++6
          sudo apt-get install libboost-all-dev
