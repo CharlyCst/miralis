@@ -13,7 +13,7 @@ jobs:
     env:
       RUSTFLAGS: --deny warnings
     container:
-      image: farokhcpu/gcc-boost-cmake
+      image: node:12.18.1
       ports:
         - 80
       volumes:
