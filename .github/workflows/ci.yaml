@@ -13,7 +13,7 @@ jobs:
     env:
       RUSTFLAGS: --deny warnings
     container:
-      image: ubuntu
+      image: farokhcpu/gcc-boost-cmake
       ports:
         - 80
       volumes:
@@ -26,8 +26,6 @@ jobs:
     - uses: extractions/setup-just@v2 # Install `just`
     - name: Setup Toolchain SPIKE
       run: |
-         apt-get update
-         apt-get install libboost-all-dev
          wget https://polybox.ethz.ch/index.php/s/1cSWNGSLoZ8LR7V/download
          export PATH="$pwd:$PATH"
          ls
