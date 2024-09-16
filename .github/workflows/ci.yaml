@@ -26,9 +26,7 @@ jobs:
     - uses: extractions/setup-just@v2 # Install `just`
     - name: Setup Toolchain SPIKE
       run: |
-         sudo apt-get update -y && sudo apt-get install -y git gcc make g++ device-tree-compiler
-         sudo apt-get install -y build-essential gcc g++ libstdc++6
-         sudo apt-get install libboost-all-dev
+         apt-get install libboost-all-dev
          wget https://polybox.ethz.ch/index.php/s/1cSWNGSLoZ8LR7V/download
          export PATH="$pwd:$PATH"
          ls
