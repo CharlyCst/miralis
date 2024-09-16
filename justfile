@@ -58,6 +58,16 @@ test:
 	cargo run -- run --config {{qemu_virt_sifive_u54}} --firmware linux
 	cargo run -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
 
+
+	# Test benchmark code
+	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
+	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
+
+	# Test firmware build
+	just build-firmware default {{qemu_virt}}
+
+
+test-spike:
 	# Run all tests again with spike tests - they will be ignored if spike isn't installed
 	cargo run -- run --config {{spike}} --firmware ecall
 	cargo run -- run --config {{spike}} --firmware csr_ops
@@ -81,12 +91,6 @@ test:
 	cargo run -- run --config {{spike}} --firmware opensbi
 	cargo run -- run --config {{spike}} --firmware zephyr --max-exits 1000000
 
-	# Test benchmark code
-	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
-	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
-
-	# Test firmware build
-	just build-firmware default {{qemu_virt}}
 
 # Run unit tests
 unit-test:

@@ -20,7 +20,7 @@ jobs:
     - uses: extractions/setup-just@v2 # Install `just`
     - name: Setup Toolchain
       run: just install-toolchain
-    - name: Download QEMU
+    - name: Download QEMU & setup Spike
       run: |
         sudo apt-get update
         sudo apt-get install qemu-system-riscv64
@@ -28,6 +28,11 @@ jobs:
         echo ""
         echo "QEMU version:"
         qemu-system-riscv64 --version
+        
+        pwd
+        ls
+        
+
     - name: Test
       # Specify shell to enforce fail fast behavior, see:
       # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference
