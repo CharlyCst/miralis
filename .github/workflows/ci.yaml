@@ -23,7 +23,7 @@ jobs:
          wget https://polybox.ethz.ch/index.php/s/1cSWNGSLoZ8LR7V/download
          export PATH="$pwd:$PATH"
          ls
-         mv download.1 spike
+         mv download spike
          chmod 777 spike
          ./spike
     - name: Download QEMU & setup Spike
