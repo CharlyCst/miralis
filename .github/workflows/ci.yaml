@@ -29,8 +29,9 @@ jobs:
         echo "QEMU version:"
         qemu-system-riscv64 --version
         
-        pwd
-        ls
+        wget https://polybox.ethz.ch/index.php/s/1cSWNGSLoZ8LR7V/download
+        export PATH="./:$PATH"
+        spike
         
 
     - name: Test
