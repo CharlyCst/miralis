@@ -13,7 +13,7 @@ jobs:
     env:
       RUSTFLAGS: --deny warnings
     container:
-      image: ubuntu-base
+      image: ubuntu
       ports:
         - 80
       volumes:
