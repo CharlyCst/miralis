@@ -13,7 +13,7 @@ jobs:
     env:
       RUSTFLAGS: --deny warnings
     container:
-      image: frolvlad/alpine-mono
+      image: ubuntu-base
       ports:
         - 80
       volumes:
