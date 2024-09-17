@@ -183,7 +183,7 @@ pub fn locate_artifact(name: &str) -> Option<Artifact> {
 
 /// Check if one entry match the name
 fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
-    for entry in fs::read_dir(&firmware_path).unwrap() {
+    for entry in fs::read_dir(firmware_path).unwrap() {
         let Ok(file_path) = entry.map(|e| e.path()) else {
             continue;
         };
@@ -371,7 +371,7 @@ pub fn list_artifacts(args: &ArtifactArgs) {
             if let Some(ref repo) = metadata.repo {
                 println!("- [Source repository]({})", repo)
             }
-            println!("");
+            println!();
         } else {
             // Otherwise simply print the name
             println!("{}", name)

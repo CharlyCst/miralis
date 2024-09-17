@@ -53,11 +53,11 @@ impl VirtClint {
         let driver = self.driver.lock();
 
         match (offset, r_width) {
-            (o, Width::Byte4) if o >= MSIP_OFFSET && o < MTIMECMP_OFFSET => {
+            (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
                 let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
                 driver.read_msip(hart)
             }
-            (o, Width::Byte8) if o >= MTIMECMP_OFFSET && o < MTIME_OFFSET => {
+            (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
                 driver.read_mtimecmp(hart)
             }
@@ -81,11 +81,11 @@ impl VirtClint {
         let mut driver = self.driver.lock();
 
         match (offset, w_width) {
-            (o, Width::Byte4) if o >= MSIP_OFFSET && o < MTIMECMP_OFFSET => {
+            (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
                 let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
                 driver.write_msip(hart, value as u32)
             }
-            (o, Width::Byte8) if o >= MTIMECMP_OFFSET && o < MTIME_OFFSET => {
+            (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
                 driver.write_mtimecmp(hart, value)
             }

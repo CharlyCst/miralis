@@ -152,7 +152,7 @@ pub const fn str_list_len(env_var: Option<&str>) -> usize {
 pub const fn parse_str_or(env_var: Option<&'static str>, default: &'static str) -> &'static str {
     match env_var {
         Some(var) => var,
-        None => return default,
+        None => default,
     }
 }
 

@@ -195,7 +195,7 @@ impl EnvVars {
     pub fn insert_array(&mut self, var_name: &str, option: &Option<Vec<String>>) {
         if let Some(values) = option {
             self.envs
-                .insert(String::from(var_name), format!("{}", values.join(",")));
+                .insert(String::from(var_name), values.join(",").to_string());
         }
     }
 }

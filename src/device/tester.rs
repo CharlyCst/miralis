@@ -21,7 +21,7 @@ impl DeviceAccess for VirtTestDevice {
         self.validate_width(r_width)?;
 
         if offset == 0 {
-            Ok(self.magic_value.try_into().unwrap())
+            Ok(self.magic_value)
         } else {
             Ok(self.remote_register.load(Ordering::Relaxed))
         }

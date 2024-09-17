@@ -2,7 +2,7 @@
 use crate::arch::{Csr, Register, Width};
 use crate::platform::{Plat, Platform};
 
-const OPCODE_MASK: usize = 0b1111111 << 0;
+const OPCODE_MASK: usize = 0b1111111;
 
 /// A RISC-V instruction.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -126,7 +126,7 @@ fn decode_c_reg_based(raw: usize) -> Instr {
     match func3 {
         0b111 => {
             let rs2 = rd_rs2;
-            let imm = 0b000 | (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+            let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
             Instr::Store {
                 rs2,
                 rs1,
@@ -137,7 +137,7 @@ fn decode_c_reg_based(raw: usize) -> Instr {
         }
         0b011 => {
             let rd = rd_rs2;
-            let imm = 0b000 | (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+            let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
             Instr::Load {
                 rd,
                 rs1,
@@ -149,7 +149,7 @@ fn decode_c_reg_based(raw: usize) -> Instr {
         }
         0b010 => {
             let rd = rd_rs2;
-            let imm = 0b00 | (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+            let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
             Instr::Load {
                 rd,
                 rs1,
@@ -161,7 +161,7 @@ fn decode_c_reg_based(raw: usize) -> Instr {
         }
         0b110 => {
             let rs2 = rd_rs2;
-            let imm = 0b00 | (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+            let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
             Instr::Store {
                 rs2,
                 rs1,
@@ -196,7 +196,7 @@ fn decode_load(raw: usize) -> Instr {
     let rs1 = Register::from(rs1);
     let rd = Register::from(rd);
 
-    return match func3 {
+    match func3 {
         0b000 => Instr::Load {
             rd,
             rs1,
@@ -254,7 +254,7 @@ fn decode_load(raw: usize) -> Instr {
             is_unsigned: true,
         },
         _ => Instr::Unknown,
-    };
+    }
 }
 
 fn decode_store(raw: usize) -> Instr {
@@ -270,7 +270,7 @@ fn decode_store(raw: usize) -> Instr {
     let rs1 = Register::from(rs1);
     let rs2 = Register::from(rs2);
 
-    return match func3 {
+    match func3 {
         0b000 => Instr::Store {
             rs2,
             rs1,
@@ -300,7 +300,7 @@ fn decode_store(raw: usize) -> Instr {
             is_compressed: false,
         },
         _ => Instr::Unknown,
-    };
+    }
 }
 
 fn decode_system(raw: usize) -> Instr {

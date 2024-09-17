@@ -48,8 +48,7 @@ pub const LOG_TRACE: &[&str; str_list_len(option_env!("MIRALIS_LOG_TRACE"))] =
     &parse_str_list(option_env!("MIRALIS_LOG_TRACE"));
 
 /// The target platform
-pub const PLATFORM_NAME: &'static str =
-    parse_str_or(option_env!("MIRALIS_PLATFORM_NAME"), "qemu_virt");
+pub const PLATFORM_NAME: &str = parse_str_or(option_env!("MIRALIS_PLATFORM_NAME"), "qemu_virt");
 
 /// The expected number of harts.
 pub const PLATFORM_NB_HARTS: usize = {

@@ -35,6 +35,9 @@ test:
 	# Checking configs...
 	cargo run -q -- check-config ./config
 
+	# Run linter....
+	cargo clippy --features userspace -p runner -p miralis -p benchmark_analyzer
+
 	# Running integration tests...
 	cargo run -- run --config {{qemu_virt}} --firmware ecall
 	cargo run -- run --config {{qemu_virt}} --firmware csr_ops
@@ -125,6 +128,7 @@ install-toolchain:
 	rustup component add rustfmt --toolchain "$(cat rust-toolchain)"
 	rustup component add rust-src --toolchain "$(cat rust-toolchain)"
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
+	rustup component add clippy --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
 
 analyze-benchmark input_path:

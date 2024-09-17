@@ -43,14 +43,13 @@ impl Architecture for HostArch {
         let nb_pmp = pmp.nb_pmp as usize;
 
         assert!(
-            nb_pmp as usize <= pmpaddr.len() && nb_pmp as usize <= pmpcfg.len() * 8,
+            nb_pmp <= pmpaddr.len() && nb_pmp <= pmpcfg.len() * 8,
             "Invalid number of PMP registers"
         );
 
-        for idx in 0..nb_pmp {
-            HOST_CTX.lock().csr.pmpaddr[idx] = pmpaddr[idx];
-        }
-        for idx in 0..(nb_pmp / 8) {
+        HOST_CTX.lock().csr.pmpaddr[..nb_pmp].copy_from_slice(&pmpaddr[..nb_pmp]);
+
+        for (idx, _) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
             let cfg = pmpcfg[idx];
             HOST_CTX.lock().csr.pmpcfg[idx * 2] = cfg;
         }

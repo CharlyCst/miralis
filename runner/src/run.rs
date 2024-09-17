@@ -96,10 +96,10 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
     // If a payload is defined in the config, try to load it at the specified address.
     if let Some(payload) = &cfg.target.payload {
         if let Some(payload_name) = &payload.name {
-            let payload = match locate_artifact(&payload_name) {
+            let payload = match locate_artifact(payload_name) {
                 Some(Artifact::Source { name }) => build_target(Target::Payload(name), &cfg),
                 Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-                None => PathBuf::from_str(&payload_name).expect("Invalid payload path"),
+                None => PathBuf::from_str(payload_name).expect("Invalid payload path"),
             };
 
             qemu_cmd.arg("-device").arg(format!(
