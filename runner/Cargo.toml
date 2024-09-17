@@ -3,6 +3,8 @@ name = "runner"
 version = "0.1.0"
 edition = "2021"
 
+license = "MIT"
+
 [dependencies]
 clap = { version = "4.4.11", features = ["derive"] }
 serde = { version = "1.0.196", features = ["derive"] }
