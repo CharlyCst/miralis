@@ -45,7 +45,8 @@ impl ClintDriver {
         // device.
         let time = unsafe { ptr::read_volatile(pointer as *const usize) };
         log::trace!("MTIME value: 0x{:x}", time);
-        return time;
+
+        time
     }
 
     /// Write a new value to the machine timer (mtime)

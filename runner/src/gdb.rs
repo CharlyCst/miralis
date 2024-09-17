@@ -14,7 +14,7 @@ use crate::GdbArgs;
 // ——————————————————————————————— Constants ———————————————————————————————— //
 
 /// A list of GDB executables that support RISC-V 64
-static GDB_EXECUTABLES: &[&'static str] = &[
+static GDB_EXECUTABLES: &[&str] = &[
     "gdb-multiarch",
     "riscv64-elf-gdb",
     "riscv64-unknown-linux-gnu-gdb",

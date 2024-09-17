@@ -1,14 +1,14 @@
 //! Trap handling
 
 use core::fmt;
-use core::mem::size_of;
 
 // ————————————————————————————————— mcause ————————————————————————————————— //
 
-const INTERRUPT_BIT: usize = 1 << (size_of::<usize>() * 8 - 1);
+const INTERRUPT_BIT: usize = 1 << (usize::BITS as usize - 1);
 
 #[derive(Clone, Copy)]
 #[repr(usize)]
+#[allow(clippy::enum_clike_unportable_variant)]
 pub enum MCause {
     // Exceptions
     InstrAddrMisaligned = 0,

@@ -30,9 +30,9 @@ pub fn parse_content(
         stats.iter().for_each(|key| {
             stat_counter_values_map
                 .entry(key.to_string())
-                .or_insert(HashMap::new())
+                .or_default()
                 .entry(counter_name.to_string())
-                .or_insert(Vec::new())
+                .or_default()
                 .push(
                     split
                         .next()
@@ -68,9 +68,9 @@ pub fn compute_statistics(stat_counter_values_map: &HashMap<String, HashMap<Stri
             let scope_name = split.next().unwrap_or(COUNTER_SCOPE);
             let a = scope_stats_counters
                 .entry(scope_name.to_string())
-                .or_insert(HashMap::new())
+                .or_default()
                 .entry(counter_name.to_string())
-                .or_insert(Default::default());
+                .or_default();
 
             if stat == "min" {
                 a.min = *values.iter().min().unwrap()

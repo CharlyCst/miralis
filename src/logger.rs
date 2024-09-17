@@ -32,7 +32,7 @@ impl Logger {
             }
         }
 
-        return false;
+        false
     }
 
     fn filter_by_module(&self, metadata: &Metadata) -> bool {

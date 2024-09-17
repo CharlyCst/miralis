@@ -509,7 +509,7 @@ impl VirtContext {
                         device.name,
                         instr
                     );
-                    self.handle_device_access_fault(&instr, &device);
+                    self.handle_device_access_fault(&instr, device);
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
                     // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };

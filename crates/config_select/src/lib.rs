@@ -35,7 +35,7 @@ pub fn select_env(tokens: TokenStream) -> TokenStream {
     // Or by default an arm with the '_' pattern
     if let Some(default_case) = select_macro.arms.iter().find(|arm| arm.item.is_none()) {
         let target = &default_case.target;
-        return TokenStream::from(quote!(#target));
+        TokenStream::from(quote!(#target))
     } else {
         // If no arm matches
         if let Some(env) = &env {
@@ -79,7 +79,7 @@ struct ChoicePair {
 
 impl Parse for ChoicePair {
     fn parse(input: ParseStream) -> Result<Self> {
-        let item = if let Ok(_) = input.parse::<Token![_]>() {
+        let item = if input.parse::<Token![_]>().is_ok() {
             None
         } else {
             Some(input.parse::<LitStr>()?.value())

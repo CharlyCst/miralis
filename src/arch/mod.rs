@@ -396,11 +396,11 @@ pub enum Width {
 }
 
 impl Width {
-    pub fn to_bits(&self) -> usize {
-        *self as usize
+    pub fn to_bits(self) -> usize {
+        self as usize
     }
 
-    pub fn to_bytes(&self) -> usize {
+    pub fn to_bytes(self) -> usize {
         self.to_bits() / 8
     }
 }
