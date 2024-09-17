@@ -511,13 +511,16 @@ impl VirtContext {
                     );
                     self.handle_device_access_fault(&instr, &device);
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
-                    // Can an access to device be legally requested with a virtual address?
+                    // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                     let instr = decode(instr);
-                    let instr_clone = instr.clone();
-                    log::trace!("Access fault with a virtual address: {:x?}", instr);
+                    log::trace!(
+                        "Access fault {:x?} with a virtual address: {:x}",
+                        &instr,
+                        self.trap_info.mtval
+                    );
                     unsafe {
-                        Arch::handle_virtual_load_store(instr_clone, self);
+                        Arch::handle_virtual_load_store(instr, self);
                     }
                 } else {
                     log::trace!(
@@ -528,9 +531,7 @@ impl VirtContext {
                 }
             }
             MCause::InstrAccessFault => {
-                let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
-                let instr = decode(instr);
-                log::trace!("Instruction access fault: {:x?}", instr);
+                log::trace!("Instruction access fault: {:x?}", self.trap_info);
                 self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
@@ -910,8 +911,12 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 let previous_mprv =
                     (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
 
-                let pmp = mctx.get_pmp();
+                let pmp = &mut mctx.pmp;
 
+                // When vMPRV transitions from 0 to 1, set up a PMP entry to protect all memory.
+                // This allows catching accesses that occur with vMPRV=1, which require a special virtual access handler.
+                // When vMPRV transitions back to 0, remove the protection.
+                // pMPRV is never set to 1 outside of a virtual access handler.
                 if mprv != previous_mprv {
                     log::trace!("vMPRV set to {:b}", mprv);
                     let config = if mprv != 0 {
