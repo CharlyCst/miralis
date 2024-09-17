@@ -544,11 +544,14 @@ impl Architecture for MetalArch {
         let saved_satp = Self::read_csr(Csr::Satp);
         let saved_mpp = parse_mpp_return_mode(Self::read_csr(Csr::Mstatus));
 
+        // Set the MPP mode to match the vMPP
         Self::set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+
+        // Changes to SATP require an sfence instruction to take effect
         Self::write_csr(Csr::Satp, ctx.csr.satp);
         Self::sfence_vma(None, None);
 
-        let mut _rd_value: usize; //without "_" compiler warns that the value is never read in case of a store macro
+        let mut rd_value: usize;
         let addr: usize;
         let mut cause: usize;
         let mut mtval: usize;
@@ -559,26 +562,27 @@ impl Architecture for MetalArch {
         macro_rules! construct_asm {
             ($instr:literal) => {
                 asm!(
-                    "csrr {1}, mtvec",
-                    "csrw mtvec, {mtvec}",
+                    "csrr {1}, mtvec",      // Save regular mtvec
+                    "csrw mtvec, {mtvec}",  // Set up mtvec to an address-space independent
 
-                    "li {0}, 1",           // Set MPRV bit to 1
+                    "li {0}, 1",            // Set MPRV bit to 1
                     "slli {0}, {0}, 17",
                     "csrs mstatus, {0}",
 
                     concat!($instr, " {rd}, 0({addr})"),
 
-                    "csrc mstatus, {0}",
+                    "csrc mstatus, {0}",    // Restore values
                     "csrw mtvec, {1}",
                     out(reg) _,
                     out(reg) _,
                     out("t1") cause,
                     out("t2") mtval,
                     out("t4") mstatus,
+                    out("t5") _,
                     out("t6") mip,
                     mtvec = in(reg) trap,
                     addr = in(reg) addr,
-                    rd = inout(reg) _rd_value,
+                    rd = inout(reg) rd_value,
                 )
             };
         }
@@ -593,7 +597,7 @@ impl Architecture for MetalArch {
                 is_unsigned,
             } => {
                 addr = utils::calculate_addr(ctx.get(rs1), imm);
-                _rd_value = 0;
+                rd_value = 0;
 
                 match (len, is_unsigned) {
                     (Width::Byte, false) => construct_asm!("lb"),
@@ -607,8 +611,6 @@ impl Architecture for MetalArch {
                 };
 
                 if Self::read_csr(Csr::Mcause) != 0 {
-                    // Unsure if a trap might happen here with a correct emulation, probably not?
-
                     ctx.trap_info.mcause = cause;
                     ctx.trap_info.mstatus = mstatus;
                     ctx.trap_info.mtval = mtval;
@@ -617,7 +619,7 @@ impl Architecture for MetalArch {
 
                     ctx.emulate_jump_trap_handler();
                 } else {
-                    ctx.set(rd, _rd_value);
+                    ctx.set(rd, rd_value);
                     ctx.pc += if is_compressed { 2 } else { 4 };
                 }
             }
@@ -629,7 +631,7 @@ impl Architecture for MetalArch {
                 is_compressed,
             } => {
                 addr = utils::calculate_addr(ctx.get(rs1), imm);
-                _rd_value = ctx.get(rs2);
+                rd_value = ctx.get(rs2);
 
                 match len {
                     Width::Byte => construct_asm!("sb"),
@@ -637,6 +639,8 @@ impl Architecture for MetalArch {
                     Width::Byte4 => construct_asm!("sw"),
                     Width::Byte8 => construct_asm!("sd"),
                 };
+
+                let _ = rd_value;
 
                 if Self::read_csr(Csr::Mcause) != 0 {
                     ctx.trap_info.mcause = cause;
@@ -653,9 +657,11 @@ impl Architecture for MetalArch {
             _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
 
-        // Restore the changed values
+        // Restore the original values
         Self::write_csr(Csr::Satp, saved_satp);
         Self::set_mpp(saved_mpp);
+
+        // Ensure memory consistency
         Self::sfence_vma(None, None);
     }
 }
@@ -1124,6 +1130,14 @@ _tracing_trap_handler:
 #"
 );
 
+// —————————————————————————————— Virtual Trap Handler —————————————————————————————— //
+
+// When the pMPRV (Modify Privilege) bit is set and a trap occurs, the default behavior in
+// _raw_trap_handler is to attempt context storage using address translation.
+// However, this approach is incorrect.
+//
+// To address this issue, we set mtvec to point to this custom trap handler.
+// The purpose of this handler is straightforward: it skips the illegal instruction and reads the TrapInfo.
 global_asm!(
     r#"
 .text

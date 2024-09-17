@@ -241,4 +241,32 @@ Then, we need to synchronize vmip.SEIP with mip.SEIP.
 
 ### Mutliharts interrupt
 
-To wake up harts, firmware might use a machine software interrupt (`MSI`) or am machine external interrupt (`MEI`). These interrupts need to be fetched from hardware (`mip`) for each virtual read of `vmip`, as they can occur asynchronously with the execution of the firmware. During a world switch, we need to take care that these interrupts are not installed in the virtual `vmip`, to avoid having an interrupt that can't be cleared by firmware in the virtual context.
+To wake up harts, firmware might use a machine software interrupt (`MSI`) or a machine external interrupt (`MEI`). These interrupts need to be fetched from hardware (`mip`) for each virtual read of `vmip`, as they can occur asynchronously with the execution of the firmware. During a world switch, we need to take care that these interrupts are not installed in the virtual `vmip`, to avoid having an interrupt that can't be cleared by firmware in the virtual context.
+
+## Handling Virtual Memory Accesses from Firmware
+
+The Modify Privilege (MPRV) feature in RISC-V architecture provides fine-grained control over memory privilege levels. When firmware sets its virtual MPRV bit (`vMPRV`) to 1 (typically through an SBI call from the OS), we must navigate this transition with care to maintain correctness and security.
+
+> The MPRV (Modify PRiVilege) bit modifies the effective privilege mode, i.e., the privilege level at which loads and stores execute. When MPRV=0, loads and stores behave as normal, using the translation and protection mechanisms of the current privilege mode. When MPRV=1, load and store memory addresses are translated and protected, and endianness is applied, as though the current privilege mode were set to MPP.
+
+Specifically, when `vMPRV` is set to 1, we want memory accesses to follow the virtual address translation rules without directly affecting the physical privilege state. If any exception occurs while `pMPRV` bit is set to 1, the general trap handler will attempt to resolve physical addresses using page tables, leading to execution errors.
+
+### Overview
+
+1. **Virtual MPRV (`vMPRV`) Activation**:
+   - When firmware sets `vMPRV` to 1, we don't immediately mirror this change in the physical MPRV (`pMPRV`).
+   - Instead, we activate the first PMP entry, effectively denying all read and write accesses.
+   - This approach allows us to catch all accesses that should occur with `MPRV=1` without actually altering the `pMPRV`.
+   - If an access occurs while `vMPRV` is set to 1, it is treated as a virtual access, invoking a special handler.
+   - When firmware sets `vMPRV` to 0, we deactivate the first entry. This way physical address space accesses won't trap to Miralis.
+
+2. **Handling in the virtual access**:
+   - Configure page tables to use the virtual ones (`pSATP` = `vSATP`).
+   - Employ a new trap handler that is simpler, yet not dependent on access privilege mode.
+   - Temporarily set `pMPRV=1`.
+   - Emulate exactly one instruction with virtual addresses.
+   - Restore all original settings.
+
+3. **Exception Handling**:
+   - If an exception occurs during the emulation of virtual access, we want firmware to attribute it to the original instruction.
+   - Therefore, we return the original exception address (`mepc`) while updating other trap-related information.
