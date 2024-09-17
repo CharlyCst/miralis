@@ -3,6 +3,8 @@ name = "vectored_mtvec"
 version = "0.1.0"
 edition = "2021"
 
+license = "MIT"
+
 [[bin]]
 name = "vectored_mtvec"
 path = "main.rs"

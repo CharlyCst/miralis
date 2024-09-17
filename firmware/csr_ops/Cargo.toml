@@ -3,6 +3,8 @@ name = "csr_ops"
 version = "0.1.0"
 edition = "2021"
 
+license = "MIT"
+
 [[bin]]
 name = "csr_ops"
 path = "main.rs"

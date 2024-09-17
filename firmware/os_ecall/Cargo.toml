@@ -3,6 +3,8 @@ name = "os_ecall"
 version = "0.1.0"
 edition = "2021"
 
+license = "MIT"
+
 [[bin]]
 name = "os_ecall"
 path = "main.rs"
