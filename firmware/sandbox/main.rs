@@ -15,6 +15,8 @@ setup_binary!(main);
 
 fn main() -> ! {
     let mut mcause: usize;
+    let x: usize = 0x80002000;
+    // Check access fault with default memory privilege
     unsafe {
         // Setup trap handler
         asm!(
@@ -22,8 +24,7 @@ fn main() -> ! {
             handler = in(reg) _raw_trap_handler as usize,
         );
 
-        // Try to read an address that should be protected by Miralis
-        let x: usize = 0x80002000;
+        // Try to read (Load) an address that should be protected by Miralis
         ptr::read_volatile(x as *const usize);
 
         // Check what error we encountered
@@ -33,7 +34,28 @@ fn main() -> ! {
         );
     }
 
-    assert_eq!(mcause, 0x5, "exception was not access fault");
+    assert_eq!(mcause, 0x5, "exception was not load access fault");
+
+    // Check access fault with memory privilege modified
+    // It's not a complete test of accesses with MPRV bit active,
+    // Since SATP are not installed, no address translation is happenning in fact
+    unsafe {
+        let mpp: i32 = 0b1 << 11; // MPP = S-mode
+        asm!(
+            "li {0}, 1",
+            "slli {0}, {0}, 17",
+            "csrs mstatus, {0}",    // Set MPRV bit to 1
+            "csrw mstatus, {mpp}",  // Set MPP to S-mode
+            "sd x0, 0({x})",        // Try to store something at a protected address
+            "csrr t6, mcause",
+            out(reg) _,
+            x = in(reg) x,
+            mpp = in(reg) mpp,
+            out("t6") mcause,
+        );
+    }
+
+    assert_eq!(mcause, 0x7, "exception was not store access fault");
 
     success();
 }
