@@ -515,7 +515,7 @@ impl VirtContext {
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                     let instr = decode(instr);
                     log::trace!(
-                        "Access fault {:x?} with a virtual address: {:x}",
+                        "Access fault {:x?} with a virtual address: 0x{:x}",
                         &instr,
                         self.trap_info.mtval
                     );

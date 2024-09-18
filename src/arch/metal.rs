@@ -569,7 +569,10 @@ impl Architecture for MetalArch {
                     "slli {0}, {0}, 17",
                     "csrs mstatus, {0}",
 
+                    ".option push",
+                    ".option norvc",
                     concat!($instr, " {rd}, 0({addr})"),
+                    ".option pop",
 
                     "csrc mstatus, {0}",    // Restore values
                     "csrw mtvec, {1}",
