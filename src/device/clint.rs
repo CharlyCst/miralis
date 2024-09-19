@@ -1,10 +1,12 @@
 use spin::Mutex;
 
+use crate::arch::mie;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
     MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
 };
 use crate::driver::ClintDriver;
+use crate::virt::VirtContext;
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //
 
@@ -27,8 +29,9 @@ impl DeviceAccess for VirtClint {
         offset: usize,
         w_width: Width,
         value: usize,
+        ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
-        self.write_clint(offset, w_width, value)
+        self.write_clint(offset, w_width, value, ctx)
     }
 }
 
@@ -47,10 +50,24 @@ impl VirtClint {
         }
     }
 
+    fn clear_interrupts(&self, ctx: &mut VirtContext, mtime: usize, mtimecmp: usize, msip: usize) {
+        if msip == 0 {
+            ctx.csr.mip &= !(mie::MSIE_FILTER);
+            log::debug!("vmsip cleared");
+        }
+        if mtime < mtimecmp {
+            ctx.csr.mip &= !(mie::MTIE_FILTER);
+            log::debug!("vmtip cleared");
+        }
+        // log::debug!("interrupts cleared");
+    }
+
     pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
         log::trace!("Read from CLINT at offset 0x{:x}", offset);
         self.validate_offset(offset)?;
         let driver = self.driver.lock();
+
+        //if virtual interrupt is pending, should we fix the values?
 
         match (offset, r_width) {
             (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
@@ -71,6 +88,7 @@ impl VirtClint {
         offset: usize,
         w_width: Width,
         value: usize,
+        ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
         log::trace!(
             "Write to CLINT at offset 0x{:x} with a value 0x{:x}",
@@ -79,21 +97,34 @@ impl VirtClint {
         );
         self.validate_offset(offset)?;
         let mut driver = self.driver.lock();
+        let mut err = false;
 
         match (offset, w_width) {
             (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
                 let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
-                driver.write_msip(hart, value as u32)
+                driver.write_msip(hart, value as u32);
             }
             (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
-                driver.write_mtimecmp(hart, value)
+                driver.write_mtimecmp(hart, value);
             }
             (o, Width::Byte8) if o == MTIME_OFFSET => {
                 driver.write_mtime(value);
-                Ok(())
             }
-            _ => Err("Invalid CLINT address"),
+            _ => err = true,
+        }
+
+        self.clear_interrupts(
+            ctx,
+            driver.read_mtime(),
+            driver.read_mtimecmp(ctx.hart_id).unwrap(),
+            driver.read_msip(ctx.hart_id).unwrap(),
+        );
+
+        if !err {
+            Ok(())
+        } else {
+            Err("Invalid CLINT address")
         }
     }
 }

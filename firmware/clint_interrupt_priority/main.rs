@@ -63,22 +63,34 @@ fn test_priority_timer_interrupts() -> ! {
     unsafe {
         asm!(
             "csrw mtvec, {handler}",       // Setup trap handler
+            "csrc mstatus, {mstatus_mie}", // Enable interrupts
             "csrs mie, {mtie}",            // Enable MTIE and MSIE
             handler = in(reg) _raw_interrupt_trap_handler as usize,
             mtie = in(reg) 0x88,
-        );
-    }
-
-    // Expect to trap on both interrupts one by one
-    // Interrupts should already arrive, no need for wfi
-    unsafe {
-        asm!(
-            "csrs mstatus, {mstatus_mie}",  // Enable interrupts
             mstatus_mie = in(reg) 0x8,
         );
     }
 
-    success();
+    // Expect to trap on both interrupts one by one
+    for _ in 1..2 {
+        unsafe {
+            asm!("wfi");
+        }
+    }
+
+    let mip: usize;
+    unsafe {
+        asm!(
+            "csrr {mip}, mip",            // Enable MTIE and MSIE
+            mip = out(reg) mip,
+        );
+    }
+
+    if mip == 0 {
+        success()
+    } else {
+        failure()
+    }
 }
 
 /// This function should be called from the raw trap handler
@@ -117,7 +129,11 @@ extern "C" fn trap_handler() {
     }
 
     unsafe {
-        asm!("mret");
+        asm!(
+            "csrs mstatus, {mstatus_mie}",  // Enable interrupts
+            "mret",
+            mstatus_mie = in(reg) 0x8,
+        );
     }
 }
 

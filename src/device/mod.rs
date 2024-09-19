@@ -1,6 +1,7 @@
 //! Base device classes
 
 use crate::arch::Width;
+use crate::virt::VirtContext;
 
 pub mod clint;
 pub mod tester;
@@ -23,6 +24,11 @@ pub fn find_matching_device(address: usize, devices: &[VirtDevice]) -> Option<&V
 
 pub trait DeviceAccess: Sync + Send {
     fn read_device(&self, offset: usize, r_width: Width) -> Result<usize, &'static str>;
-    fn write_device(&self, offset: usize, w_width: Width, value: usize)
-        -> Result<(), &'static str>;
+    fn write_device(
+        &self,
+        offset: usize,
+        w_width: Width,
+        value: usize,
+        ctx: &mut VirtContext,
+    ) -> Result<(), &'static str>;
 }

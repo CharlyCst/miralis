@@ -233,6 +233,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         }
         _ => {} // No execution mode transition
     }
+    ctx.update_interrupts(mctx);
 }
 
 /// Handle the trap coming from miralis
@@ -379,7 +380,7 @@ mod tests {
         ctx.mode = Mode::M;
 
         ctx.csr.mstatus = 0;
-        ctx.csr.mie = 0b1;
+        ctx.csr.mie = 0b10;
         ctx.csr.mideleg = 0;
         ctx.csr.mtvec = 0x80200024; // Dummy mtvec
 
@@ -387,22 +388,22 @@ mod tests {
         ctx.trap_info.mepc = 0x80200042; // Dummy address
         ctx.trap_info.mstatus = 0b1000;
         ctx.trap_info.mcause = MCause::Breakpoint as usize; // TODO : use a real int.
-        ctx.trap_info.mip = 0b1;
+        ctx.trap_info.mip = 0b10;
         ctx.trap_info.mtval = 0;
 
         unsafe {
-            Arch::write_csr(Csr::Mie, 0b1);
-            Arch::write_csr(Csr::Mip, 0b1);
+            Arch::write_csr(Csr::Mie, 0b10);
+            Arch::write_csr(Csr::Mip, 0b10);
             Arch::write_csr(Csr::Mideleg, 0);
         };
         handle_trap(&mut ctx, &mut mctx);
 
         assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "mideleg must be 0");
-        assert_eq!(Arch::read_csr(Csr::Mie), 0b1, "mie must be 1");
+        assert_eq!(Arch::read_csr(Csr::Mie), 0b10, "mie must be 1");
         // assert_eq!(Arch::read_csr(Csr::Mip), 0, "mip must be 0"); // TODO : uncomment if using a real int.
         assert_eq!(ctx.pc, 0x80200024, "pc must be at handler start");
-        assert_eq!(ctx.csr.mip, 0b1, "mip must to be updated");
-        assert_eq!(ctx.csr.mie, 1, "mie must not change");
+        assert_eq!(ctx.csr.mip, 0b10, "mip must to be updated");
+        assert_eq!(ctx.csr.mie, 2, "mie must not change");
         assert_eq!(ctx.csr.mideleg, 0, "mideleg must not change");
         assert_eq!(ctx.csr.mepc, 0x80200042);
         assert_eq!(
