@@ -6,7 +6,7 @@
 use core::panic;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, ExitCode};
 use std::{env, fs};
 
 use serde::Deserialize;
@@ -177,7 +177,8 @@ pub fn locate_artifact(name: &str) -> Option<Artifact> {
         return Some(artifact.clone());
     }
 
-    // Could not find artifact
+    // Could not find artifact - exit process
+    println!("Artifact {} not found exiting runner build.rs", name);
     None
 }
 
@@ -351,7 +352,7 @@ pub fn download_artifact(name: &str, url: &str) -> PathBuf {
 
 // ————————————————————————————— List artifacts ————————————————————————————— //
 
-pub fn list_artifacts(args: &ArtifactArgs) {
+pub fn list_artifacts(args: &ArtifactArgs) -> ExitCode {
     // Collect and sort the artifacts
     let manifest = read_artifact_manifest();
     let mut artifacts: Vec<(&String, &Bin)> = manifest.bin.iter().collect();
@@ -377,4 +378,6 @@ pub fn list_artifacts(args: &ArtifactArgs) {
             log::info!("{}", name)
         }
     }
+
+    ExitCode::SUCCESS
 }

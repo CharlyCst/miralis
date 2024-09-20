@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 use std::{fmt, fs};
 
 use serde::Deserialize;
@@ -338,7 +339,7 @@ pub fn read_config(path: &Option<PathBuf>) -> Config {
 // —————————————————————————————— Check Config —————————————————————————————— //
 
 /// Print an error if the config is not valid.
-pub fn check_config(args: &CheckConfigArgs) {
+pub fn check_config(args: &CheckConfigArgs) -> ExitCode {
     if args.config.is_file() {
         check_config_file(&args.config)
     } else {
@@ -350,6 +351,8 @@ pub fn check_config(args: &CheckConfigArgs) {
             check_config_file(entry.path())
         }
     }
+
+    ExitCode::SUCCESS
 }
 
 fn check_config_file(config: &Path) {
