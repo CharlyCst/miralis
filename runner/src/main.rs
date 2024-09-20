@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
 use log::LevelFilter;
@@ -88,7 +89,7 @@ struct ArtifactArgs {
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
-fn main() {
+fn main() -> ExitCode {
     let args = CliArgs::parse();
 
     // Set the log level based on the --verbose flag
@@ -106,5 +107,5 @@ fn main() {
         Subcommands::Gdb(args) => gdb::gdb(&args),
         Subcommands::CheckConfig(args) => config::check_config(&args),
         Subcommands::Artifact(args) => artifacts::list_artifacts(&args),
-    };
+    }
 }
