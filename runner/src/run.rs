@@ -34,7 +34,7 @@ const PAYLOAD_ADDR: u64 = 0x80400000;
 
 /// Run Miralis on QEMU
 pub fn run(args: &RunArgs) {
-    println!("Running Miralis with '{}' firmware", &args.firmware);
+    log::info!("Running Miralis with '{}' firmware", &args.firmware);
     let cfg = get_config(args);
 
     // Build or retrieve the artifacts to run
@@ -49,7 +49,7 @@ pub fn run(args: &RunArgs) {
         Platforms::QemuVirt => launch_qemu(args, miralis, firmware),
         Platforms::Spike => launch_spike(args, miralis, firmware),
         Platforms::VisionFive2 => {
-            panic!("We can't run VisionFive2 on simulator.")
+            log::error!("We can't run VisionFive2 on simulator.");
         }
     }
 }
@@ -121,15 +121,15 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) {
         qemu_cmd.arg("-S");
     }
 
-    if args.verbose {
-        println!();
-        print!("{}", QEMU);
-        for arg in qemu_cmd.get_args() {
-            print!(" {}", arg.to_str().unwrap());
-        }
-        println!();
-        println!();
-    }
+    log::debug!(
+        "{}\n{}",
+        QEMU,
+        qemu_cmd
+            .get_args()
+            .map(|arg| arg.to_str().unwrap())
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
 
     let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
 

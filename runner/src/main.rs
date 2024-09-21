@@ -1,20 +1,27 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
+use log::LevelFilter;
+
+use crate::logger::RunnerLogger;
 
 mod artifacts;
 mod build;
 mod config;
 mod gdb;
+mod logger;
 mod path;
 mod run;
-
 // —————————————————————————————— CLI Parsing ——————————————————————————————— //
 
 #[derive(Parser)]
 struct CliArgs {
     #[command(subcommand)]
     command: Subcommands,
+
+    /// Enable verbose output
+    #[arg(long, short, action = clap::ArgAction::SetTrue)]
+    verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -39,8 +46,6 @@ struct RunArgs {
     debug: bool,
     #[arg(long, action)]
     stop: bool,
-    #[arg(short, long, action)]
-    verbose: bool,
     #[arg(short, long, default_value = "default")]
     firmware: String,
     #[arg(long)]
@@ -53,8 +58,6 @@ struct RunArgs {
 
 #[derive(Args)]
 struct BuildArgs {
-    #[arg(short, long, action)]
-    verbose: bool,
     #[arg(long)]
     /// Path to the configuration file to use
     config: Option<PathBuf>,
@@ -87,6 +90,16 @@ struct ArtifactArgs {
 
 fn main() {
     let args = CliArgs::parse();
+
+    // Set the log level based on the --verbose flag
+    let log_level = if args.verbose {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+
+    RunnerLogger::init(log_level).unwrap();
+
     match args.command {
         Subcommands::Run(args) => run::run(&args),
         Subcommands::Build(args) => build::build(&args),

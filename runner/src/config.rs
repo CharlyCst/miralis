@@ -322,7 +322,7 @@ pub fn read_config(path: &Option<PathBuf>) -> Config {
     let config = match config {
         Ok(config) => config,
         Err(_) => {
-            println!("No config file found");
+            log::warn!("No config file found, using default configuration");
             // Creating a default config
             String::from("")
         }
@@ -356,15 +356,15 @@ fn check_config_file(config: &Path) {
     let content = match fs::read_to_string(config) {
         Ok(content) => content,
         Err(error) => {
-            println!("Could not read config: {}", error);
+            log::error!("Could not read config: {}", error);
             std::process::exit(1);
         }
     };
 
     match toml::from_str::<Config>(&content) {
-        Ok(_) => println!("Config {} is valid", config.display()),
+        Ok(_) => log::info!("Config {} is valid", config.display()),
         Err(err) => {
-            println!("Config {} is not valid:\n{:?}", config.display(), err);
+            log::error!("Config {} is not valid:\n{:?}", config.display(), err);
             std::process::exit(1);
         }
     }

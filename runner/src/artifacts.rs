@@ -217,7 +217,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         }
     };
     let path = get_target_dir_path(&target, mode);
-    println!("{:?}", path);
+    log::info!("Path: {:?}", path);
 
     let mut build_cmd = Command::new(env!("CARGO"));
     build_cmd
@@ -374,7 +374,7 @@ pub fn list_artifacts(args: &ArtifactArgs) {
             println!();
         } else {
             // Otherwise simply print the name
-            println!("{}", name)
+            log::info!("{}", name)
         }
     }
 }
