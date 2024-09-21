@@ -12,3 +12,4 @@ toml = "0.8.10"
 benchmark_analyzer = { path = "../benchmark_analyzer" }
 config_helpers = { path = "../crates/config_helpers" }
 walkdir = "2"
+log =  {workspace = true}

@@ -15,19 +15,19 @@ pub fn build(args: &BuildArgs) {
             Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
             None => PathBuf::from_str(firmware).expect("Invalid firmware path"),
         };
-        println!("Built firmware, binary available at:");
-        println!("{}", firmware.display());
+        log::info!("Built firmware, binary available at:");
+        log::info!("{}", firmware.display());
     } else {
         let miralis = build_target(Target::Miralis, &cfg);
 
         if let Some(config) = &args.config {
-            println!(
+            log::info!(
                 "Built Miralis with config '{}', binary available at:",
                 config.display()
             );
         } else {
-            println!("Built Miralis, binary available at:");
+            log::info!("Built Miralis, binary available at:");
         }
-        println!("{}", miralis.display());
+        log::info!("{}", miralis.display());
     }
 }

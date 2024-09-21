@@ -36,7 +36,9 @@ test:
 	cargo run -q -- check-config ./config
 
 	# Run linter....
-	cargo clippy --features userspace -p runner -p miralis -p benchmark_analyzer
+	cargo clippy --features userspace -p miralis
+	cargo clippy -p runner
+	cargo clippy -p benchmark_analyzer
 
 	# Running integration tests...
 	cargo run -- run --config {{qemu_virt}} --firmware ecall
@@ -105,7 +107,7 @@ unit-test:
 
 # Run Miralis
 run firmware=default config=config:
-	cargo run -- run -v --config {{config}} --firmware {{firmware}}
+	cargo run -- --verbose run  --config {{config}} --firmware {{firmware}}
 
 # Build Miralis with the provided config
 build config:
@@ -113,11 +115,11 @@ build config:
 
 # Build a given firmware with the provided config
 build-firmware firmware config=config:
-	cargo run -- build -v --config {{config}} --firmware {{firmware}}
+	cargo run -- --verbose build --config {{config}} --firmware {{firmware}}
 
 # Run Miralis but wait for a debugger to connect
 debug firmware=default:
-	cargo run -- run -v --firmware {{firmware}} --debug --stop
+	cargo run -- --verbose run --firmware {{firmware}} --debug --stop
 
 # Connect a debugger to a running Miralis instance
 gdb:
