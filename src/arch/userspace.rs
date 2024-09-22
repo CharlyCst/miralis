@@ -75,8 +75,16 @@ impl Architecture for HostArch {
         instr as usize
     }
 
-    unsafe fn sfence_vma(_vaddr: Option<usize>, _asid: Option<usize>) {
-        log::debug!("Userspace sfence.vma");
+    unsafe fn sfencevma(_vaddr: Option<usize>, _asid: Option<usize>) {
+        log::debug!("Userspace sfencevma");
+    }
+
+    unsafe fn hfencegvma(_: Option<usize>, _: Option<usize>) {
+        log::debug!("Userspace hfencegvma")
+    }
+
+    unsafe fn hfencevvma(_: Option<usize>, _: Option<usize>) {
+        log::debug!("Userspace hfencevvma")
     }
 
     unsafe fn detect_hardware() -> HardwareCapability {
@@ -144,6 +152,29 @@ impl Architecture for HostArch {
             Csr::Sip => ctx.csr.mip & mie::SIE_FILTER,
             Csr::Satp => ctx.csr.satp,
             Csr::Scontext => ctx.csr.scontext,
+            Csr::Hstatus => ctx.csr.hstatus,
+            Csr::Hedeleg => ctx.csr.hedeleg,
+            Csr::Hideleg => ctx.csr.hideleg,
+            Csr::Hvip => ctx.csr.hvip,
+            Csr::Hip => ctx.csr.hip,
+            Csr::Hie => ctx.csr.hie,
+            Csr::Hgeip => ctx.csr.hgeip,
+            Csr::Hgeie => ctx.csr.hgeie,
+            Csr::Henvcfg => ctx.csr.henvcfg,
+            Csr::Hcounteren => ctx.csr.hcounteren,
+            Csr::Htimedelta => ctx.csr.htimedelta,
+            Csr::Htval => ctx.csr.htval,
+            Csr::Htinst => ctx.csr.htinst,
+            Csr::Hgatp => ctx.csr.hgatp,
+            Csr::Vsstatus => ctx.csr.vsstatus,
+            Csr::Vsie => ctx.csr.vsie,
+            Csr::Vstvec => ctx.csr.vstvec,
+            Csr::Vsscratch => ctx.csr.vsscratch,
+            Csr::Vsepc => ctx.csr.vsepc,
+            Csr::Vscause => ctx.csr.vscause,
+            Csr::Vstval => ctx.csr.vstval,
+            Csr::Vsip => ctx.csr.vsip,
+            Csr::Vsatp => ctx.csr.vsatp,
             Csr::Unknown => panic!("Unkown csr!"),
         }
     }
@@ -204,6 +235,29 @@ impl Architecture for HostArch {
             Csr::Sip => ctx.csr.mip = ctx.csr.mip & !mie::SIE_FILTER | value & mie::SIE_FILTER,
             Csr::Satp => ctx.csr.satp = value,
             Csr::Scontext => ctx.csr.scontext = value,
+            Csr::Hstatus => ctx.csr.hstatus = value,
+            Csr::Hedeleg => ctx.csr.hedeleg = value,
+            Csr::Hideleg => ctx.csr.hideleg = value,
+            Csr::Hvip => ctx.csr.hvip = value,
+            Csr::Hip => ctx.csr.hip = value,
+            Csr::Hie => ctx.csr.hie = value,
+            Csr::Hgeip => {}
+            Csr::Hgeie => ctx.csr.hgeie = value,
+            Csr::Henvcfg => ctx.csr.henvcfg = value,
+            Csr::Hcounteren => ctx.csr.hcounteren = value,
+            Csr::Htimedelta => ctx.csr.htimedelta = value,
+            Csr::Htval => ctx.csr.htval = value,
+            Csr::Htinst => ctx.csr.htinst = value,
+            Csr::Hgatp => ctx.csr.hgatp = value,
+            Csr::Vsstatus => ctx.csr.vsstatus = value,
+            Csr::Vsie => ctx.csr.vsie = value,
+            Csr::Vstvec => ctx.csr.vstvec = value,
+            Csr::Vsscratch => ctx.csr.vsscratch = value,
+            Csr::Vsepc => ctx.csr.vsepc = value,
+            Csr::Vscause => ctx.csr.vscause = value,
+            Csr::Vstval => ctx.csr.vstval = value,
+            Csr::Vsip => ctx.csr.vsip = value,
+            Csr::Vsatp => ctx.csr.vsatp = value,
             Csr::Unknown => panic!("Unkown csr!"),
         }
         prev_val

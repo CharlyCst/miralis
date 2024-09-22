@@ -43,6 +43,7 @@ pub trait Platform {
     fn get_max_valid_address() -> usize;
 
     const HAS_S_MODE: bool = config::VCPU_S_MODE;
+    const HAS_H_MODE: bool = config::VCPU_H_MODE;
     const NB_HARTS: usize;
 }
 

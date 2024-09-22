@@ -152,6 +152,56 @@ pub enum Csr {
     /// Supervisor-mode context register
     Scontext,
 
+    /// Hypervisor and Virtual Supervisor CSRs
+
+    /// Hypervisor Status Register
+    Hstatus,
+    /// Hypervisor Exception Delegation Register
+    Hedeleg,
+    /// Hypervisor Interrupt Delegation Register
+    Hideleg,
+    /// Hypervisor Virtual Interrupt Pending Register
+    Hvip,
+    /// Hypervisor Interrupt Pending Register
+    Hip,
+    /// Hypervisor Interrupt Enable Register
+    Hie,
+    /// Hypervisor Guest External Interrupt Pending Register
+    Hgeip,
+    /// Hypervisor Guest External Interrupt Enable Register
+    Hgeie,
+    /// Hypervisor Environment Configuration Register
+    Henvcfg,
+    /// Hypervisor Counter-Enable Register
+    Hcounteren,
+    /// Hypervisor Time Delta Register
+    Htimedelta,
+    /// Hypervisor Trap Value Register
+    Htval,
+    /// Hypervisor Trap Instruction Register
+    Htinst,
+    /// Hypervisor Guest Address Translation and Protection Register
+    Hgatp,
+
+    /// Virtual Supervisor Status Register
+    Vsstatus,
+    /// Virtual Supervisor Interrupt Enable
+    Vsie,
+    /// Virtual Supervisor Trap-Vector Base Address
+    Vstvec,
+    /// Virtual Supervisor Scratch Register
+    Vsscratch,
+    /// Virtual Supervisor Exception Program Counter
+    Vsepc,
+    /// Virtual Supervisor Cause Register
+    Vscause,
+    /// Virtual Supervisor Trap Value Register
+    Vstval,
+    /// Virtual Supervisor Interrupt Pending Register
+    Vsip,
+    /// Virtual Supervisor Address Translation and Protection
+    Vsatp,
+
     /// An unknown CSR
     Unknown,
 }

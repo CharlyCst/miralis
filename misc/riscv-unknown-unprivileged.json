@@ -13,6 +13,6 @@
     "panic-strategy": "abort",
     "disable-redzone": true,
     "eh-frame-header": false,
-    "features": "+m,+a",
+    "features": "+m,+a,+h",
     "executables": true
 }

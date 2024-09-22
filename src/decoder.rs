@@ -48,7 +48,16 @@ pub enum Instr {
     },
     Mret,
     Sret,
-    Vfencevma {
+    /// Fence instructions
+    Sfencevma {
+        rs1: Register,
+        rs2: Register,
+    },
+    Hfencevvma {
+        rs1: Register,
+        rs2: Register,
+    },
+    Hfencegvma {
         rs1: Register,
         rs2: Register,
     },
@@ -320,7 +329,19 @@ fn decode_system(raw: usize) -> Instr {
                 let rs1 = Register::from(rs1);
                 let rs2 = (raw >> 20) & 0b11111;
                 let rs2 = Register::from(rs2);
-                return Instr::Vfencevma { rs1, rs2 };
+                return Instr::Sfencevma { rs1, rs2 };
+            }
+            _ if func7 == 0b0010001 => {
+                let rs1 = Register::from(rs1);
+                let rs2 = (raw >> 20) & 0b11111;
+                let rs2 = Register::from(rs2);
+                return Instr::Hfencevvma { rs1, rs2 };
+            }
+            _ if func7 == 0b0110001 => {
+                let rs1 = Register::from(rs1);
+                let rs2 = (raw >> 20) & 0b11111;
+                let rs2 = Register::from(rs2);
+                return Instr::Hfencegvma { rs1, rs2 };
             }
             _ => Instr::Unknown,
         };
@@ -376,7 +397,7 @@ fn decode_csr(csr: usize) -> Csr {
         0xF15 => Csr::Mconfigptr,
         0x302 => {
             if !Plat::HAS_S_MODE {
-                log::info!(
+                log::warn!(
                     "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
                     csr
                 );
@@ -387,7 +408,7 @@ fn decode_csr(csr: usize) -> Csr {
         }
         0x303 => {
             if !Plat::HAS_S_MODE {
-                log::info!(
+                log::warn!(
                     "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
                     csr
                 );
@@ -397,24 +418,22 @@ fn decode_csr(csr: usize) -> Csr {
             }
         }
         0x34A => {
-            log::info!(
-                "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
-                csr
-            );
-            // TODO: add support for platform misa
-            if true {
+            if !Plat::HAS_H_MODE {
+                log::warn!(
+                    "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
+                    csr
+                );
                 Csr::Unknown
             } else {
                 Csr::Mtinst
             }
         }
         0x34B => {
-            log::info!(
-                "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
-                csr
-            );
-            // TODO: add support for platform misa
-            if true {
+            if !Plat::HAS_H_MODE {
+                log::warn!(
+                    "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
+                    csr
+                );
                 Csr::Unknown
             } else {
                 Csr::Mtval2
@@ -571,6 +590,170 @@ fn decode_csr(csr: usize) -> Csr {
                 Csr::Scontext
             }
         }
+
+        // Hypervisor and Virtual Supervisor CSRs
+        0x600 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hstatus
+            }
+        }
+        0x602 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hedeleg
+            }
+        }
+        0x603 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hideleg
+            }
+        }
+        0x645 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hvip
+            }
+        }
+        0x644 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hip
+            }
+        }
+        0x604 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hie
+            }
+        }
+        0xe12 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hgeip
+            }
+        }
+        0x607 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hgeie
+            }
+        }
+        0x60a => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Henvcfg
+            }
+        }
+        0x606 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hcounteren
+            }
+        }
+        0x605 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Htimedelta
+            }
+        }
+        0x643 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Htval
+            }
+        }
+        0x64a => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Htinst
+            }
+        }
+        0x680 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Hgatp
+            }
+        }
+        0x200 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vsstatus
+            }
+        }
+        0x204 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vsie
+            }
+        }
+        0x205 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vstvec
+            }
+        }
+        0x240 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vsscratch
+            }
+        }
+        0x241 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vsepc
+            }
+        }
+        0x242 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vscause
+            }
+        }
+        0x243 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vstval
+            }
+        }
+        0x244 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vsip
+            }
+        }
+        0x280 => {
+            if !Plat::HAS_H_MODE {
+                Csr::Unknown
+            } else {
+                Csr::Vsatp
+            }
+        }
+
         _ => {
             log::info!("Unknown CSR: 0x{:x}", csr);
             Csr::Unknown
@@ -602,14 +785,14 @@ mod tests {
         // SFENCE.VMA: Supervisor memory-management fence.
         assert_eq!(
             decode(0x12000073),
-            Instr::Vfencevma {
+            Instr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X0
             }
         );
         assert_eq!(
             decode(0x13300073),
-            Instr::Vfencevma {
+            Instr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X19
             }

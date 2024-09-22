@@ -58,6 +58,7 @@ pub struct Debug {
 #[serde(deny_unknown_fields)]
 pub struct VCpu {
     pub s_mode: Option<bool>,
+    pub h_mode: Option<bool>,
     pub max_pmp: Option<usize>,
 }
 
@@ -241,6 +242,7 @@ impl VCpu {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
         envs.insert("MIRALIS_VCPU_S_MODE", &self.s_mode);
+        envs.insert("MIRALIS_VCPU_H_MODE", &self.h_mode);
         envs.insert("MIRALIS_VCPU_MAX_PMP", &self.max_pmp);
         envs.envs
     }

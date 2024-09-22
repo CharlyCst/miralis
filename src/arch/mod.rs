@@ -49,7 +49,9 @@ pub trait Architecture {
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
     unsafe fn set_mpp(mode: Mode);
     unsafe fn write_pmp(pmp: &PmpGroup);
-    unsafe fn sfence_vma(vaddr: Option<usize>, asid: Option<usize>);
+    unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
+    unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
+    unsafe fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn run_vcpu(ctx: &mut VirtContext);
 
     /// Wait for interrupt
@@ -193,8 +195,12 @@ pub mod misa {
         // In addition, we disable floating points because we encountered some issues with those
         // and they will require special handling when context switching from the OS (checking the
         // mstatus.FS bits).
-        let mut disabled = C | D | F | H | Q;
+        let mut disabled = C | D | F | Q;
         // For the rest we look up the configuration
+        if !Plat::HAS_H_MODE {
+            disabled |= H;
+        }
+
         if !Plat::HAS_S_MODE {
             disabled |= S;
         }

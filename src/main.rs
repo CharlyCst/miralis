@@ -144,7 +144,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Arch::set_mpp(arch::Mode::U);
         // Update the PMPs prior to first entry
         Arch::write_pmp(&mctx.pmp);
-        Arch::sfence_vma(None, None);
+        Arch::sfencevma(None, None);
 
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);

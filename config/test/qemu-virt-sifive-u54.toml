@@ -9,6 +9,7 @@ color = true
 
 [vcpu]
 max_pmp = 8
+h_mode = false
 
 [platform]
 nb_harts = 1

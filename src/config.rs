@@ -11,8 +11,11 @@ use crate::platform::{Plat, Platform};
 
 // ———————————————————————— Configuration Parameters ———————————————————————— //
 
-/// Weather the vCPU exposes S-mode.
+/// Whether the vCPU exposes S-mode.
 pub const VCPU_S_MODE: bool = is_enabled!("MIRALIS_VCPU_S_MODE");
+
+/// Whether the vCPU exposes H-mode.
+pub const VCPU_H_MODE: bool = is_enabled!("MIRALIS_VCPU_H_MODE");
 
 /// Maximum number of PMP exposed by the vCPU, no limit if None.
 pub const VCPU_MAX_PMP: Option<usize> = parse_usize(option_env!("MIRALIS_VCPU_MAX_PMP"));
