@@ -261,37 +261,87 @@ fn test_csr_id() {
 // —————————————————————————— Machine ISA register —————————————————————————— //
 
 fn test_misa() {
-    const MISA: usize = 0x8000000000141101;
+    let misa: u64;
+    unsafe {
+        // Read the misa CSR into the variable misa
+        asm!("csrr {}, misa", out(reg) misa);
+    }
+    if (misa & (1 << 7)) == 0 {
+        test_misa_no_h()
+    } else {
+        test_misa_h()
+    }
+}
+
+fn test_misa_h() {
+    const MISA: usize = 0x8000000000141181;
     let mut res: usize;
     unsafe {
         asm!(
-            "li {0}, 0x8000000000141129",
-            "csrw misa, {0}",
-            "csrr {1}, misa",
-            out(reg) _,
-            out(reg) res,
+        "li {0}, 0x80000000001411a9",
+        "csrw misa, {0}",
+        "csrr {1}, misa",
+        out(reg) _,
+        out(reg) res,
         );
     }
     assert_eq!(res, MISA, "Unexpected misa");
 
     unsafe {
         asm!(
-            "li {0}, 0x800000000FFFFFFF",
-            "csrw misa, {0}",
-            "csrr {1}, misa",
-            out(reg) _,
-            out(reg) res,
+        "li {0}, 0x800000000FFFFFFF",
+        "csrw misa, {0}",
+        "csrr {1}, misa",
+        out(reg) _,
+        out(reg) res,
         );
     }
     assert_eq!(res, MISA, "Could write misa bits that should be zero");
 
     unsafe {
         asm!(
-            "li {0}, 0x0000000000141129",
-            "csrw misa, {0}",
-            "csrr {1}, misa",
-            out(reg) _,
-            out(reg) res,
+        "li {0}, 0x00000000001411a9",
+        "csrw misa, {0}",
+        "csrr {1}, misa",
+        out(reg) _,
+        out(reg) res,
+        );
+    }
+    assert_eq!(res, MISA, "Could clean upper misa bit");
+}
+
+fn test_misa_no_h() {
+    const MISA: usize = 0x8000000000141101;
+    let mut res: usize;
+    unsafe {
+        asm!(
+        "li {0}, 0x8000000000141129",
+        "csrw misa, {0}",
+        "csrr {1}, misa",
+        out(reg) _,
+        out(reg) res,
+        );
+    }
+    assert_eq!(res, MISA, "Unexpected misa");
+
+    unsafe {
+        asm!(
+        "li {0}, 0x800000000FFFFFFF",
+        "csrw misa, {0}",
+        "csrr {1}, misa",
+        out(reg) _,
+        out(reg) res,
+        );
+    }
+    assert_eq!(res, MISA, "Could write misa bits that should be zero");
+
+    unsafe {
+        asm!(
+        "li {0}, 0x0000000000141129",
+        "csrw misa, {0}",
+        "csrr {1}, misa",
+        out(reg) _,
+        out(reg) res,
         );
     }
     assert_eq!(res, MISA, "Could clean upper misa bit");

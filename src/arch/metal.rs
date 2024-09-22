@@ -103,6 +103,29 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_write_csr!("sip"),
             Csr::Satp => asm_write_csr!("satp"),
             Csr::Scontext => asm_write_csr!("scontext"),
+            Csr::Hstatus => asm_write_csr!("hstatus"),
+            Csr::Hedeleg => asm_write_csr!("hedeleg"),
+            Csr::Hideleg => asm_write_csr!("hideleg"),
+            Csr::Hvip => asm_write_csr!("hvip"),
+            Csr::Hip => asm_write_csr!("hip"),
+            Csr::Hie => asm_write_csr!("hie"),
+            Csr::Hgeip => {} // Read-only register
+            Csr::Hgeie => asm_write_csr!("hgeie"),
+            Csr::Henvcfg => asm_write_csr!("henvcfg"),
+            Csr::Hcounteren => asm_write_csr!("hcounteren"),
+            Csr::Htimedelta => asm_write_csr!("htimedelta"),
+            Csr::Htval => asm_write_csr!("htval"),
+            Csr::Htinst => asm_write_csr!("htinst"),
+            Csr::Hgatp => asm_write_csr!("hgatp"),
+            Csr::Vsstatus => asm_write_csr!("vsstatus"),
+            Csr::Vsie => asm_write_csr!("vsie"),
+            Csr::Vstvec => asm_write_csr!("vstvec"),
+            Csr::Vsscratch => asm_write_csr!("vsscratch"),
+            Csr::Vsepc => asm_write_csr!("vsepc"),
+            Csr::Vscause => asm_write_csr!("vscause"),
+            Csr::Vstval => asm_write_csr!("vstval"),
+            Csr::Vsip => asm_write_csr!("vsip"),
+            Csr::Vsatp => asm_write_csr!("vsatp"),
             Csr::Unknown => (),
         };
 
@@ -174,6 +197,29 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_read_csr!("sip"),
             Csr::Satp => asm_read_csr!("satp"),
             Csr::Scontext => asm_read_csr!("scontext"),
+            Csr::Hstatus => asm_read_csr!("hstatus"),
+            Csr::Hedeleg => asm_read_csr!("hedeleg"),
+            Csr::Hideleg => asm_read_csr!("hideleg"),
+            Csr::Hvip => asm_read_csr!("hvip"),
+            Csr::Hip => asm_read_csr!("hip"),
+            Csr::Hie => asm_read_csr!("hie"),
+            Csr::Hgeip => asm_read_csr!("hgeip"),
+            Csr::Hgeie => asm_read_csr!("hgeie"),
+            Csr::Henvcfg => asm_read_csr!("henvcfg"),
+            Csr::Hcounteren => asm_read_csr!("hcounteren"),
+            Csr::Htimedelta => asm_read_csr!("htimedelta"),
+            Csr::Htval => asm_read_csr!("htval"),
+            Csr::Htinst => asm_read_csr!("htinst"),
+            Csr::Hgatp => asm_read_csr!("hgatp"),
+            Csr::Vsstatus => asm_read_csr!("vsstatus"),
+            Csr::Vsie => asm_read_csr!("vsie"),
+            Csr::Vstvec => asm_read_csr!("vstvec"),
+            Csr::Vsscratch => asm_read_csr!("vsscratch"),
+            Csr::Vsepc => asm_read_csr!("vsepc"),
+            Csr::Vscause => asm_read_csr!("vscause"),
+            Csr::Vstval => asm_read_csr!("vstval"),
+            Csr::Vsip => asm_read_csr!("vsip"),
+            Csr::Vsatp => asm_read_csr!("vsatp"),
             Csr::Unknown => value = 0,
         };
 
@@ -377,7 +423,7 @@ impl Architecture for MetalArch {
         );
     }
 
-    unsafe fn sfence_vma(vaddr: Option<usize>, asid: Option<usize>) {
+    unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>) {
         match (vaddr, asid) {
             (None, None) => asm!("sfence.vma"),
             (None, Some(asid)) => {
@@ -397,6 +443,56 @@ impl Architecture for MetalArch {
                     "sfence.vma {vaddr}, {asid}",
                     vaddr = in(reg) vaddr,
                     asid = in(reg) asid
+                )
+            }
+        }
+    }
+
+    unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>) {
+        match (vaddr, asid) {
+            (None, None) => asm!("hfence.gvma"),
+            (None, Some(asid)) => {
+                asm!(
+                "hfence.gvma x0, {asid}",
+                asid = in(reg) asid,
+                )
+            }
+            (Some(vaddr), None) => {
+                asm!(
+                "hfence.gvma {vaddr}, x0",
+                vaddr = in(reg) vaddr
+                )
+            }
+            (Some(vaddr), Some(asid)) => {
+                asm!(
+                "hfence.gvma {vaddr}, {asid}",
+                vaddr = in(reg) vaddr,
+                asid = in(reg) asid
+                )
+            }
+        }
+    }
+
+    unsafe fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>) {
+        match (vaddr, asid) {
+            (None, None) => asm!("hfence.vvma"),
+            (None, Some(asid)) => {
+                asm!(
+                "hfence.vvma x0, {asid}",
+                asid = in(reg) asid,
+                )
+            }
+            (Some(vaddr), None) => {
+                asm!(
+                "hfence.vvma {vaddr}, x0",
+                vaddr = in(reg) vaddr
+                )
+            }
+            (Some(vaddr), Some(asid)) => {
+                asm!(
+                "hfence.vvma {vaddr}, {asid}",
+                vaddr = in(reg) vaddr,
+                asid = in(reg) asid
                 )
             }
         }
@@ -463,6 +559,29 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_clear_csr_bits!("sip"),
             Csr::Satp => asm_clear_csr_bits!("satp"),
             Csr::Scontext => asm_clear_csr_bits!("scontext"),
+            Csr::Hstatus => asm_clear_csr_bits!("hstatus"),
+            Csr::Hedeleg => asm_clear_csr_bits!("hedeleg"),
+            Csr::Hideleg => asm_clear_csr_bits!("hideleg"),
+            Csr::Hvip => asm_clear_csr_bits!("hvip"),
+            Csr::Hip => asm_clear_csr_bits!("hip"),
+            Csr::Hie => asm_clear_csr_bits!("hie"),
+            Csr::Hgeip => {} // Read only register
+            Csr::Hgeie => asm_clear_csr_bits!("hgeie"),
+            Csr::Henvcfg => asm_clear_csr_bits!("henvcfg"),
+            Csr::Hcounteren => asm_clear_csr_bits!("hcounteren"),
+            Csr::Htimedelta => asm_clear_csr_bits!("htimedelta"),
+            Csr::Htval => asm_clear_csr_bits!("htval"),
+            Csr::Htinst => asm_clear_csr_bits!("htinst"),
+            Csr::Hgatp => asm_clear_csr_bits!("hgatp"),
+            Csr::Vsstatus => asm_clear_csr_bits!("vsstatus"),
+            Csr::Vsie => asm_clear_csr_bits!("vsie"),
+            Csr::Vstvec => asm_clear_csr_bits!("vstvec"),
+            Csr::Vsscratch => asm_clear_csr_bits!("vsscratch"),
+            Csr::Vsepc => asm_clear_csr_bits!("vsepc"),
+            Csr::Vscause => asm_clear_csr_bits!("vscause"),
+            Csr::Vstval => asm_clear_csr_bits!("vstval"),
+            Csr::Vsip => asm_clear_csr_bits!("vsip"),
+            Csr::Vsatp => asm_clear_csr_bits!("vsatp"),
             Csr::Unknown => (),
         };
     }
@@ -530,6 +649,29 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_set_csr_bits!("sip"),
             Csr::Satp => asm_set_csr_bits!("satp"),
             Csr::Scontext => asm_set_csr_bits!("scontext"),
+            Csr::Hstatus => asm_set_csr_bits!("hstatus"),
+            Csr::Hedeleg => asm_set_csr_bits!("hedeleg"),
+            Csr::Hideleg => asm_set_csr_bits!("hideleg"),
+            Csr::Hvip => asm_set_csr_bits!("hvip"),
+            Csr::Hip => asm_set_csr_bits!("hip"),
+            Csr::Hie => asm_set_csr_bits!("hie"),
+            Csr::Hgeip => asm_set_csr_bits!("hgeip"),
+            Csr::Hgeie => asm_set_csr_bits!("hgeie"),
+            Csr::Henvcfg => asm_set_csr_bits!("henvcfg"),
+            Csr::Hcounteren => asm_set_csr_bits!("hcounteren"),
+            Csr::Htimedelta => asm_set_csr_bits!("htimedelta"),
+            Csr::Htval => asm_set_csr_bits!("htval"),
+            Csr::Htinst => asm_set_csr_bits!("htinst"),
+            Csr::Hgatp => asm_set_csr_bits!("hgatp"),
+            Csr::Vsstatus => asm_set_csr_bits!("vsstatus"),
+            Csr::Vsie => asm_set_csr_bits!("vsie"),
+            Csr::Vstvec => asm_set_csr_bits!("vstvec"),
+            Csr::Vsscratch => asm_set_csr_bits!("vsscratch"),
+            Csr::Vsepc => asm_set_csr_bits!("vsepc"),
+            Csr::Vscause => asm_set_csr_bits!("vscause"),
+            Csr::Vstval => asm_set_csr_bits!("vstval"),
+            Csr::Vsip => asm_set_csr_bits!("vsip"),
+            Csr::Vsatp => asm_set_csr_bits!("vsatp"),
             Csr::Unknown => (),
         };
     }
@@ -549,7 +691,7 @@ impl Architecture for MetalArch {
 
         // Changes to SATP require an sfence instruction to take effect
         Self::write_csr(Csr::Satp, ctx.csr.satp);
-        Self::sfence_vma(None, None);
+        Self::sfencevma(None, None);
 
         let mut rd_value: usize;
         let addr: usize;
@@ -665,7 +807,7 @@ impl Architecture for MetalArch {
         Self::set_mpp(saved_mpp);
 
         // Ensure memory consistency
-        Self::sfence_vma(None, None);
+        Self::sfencevma(None, None);
     }
 }
 

@@ -52,6 +52,7 @@ test:
 	cargo run -- run --config {{qemu_virt}} --firmware os_ecall
 	cargo run -- run --config {{qemu_virt}} --firmware vectored_mtvec
 	cargo run -- run --config {{qemu_virt}} --firmware device
+	cargo run -- run --config {{qemu_virt}} --firmware hypervisor
 	cargo run -- run --config {{qemu_virt_release}} --firmware default
 
 	# Testing with Miralis as firmware

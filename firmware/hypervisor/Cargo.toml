@@ -1,0 +1,14 @@
+[package]
+name = "hypervisor"
+version = "0.1.0"
+edition = "2021"
+
+license = "MIT"
+
+[[bin]]
+name = "hypervisor"
+path = "main.rs"
+
+[dependencies]
+miralis_abi = { path = "../../crates/abi" }
+log = { workspace = true }

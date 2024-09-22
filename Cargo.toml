@@ -8,6 +8,7 @@ members = [
     "firmware/csr_ops",
     "firmware/default",
     "firmware/ecall",
+    "firmware/hypervisor",
     "firmware/pmp",
     "firmware/breakpoint",
     "firmware/mepc",

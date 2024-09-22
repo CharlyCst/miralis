@@ -202,6 +202,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "hypervisor"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "miralis_abi",
+]
+
+[[package]]
 name = "indexmap"
 version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

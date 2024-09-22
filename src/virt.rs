@@ -74,6 +74,7 @@ impl VirtContext {
                 mcause: 0,
                 mepc: 0,
                 mtval: 0,
+                mtval2: 0,
                 mstatus: 0,
                 mtinst: 0,
                 mconfigptr: 0,
@@ -88,6 +89,31 @@ impl VirtContext {
                 scontext: 0,
                 medeleg: 0,
                 mideleg: 0,
+                hstatus: 0,
+                hedeleg: 0,
+                hideleg: 0,
+                hvip: 0,
+                hip: 0,
+                hie: 0,
+                hgeip: 0,
+                hgeie: 0,
+                henvcfg: 0,
+                henvcfgh: 0,
+                hcounteren: 0,
+                htimedelta: 0,
+                htimedeltah: 0,
+                htval: 0,
+                htinst: 0,
+                hgatp: 0,
+                vsstatus: 0,
+                vsie: 0,
+                vstvec: 0,
+                vsscratch: 0,
+                vsepc: 0,
+                vscause: 0,
+                vstval: 0,
+                vsip: 0,
+                vsatp: 0,
                 pmpcfg: [0; 8],
                 pmpaddr: [0; 64],
                 mhpmcounter: [0; 29],
@@ -130,6 +156,7 @@ pub struct VirtCsr {
     pub mcause: usize,
     pub mepc: usize,
     pub mtval: usize,
+    pub mtval2: usize,
     pub mstatus: usize,
     pub mtinst: usize,
     pub mconfigptr: usize,
@@ -144,6 +171,31 @@ pub struct VirtCsr {
     pub scontext: usize,
     pub medeleg: usize,
     pub mideleg: usize,
+    pub hstatus: usize,
+    pub hedeleg: usize,
+    pub hideleg: usize,
+    pub hvip: usize,
+    pub hip: usize,
+    pub hie: usize,
+    pub hgeip: usize,
+    pub hgeie: usize,
+    pub henvcfg: usize,
+    pub henvcfgh: usize,
+    pub hcounteren: usize,
+    pub htimedelta: usize,
+    pub htimedeltah: usize,
+    pub htval: usize,
+    pub htinst: usize,
+    pub hgatp: usize,
+    pub vsstatus: usize,
+    pub vsie: usize,
+    pub vstvec: usize,
+    pub vsscratch: usize,
+    pub vsepc: usize,
+    pub vscause: usize,
+    pub vstval: usize,
+    pub vsip: usize,
+    pub vsatp: usize,
     pub pmpcfg: [usize; 8],
     pub pmpaddr: [usize; 64],
     pub mhpmcounter: [usize; 29],
@@ -306,7 +358,7 @@ impl VirtContext {
                 // Jump back to firmware
                 self.pc = self.csr.mepc;
             }
-            Instr::Vfencevma { rs1, rs2 } => unsafe {
+            Instr::Sfencevma { rs1, rs2 } => unsafe {
                 let vaddr = match rs1 {
                     Register::X0 => None,
                     reg => Some(self.get(reg)),
@@ -315,7 +367,31 @@ impl VirtContext {
                     Register::X0 => None,
                     reg => Some(self.get(reg)),
                 };
-                Arch::sfence_vma(vaddr, asid);
+                Arch::sfencevma(vaddr, asid);
+                self.pc += 4;
+            },
+            Instr::Hfencegvma { rs1, rs2 } => unsafe {
+                let vaddr = match rs1 {
+                    Register::X0 => None,
+                    reg => Some(self.get(reg)),
+                };
+                let asid = match rs2 {
+                    Register::X0 => None,
+                    reg => Some(self.get(reg)),
+                };
+                Arch::hfencegvma(vaddr, asid);
+                self.pc += 4;
+            },
+            Instr::Hfencevvma { rs1, rs2 } => unsafe {
+                let vaddr = match rs1 {
+                    Register::X0 => None,
+                    reg => Some(self.get(reg)),
+                };
+                let asid = match rs2 {
+                    Register::X0 => None,
+                    reg => Some(self.get(reg)),
+                };
+                Arch::hfencevvma(vaddr, asid);
                 self.pc += 4;
             },
             _ => todo!(
@@ -669,6 +745,33 @@ impl VirtContext {
         Arch::write_csr(Csr::Mie, self.csr.mie);
         Arch::write_csr(Csr::Mip, self.csr.mip);
 
+        // If H mode is present - save the h-extension registers
+        if Plat::HAS_H_MODE {
+            Arch::write_csr(Csr::Hstatus, self.csr.hstatus);
+            Arch::write_csr(Csr::Hedeleg, self.csr.hedeleg);
+            Arch::write_csr(Csr::Hideleg, self.csr.hideleg);
+            Arch::write_csr(Csr::Hvip, self.csr.hvip);
+            Arch::write_csr(Csr::Hip, self.csr.hip);
+            Arch::write_csr(Csr::Hie, self.csr.hie);
+            Arch::write_csr(Csr::Hgeip, self.csr.hgeip);
+            Arch::write_csr(Csr::Hgeie, self.csr.hgeie);
+            Arch::write_csr(Csr::Henvcfg, self.csr.henvcfg);
+            Arch::write_csr(Csr::Hcounteren, self.csr.hcounteren);
+            Arch::write_csr(Csr::Htval, self.csr.htval);
+            Arch::write_csr(Csr::Htinst, self.csr.htinst);
+            Arch::write_csr(Csr::Hgatp, self.csr.hgatp);
+
+            Arch::write_csr(Csr::Vsstatus, self.csr.vsstatus);
+            Arch::write_csr(Csr::Vsie, self.csr.vsie);
+            Arch::write_csr(Csr::Vstvec, self.csr.vstvec);
+            Arch::write_csr(Csr::Vsscratch, self.csr.vsscratch);
+            Arch::write_csr(Csr::Vsepc, self.csr.vsepc);
+            Arch::write_csr(Csr::Vscause, self.csr.vscause);
+            Arch::write_csr(Csr::Vstval, self.csr.vstval);
+            Arch::write_csr(Csr::Vsip, self.csr.vsip);
+            Arch::write_csr(Csr::Vsatp, self.csr.vsatp);
+        }
+
         // Load virtual PMP registers into Miralis's own registers
         mctx.pmp.load_with_offset(
             &self.csr.pmpaddr,
@@ -683,7 +786,7 @@ impl VirtContext {
         }
         // Commit the PMP to hardware
         Arch::write_pmp(&mctx.pmp);
-        Arch::sfence_vma(None, None);
+        Arch::sfencevma(None, None);
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -732,6 +835,33 @@ impl VirtContext {
             & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
             | self.csr.mip & mie::SEIE_FILTER;
 
+        // If H mode is present - save the h-extension registers
+        if Plat::HAS_H_MODE {
+            self.csr.hstatus = Arch::read_csr(Csr::Hstatus);
+            self.csr.hedeleg = Arch::read_csr(Csr::Hedeleg);
+            self.csr.hideleg = Arch::read_csr(Csr::Hideleg);
+            self.csr.hvip = Arch::read_csr(Csr::Hvip);
+            self.csr.hip = Arch::read_csr(Csr::Hip);
+            self.csr.hie = Arch::read_csr(Csr::Hie);
+            self.csr.hgeip = Arch::read_csr(Csr::Hgeip); // Read only register, this write will have no effect
+            self.csr.hgeie = Arch::read_csr(Csr::Hgeie);
+            self.csr.henvcfg = Arch::read_csr(Csr::Henvcfg);
+            self.csr.hcounteren = Arch::read_csr(Csr::Hcounteren);
+            self.csr.htval = Arch::read_csr(Csr::Htval);
+            self.csr.htinst = Arch::read_csr(Csr::Htinst);
+            self.csr.hgatp = Arch::read_csr(Csr::Hgatp);
+
+            self.csr.vsstatus = Arch::read_csr(Csr::Vsstatus);
+            self.csr.vsie = Arch::read_csr(Csr::Vsie);
+            self.csr.vstvec = Arch::read_csr(Csr::Vstvec);
+            self.csr.vsscratch = Arch::read_csr(Csr::Vsscratch);
+            self.csr.vsepc = Arch::read_csr(Csr::Vsepc);
+            self.csr.vscause = Arch::read_csr(Csr::Vscause);
+            self.csr.vstval = Arch::read_csr(Csr::Vstval);
+            self.csr.vsip = Arch::read_csr(Csr::Vsip);
+            self.csr.vsatp = Arch::read_csr(Csr::Vsatp);
+        }
+
         // Remove Firmware PMP from the hardware
         mctx.pmp
             .clear_range(mctx.virt_pmp_offset as usize, self.nb_pmp);
@@ -741,7 +871,7 @@ impl VirtContext {
             .set(last_pmp_idx, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
         // Commit the PMP to hardware
         Arch::write_pmp(&mctx.pmp);
-        Arch::sfence_vma(None, None);
+        Arch::sfencevma(None, None);
     }
 }
 
@@ -837,8 +967,20 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg,
             Csr::Medeleg => self.csr.medeleg,
             Csr::Mideleg => self.csr.mideleg,
-            Csr::Mtinst => todo!(),                 // TODO : normal read
-            Csr::Mtval2 => todo!(),                 // TODO : normal read
+            Csr::Mtinst => {
+                if Plat::HAS_H_MODE {
+                    self.csr.mtinst
+                } else {
+                    panic!("Mtinst exists only in H mode")
+                }
+            }
+            Csr::Mtval2 => {
+                if Plat::HAS_H_MODE {
+                    self.csr.mtval2
+                } else {
+                    panic!("Mtval exists only in H mode")
+                }
+            }
             Csr::Tdata1 => todo!(),                 // TODO : normal read
             Csr::Tdata2 => todo!(),                 // TODO : normal read
             Csr::Tdata3 => todo!(),                 // TODO : normal read
@@ -865,6 +1007,51 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER,
             Csr::Satp => self.csr.satp,
             Csr::Scontext => self.csr.scontext,
+            Csr::Hstatus => self.csr.hstatus, // TODO : Add support for H-Mode
+            Csr::Hedeleg => self.csr.hedeleg,
+            Csr::Hideleg => self.csr.hideleg,
+            Csr::Hvip => self.csr.hvip,
+            Csr::Hip => self.csr.hip,
+            Csr::Hie => self.csr.hie,
+            Csr::Hgeip => self.csr.hgeip,
+            Csr::Hgeie => self.csr.hgeie,
+            Csr::Henvcfg => self.csr.henvcfg,
+            Csr::Hcounteren => self.csr.hcounteren, // TODO: Throw the virtual exeption in read
+            Csr::Htimedelta => self.csr.htimedelta,
+            Csr::Htval => self.csr.htval,
+            Csr::Htinst => self.csr.htinst,
+            Csr::Hgatp => self.csr.hgatp,
+            Csr::Vsstatus => self.csr.vsstatus,
+            Csr::Vsie => {
+                // When bit 2 or 6 or 10 of hideleg is zero, vsip.SEIP and vsie.SEIE are read-only zeros.
+                let hideleg_b_2: bool = ((self.csr.hideleg >> 2) & 0x1) != 0;
+                let hideleg_b_6: bool = ((self.csr.hideleg >> 6) & 0x1) != 0;
+                let hideleb_b_10: bool = ((self.csr.hideleg >> 10) & 0x1) != 0;
+
+                if !hideleb_b_10 || !hideleg_b_6 || !hideleg_b_2 {
+                    0
+                } else {
+                    self.csr.vsie
+                }
+            }
+            Csr::Vstvec => self.csr.vstvec,
+            Csr::Vsscratch => self.csr.vsscratch,
+            Csr::Vsepc => self.csr.vsepc,
+            Csr::Vscause => self.csr.vscause,
+            Csr::Vstval => self.csr.vstval,
+            Csr::Vsip => {
+                // When bit 2 or 6 or 10 of hideleg is zero, vsip.SEIP and vsie.SEIE are read-only zeros.
+                let hideleg_b_2: bool = ((self.csr.hideleg >> 2) & 0x1) != 0;
+                let hideleg_b_6: bool = ((self.csr.hideleg >> 6) & 0x1) != 0;
+                let hideleb_b_10: bool = ((self.csr.hideleg >> 10) & 0x1) != 0;
+
+                if !hideleb_b_10 || !hideleg_b_6 || !hideleg_b_2 {
+                    0
+                } else {
+                    self.csr.vsip
+                }
+            }
+            Csr::Vsatp => self.csr.vsatp,
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
@@ -926,7 +1113,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         pmpcfg::INACTIVE
                     };
                     pmp.set(0, usize::MAX, config);
-                    unsafe { Arch::sfence_vma(None, None) };
+                    unsafe { Arch::sfencevma(None, None) };
                 }
 
                 VirtCsr::set_csr_field(
@@ -1068,15 +1255,27 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
             Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
-            Csr::Mtinst => todo!(), // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
-            Csr::Mtval2 => todo!(), // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
+            Csr::Mtinst => {
+                if Plat::HAS_H_MODE {
+                    self.csr.mtinst = value
+                } else {
+                    panic!("Mtinst exists only in H mode")
+                }
+            } // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
+            Csr::Mtval2 => {
+                if Plat::HAS_H_MODE {
+                    self.csr.mtval2 = value
+                } else {
+                    panic!("Mtval2 exists only in H mode")
+                }
+            } // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
             Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented
-            Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata1 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata2 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata3 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mcontext => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dcsr => todo!(),   // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dpc => todo!(),     // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => {
@@ -1144,6 +1343,74 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.satp = value & satp::SATP_CHANGE_FILTER;
             }
             Csr::Scontext => todo!("No information in the specification"),
+            Csr::Hstatus => {
+                let mut new_value = value;
+
+                // UXL : 32 : read-only : MX-LEN = 64
+                let mxl = 2;
+                VirtCsr::set_csr_field(
+                    &mut new_value,
+                    mstatus::UXL_OFFSET,
+                    mstatus::UXL_FILTER,
+                    mxl,
+                );
+
+                self.csr.hstatus = new_value
+            }
+            Csr::Hedeleg => {
+                let write_hedeleg_mask: usize = !((0b111 << 9) | (0b1111 << 20));
+                self.csr.hedeleg = value & write_hedeleg_mask;
+            }
+            Csr::Hideleg => {
+                let write_hideleg_mask: usize = !((12 << 1) | (9 << 1) | (5 << 1) | (1 << 1));
+                self.csr.hideleg = value & write_hideleg_mask;
+            }
+            Csr::Hvip => {
+                let write_hvip_mask: usize =
+                    !((0b11111 << 11) | (0b111 << 7) | (0b111 << 3) | (0b11));
+                self.csr.hvip = value & write_hvip_mask;
+            }
+            Csr::Hip => {
+                let write_hip_mask: usize =
+                    !((0b111 << 13) | (0b1 << 11) | (0b111 << 7) | (0b111 << 3) | (0b11));
+                self.csr.hip = value & write_hip_mask;
+            }
+            Csr::Hie => {
+                let write_hie_mask: usize =
+                    !((0b111 << 13) | (0b1 << 11) | (0b111 << 7) | (0b111 << 3) | (0b11));
+                self.csr.hie = value & write_hie_mask;
+            }
+            Csr::Hgeip => {} // Read-only register
+            Csr::Hgeie => {
+                self.csr.hgeie = value;
+                // Last bit is always 0
+                self.csr.hgeie &= !1;
+            }
+            Csr::Henvcfg => self.csr.henvcfg = value,
+            Csr::Hcounteren => self.csr.hcounteren = value,
+            Csr::Htimedelta => self.csr.htimedelta = value,
+            Csr::Htval => self.csr.htval = value,
+            Csr::Htinst => self.csr.htinst = value,
+            Csr::Hgatp => {
+                self.csr.hgatp = value & !(0b11 << 58);
+            }
+            Csr::Vsstatus => self.csr.vsstatus = value,
+            Csr::Vsie => {
+                let write_vsie_mask: usize =
+                    !((0b111111 << 10) | (0b111 << 6) | (0b111 << 2) | (0b1));
+                self.csr.vsie = value & write_vsie_mask
+            }
+            Csr::Vstvec => self.csr.vstvec = value,
+            Csr::Vsscratch => self.csr.vsscratch = value,
+            Csr::Vsepc => self.csr.vsepc = value,
+            Csr::Vscause => self.csr.vscause = value,
+            Csr::Vstval => self.csr.vstval = value,
+            Csr::Vsip => {
+                let write_vsip_mask: usize =
+                    !((0b111111 << 10) | (0b111 << 6) | (0b111 << 2) | (0b1));
+                self.csr.vsip = value & write_vsip_mask
+            }
+            Csr::Vsatp => self.csr.vsatp = value,
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
