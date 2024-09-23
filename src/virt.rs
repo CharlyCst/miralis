@@ -1,6 +1,7 @@
 //! Firmware Virtualisation
 use miralis_core::abi;
 
+use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{
     mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr, MCause, Mode,
@@ -934,23 +935,18 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mstatus::MPRV_FILTER,
                     mprv,
                 );
-                // MBE : 37 : write anything
-                let mbe: usize = (self.csr.mstatus & mstatus::MBE_FILTER) >> mstatus::MBE_OFFSET;
-                // SBE : 36 : equals MBE
-                VirtCsr::set_csr_field(
-                    &mut new_value,
-                    mstatus::SBE_OFFSET,
-                    mstatus::SBE_FILTER,
-                    if Plat::HAS_S_MODE { mbe } else { 0 },
-                );
-                // UBE : 6 : equals MBE
-                VirtCsr::set_csr_field(
-                    &mut new_value,
-                    mstatus::UBE_OFFSET,
-                    mstatus::UBE_FILTER,
-                    mbe,
-                );
-
+                // MBE - We currently don't implement the feature as it is a very nice feature
+                if new_value & MBE_FILTER != 0 {
+                    panic!("MBE filter is not implemented - please implement it");
+                }
+                // SBE - We currently don't implement the feature as it is a very nice feature
+                if new_value & SBE_FILTER != 0 {
+                    panic!("SBE filter is not implemented - please implement it");
+                }
+                // UBE - We currently don't implement the feature as it is a very nice feature
+                if new_value & UBE_FILTER != 0 {
+                    panic!("UBE filter is not implemented - please implement it");
+                }
                 // TVM : 20 : read-only 0 (NO S-MODE)
                 new_value &= !(0b1 << 20); // clear TVM
                 if !Plat::HAS_S_MODE {
