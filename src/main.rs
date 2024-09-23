@@ -233,6 +233,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         }
         _ => {} // No execution mode transition
     }
+
+    // Check if we might need to inject some unhandled M-mode interrupts into the firmware
     ctx.update_interrupts(mctx);
 }
 

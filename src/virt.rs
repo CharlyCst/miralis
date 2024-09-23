@@ -783,12 +783,14 @@ impl VirtContext {
             0
         };
 
+        // MEI is expected to be delegated at almost all times (for S-mode to receive interrupts)
+        // This virtualization approach might not be the most suitable one
         if irq_to_set & mie::MEIE_FILTER != 0 {
             todo!("Add plic device");
         }
 
         if irq_to_set & mie::MTIE_FILTER != 0 {
-            log::info!("set up mtie interrupt");
+            log::trace!("Set up M timer interrupt");
             let mut clint = Plat::get_clint().lock();
             clint
                 .write_mtimecmp(mctx.hw.hart, usize::MIN)
@@ -796,7 +798,7 @@ impl VirtContext {
         }
 
         if irq_to_set & mie::MSIE_FILTER != 0 {
-            log::info!("set up msie interrupt");
+            log::trace!("Set up M software interrupt");
             let mut clint = Plat::get_clint().lock();
             clint
                 .write_msip(mctx.hw.hart, 1)

@@ -50,24 +50,28 @@ impl VirtClint {
         }
     }
 
-    fn clear_interrupts(&self, ctx: &mut VirtContext, mtime: usize, mtimecmp: usize, msip: usize) {
+    fn clear_interrupts(&self, ctx: &mut VirtContext) {
+        let driver = self.driver.lock();
+        // Hart may write MSIP bit of other hart, but we have no way of clearing
+        // vmip.MSIP bit of another hart, so no point in checking
+        let msip = driver.read_msip(ctx.hart_id).unwrap();
+        let mtimecmp = driver.read_mtimecmp(ctx.hart_id).unwrap();
+        let mtime = driver.read_mtime();
+
         if msip == 0 {
             ctx.csr.mip &= !(mie::MSIE_FILTER);
-            log::debug!("vmsip cleared");
+            log::trace!("vMSIP cleared");
         }
         if mtime < mtimecmp {
             ctx.csr.mip &= !(mie::MTIE_FILTER);
-            log::debug!("vmtip cleared");
+            log::trace!("vMTIP cleared");
         }
-        // log::debug!("interrupts cleared");
     }
 
     pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
         log::trace!("Read from CLINT at offset 0x{:x}", offset);
         self.validate_offset(offset)?;
         let driver = self.driver.lock();
-
-        //if virtual interrupt is pending, should we fix the values?
 
         match (offset, r_width) {
             (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
@@ -96,30 +100,27 @@ impl VirtClint {
             value
         );
         self.validate_offset(offset)?;
-        let mut driver = self.driver.lock();
         let mut err = false;
+        {
+            let mut driver = self.driver.lock();
 
-        match (offset, w_width) {
-            (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
-                let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
-                driver.write_msip(hart, value as u32);
+            match (offset, w_width) {
+                (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
+                    let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
+                    let _ = driver.write_msip(hart, value as u32);
+                }
+                (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
+                    let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
+                    let _ = driver.write_mtimecmp(hart, value);
+                }
+                (o, Width::Byte8) if o == MTIME_OFFSET => {
+                    driver.write_mtime(value);
+                }
+                _ => err = true,
             }
-            (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
-                let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
-                driver.write_mtimecmp(hart, value);
-            }
-            (o, Width::Byte8) if o == MTIME_OFFSET => {
-                driver.write_mtime(value);
-            }
-            _ => err = true,
         }
 
-        self.clear_interrupts(
-            ctx,
-            driver.read_mtime(),
-            driver.read_mtimecmp(ctx.hart_id).unwrap(),
-            driver.read_msip(ctx.hart_id).unwrap(),
-        );
+        self.clear_interrupts(ctx);
 
         if !err {
             Ok(())

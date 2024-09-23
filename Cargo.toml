@@ -5,6 +5,9 @@ members = [
     "src",
 
     # Firmware
+    "firmware/clint_interrupt",
+    "firmware/clint_interrupt_multihart",
+    "firmware/clint_interrupt_priority",
     "firmware/csr_ops",
     "firmware/default",
     "firmware/ecall",
@@ -21,9 +24,6 @@ members = [
     "firmware/device",
     "firmware/tracing_firmware",
     "firmware/vectored_mtvec",
-    "firmware/clint_interrupt",
-    "firmware/clint_interrupt_priority",
-    "firmware/clint_interrupt_multihart",
     "firmware/benchmark/ecall_benchmark",
     "firmware/benchmark/csr_write",
 
