@@ -9,7 +9,6 @@ max_firmware_exits = 2000
 
 [vcpu]
 max_pmp = 8
-h_mode = false
 
 [platform]
 nb_harts = 1

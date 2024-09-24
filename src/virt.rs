@@ -1,4 +1,5 @@
 //! Firmware Virtualisation
+
 use miralis_core::abi;
 
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
@@ -8,7 +9,7 @@ use crate::arch::{
     Register, TrapInfo,
 };
 use crate::benchmark::Benchmark;
-use crate::decoder::{decode, Instr};
+use crate::decoder::Instr;
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
@@ -43,6 +44,10 @@ pub struct VirtContext {
     pub(crate) mode: Mode,
     /// Number of virtual PMPs
     pub(crate) nb_pmp: usize,
+    /// RISC-V Hypervisor extension available
+    pub(crate) has_h_mode: bool,
+    /// RISC-V Supervisor extension available
+    pub(crate) has_s_mode: bool,
     /// Hart ID
     pub(crate) hart_id: usize,
     /// Number of exists to Miralis
@@ -50,8 +55,13 @@ pub struct VirtContext {
 }
 
 impl VirtContext {
-    pub const fn new(hart_id: usize, nb_pmp: usize) -> Self {
-        assert!(nb_pmp <= 64, "Too many PMP registers");
+    pub const fn new(
+        hart_id: usize,
+        nb_pmp_registers_left: usize,
+        has_h_mode: bool,
+        has_s_mode: bool,
+    ) -> Self {
+        assert!(nb_pmp_registers_left <= 64, "Too many PMP registers");
 
         VirtContext {
             host_stack: 0,
@@ -121,6 +131,8 @@ impl VirtContext {
             },
             pc: 0,
             mode: Mode::M,
+            nb_pmp: nb_pmp_registers_left,
+            has_h_mode,
             trap_info: TrapInfo {
                 mepc: 0,
                 mstatus: 0,
@@ -130,7 +142,7 @@ impl VirtContext {
             },
             nb_exits: 0,
             hart_id,
-            nb_pmp,
+            has_s_mode,
         }
     }
 }
@@ -290,7 +302,7 @@ impl VirtContext {
                         log::trace!("mret to m-mode to {:x}", self.trap_info.mepc);
                         // Mret is jumping back to machine mode, do nothing
                     }
-                    Mode::S if Plat::HAS_S_MODE => {
+                    Mode::S if mctx.hw.has_s_mode => {
                         log::trace!("mret to s-mode with MPP to {:x}", self.trap_info.mepc);
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         self.mode = Mode::S;
@@ -567,7 +579,7 @@ impl VirtContext {
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
-                let instr = decode(instr);
+                let instr = mctx.decode(instr);
                 log::trace!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
@@ -580,7 +592,7 @@ impl VirtContext {
                     device::find_matching_device(self.trap_info.mtval, &mctx.devices)
                 {
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
-                    let instr = decode(instr);
+                    let instr = mctx.decode(instr);
                     log::trace!(
                         "Accessed devices: {} | With instr: {:?}",
                         device.name,
@@ -590,7 +602,7 @@ impl VirtContext {
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
                     // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
-                    let instr = decode(instr);
+                    let instr = mctx.decode(instr);
                     log::trace!(
                         "Access fault {:x?} with a virtual address: 0x{:x}",
                         &instr,
@@ -746,7 +758,7 @@ impl VirtContext {
         Arch::write_csr(Csr::Mip, self.csr.mip);
 
         // If H mode is present - save the h-extension registers
-        if Plat::HAS_H_MODE {
+        if mctx.hw.has_h_mode {
             Arch::write_csr(Csr::Hstatus, self.csr.hstatus);
             Arch::write_csr(Csr::Hedeleg, self.csr.hedeleg);
             Arch::write_csr(Csr::Hideleg, self.csr.hideleg);
@@ -835,7 +847,7 @@ impl VirtContext {
             | self.csr.mip & mie::SEIE_FILTER;
 
         // If H mode is present - save the h-extension registers
-        if Plat::HAS_H_MODE {
+        if mctx.hw.has_h_mode {
             self.csr.hstatus = Arch::read_csr(Csr::Hstatus);
             self.csr.hedeleg = Arch::read_csr(Csr::Hedeleg);
             self.csr.hideleg = Arch::read_csr(Csr::Hideleg);
@@ -966,14 +978,14 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Medeleg => self.csr.medeleg,
             Csr::Mideleg => self.csr.mideleg,
             Csr::Mtinst => {
-                if Plat::HAS_H_MODE {
+                if self.has_h_mode {
                     self.csr.mtinst
                 } else {
                     panic!("Mtinst exists only in H mode")
                 }
             }
             Csr::Mtval2 => {
-                if Plat::HAS_H_MODE {
+                if self.has_h_mode {
                     self.csr.mtval2
                 } else {
                     panic!("Mtval exists only in H mode")
@@ -1082,7 +1094,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     &mut new_value,
                     mstatus::SXL_OFFSET,
                     mstatus::SXL_FILTER,
-                    if Plat::HAS_S_MODE { mxl } else { 0 },
+                    if mctx.hw.has_s_mode { mxl } else { 0 },
                 );
                 // UXL : 32 : read-only : MX-LEN = 64
                 VirtCsr::set_csr_field(
@@ -1134,7 +1146,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 // TVM : 20 : read-only 0 (NO S-MODE)
                 new_value &= !(0b1 << 20); // clear TVM
-                if !Plat::HAS_S_MODE {
+                if !mctx.hw.has_s_mode {
                     VirtCsr::set_csr_field(
                         &mut new_value,
                         mstatus::TVM_OFFSET,
@@ -1144,7 +1156,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 // TW : 21 : write anything
                 // TSR : 22 : read-only 0 (NO S-MODE)
-                if !Plat::HAS_S_MODE {
+                if !mctx.hw.has_s_mode {
                     VirtCsr::set_csr_field(
                         &mut new_value,
                         mstatus::TSR_OFFSET,
@@ -1153,7 +1165,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     );
                 }
                 // FS : 13 : read-only 0 (NO S-MODE, F extension)
-                if !Plat::HAS_S_MODE {
+                if !mctx.hw.has_s_mode {
                     VirtCsr::set_csr_field(
                         &mut new_value,
                         mstatus::FS_OFFSET,
@@ -1170,7 +1182,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     &mut new_value,
                     mstatus::SD_OFFSET,
                     mstatus::SD_FILTER,
-                    if Plat::HAS_S_MODE {
+                    if mctx.hw.has_s_mode {
                         let fs: usize = (value & mstatus::FS_FILTER) >> mstatus::FS_OFFSET;
                         if fs != 0 {
                             0b1
@@ -1190,6 +1202,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // Update misa to a legal value
                 self.csr.misa =
                     (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
+
+                if (self.csr.misa & misa::S) == 0 && mctx.hw.has_s_mode {
+                    panic!("Miralis doesn't support deactivating the S mode extension, please implement the feature")
+                }
+
+                if (self.csr.misa & misa::H) == 0 && mctx.hw.has_h_mode {
+                    panic!("Miralis doesn't support deactivating the H mode extension, please implement the feature")
+                }
             }
             Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
             Csr::Mip => {
@@ -1236,7 +1256,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp);
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if pmp_addr_idx >= self.nb_pmp {
+                if pmp_addr_idx >= mctx.hw.available_reg.nb_pmp {
                     // This PMP is not emulated, ignore
                     return;
                 }
@@ -1254,14 +1274,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
             Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
             Csr::Mtinst => {
-                if Plat::HAS_H_MODE {
+                if mctx.hw.has_h_mode {
                     self.csr.mtinst = value
                 } else {
                     panic!("Mtinst exists only in H mode")
                 }
             } // TODO : Can only be written automatically by the hardware on a trap, this register should not exist in a system without hypervisor extension
             Csr::Mtval2 => {
-                if Plat::HAS_H_MODE {
+                if mctx.hw.has_h_mode {
                     self.csr.mtval2 = value
                 } else {
                     panic!("Mtval2 exists only in H mode")
@@ -1474,7 +1494,12 @@ mod tests {
     fn switch_context_mpp() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+        let mut ctx = VirtContext::new(
+            0,
+            mctx.hw.available_reg.nb_pmp,
+            mctx.hw.has_h_mode,
+            mctx.hw.has_s_mode,
+        );
 
         ctx.csr.mstatus |= Mode::S.to_bits() << mstatus::MPP_OFFSET;
 
@@ -1518,7 +1543,12 @@ mod tests {
     fn switch_to_firmware_mideleg() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+        let mut ctx = VirtContext::new(
+            0,
+            mctx.hw.available_reg.nb_pmp,
+            mctx.hw.has_h_mode,
+            mctx.hw.has_s_mode,
+        );
 
         unsafe { Arch::write_csr(Csr::Mideleg, usize::MAX) };
 
@@ -1538,7 +1568,12 @@ mod tests {
     fn csrr_external_interrupt() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+        let mut ctx = VirtContext::new(
+            0,
+            mctx.hw.available_reg.nb_pmp,
+            mctx.hw.has_h_mode,
+            mctx.hw.has_s_mode,
+        );
 
         // This should set mip.SEIP
         ctx.set_csr(Csr::Mip, mie::SEIE_FILTER, &mut mctx);

@@ -10,8 +10,10 @@ use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
 use crate::{
-    _bss_start, _bss_stop, _stack_start, main, utils, RegisterContextGetter, RegisterContextSetter,
+    _bss_start, _bss_stop, _stack_start, main, misa, utils, RegisterContextGetter,
+    RegisterContextSetter,
 };
+
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
 
@@ -309,6 +311,11 @@ impl Architecture for MetalArch {
         Self::write_csr(Csr::Mstatus, mstatus);
         Self::write_csr(Csr::Mtvec, mtvec);
 
+        // Detect if H extension available
+        let misa = Self::read_csr(Csr::Misa);
+        let has_h_mode: bool = (misa as usize & misa::H) != 0;
+        let has_s_mode: bool = (misa as usize & misa::S) != 0;
+
         // Return hardware configuration
         HardwareCapability {
             interrupts: available_int,
@@ -319,6 +326,8 @@ impl Architecture for MetalArch {
                 senvcfg: is_senvcfg_present,
                 nb_pmp,
             },
+            has_h_mode: has_h_mode,
+            has_s_mode: has_s_mode,
         }
     }
 

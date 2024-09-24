@@ -138,7 +138,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     }
 
     // Initialize the virtual context and configure architecture
-    let mut ctx = VirtContext::new(hart_id, nb_virt_pmp);
+    let mut ctx = VirtContext::new(hart_id, nb_virt_pmp, mctx.hw.has_h_mode, mctx.hw.has_s_mode);
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
@@ -368,7 +368,12 @@ mod tests {
     fn handle_trap_state() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp);
+        let mut ctx = VirtContext::new(
+            0,
+            mctx.hw.available_reg.nb_pmp,
+            mctx.hw.has_h_mode,
+            mctx.hw.has_s_mode,
+        );
 
         // Firmware is running
         ctx.mode = Mode::M;
