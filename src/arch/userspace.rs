@@ -9,6 +9,7 @@ use core::{ptr, usize};
 use spin::Mutex;
 
 use super::{mie, mstatus, Architecture, Csr, MCause, Mode};
+use crate::arch::pmp::PmpFlush;
 use crate::arch::{HardwareCapability, PmpGroup};
 use crate::decoder::Instr;
 use crate::main;
@@ -37,7 +38,7 @@ impl Architecture for HostArch {
         Self::write_csr(Csr::Mstatus, (mstatus & !mstatus::MPP_FILTER) | value);
     }
 
-    unsafe fn write_pmp(pmp: &PmpGroup) {
+    unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
         let pmpaddr = pmp.pmpaddr();
         let pmpcfg = pmp.pmpcfg();
         let nb_pmp = pmp.nb_pmp as usize;
@@ -53,6 +54,8 @@ impl Architecture for HostArch {
             let cfg = pmpcfg[idx];
             HOST_CTX.lock().csr.pmpcfg[idx * 2] = cfg;
         }
+
+        PmpFlush()
     }
 
     unsafe fn run_vcpu(_ctx: &mut crate::virt::VirtContext) {

@@ -4,6 +4,7 @@ use core::marker::PhantomData;
 use core::{ptr, usize};
 
 use super::{Arch, Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
+use crate::arch::pmp::PmpFlush;
 use crate::arch::{mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
 use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
 use crate::decoder::Instr;
@@ -327,7 +328,7 @@ impl Architecture for MetalArch {
         Self::write_csr(Csr::Mstatus, (mstatus & !mstatus::MPP_FILTER) | value);
     }
 
-    unsafe fn write_pmp(pmp: &PmpGroup) {
+    unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
         let pmpaddr = pmp.pmpaddr();
         let pmpcfg = pmp.pmpcfg();
         let nb_pmp = pmp.nb_pmp as usize;
@@ -344,6 +345,8 @@ impl Architecture for MetalArch {
             let cfg = pmpcfg[idx];
             write_pmpcfg(idx * 2, cfg);
         }
+
+        PmpFlush()
     }
 
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
