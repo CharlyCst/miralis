@@ -11,7 +11,7 @@ mod registers;
 mod trap;
 mod userspace;
 
-use pmp::PmpGroup;
+use pmp::{PmpFlush, PmpGroup};
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
@@ -48,7 +48,7 @@ pub trait Architecture {
     /// Set csr_bits with mask
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
     unsafe fn set_mpp(mode: Mode);
-    unsafe fn write_pmp(pmp: &PmpGroup);
+    unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush;
     unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);

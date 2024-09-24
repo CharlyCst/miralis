@@ -3,6 +3,9 @@
 //! This module handles exposes structure to store and manipulate PMPs, including checking for
 //! addresses matching PMP ranges.
 
+use super::Architecture;
+use crate::arch::Arch;
+
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
 
 /// PMP Configuration
@@ -68,6 +71,14 @@ pub struct PmpGroup {
     /// Number of supported PMP registers
     pub nb_pmp: u8,
 }
+
+/// A struct that can be consumed to flush the caches, making the latest PMP configuration
+/// effective immediately.
+///
+/// This struct is marked as `#[must_use]`, which will rise a warning if the struct is not
+/// consumed. This is handy to prevent forgetting to flush the caches and introduce suble bugs.
+#[must_use = "caches must be flushed before PMP change can take effect"]
+pub struct PmpFlush();
 
 impl PmpGroup {
     pub const fn new(nb_pmp: usize) -> Self {
@@ -341,5 +352,19 @@ mod tests {
         for (actual, expected) in pmps.into_iter().zip(expected.into_iter()) {
             assert_eq!(actual, expected, "Unexpected PMP region")
         }
+    }
+}
+
+impl PmpFlush {
+    /// Flush the caches, which is required for PMP changes to take effect.
+    pub fn flush(self) {
+        unsafe { Arch::sfencevma(None, None) }
+    }
+
+    /// Do not flush the caches, PMP changes will not take effect predictably which can lead to
+    /// suble bugs.
+    #[allow(dead_code)] // TODO: remove once used or part of the public API
+    pub fn no_flush(self) {
+        // Do nothing
     }
 }

@@ -785,8 +785,7 @@ impl VirtContext {
             mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
         }
         // Commit the PMP to hardware
-        Arch::write_pmp(&mctx.pmp);
-        Arch::sfencevma(None, None);
+        Arch::write_pmp(&mctx.pmp).flush();
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -870,8 +869,7 @@ impl VirtContext {
         mctx.pmp
             .set(last_pmp_idx, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
         // Commit the PMP to hardware
-        Arch::write_pmp(&mctx.pmp);
-        Arch::sfencevma(None, None);
+        Arch::write_pmp(&mctx.pmp).flush();
     }
 }
 
