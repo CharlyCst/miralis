@@ -15,7 +15,7 @@ use crate::decoder::Instr;
 use crate::main;
 use crate::virt::VirtContext;
 
-static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(0, 16));
+static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(0, 16, false, true));
 
 /// User space mock, running on the host architecture.
 pub struct HostArch {}
@@ -100,6 +100,8 @@ impl Architecture for HostArch {
                 senvcfg: true,
                 nb_pmp: 16,
             },
+            has_h_mode: false,
+            has_s_mode: true,
         }
     }
 

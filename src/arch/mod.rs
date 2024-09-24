@@ -88,6 +88,7 @@ pub trait Architecture {
 ///
 /// This struct has to be local to a core (it is !Send and !Sync) and can be obtained though
 /// hardware capability detection using the [Architecture] trait.
+#[derive(Debug, Clone)]
 pub struct HardwareCapability {
     /// Bitmap of valid interrupts, marks valid bits in `mie` and `mip`.
     pub interrupts: usize,
@@ -95,11 +96,16 @@ pub struct HardwareCapability {
     pub available_reg: RegistersCapability,
     /// The hart ID, as read from mhartid.
     pub hart: usize,
+    /// RISC-V Hypervisor extension available
+    pub has_h_mode: bool,
+    /// RISC-V Supervision extension available
+    pub has_s_mode: bool,
     /// Prevent the struct from being used on another core.
     _marker: PhantomNotSendNotSync,
 }
 
 /// A struct that contains information about the available registers
+#[derive(Debug, Clone)]
 pub struct RegistersCapability {
     /// Boolean value indicating if Machine environment configuration register is present
     pub menvcfg: bool,
@@ -195,16 +201,7 @@ pub mod misa {
         // In addition, we disable floating points because we encountered some issues with those
         // and they will require special handling when context switching from the OS (checking the
         // mstatus.FS bits).
-        let mut disabled = C | D | F | Q;
-        // For the rest we look up the configuration
-        if !Plat::HAS_H_MODE {
-            disabled |= H;
-        }
-
-        if !Plat::HAS_S_MODE {
-            disabled |= S;
-        }
-        disabled
+        C | D | F | Q
     };
 
     /// Constant to filter out non-writable fields of the misa csr

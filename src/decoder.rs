@@ -1,6 +1,6 @@
 //! RISC-V instruction decoder
 use crate::arch::{Csr, Register, Width};
-use crate::platform::{Plat, Platform};
+use crate::host::MiralisContext;
 
 const OPCODE_MASK: usize = 0b1111111;
 
@@ -91,672 +91,674 @@ enum Opcode {
     Unknown,
 }
 
-/// Decode a raw RISC-V instruction.
-///
-/// NOTE: for now this function  only support 32 bits instructions.
-pub fn decode(raw: usize) -> Instr {
-    let opcode = decode_opcode(raw);
-    match opcode {
-        Opcode::System => decode_system(raw),
-        Opcode::Load => decode_load(raw),
-        Opcode::Store => decode_store(raw),
-        Opcode::Compressed => decode_c_reg_based(raw),
-        _ => Instr::Unknown,
-    }
-}
-
-fn decode_opcode(raw: usize) -> Opcode {
-    let last_two_bits = raw & 0b11;
-    match last_two_bits {
-        0b11 => {
-            // It seems all 32 bits instructions start with 0b11
-            let opcode = raw & OPCODE_MASK;
-            match opcode >> 2 {
-                0b00000 => Opcode::Load,
-                0b01000 => Opcode::Store,
-                0b11100 => Opcode::System,
-                _ => Opcode::Unknown,
-            }
+impl MiralisContext {
+    /// Decode a raw RISC-V instruction.
+    ///
+    /// NOTE: for now this function  only support 32 bits instructions.
+    pub fn decode(&self, raw: usize) -> Instr {
+        let opcode = self.decode_opcode(raw);
+        match opcode {
+            Opcode::System => self.decode_system(raw),
+            Opcode::Load => self.decode_load(raw),
+            Opcode::Store => self.decode_store(raw),
+            Opcode::Compressed => self.decode_c_reg_based(raw),
+            _ => Instr::Unknown,
         }
-        // Register-based load and store instructions for C set start with 0b00
-        0b00 => Opcode::Compressed,
-        _ => Opcode::Unknown,
     }
-}
 
-fn decode_c_reg_based(raw: usize) -> Instr {
-    let func3 = (raw >> 13) & 0b111;
-    let rd_rs2 = (raw >> 2) & 0b111;
-    let rs1 = (raw >> 7) & 0b111;
-
-    let rd_rs2 = Register::from(rd_rs2 + 8);
-    let rs1 = Register::from(rs1 + 8);
-
-    match func3 {
-        0b111 => {
-            let rs2 = rd_rs2;
-            let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
-            Instr::Store {
-                rs2,
-                rs1,
-                imm: (imm * 8).try_into().unwrap(),
-                len: Width::from(64),
-                is_compressed: true,
+    fn decode_opcode(&self, raw: usize) -> Opcode {
+        let last_two_bits = raw & 0b11;
+        match last_two_bits {
+            0b11 => {
+                // It seems all 32 bits instructions start with 0b11
+                let opcode = raw & OPCODE_MASK;
+                match opcode >> 2 {
+                    0b00000 => Opcode::Load,
+                    0b01000 => Opcode::Store,
+                    0b11100 => Opcode::System,
+                    _ => Opcode::Unknown,
+                }
             }
+            // Register-based load and store instructions for C set start with 0b00
+            0b00 => Opcode::Compressed,
+            _ => Opcode::Unknown,
         }
-        0b011 => {
-            let rd = rd_rs2;
-            let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
-            Instr::Load {
-                rd,
-                rs1,
-                imm: (imm * 8).try_into().unwrap(),
-                len: Width::from(64),
-                is_compressed: true,
-                is_unsigned: false,
-            }
-        }
-        0b010 => {
-            let rd = rd_rs2;
-            let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
-            Instr::Load {
-                rd,
-                rs1,
-                imm: (imm * 4).try_into().unwrap(),
-                len: Width::from(32),
-                is_compressed: true,
-                is_unsigned: false,
-            }
-        }
-        0b110 => {
-            let rs2 = rd_rs2;
-            let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
-            Instr::Store {
-                rs2,
-                rs1,
-                imm: (imm * 4).try_into().unwrap(),
-                len: Width::from(32),
-                is_compressed: true,
-            }
-        }
-        _ => Instr::Unknown,
     }
-}
 
-fn bits_to_int(raw: usize, start_bit: isize, end_bit: isize) -> isize {
-    let mask = (1 << (end_bit - start_bit + 1)) - 1;
-    let value = (raw >> start_bit) & mask;
+    fn decode_c_reg_based(&self, raw: usize) -> Instr {
+        let func3 = (raw >> 13) & 0b111;
+        let rd_rs2 = (raw >> 2) & 0b111;
+        let rs1 = (raw >> 7) & 0b111;
 
-    // Check if the most significant bit is set (indicating a negative value)
-    if value & (1 << (end_bit - start_bit)) != 0 {
-        // Extend the sign bit to the left
-        let sign_extension = !0 << (end_bit - start_bit);
-        value as isize | sign_extension
-    } else {
-        value as isize
-    }
-}
-fn decode_load(raw: usize) -> Instr {
-    let func3 = (raw >> 12) & 0b111;
-    let rd = (raw >> 7) & 0b11111;
-    let rs1 = (raw >> 15) & 0b11111;
-    let imm = bits_to_int(raw, 20, 31);
+        let rd_rs2 = Register::from(rd_rs2 + 8);
+        let rs1 = Register::from(rs1 + 8);
 
-    let rs1 = Register::from(rs1);
-    let rd = Register::from(rd);
-
-    match func3 {
-        0b000 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(8),
-            is_compressed: false,
-            is_unsigned: false,
-        },
-        0b001 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(16),
-            is_compressed: false,
-            is_unsigned: false,
-        },
-        0b010 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(32),
-            is_compressed: false,
-            is_unsigned: false,
-        },
-        0b011 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(64),
-            is_compressed: false,
-            is_unsigned: false,
-        },
-        0b100 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(8),
-            is_compressed: false,
-            is_unsigned: true,
-        },
-        0b101 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(16),
-            is_compressed: false,
-            is_unsigned: true,
-        },
-        0b110 => Instr::Load {
-            rd,
-            rs1,
-            imm,
-            len: Width::from(32),
-            is_compressed: false,
-            is_unsigned: true,
-        },
-        _ => Instr::Unknown,
-    }
-}
-
-fn decode_store(raw: usize) -> Instr {
-    let func3 = (raw >> 12) & 0b111;
-    let rs1: usize = (raw >> 15) & 0b11111;
-    let rs2 = (raw >> 20) & 0b11111;
-    let imm = bits_to_int(
-        ((raw >> 7) & 0b11111) | ((raw >> 20) & 0b111111100000),
-        0,
-        11,
-    );
-
-    let rs1 = Register::from(rs1);
-    let rs2 = Register::from(rs2);
-
-    match func3 {
-        0b000 => Instr::Store {
-            rs2,
-            rs1,
-            imm,
-            len: Width::from(8),
-            is_compressed: false,
-        },
-        0b001 => Instr::Store {
-            rs2,
-            rs1,
-            imm,
-            len: Width::from(16),
-            is_compressed: false,
-        },
-        0b010 => Instr::Store {
-            rs2,
-            rs1,
-            imm,
-            len: Width::from(32),
-            is_compressed: false,
-        },
-        0b011 => Instr::Store {
-            rs2,
-            rs1,
-            imm,
-            len: Width::from(64),
-            is_compressed: false,
-        },
-        _ => Instr::Unknown,
-    }
-}
-
-fn decode_system(raw: usize) -> Instr {
-    let rd = (raw >> 7) & 0b11111;
-    let func3 = (raw >> 12) & 0b111;
-    let rs1 = (raw >> 15) & 0b11111;
-    let imm = (raw >> 20) & 0b111111111111;
-    let func7 = (raw >> 25) & 0b1111111;
-    if func3 == 0b000 {
-        return match imm {
-            0b000000000000 => Instr::Ecall,
-            0b000000000001 => Instr::Ebreak,
-            0b000100000101 => Instr::Wfi,
-            0b001100000010 => Instr::Mret,
-            0b000100000010 => Instr::Sret,
-            _ if func7 == 0b0001001 => {
-                let rs1 = Register::from(rs1);
-                let rs2 = (raw >> 20) & 0b11111;
-                let rs2 = Register::from(rs2);
-                return Instr::Sfencevma { rs1, rs2 };
+        match func3 {
+            0b111 => {
+                let rs2 = rd_rs2;
+                let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+                Instr::Store {
+                    rs2,
+                    rs1,
+                    imm: (imm * 8).try_into().unwrap(),
+                    len: Width::from(64),
+                    is_compressed: true,
+                }
             }
-            _ if func7 == 0b0010001 => {
-                let rs1 = Register::from(rs1);
-                let rs2 = (raw >> 20) & 0b11111;
-                let rs2 = Register::from(rs2);
-                return Instr::Hfencevvma { rs1, rs2 };
+            0b011 => {
+                let rd = rd_rs2;
+                let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+                Instr::Load {
+                    rd,
+                    rs1,
+                    imm: (imm * 8).try_into().unwrap(),
+                    len: Width::from(64),
+                    is_compressed: true,
+                    is_unsigned: false,
+                }
             }
-            _ if func7 == 0b0110001 => {
-                let rs1 = Register::from(rs1);
-                let rs2 = (raw >> 20) & 0b11111;
-                let rs2 = Register::from(rs2);
-                return Instr::Hfencegvma { rs1, rs2 };
+            0b010 => {
+                let rd = rd_rs2;
+                let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                Instr::Load {
+                    rd,
+                    rs1,
+                    imm: (imm * 4).try_into().unwrap(),
+                    len: Width::from(32),
+                    is_compressed: true,
+                    is_unsigned: false,
+                }
+            }
+            0b110 => {
+                let rs2 = rd_rs2;
+                let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                Instr::Store {
+                    rs2,
+                    rs1,
+                    imm: (imm * 4).try_into().unwrap(),
+                    len: Width::from(32),
+                    is_compressed: true,
+                }
             }
             _ => Instr::Unknown,
-        };
+        }
     }
 
-    let csr = decode_csr(imm);
-    let rd = Register::from(rd);
-    match func3 {
-        0b001 => Instr::Csrrw {
-            csr,
-            rd,
-            rs1: Register::from(rs1),
-        },
-        0b010 => Instr::Csrrs {
-            csr,
-            rd,
-            rs1: Register::from(rs1),
-        },
-        0b011 => Instr::Csrrc {
-            csr,
-            rd,
-            rs1: Register::from(rs1),
-        },
-        0b101 => Instr::Csrrwi { csr, rd, uimm: rs1 },
-        0b110 => Instr::Csrrsi { csr, rd, uimm: rs1 },
-        0b111 => Instr::Csrrci { csr, rd, uimm: rs1 },
-        _ => Instr::Unknown,
-    }
-}
+    fn bits_to_int(&self, raw: usize, start_bit: isize, end_bit: isize) -> isize {
+        let mask = (1 << (end_bit - start_bit + 1)) - 1;
+        let value = (raw >> start_bit) & mask;
 
-fn decode_csr(csr: usize) -> Csr {
-    match csr {
-        0x300 => Csr::Mstatus,
-        0x301 => Csr::Misa,
-        0x304 => Csr::Mie,
-        0x305 => Csr::Mtvec,
-        0x340 => Csr::Mscratch,
-        0x344 => Csr::Mip,
-        0xF14 => Csr::Mhartid,
-        0xF11 => Csr::Mvendorid,
-        0xF12 => Csr::Marchid,
-        0xF13 => Csr::Mimpid,
-        0x3A0..=0x3AF => Csr::Pmpcfg(csr - 0x3A0),
-        0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
-        0xB00 => Csr::Mcycle,
-        0xB02 => Csr::Minstret,
-        0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
-        0x320 => Csr::Mcountinhibit,
-        0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
-        0x306 => Csr::Mcounteren,
-        0x30a => Csr::Menvcfg,
-        0x747 => Csr::Mseccfg,
-        0xF15 => Csr::Mconfigptr,
-        0x302 => {
-            if !Plat::HAS_S_MODE {
-                log::warn!(
-                    "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
-                    csr
-                );
-                Csr::Unknown
-            } else {
-                Csr::Medeleg
-            }
+        // Check if the most significant bit is set (indicating a negative value)
+        if value & (1 << (end_bit - start_bit)) != 0 {
+            // Extend the sign bit to the left
+            let sign_extension = !0 << (end_bit - start_bit);
+            value as isize | sign_extension
+        } else {
+            value as isize
         }
-        0x303 => {
-            if !Plat::HAS_S_MODE {
-                log::warn!(
-                    "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
-                    csr
-                );
-                Csr::Unknown
-            } else {
-                Csr::Mideleg
-            }
+    }
+    fn decode_load(&self, raw: usize) -> Instr {
+        let func3 = (raw >> 12) & 0b111;
+        let rd = (raw >> 7) & 0b11111;
+        let rs1 = (raw >> 15) & 0b11111;
+        let imm = self.bits_to_int(raw, 20, 31);
+
+        let rs1 = Register::from(rs1);
+        let rd = Register::from(rd);
+
+        match func3 {
+            0b000 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(8),
+                is_compressed: false,
+                is_unsigned: false,
+            },
+            0b001 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(16),
+                is_compressed: false,
+                is_unsigned: false,
+            },
+            0b010 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(32),
+                is_compressed: false,
+                is_unsigned: false,
+            },
+            0b011 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(64),
+                is_compressed: false,
+                is_unsigned: false,
+            },
+            0b100 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(8),
+                is_compressed: false,
+                is_unsigned: true,
+            },
+            0b101 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(16),
+                is_compressed: false,
+                is_unsigned: true,
+            },
+            0b110 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(32),
+                is_compressed: false,
+                is_unsigned: true,
+            },
+            _ => Instr::Unknown,
         }
-        0x34A => {
-            if !Plat::HAS_H_MODE {
-                log::warn!(
+    }
+
+    fn decode_store(&self, raw: usize) -> Instr {
+        let func3 = (raw >> 12) & 0b111;
+        let rs1: usize = (raw >> 15) & 0b11111;
+        let rs2 = (raw >> 20) & 0b11111;
+        let imm = self.bits_to_int(
+            ((raw >> 7) & 0b11111) | ((raw >> 20) & 0b111111100000),
+            0,
+            11,
+        );
+
+        let rs1 = Register::from(rs1);
+        let rs2 = Register::from(rs2);
+
+        match func3 {
+            0b000 => Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len: Width::from(8),
+                is_compressed: false,
+            },
+            0b001 => Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len: Width::from(16),
+                is_compressed: false,
+            },
+            0b010 => Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len: Width::from(32),
+                is_compressed: false,
+            },
+            0b011 => Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len: Width::from(64),
+                is_compressed: false,
+            },
+            _ => Instr::Unknown,
+        }
+    }
+
+    fn decode_system(&self, raw: usize) -> Instr {
+        let rd = (raw >> 7) & 0b11111;
+        let func3 = (raw >> 12) & 0b111;
+        let rs1 = (raw >> 15) & 0b11111;
+        let imm = (raw >> 20) & 0b111111111111;
+        let func7 = (raw >> 25) & 0b1111111;
+        if func3 == 0b000 {
+            return match imm {
+                0b000000000000 => Instr::Ecall,
+                0b000000000001 => Instr::Ebreak,
+                0b000100000101 => Instr::Wfi,
+                0b001100000010 => Instr::Mret,
+                0b000100000010 => Instr::Sret,
+                _ if func7 == 0b0001001 => {
+                    let rs1 = Register::from(rs1);
+                    let rs2 = (raw >> 20) & 0b11111;
+                    let rs2 = Register::from(rs2);
+                    return Instr::Sfencevma { rs1, rs2 };
+                }
+                _ if func7 == 0b0010001 => {
+                    let rs1 = Register::from(rs1);
+                    let rs2 = (raw >> 20) & 0b11111;
+                    let rs2 = Register::from(rs2);
+                    return Instr::Hfencevvma { rs1, rs2 };
+                }
+                _ if func7 == 0b0110001 => {
+                    let rs1 = Register::from(rs1);
+                    let rs2 = (raw >> 20) & 0b11111;
+                    let rs2 = Register::from(rs2);
+                    return Instr::Hfencegvma { rs1, rs2 };
+                }
+                _ => Instr::Unknown,
+            };
+        }
+
+        let csr = self.decode_csr(imm);
+        let rd = Register::from(rd);
+        match func3 {
+            0b001 => Instr::Csrrw {
+                csr,
+                rd,
+                rs1: Register::from(rs1),
+            },
+            0b010 => Instr::Csrrs {
+                csr,
+                rd,
+                rs1: Register::from(rs1),
+            },
+            0b011 => Instr::Csrrc {
+                csr,
+                rd,
+                rs1: Register::from(rs1),
+            },
+            0b101 => Instr::Csrrwi { csr, rd, uimm: rs1 },
+            0b110 => Instr::Csrrsi { csr, rd, uimm: rs1 },
+            0b111 => Instr::Csrrci { csr, rd, uimm: rs1 },
+            _ => Instr::Unknown,
+        }
+    }
+
+    fn decode_csr(&self, csr: usize) -> Csr {
+        match csr {
+            0x300 => Csr::Mstatus,
+            0x301 => Csr::Misa,
+            0x304 => Csr::Mie,
+            0x305 => Csr::Mtvec,
+            0x340 => Csr::Mscratch,
+            0x344 => Csr::Mip,
+            0xF14 => Csr::Mhartid,
+            0xF11 => Csr::Mvendorid,
+            0xF12 => Csr::Marchid,
+            0xF13 => Csr::Mimpid,
+            0x3A0..=0x3AF => Csr::Pmpcfg(csr - 0x3A0),
+            0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
+            0xB00 => Csr::Mcycle,
+            0xB02 => Csr::Minstret,
+            0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
+            0x320 => Csr::Mcountinhibit,
+            0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
+            0x306 => Csr::Mcounteren,
+            0x30a => Csr::Menvcfg,
+            0x747 => Csr::Mseccfg,
+            0xF15 => Csr::Mconfigptr,
+            0x302 => {
+                if !self.hw.has_s_mode {
+                    log::warn!(
+                        "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
+                        csr
+                    );
+                    Csr::Unknown
+                } else {
+                    Csr::Medeleg
+                }
+            }
+            0x303 => {
+                if !self.hw.has_s_mode {
+                    log::warn!(
+                        "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
+                        csr
+                    );
+                    Csr::Unknown
+                } else {
+                    Csr::Mideleg
+                }
+            }
+            0x34A => {
+                if !self.hw.has_h_mode {
+                    log::warn!(
                     "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
                     csr
                 );
-                Csr::Unknown
-            } else {
-                Csr::Mtinst
+                    Csr::Unknown
+                } else {
+                    Csr::Mtinst
+                }
             }
-        }
-        0x34B => {
-            if !Plat::HAS_H_MODE {
-                log::warn!(
+            0x34B => {
+                if !self.hw.has_h_mode {
+                    log::warn!(
                     "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
                     csr
                 );
-                Csr::Unknown
-            } else {
-                Csr::Mtval2
+                    Csr::Unknown
+                } else {
+                    Csr::Mtval2
+                }
             }
-        }
-        0x7A0 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Tselect
+            0x7A0 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Tselect
+                }
             }
-        }
-        0x7A1 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Tdata1
+            0x7A1 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Tdata1
+                }
             }
-        }
-        0x7A2 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Tdata2
+            0x7A2 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Tdata2
+                }
             }
-        }
-        0x7A3 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Tdata3
+            0x7A3 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Tdata3
+                }
             }
-        }
-        0x7A8 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Mcontext
+            0x7A8 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Mcontext
+                }
             }
-        }
-        0x7B0 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Dcsr
+            0x7B0 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Dcsr
+                }
             }
-        }
-        0x7B1 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Dpc
+            0x7B1 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Dpc
+                }
             }
-        }
-        0x7B2 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Dscratch0
+            0x7B2 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Dscratch0
+                }
             }
-        }
-        0x7B3 => {
-            if true {
-                Csr::Unknown
-            } else {
-                Csr::Dscratch1
+            0x7B3 => {
+                if true {
+                    Csr::Unknown
+                } else {
+                    Csr::Dscratch1
+                }
             }
-        }
-        0x342 => Csr::Mcause,
-        0x341 => Csr::Mepc,
-        0x343 => Csr::Mtval,
-        // Supervisor-level CSRs
-        0x100 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Sstatus
+            0x342 => Csr::Mcause,
+            0x341 => Csr::Mepc,
+            0x343 => Csr::Mtval,
+            // Supervisor-level CSRs
+            0x100 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Sstatus
+                }
             }
-        }
-        0x104 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Sie
+            0x104 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Sie
+                }
             }
-        }
-        0x105 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Stvec
+            0x105 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Stvec
+                }
             }
-        }
-        0x106 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Scounteren
+            0x106 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Scounteren
+                }
             }
-        }
-        0x10A => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Senvcfg
+            0x10A => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Senvcfg
+                }
             }
-        }
-        0x140 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Sscratch
+            0x140 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Sscratch
+                }
             }
-        }
-        0x141 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Sepc
+            0x141 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Sepc
+                }
             }
-        }
-        0x142 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Scause
+            0x142 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Scause
+                }
             }
-        }
-        0x143 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Stval
+            0x143 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Stval
+                }
             }
-        }
-        0x144 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Sip
+            0x144 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Sip
+                }
             }
-        }
-        0x180 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Satp
+            0x180 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Satp
+                }
             }
-        }
-        0x5A8 => {
-            if !Plat::HAS_S_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Scontext
+            0x5A8 => {
+                if !self.hw.has_s_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Scontext
+                }
             }
-        }
 
-        // Hypervisor and Virtual Supervisor CSRs
-        0x600 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hstatus
+            // Hypervisor and Virtual Supervisor CSRs
+            0x600 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hstatus
+                }
             }
-        }
-        0x602 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hedeleg
+            0x602 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hedeleg
+                }
             }
-        }
-        0x603 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hideleg
+            0x603 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hideleg
+                }
             }
-        }
-        0x645 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hvip
+            0x645 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hvip
+                }
             }
-        }
-        0x644 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hip
+            0x644 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hip
+                }
             }
-        }
-        0x604 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hie
+            0x604 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hie
+                }
             }
-        }
-        0xe12 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hgeip
+            0xe12 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hgeip
+                }
             }
-        }
-        0x607 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hgeie
+            0x607 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hgeie
+                }
             }
-        }
-        0x60a => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Henvcfg
+            0x60a => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Henvcfg
+                }
             }
-        }
-        0x606 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hcounteren
+            0x606 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hcounteren
+                }
             }
-        }
-        0x605 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Htimedelta
+            0x605 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Htimedelta
+                }
             }
-        }
-        0x643 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Htval
+            0x643 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Htval
+                }
             }
-        }
-        0x64a => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Htinst
+            0x64a => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Htinst
+                }
             }
-        }
-        0x680 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Hgatp
+            0x680 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Hgatp
+                }
             }
-        }
-        0x200 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vsstatus
+            0x200 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vsstatus
+                }
             }
-        }
-        0x204 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vsie
+            0x204 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vsie
+                }
             }
-        }
-        0x205 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vstvec
+            0x205 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vstvec
+                }
             }
-        }
-        0x240 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vsscratch
+            0x240 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vsscratch
+                }
             }
-        }
-        0x241 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vsepc
+            0x241 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vsepc
+                }
             }
-        }
-        0x242 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vscause
+            0x242 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vscause
+                }
             }
-        }
-        0x243 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vstval
+            0x243 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vstval
+                }
             }
-        }
-        0x244 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vsip
+            0x244 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vsip
+                }
             }
-        }
-        0x280 => {
-            if !Plat::HAS_H_MODE {
-                Csr::Unknown
-            } else {
-                Csr::Vsatp
+            0x280 => {
+                if !self.hw.has_h_mode {
+                    Csr::Unknown
+                } else {
+                    Csr::Vsatp
+                }
             }
-        }
 
-        _ => {
-            log::info!("Unknown CSR: 0x{:x}", csr);
-            Csr::Unknown
+            _ => {
+                log::info!("Unknown CSR: 0x{:x}", csr);
+                Csr::Unknown
+            }
         }
     }
 }
@@ -766,32 +768,34 @@ fn decode_csr(csr: usize) -> Csr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::arch::{Arch, Architecture};
 
     /// Decodes priviledged instructions
     /// Here is an handy tool to double check:
     /// https://luplab.gitlab.io/rvcodecjs/
     #[test]
     fn system_instructions() {
+        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() });
         // ECALL: Environment call.
-        assert_eq!(decode(0x00000073), Instr::Ecall);
+        assert_eq!(mctx.decode(0x00000073), Instr::Ecall);
         // EBREAK: Environment break.
-        assert_eq!(decode(0x00100073), Instr::Ebreak);
+        assert_eq!(mctx.decode(0x00100073), Instr::Ebreak);
         // MRET: Return from machine mode.
-        assert_eq!(decode(0x30200073), Instr::Mret);
+        assert_eq!(mctx.decode(0x30200073), Instr::Mret);
         // SRET: Return from supervisor mode.
-        assert_eq!(decode(0x10200073), Instr::Sret);
+        assert_eq!(mctx.decode(0x10200073), Instr::Sret);
         // WFI: Wait for interrupt.
-        assert_eq!(decode(0x10500073), Instr::Wfi);
+        assert_eq!(mctx.decode(0x10500073), Instr::Wfi);
         // SFENCE.VMA: Supervisor memory-management fence.
         assert_eq!(
-            decode(0x12000073),
+            mctx.decode(0x12000073),
             Instr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X0
             }
         );
         assert_eq!(
-            decode(0x13300073),
+            mctx.decode(0x13300073),
             Instr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X19
@@ -801,9 +805,11 @@ mod tests {
 
     #[test]
     fn csr_instructions() {
+        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() });
+
         // CSRRW: Atomic Read/Write CSR.
         assert_eq!(
-            decode(0x30001073),
+            mctx.decode(0x30001073),
             Instr::Csrrw {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -813,7 +819,7 @@ mod tests {
 
         // CSRRS: Atomic Read and Set Bits in CSR.
         assert_eq!(
-            decode(0x30002073),
+            mctx.decode(0x30002073),
             Instr::Csrrs {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -823,7 +829,7 @@ mod tests {
 
         // CSRRC: Atomic Read and Clear Bits in CSR.
         assert_eq!(
-            decode(0x30003073),
+            mctx.decode(0x30003073),
             Instr::Csrrc {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -833,7 +839,7 @@ mod tests {
 
         // CSRRWI: Atomic Read/Write CSR Immediate.
         assert_eq!(
-            decode(0x30005073),
+            mctx.decode(0x30005073),
             Instr::Csrrwi {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -843,7 +849,7 @@ mod tests {
 
         // CSRRSI: Atomic Read and Set Bits in CSR Immediate.
         assert_eq!(
-            decode(0x30006073),
+            mctx.decode(0x30006073),
             Instr::Csrrsi {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -853,7 +859,7 @@ mod tests {
 
         // CSRRCI: Atomic Read and Clear Bits in CSR Immediate.s
         assert_eq!(
-            decode(0x30007073),
+            mctx.decode(0x30007073),
             Instr::Csrrci {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -864,8 +870,10 @@ mod tests {
 
     #[test]
     fn access_instructions() {
+        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() });
+
         assert_eq!(
-            decode(0xff87b703),
+            mctx.decode(0xff87b703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -877,7 +885,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xfee7bc23),
+            mctx.decode(0xfee7bc23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -888,7 +896,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xff87a703),
+            mctx.decode(0xff87a703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -900,7 +908,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xfee7ac23),
+            mctx.decode(0xfee7ac23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -911,7 +919,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xff879703),
+            mctx.decode(0xff879703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -923,7 +931,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xfee79c23),
+            mctx.decode(0xfee79c23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -934,7 +942,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xff878703),
+            mctx.decode(0xff878703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -946,7 +954,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xfee78c23),
+            mctx.decode(0xfee78c23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -965,7 +973,7 @@ mod tests {
         // This helps to keep compressed and uncompressed instructions handlers more homogenous in other modules.
 
         assert_eq!(
-            decode(0xffffe798),
+            mctx.decode(0xffffe798),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -976,7 +984,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xffff6798),
+            mctx.decode(0xffff6798),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -988,7 +996,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xffff4798),
+            mctx.decode(0xffff4798),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1000,7 +1008,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xffffc798),
+            mctx.decode(0xffffc798),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -1011,7 +1019,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xff87e703),
+            mctx.decode(0xff87e703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1023,7 +1031,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xff87d703),
+            mctx.decode(0xff87d703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1035,7 +1043,7 @@ mod tests {
         );
 
         assert_eq!(
-            decode(0xff87c703),
+            mctx.decode(0xff87c703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1049,6 +1057,8 @@ mod tests {
 
     #[test]
     fn decode_rd() {
+        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() });
+
         let base_instruction: usize = 0x30001073;
 
         let instruction_builder_rd = |offset: usize| -> usize { base_instruction + (offset << 7) };
@@ -1090,7 +1100,7 @@ mod tests {
 
         for tuple in registers_to_test.iter() {
             assert_eq!(
-                decode(tuple.0),
+                mctx.decode(tuple.0),
                 Instr::Csrrw {
                     csr: Csr::Mstatus,
                     rd: tuple.1,
@@ -1102,6 +1112,8 @@ mod tests {
 
     #[test]
     fn decode_rs1() {
+        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() });
+
         let base_instruction: usize = 0x30001073;
 
         let instruction_builder_rs1 =
@@ -1144,7 +1156,7 @@ mod tests {
 
         for tuple in registers_to_test.iter() {
             assert_eq!(
-                decode(tuple.0),
+                mctx.decode(tuple.0),
                 Instr::Csrrw {
                     csr: Csr::Mstatus,
                     rd: Register::X0,

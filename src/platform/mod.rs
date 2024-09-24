@@ -11,7 +11,7 @@ use spin::Mutex;
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
 use crate::driver::ClintDriver;
-use crate::{config, device, logger};
+use crate::{device, logger};
 
 /// Export the current platform.
 ///
@@ -42,8 +42,6 @@ pub trait Platform {
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;
 
-    const HAS_S_MODE: bool = config::VCPU_S_MODE;
-    const HAS_H_MODE: bool = config::VCPU_H_MODE;
     const NB_HARTS: usize;
 }
 
