@@ -1,6 +1,5 @@
 //! Build
 
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use crate::artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
@@ -13,14 +12,8 @@ pub fn build(args: &BuildArgs) -> ExitCode {
         let firmware = match locate_artifact(firmware) {
             Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
             Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-            None => {
-                let path = PathBuf::from(firmware);
-                if path.exists() {
-                    path
-                } else {
-                    return ExitCode::FAILURE;
-                }
-            }
+            Some(Artifact::Binary { path }) => path,
+            None => return ExitCode::FAILURE,
         };
         log::info!("Built firmware, binary available at:");
         log::info!("{}", firmware.display());

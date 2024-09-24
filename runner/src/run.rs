@@ -42,6 +42,7 @@ pub fn run(args: &RunArgs) -> ExitCode {
     let firmware = match locate_artifact(&args.firmware) {
         Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
         Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
+        Some(Artifact::Binary { path }) => path,
         None => return ExitCode::FAILURE,
     };
 
@@ -100,12 +101,14 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
             let payload = match locate_artifact(payload_name) {
                 Some(Artifact::Source { name }) => build_target(Target::Payload(name), &cfg),
                 Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
+                Some(Artifact::Binary { path }) => path,
                 None => {
                     let payload_path =
                         PathBuf::from_str(payload_name).expect("Invalid payload name");
                     if payload_path.is_file() {
                         payload_path
                     } else {
+                        log::error!("Invalid payload '{}'", payload_name);
                         return ExitCode::FAILURE;
                     }
                 }

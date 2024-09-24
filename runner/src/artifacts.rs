@@ -45,11 +45,13 @@ pub enum Artifact {
     Source { name: String },
     /// Artifacts that are downloaded.
     Downloaded { name: String, url: String },
+    /// Artifact available as binaries on the local file system.
+    Binary { path: PathBuf },
 }
 
 // ——————————————————————————— Artifact Manifest ———————————————————————————— //
 
-/// A toml manifest that list extartnal artifacts.
+/// A toml manifest that list external artifacts.
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 struct ArtifactManifest {
@@ -115,7 +117,8 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
 
 /// Try to locate the desired artifact.
 ///
-/// Artifacts can be either available as sources, or as external binaries that can be downloaded.
+/// Artifacts can be either available as sources, as external binaries that can be downloaded, or
+/// as path on the local filesystem.
 pub fn locate_artifact(name: &str) -> Option<Artifact> {
     // Miralis as firmware?
     if name == "miralis" {
@@ -177,8 +180,14 @@ pub fn locate_artifact(name: &str) -> Option<Artifact> {
         return Some(artifact.clone());
     }
 
+    // Finally look for a local file as a last resort
+    let path = PathBuf::from(name);
+    if path.is_file() {
+        return Some(Artifact::Binary { path });
+    }
+
     // Could not find artifact - exit process
-    println!("Artifact {} not found exiting runner build.rs", name);
+    log::error!("Artifact {} not found exiting runner build.rs", name);
     None
 }
 
