@@ -723,26 +723,6 @@ impl VirtContext {
     /// Loads the S-mode CSR registers into the physical registers configures M-mode registers for
     /// payload execution.
     pub unsafe fn switch_from_firmware_to_payload(&mut self, mctx: &mut MiralisContext) {
-        // First, restore S-mode registers
-
-        Arch::write_csr(Csr::Stvec, self.csr.stvec);
-        Arch::write_csr(Csr::Scounteren, self.csr.scounteren);
-        Arch::write_csr(Csr::Satp, self.csr.satp);
-        Arch::write_csr(Csr::Sscratch, self.csr.sscratch);
-        Arch::write_csr(Csr::Sepc, self.csr.sepc);
-        Arch::write_csr(Csr::Scause, self.csr.scause);
-        Arch::write_csr(Csr::Stval, self.csr.stval);
-        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren);
-
-        if mctx.hw.available_reg.senvcfg {
-            Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
-        }
-
-        if mctx.hw.available_reg.menvcfg {
-            Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
-        }
-
-        // Then configuring M-mode registers
         let mut mstatus = self.csr.mstatus; // We need to set the next mode bits before mret
         VirtCsr::set_csr_field(
             &mut mstatus,
@@ -753,11 +733,31 @@ impl VirtContext {
         Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
         Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
         Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
+        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren);
 
         Arch::write_csr(Csr::Mie, self.csr.mie);
         Arch::write_csr(Csr::Mip, self.csr.mip);
 
-        // If H mode is present - save the h-extension registers
+        if mctx.hw.available_reg.senvcfg {
+            Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
+        }
+
+        if mctx.hw.available_reg.menvcfg {
+            Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
+        }
+
+        // If S extension is present - save the registers
+        if mctx.hw.has_s_mode {
+            Arch::write_csr(Csr::Stvec, self.csr.stvec);
+            Arch::write_csr(Csr::Scounteren, self.csr.scounteren);
+            Arch::write_csr(Csr::Satp, self.csr.satp);
+            Arch::write_csr(Csr::Sscratch, self.csr.sscratch);
+            Arch::write_csr(Csr::Sepc, self.csr.sepc);
+            Arch::write_csr(Csr::Scause, self.csr.scause);
+            Arch::write_csr(Csr::Stval, self.csr.stval);
+        }
+
+        // If H extension is present - save the registers
         if mctx.hw.has_h_mode {
             Arch::write_csr(Csr::Hstatus, self.csr.hstatus);
             Arch::write_csr(Csr::Hedeleg, self.csr.hedeleg);
@@ -803,28 +803,6 @@ impl VirtContext {
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
     /// 0) for running the virtual firmware in U-mode.
     pub unsafe fn switch_from_payload_to_firmware(&mut self, mctx: &mut MiralisContext) {
-        // Save the registers into the virtual context.
-
-        self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
-        self.csr.scounteren = Arch::write_csr(Csr::Scounteren, 0);
-        self.csr.satp = Arch::write_csr(Csr::Satp, 0);
-
-        self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
-        self.csr.sepc = Arch::write_csr(Csr::Sepc, 0);
-        self.csr.scause = Arch::write_csr(Csr::Scause, 0);
-
-        self.csr.stval = Arch::write_csr(Csr::Stval, 0);
-
-        if mctx.hw.available_reg.senvcfg {
-            self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
-        }
-
-        if mctx.hw.available_reg.menvcfg {
-            self.csr.menvcfg = Arch::write_csr(Csr::Menvcfg, 0);
-        }
-
-        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, 0);
-
         // Now save M-mode registers which are (partially) exposed as S-mode registers.
         // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
         // (virtual firmware) during the next mret.
@@ -846,7 +824,30 @@ impl VirtContext {
             & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
             | self.csr.mip & mie::SEIE_FILTER;
 
-        // If H mode is present - save the h-extension registers
+        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, 0);
+
+        if mctx.hw.available_reg.senvcfg {
+            self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
+        }
+
+        if mctx.hw.available_reg.menvcfg {
+            self.csr.menvcfg = Arch::write_csr(Csr::Menvcfg, 0);
+        }
+
+        // If S extension is present - save the registers
+        if mctx.hw.has_s_mode {
+            self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
+            self.csr.scounteren = Arch::write_csr(Csr::Scounteren, 0);
+            self.csr.satp = Arch::write_csr(Csr::Satp, 0);
+
+            self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
+            self.csr.sepc = Arch::write_csr(Csr::Sepc, 0);
+            self.csr.scause = Arch::write_csr(Csr::Scause, 0);
+
+            self.csr.stval = Arch::write_csr(Csr::Stval, 0);
+        }
+
+        // If H extension is present - save the registers
         if mctx.hw.has_h_mode {
             self.csr.hstatus = Arch::read_csr(Csr::Hstatus);
             self.csr.hedeleg = Arch::read_csr(Csr::Hedeleg);
