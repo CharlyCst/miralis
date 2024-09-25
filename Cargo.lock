@@ -463,6 +463,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing_firmware"
+version = "0.1.0"
+dependencies = [
+ "miralis_abi",
+]
+
+[[package]]
 name = "uart_16550"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

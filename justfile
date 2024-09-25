@@ -5,6 +5,7 @@ spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
+spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
 qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
@@ -74,32 +75,10 @@ test:
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
 
-spike-test:
-	# Running integration tests...
-	cargo run -- run --config {{spike}} --firmware ecall
-	cargo run -- run --config {{spike}} --firmware csr_ops
-	cargo run -- run --config {{spike}} --firmware pmp
-	cargo run -- run --config {{spike}} --firmware breakpoint
-	cargo run -- run --config {{spike}} --firmware mepc
-	cargo run -- run --config {{spike}} --firmware mcause
-	cargo run -- run --config {{spike}} --firmware mret
-	cargo run -- run --config {{spike}} --firmware os_ctx_switch
-	cargo run -- run --config {{spike}} --firmware sandbox
-	cargo run -- run --config {{spike}} --firmware interrupt
-	cargo run -- run --config {{spike}} --firmware os_ecall
-	cargo run -- run --config {{spike}} --firmware vectored_mtvec
-	cargo run -- run --config {{spike}} --firmware device
-	cargo run -- run --config {{spike}} --firmware default
-
-	# Testing with Miralis as firmware
-	cargo run -- run --config {{spike}} --firmware miralis
-
-	# Testing with external projects
-	# cargo run -- run --config {{spike}} --firmware opensbi
-	cargo run -- run --config {{spike}} --firmware zephyr --max-exits 1000000
-	# cargo run -- run --config {{qemu_virt_hello_world_payload_spike}} --firmware opensbi-jump
-	# cargo run -- run --config {{qemu_virt_sifive_u54_spike}} --firmware linux
-	# cargo run -- run --config {{qemu_virt_rustsbi_test_kernel_spike}} --firmware rustsbi-qemu
+spike-benchmarks:
+    cargo run -- run --config {{spike}} --firmware tracing_firmware
+    cargo run -- run --config {{spike_virt_benchmark}} --firmware csr_write
+    cargo run -- run --config {{spike_virt_benchmark}} --firmware ecall_benchmark
 
 # Run unit tests
 unit-test:

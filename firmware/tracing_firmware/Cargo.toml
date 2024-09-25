@@ -1,0 +1,13 @@
+[package]
+name = "tracing_firmware"
+version = "0.1.0"
+edition = "2021"
+
+license = "MIT"
+
+[[bin]]
+name = "tracing_firmware"
+path = "main.rs"
+
+[dependencies]
+miralis_abi = { path = "../../crates/abi" }
