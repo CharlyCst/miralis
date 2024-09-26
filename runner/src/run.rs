@@ -5,7 +5,7 @@
 
 use core::str;
 use std::path::PathBuf;
-use std::process::{Command, ExitCode};
+use std::process::{exit, Command, ExitCode};
 use std::str::FromStr;
 
 use crate::artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
@@ -75,6 +75,36 @@ fn get_config(args: &RunArgs) -> Config {
     cfg
 }
 
+/// Returns the current QEMU version as a string.
+///
+/// Example output: "9.1.0".
+fn get_qemu_version() -> String {
+    // First try to run the command
+    let mut cmd = Command::new(QEMU);
+    cmd.arg("--version");
+    let output = match cmd.output() {
+        Ok(output) => output,
+        Err(err) => {
+            log::error!("Failed to execute command: {} --version", QEMU);
+            log::error!("{}", err);
+            exit(1);
+        }
+    };
+
+    // Then parse the output or return an error
+    if output.status.success() {
+        let output = String::from_utf8_lossy(&output.stdout);
+        let version = output
+            .split_whitespace()
+            .find(|chunk| chunk.starts_with(|c: char| c.is_numeric()))
+            .expect("Could not find version string");
+        String::from(version)
+    } else {
+        log::warn!("Could not read QEMU version with '{} --version'", QEMU);
+        String::from("")
+    }
+}
+
 fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode {
     let cfg = get_config(args);
     let mut qemu_cmd = Command::new(QEMU);
@@ -85,6 +115,14 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
     if let Some(cpu) = &cfg.qemu.cpu {
         qemu_cmd.arg("-cpu").arg(cpu);
     }
+
+    // For simplicity we would like the H extension to be enabled by default. This is not the case
+    // on version 6 of QEMU, so we add a flag if we detect such a version.
+    if get_qemu_version().starts_with("6.") {
+        log::debug!("We are using version 6 of QEMU, therefore we add the flag -cpu rv64,h=true to enable H-mode virtualisation");
+        qemu_cmd.arg("-cpu").arg("rv64,x-h=true");
+    }
+
     qemu_cmd
         .arg("-bios")
         .arg(miralis)
