@@ -24,6 +24,19 @@ const QEMU_ARGS: &[&str] = &[
     "-machine", "virt",
 ];
 
+
+#[rustfmt::skip]
+const UBUNTU_ARGS: &[&str] = &[
+    "-device",
+    "virtio-net-device,netdev=eth0",
+    "-netdev",
+    "user,id=eth0",
+    "-device",
+    "virtio-rng-pci",
+    "-drive",
+    "file=ubuntu-24.04.1-preinstalled-server-riscv64.img,format=raw,if=virtio"
+];
+
 /// Address at which the firmware is loaded in memory.
 const FIRMWARE_ADDR: u64 = 0x80200000;
 
@@ -93,7 +106,15 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
             "loader,file={},addr=0x{:x},force-raw=on",
             firmware.to_str().unwrap(),
             FIRMWARE_ADDR
+        ))
+        .arg("-device")
+        .arg(format!(
+            "loader,file={},addr=0x{:x},force-raw=on",
+            "/home/fran-ois-costa/Documents/miralis/artifacts/u-boot.bin",
+            PAYLOAD_ADDR
         ));
+
+    qemu_cmd.args(UBUNTU_ARGS);
 
     // If a payload is defined in the config, try to load it at the specified address.
     if let Some(payload) = &cfg.target.payload {
