@@ -94,7 +94,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // Configure PMP registers, if available
     if mctx.pmp.nb_pmp >= 8 {
         // By activating this entry it's possible to catch all memory accesses
-        mctx.pmp.set(0, usize::MAX, pmpcfg::INACTIVE);
+        mctx.pmp.set(0, usize::MAX, pmpcfg::TOR | pmpcfg::RWX);
 
         // List of devices to protect (the first one is Miralis itself)
         let devices = [
@@ -225,10 +225,12 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             log::debug!("Execution mode: Firmware -> Payload");
+            log::debug!("{:x?}", ctx.trap_info);
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
+            log::debug!("{:x?}", ctx.trap_info);
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
         }
         _ => {} // No execution mode transition

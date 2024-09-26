@@ -99,6 +99,8 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         qemu_cmd.arg("-cpu").arg(cpu);
     }
     qemu_cmd
+        .arg("-m")
+        .arg("2048")
         .arg("-bios")
         .arg(miralis)
         .arg("-device")
@@ -106,8 +108,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
             "loader,file={},addr=0x{:x},force-raw=on",
             firmware.to_str().unwrap(),
             FIRMWARE_ADDR
-        ))
-        .arg("-device")
+        )).arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
             "./artifacts/u-boot.bin",
