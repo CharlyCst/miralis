@@ -88,6 +88,8 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
     qemu_cmd
         .arg("-bios")
         .arg(miralis)
+        .arg("-m")
+        .arg("2048")
         .arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
