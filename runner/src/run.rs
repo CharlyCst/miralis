@@ -110,7 +110,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
-            "/home/fran-ois-costa/Documents/miralis/artifacts/u-boot.bin",
+            "./artifacts/u-boot.bin",
             PAYLOAD_ADDR
         ));
 
