@@ -568,7 +568,7 @@ impl VirtContext {
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
-                log::trace!("Faulting instruction: {:?}", instr);
+                log::info!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {
@@ -632,8 +632,8 @@ impl VirtContext {
                 } else {
                     // TODO : Need to match other traps
                     todo!(
-                        "Other traps are not yet implemented {:?} at {:x}",
-                        cause,
+                        "Other traps are not yet implemented {:x} at {:x}",
+                        self.trap_info.mcause,
                         self.trap_info.mepc
                     );
                 }

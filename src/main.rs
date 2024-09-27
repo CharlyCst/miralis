@@ -94,7 +94,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // Configure PMP registers, if available
     if mctx.pmp.nb_pmp >= 8 {
         // By activating this entry it's possible to catch all memory accesses
-        mctx.pmp.set(0, usize::MAX, pmpcfg::TOR | pmpcfg::RWX);
+        mctx.pmp.set(0, usize::MAX, pmpcfg::INACTIVE);
 
         // List of devices to protect (the first one is Miralis itself)
         let devices = [

@@ -14,7 +14,7 @@ use crate::RunArgs;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
-const QEMU: &str = "qemu-system-riscv64";
+const QEMU: &str = "/home/francois/Documents/ACE-RISCV/qemu/build/qemu-system-riscv64";
 const SPIKE: &str = "spike";
 
 #[rustfmt::skip]
@@ -26,15 +26,24 @@ const QEMU_ARGS: &[&str] = &[
 
 
 #[rustfmt::skip]
-const UBUNTU_ARGS: &[&str] = &[
+/*const UBUNTU_ARGS: &[&str] = &[
     "-device",
     "virtio-net-device,netdev=eth0",
     "-netdev",
     "user,id=eth0",
     "-device",
     "virtio-rng-pci",
-    "-drive",
-    "file=ubuntu-24.04.1-preinstalled-server-riscv64.img,format=raw,if=virtio"
+    "-drive","file=ubuntu-24.04.1-preinstalled-server-riscv64.img,format=raw,if=virtio"
+];*/
+
+#[rustfmt::skip]
+const UBUNTU_ARGS: &[&str] = &[
+"-global","virtio-mmio.force-legacy=false",
+"-drive","file=../ACE-RISCV/ace-build/hypervisor/buildroot/images/rootfs.ext4,format=raw,id=hd0,if=none",
+"-device","virtio-blk-device,scsi=off,drive=hd0",
+"-netdev", "user,id=net0,net=192.168.100.1/24,dhcpstart=192.168.100.128,hostfwd=tcp::3416-:22",
+"-device", "virtio-net-device,netdev=net0",
+"-device", "virtio-rng-pci"
 ];
 
 /// Address at which the firmware is loaded in memory.
@@ -100,7 +109,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
     }
     qemu_cmd
         .arg("-m")
-        .arg("2048")
+        .arg("8G")
         .arg("-bios")
         .arg(miralis)
         .arg("-device")
@@ -111,7 +120,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         )).arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
-            "./artifacts/u-boot.bin",
+            "../ACE-RISCV/ace-build/hypervisor/buildroot/images/Image",
             PAYLOAD_ADDR
         ));
 
