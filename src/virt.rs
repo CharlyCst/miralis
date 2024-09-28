@@ -5,8 +5,8 @@ use miralis_core::abi;
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{
-    mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr, MCause, Mode,
-    Register, TrapInfo,
+    hstatus, mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr,
+    MCause, Mode, Register, TrapInfo,
 };
 use crate::benchmark::Benchmark;
 use crate::decoder::Instr;
@@ -1135,15 +1135,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
                 // MBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & MBE_FILTER != 0 {
-                    panic!("MBE filter is not implemented - please implement it");
+                    todo!("MBE filter is not implemented - please implement it");
                 }
                 // SBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & SBE_FILTER != 0 {
-                    panic!("SBE filter is not implemented - please implement it");
+                    todo!("SBE filter is not implemented - please implement it");
                 }
                 // UBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & UBE_FILTER != 0 {
-                    panic!("UBE filter is not implemented - please implement it");
+                    todo!("UBE filter is not implemented - please implement it");
                 }
                 // TVM : 20 : read-only 0 (NO S-MODE)
                 new_value &= !(0b1 << 20); // clear TVM
@@ -1311,7 +1311,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     _ => self.csr.mcause = value,
                 }
             }
-            Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
+            Csr::Mtval => self.csr.mtval = value,
             //Supervisor-level CSRs
             Csr::Sstatus => {
                 // Clear sstatus bits
@@ -1363,18 +1363,43 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Scontext => todo!("No information in the specification"),
             Csr::Hstatus => {
-                let mut new_value = value;
+                let mut value = value;
 
-                // UXL : 32 : read-only : MX-LEN = 64
-                let mxl = 2;
+                // VSXL is a read only two as we only support 64 bit mode
+                const VSXL: usize = 2;
                 VirtCsr::set_csr_field(
-                    &mut new_value,
-                    mstatus::UXL_OFFSET,
-                    mstatus::UXL_FILTER,
-                    mxl,
+                    &mut value,
+                    hstatus::VSXL_OFFSET,
+                    hstatus::VSXL_FILTER,
+                    VSXL,
                 );
 
-                self.csr.hstatus = new_value
+                if !mctx.hw.has_s_mode {
+                    // VTSR is read only if S-mode is not present
+                    VirtCsr::set_csr_field(
+                        &mut value,
+                        hstatus::VTSR_OFFSET,
+                        hstatus::VTSR_FILTER,
+                        0,
+                    );
+                    // VTVM is read only if S-mode is not present
+                    VirtCsr::set_csr_field(
+                        &mut value,
+                        hstatus::VTVM_OFFSET,
+                        hstatus::VTVM_FILTER,
+                        0,
+                    );
+                    // VTW is read only if H mode is the lowest priviledge mode
+                    // and U-mode must exist in Miralis
+                    VirtCsr::set_csr_field(&mut value, hstatus::VTW_FILTER, hstatus::VTW_FILTER, 0);
+                }
+
+                // We don't implement the feature as it is a very niche one
+                if value & hstatus::VSBE_FILTER != 0 {
+                    todo!("VSBE field set to 1 isn't implemented, please implement it")
+                }
+
+                self.csr.hstatus = value
             }
             Csr::Hedeleg => {
                 let write_hedeleg_mask: usize = !((0b111 << 9) | (0b1111 << 20));

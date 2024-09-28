@@ -382,6 +382,33 @@ pub mod mtvec {
     }
 }
 
+// ————————————————————————————— Hypervisor Status ————————————————————————————— //
+
+/// Constants for the Machine Status (mstatus) CSR.
+#[allow(unused)]
+pub mod hstatus {
+
+    // VSBE
+    pub const VSBE_OFFSET: usize = 5;
+    pub const VSBE_FILTER: usize = 0b1 << VSBE_OFFSET;
+
+    // TVM
+    pub const VTVM_OFFSET: usize = 20;
+    pub const VTVM_FILTER: usize = 0b1 << VTVM_OFFSET;
+
+    // TW
+    pub const VTW_OFFSET: usize = 21;
+    pub const VTW_FILTER: usize = 0b1 << VTW_OFFSET;
+
+    // TSR
+    pub const VTSR_OFFSET: usize = 22;
+    pub const VTSR_FILTER: usize = 0b1 << VTSR_OFFSET;
+
+    // VSXL
+    pub const VSXL_OFFSET: usize = 32;
+    pub const VSXL_FILTER: usize = 0b11 << VSXL_OFFSET;
+}
+
 // ——————————————————————— Width of Access Instructions —————————————————————— //
 
 /// Represents different data widths:
