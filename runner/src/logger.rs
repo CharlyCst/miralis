@@ -50,7 +50,12 @@ impl log::Log for RunnerLogger {
                 Level::Info => {
                     println!("{}", record.args());
                 }
-                _ => {}
+                Level::Debug => {
+                    println!("\x1b[34m{}\x1b[0m", record.args());
+                }
+                Level::Trace => {
+                    println!("\x1b[36m{}\x1b[0m", record.args());
+                }
             }
         }
     }
