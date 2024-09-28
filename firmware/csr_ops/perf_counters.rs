@@ -10,18 +10,6 @@ pub fn test_perf_counters() {
 fn test_simple_regs() {
     let mut res: usize;
 
-    // Test mcycle
-    unsafe {
-        asm!(
-            "li {0}, 0x42",
-            "csrw mcycle, {0}",
-            "csrr {1}, mcycle",
-            out(reg) _,
-            out(reg) res,
-        );
-    }
-    assert_eq!(res, 0);
-
     // Test minstret
     unsafe {
         asm!(

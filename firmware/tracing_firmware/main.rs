@@ -15,11 +15,88 @@ fn enable_mcycle_in_smode() {
     }
 }
 
+macro_rules! read_register {
+    ($reg:expr, $val:ident) => {
+        match $reg {
+            "cycle" => asm!("csrr {}, cycle", out(reg) $val),
+            "mcycle" => asm!("csrr {}, mcycle", out(reg) $val),
+            _ => panic!("Unknown register"),
+        }
+    };
+}
+
+macro_rules! trigger_ctx_switch {
+    ($register:expr) => {{
+        let begin: u64;
+        let end: u64;
+
+        unsafe {
+            // Read the first specified register
+            read_register!($register, begin);
+            // We can trigger any illegal instruction - the handler doesn't do anything
+            asm!("csrr {}, mcycle", out(reg) _);
+            // Read the last specified register
+            read_register!($register, end);
+        }
+
+        (end - begin) as usize
+    }};
+}
+
+macro_rules! trigger_ctx_switch_batched {
+    ($register:expr) => {{
+        let begin: u64;
+        let end: u64;
+
+        unsafe {
+            // Read the `mcycle` register (assuming 64-bit RISC-V)
+            read_register!($register, begin);
+            for _ in 0..NB_REPEATS {
+                // We can trigger any illegal instruction - the handler doesn't do anything
+                asm!("csrr {}, mcycle", out(reg) _);
+            }
+            // Read the `mcycle` register (assuming 64-bit RISC-V)
+            read_register!($register, end);
+        }
+
+        (end - begin) as usize / NB_REPEATS
+    }};
+}
+
+macro_rules! benchmark {
+    ($reg:expr) => {
+        let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
+
+        for i in 0..NB_REPEATS {
+            values[i] = trigger_ctx_switch!($reg)
+        }
+
+        let stats = get_statistics(values);
+        let average_measure = trigger_ctx_switch_batched!($reg);
+
+        log::info!("Average measure : {}", average_measure);
+        print_statistics(stats);
+    };
+}
+
 fn main() -> ! {
+    let trap: usize = _empty_handler as usize;
+
+    unsafe {
+        asm!(
+        "csrw mtvec, {mtvec}", // Write mtvec with trap handler
+        mtvec = in(reg) trap,
+        );
+    }
+
+    log::info!("Start benchmarking from Firmware");
+
+    benchmark!("mcycle");
+
+    log::info!("Start benchmarking from Payload");
     enable_mcycle_in_smode();
 
     let os: usize = operating_system as usize;
-    let trap: usize = _empty_handler as usize;
     let mpp = 0b1 << 11; // MPP = S-mode
 
     unsafe {
@@ -29,14 +106,12 @@ fn main() -> ! {
         "csrw pmpaddr0, t4",   // All memory
         "auipc t4, 0",
         "addi t4, t4, 24",
-        "csrw mtvec, {mtvec}", // Write mtvec with trap handler
         "csrw mstatus, {mpp}", // Write MPP of mstatus to S-mode
         "csrw mepc, {os}",     // Write MEPC
         "mret",                // Jump to OS
 
 
         os = in(reg) os,
-        mtvec = in(reg) trap,
         mpp = in(reg) mpp,
         out("t4") _,
         );
@@ -66,7 +141,32 @@ extern "C" {
     fn _empty_handler();
 }
 
-// —————————————————————————————— Benchmark operating system —————————————————————————————— //
+// —————————————————————————————— Operating system —————————————————————————————— //
+
+fn operating_system() -> ! {
+    unsafe {
+        asm!("la sp, 0x80700000");
+    }
+
+    benchmark!("cycle");
+
+    success();
+}
+
+// —————————————————————————————— Benchmark system —————————————————————————————— //
+
+#[derive(Debug)]
+pub struct Statistics {
+    mean: usize,
+    min: usize,
+    max: usize,
+
+    p25: usize,
+    p50: usize,
+    p75: usize,
+    p95: usize,
+    p99: usize,
+}
 
 const NB_REPEATS: usize = 1000;
 
@@ -95,76 +195,6 @@ pub fn bubble_sort(arr: &mut [usize; NB_REPEATS]) {
             failure();
         }
     }
-}
-
-fn operating_system() -> ! {
-    unsafe {
-        asm!("la sp, 0x80700000");
-    }
-
-    log::info!("Start benchmarking");
-
-    let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
-
-    for i in 0..NB_REPEATS {
-        values[i] = trigger_ctx_switch_to_firmware()
-    }
-
-    let stats = get_statistics(values);
-    let average_measure = trigger_ctx_switch_to_firmware_batched();
-
-    log::info!("Average measure : {}", average_measure);
-    print_statistics(stats);
-
-    success();
-}
-
-fn trigger_ctx_switch_to_firmware() -> usize {
-    let begin: u64;
-    let end: u64;
-
-    unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
-        // We can trigger any illegal instruction - the handler doesn't do anything
-        asm!("mret");
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
-    }
-
-    (end - begin) as usize
-}
-
-fn trigger_ctx_switch_to_firmware_batched() -> usize {
-    let begin: u64;
-    let end: u64;
-
-    unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
-        for i in 0..NB_REPEATS {
-            // We can trigger any illegal instruction - the handler doesn't do anything
-            asm!("mret");
-        }
-
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
-    }
-
-    (end - begin) as usize / NB_REPEATS
-}
-
-#[derive(Debug)]
-pub struct Statistics {
-    mean: usize,
-    min: usize,
-    max: usize,
-
-    p25: usize,
-    p50: usize,
-    p75: usize,
-    p95: usize,
-    p99: usize,
 }
 
 fn get_statistics(mut arr: [usize; NB_REPEATS]) -> Statistics {

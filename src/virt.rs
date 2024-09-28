@@ -968,7 +968,20 @@ impl RegisterContextGetter<Csr> for VirtContext {
                 }
                 self.csr.pmpaddr[pmp_addr_idx]
             }
-            Csr::Mcycle => self.csr.mcycle,
+            Csr::Mcycle => {
+                // Mcycle is a "volatile register"
+
+                #[cfg(feature = "userspace")]
+                return 0;
+
+                #[cfg(not(feature = "userspace"))]
+                unsafe {
+                    use core::arch::asm;
+                    let mcycle_value: usize;
+                    asm!("csrr {}, mcycle", out(reg) mcycle_value);
+                    mcycle_value
+                }
+            }
             Csr::Minstret => self.csr.minstret,
             Csr::Mhpmcounter(n) => self.csr.mhpmcounter[n],
             Csr::Mcountinhibit => self.csr.mcountinhibit,
