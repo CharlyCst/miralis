@@ -1,6 +1,6 @@
 //! Policy Modules
 //!
-//! This modules holds the definitions of policy modules for Miralis.
+//! This module holds the definitions of policy modules for Miralis.
 
 use config_select::select_env;
 
@@ -41,7 +41,7 @@ impl PolicyHookResult {
 
 /// A Miralis firmware isolation policy
 ///
-/// By default Miralis does not enforce isolation between the firmware and the rest of the system,
+/// By default, Miralis does not enforce isolation between the firmware and the rest of the system,
 /// therefore without any policy the firmware is not restricted in any way.
 /// The role of a policy module is to enforce a set of policies on the firmware, for instance
 /// restricting which memory is accessible to the firmware, how which `ecall`s are intercepted.

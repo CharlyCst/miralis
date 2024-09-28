@@ -1,4 +1,4 @@
-//! Firmware Virtualisation
+//! Firmware Virtualization
 
 use miralis_core::abi;
 
@@ -20,7 +20,7 @@ use crate::{debug, device, utils};
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionMode {
-    /// Virtualized virmware, running in U-mode.
+    /// Virtualized firmware, running in U-mode.
     Firmware,
     /// Native payload, running in U or S-mode.
     Payload,
@@ -36,7 +36,7 @@ pub struct VirtContext {
     regs: [usize; 32],
     /// Program Counter
     pub(crate) pc: usize,
-    /// Information on the trap that ocurred, used to handle traps
+    /// Information on the trap that occurred, used to handle traps
     pub(crate) trap_info: TrapInfo,
     /// Virtual Control and Status Registers
     pub(crate) csr: VirtCsr,
@@ -691,8 +691,7 @@ impl VirtContext {
                 let addr = self.get(Register::X11);
                 let size = self.get(Register::X12);
 
-                // TODO: add proper validation that this memory range belongs to the
-                // payload
+                // TODO: add proper validation that this memory range belongs to the payload
                 let bytes = unsafe { core::slice::from_raw_parts(addr as *const u8, size) };
                 let message =
                     core::str::from_utf8(bytes).unwrap_or("note: invalid message, not utf-8");
@@ -707,7 +706,7 @@ impl VirtContext {
                     }
                 }
 
-                // For now we don't return error code or the lenght written
+                // For now, we don't return error code or the length written
                 self.set(Register::X10, 0);
                 self.set(Register::X11, 0);
                 self.pc += 4;
@@ -942,7 +941,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mip => {
                 self.csr.mip
                     | Arch::read_csr(Csr::Mip)
-                        & (mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+                    & (mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
             } // Allows to read the interrupt signal from interrupt controller.
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
@@ -1027,7 +1026,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Hgeip => self.csr.hgeip,
             Csr::Hgeie => self.csr.hgeie,
             Csr::Henvcfg => self.csr.henvcfg,
-            Csr::Hcounteren => self.csr.hcounteren, // TODO: Throw the virtual exeption in read
+            Csr::Hcounteren => self.csr.hcounteren, // TODO: Throw the virtual exception in read
             Csr::Htimedelta => self.csr.htimedelta,
             Csr::Htval => self.csr.htval,
             Csr::Htinst => self.csr.htinst,
@@ -1311,7 +1310,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     _ => self.csr.mcause = value,
                 }
             }
-            Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDANCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
+            Csr::Mtval => self.csr.mtval = value, // TODO : PLATFORM DEPENDENCE (if trapping writes to mtval or not) : Mtval is read-only 0 for now : must be able to contain valid address and zero
             //Supervisor-level CSRs
             Csr::Sstatus => {
                 // Clear sstatus bits
@@ -1539,7 +1538,7 @@ mod tests {
     }
 
     /// We test value of mideleg when switching from payload to firmware.
-    /// Mideleg must always be 0 when executing the firware.
+    /// Mideleg must always be 0 when executing the firmware.
     #[test]
     fn switch_to_firmware_mideleg() {
         let hw = unsafe { Arch::detect_hardware() };
