@@ -92,7 +92,9 @@ struct Enclave {
 /// The keystone policy module
 ///
 /// See https://keystone-enclave.org/
-pub struct KeystonePolicy {}
+pub struct KeystonePolicy {
+    enclaves: [Enclave; ENCL_MAX],
+}
 
 impl KeystonePolicy {
     /// Allocate an enclave slot and returns the index of the newly allocated enclave
