@@ -9,6 +9,13 @@ use crate::virt::RegisterContextSetter;
 use crate::{RegisterContextGetter, VirtContext};
 use core::ptr;
 
+/// Keystone parameters
+///
+/// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sm/src/platform/generic/platform.h#L11
+const ENCL_MAX: usize = 16; // Maximum number of enclaves
+const ENCLAVE_REGION_MAX: usize = 8;
+
+
 /// Keystone EID & FIDs
 ///
 /// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sdk/include/shared/sm_call.h#L5C1-L6C1
@@ -27,11 +34,60 @@ const GET_SEALING_KEY_FID: usize = 3003;
 const STOP_ENCLAVE_FID: usize = 3004;
 const EXIT_ENCLAVE_FID: usize = 3006;
 
-/// SBI return codes
+/// Keystone return codes
 ///
 /// See https://github.com/keystone-enclave/keystone/blob/master/sdk/include/shared/sm_err.h
-const ERR_SM_ENCLAVE_SUCCESS: usize = 0;
-const ERR_SM_NOT_IMPLEMENTED: usize = 100100;
+enum ReturnCode {
+    Success = 0,
+    NoFreeResources = 100013,
+    NotImplemented = 100100,
+}
+
+/// Enclave definitions
+///
+/// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sm/src/enclave.h
+enum EnclaveState {
+    Invalid = -1,
+    Destroying = 0,
+    Allocated,
+    Fresh,
+    Stopped,
+    Running,
+}
+
+enum EnclaveRegionType {
+    Invalid,
+    EPM,
+    UTM,
+    Other,
+}
+
+struct RuntimeParams {
+    dram_base: usize,
+    dram_size: usize,
+    runtime_base: usize,
+    user_base: usize,
+    free_base: usize,
+    untrusted_base: usize,
+    untrusted_size: usize,
+    free_requested: usize,
+}
+
+struct EnclaveRegion {
+    pmp_rid: i32,
+    enclave_type: EnclaveRegionType,
+}
+
+struct Enclave {
+    eid: usize, // Enclave ID
+    satp: usize, // Enclave's page table base
+    state: EnclaveState, // Global state of the enclave
+    regions: [EnclaveRegion; ENCLAVE_REGION_MAX], // Physical memory regions for this enclave
+    // TODO: Add fields related to hash/signature
+    params: RuntimeParams,
+    // TODO: Add fields related to multi-threading
+    // TODO: Add fields related to platform specific data
+}
 
 /// The keystone policy module
 ///
@@ -40,12 +96,13 @@ pub struct KeystonePolicy {}
 
 impl KeystonePolicy {
     fn create_enclave(ctx: &mut VirtContext) -> usize {
+    fn create_enclave(ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Create enclave");
 
         // Read the arguments passed to create_enclave
         #[repr(C)]
         struct KeystoneRegion {
-            addr: usize,
+            paddr: usize,
             size: usize,
         }
 
@@ -62,13 +119,31 @@ impl KeystonePolicy {
 
         // TODO: We should validate that the memory pointed by a0 is valid, and well aligned
         let args = unsafe { ptr::read(ctx.get(Register::X10) as *const CreateArgs) };
+        // TODO: Check if args is valid (see enclave.c line 351)
 
-        ERR_SM_ENCLAVE_SUCCESS
+        // Create params
+        let params = RuntimeParams {
+            dram_base: args.epm_region.paddr,
+            dram_size: args.epm_region.size,
+            runtime_base: args.runtime_paddr,
+            user_base: args.user_paddr,
+            free_base: args.free_paddr,
+            untrusted_base: args.upm_region.paddr,
+            untrusted_size: args.upm_region.size,
+            free_requested: args.free_requested,
+        };
+
+        // Find a free enclave slot
+        // let enclave_index = match Self::allocate_enclave {
+        //     Ok(index) => index,
+        //     Err(code) => return code,
+        // };
+        ReturnCode::Success
     }
 
-    fn destroy_enclave(ctx: &mut VirtContext) -> usize {
+    fn destroy_enclave(ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Destroy enclave");
-        ERR_SM_ENCLAVE_SUCCESS
+        ReturnCode::NotImplemented
     }
 }
 
@@ -89,16 +164,16 @@ impl PolicyModule for KeystonePolicy {
             return PolicyHookResult::Ignore;
         }
 
-        let err_code: usize = match fid {
+        let return_code: ReturnCode = match fid {
             CREATE_ENCLAVE_FID => Self::create_enclave(ctx),
             DESTROY_ENCLAVE_FID => Self::destroy_enclave(ctx),
             _ => {
                 log::debug!("Keystone: Unknown FID {}", fid);
-                ERR_SM_NOT_IMPLEMENTED
+                ReturnCode::NotImplemented
             }
         };
 
-        ctx.set(Register::X10, err_code);
+        ctx.set(Register::X10, return_code as usize);
         ctx.pc += 4;
 
         PolicyHookResult::Overwrite
