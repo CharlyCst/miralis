@@ -95,7 +95,20 @@ struct Enclave {
 pub struct KeystonePolicy {}
 
 impl KeystonePolicy {
-    fn create_enclave(ctx: &mut VirtContext) -> usize {
+    /// Allocate an enclave slot and returns the index of the newly allocated enclave
+    fn allocate_enclave(&mut self) -> Result<usize, ReturnCode> {
+        // TODO: Add mutex to protect the enclave array
+        for i in 0..ENCL_MAX {
+            let enclave = &mut self.enclaves[i];
+            if let EnclaveState::Invalid = enclave.state {
+                enclave.state = EnclaveState::Allocated;
+                return Ok(i);
+            }
+        }
+
+        Err(ReturnCode::NoFreeResources)
+    }
+
     fn create_enclave(ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Create enclave");
 
