@@ -39,3 +39,13 @@ repo = "https://github.com/CharlyCst/miralis-artifact-rustsbi"
 description = "A test-kernel for RustSBI on qemu."
 url = "https://github.com/CharlyCst/miralis-artifact-rustsbi/releases/download/v0.1.3/test-kernel.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-rustsbi"
+
+[bin.u-boot]
+description = "A U-boot bootloader "
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.4/u-boot.bin"
+repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
+
+[bin.u-boot-exit]
+description = "A U-boot bootloader that exits just before jumping to the OS"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.4/u-boot-exit.bin"
+repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
