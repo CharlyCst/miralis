@@ -5,8 +5,9 @@
 
 use crate::arch::Register;
 use crate::policy::{PolicyHookResult, PolicyModule};
-use crate::{RegisterContextGetter, VirtContext};
 use crate::virt::RegisterContextSetter;
+use crate::{RegisterContextGetter, VirtContext};
+use core::ptr;
 
 /// Keystone EID & FIDs
 ///
@@ -28,12 +29,9 @@ const EXIT_ENCLAVE_FID: usize = 3006;
 
 /// SBI return codes
 ///
-/// See chapter 2 of https://www.scs.stanford.edu/~zyedidia/docs/riscv/riscv-sbi.pdf
-enum ReturnCode{
-    Success = 0,
-    ErrFailed = -1,
-    ErrNotSupported = -2,
-}
+/// See https://github.com/keystone-enclave/keystone/blob/master/sdk/include/shared/sm_err.h
+const ERR_SM_ENCLAVE_SUCCESS: usize = 0;
+const ERR_SM_NOT_IMPLEMENTED: usize = 100100;
 
 /// The keystone policy module
 ///
@@ -41,26 +39,40 @@ enum ReturnCode{
 pub struct KeystonePolicy {}
 
 impl KeystonePolicy {
-    fn handle_ecall(ctx: &mut VirtContext) {
-        let fid = ctx.get(Register::X16);
-        match fid {
-            CREATE_ENCLAVE_FID => log::info!("Keystone: Create enclave"),
-            DESTROY_ENCLAVE_FID => log::info!("Keystone: Destroy enclave"),
-            RUN_ENCLAVE_FID => log::info!("Keystone: Run enclave"),
-            RESUME_ENCLAVE_FID => log::info!("Keystone: Resume enclave"),
-            RANDOM_FID => log::info!("Keystone: Random"),
-            ATTEST_ENCLAVE_FID => log::info!("Keystone: Attest enclave"),
-            GET_SEALING_KEY_FID => log::info!("Keystone: Get sealing key"),
-            STOP_ENCLAVE_FID => log::info!("Keystone: Stop enclave"),
-            EXIT_ENCLAVE_FID => log::info!("Keystone: Exit enclave"),
-            _ => log::info!("Keystone: Unknown FID {}", fid)
+    fn create_enclave(ctx: &mut VirtContext) -> usize {
+        log::debug!("Keystone: Create enclave");
+
+        // Read the arguments passed to create_enclave
+        #[repr(C)]
+        struct KeystoneRegion {
+            addr: usize,
+            size: usize,
         }
-        ctx.set(Register::X10, ReturnCode::Success as usize);
-        ctx.set(Register::X11, 0);
-        ctx.pc += 4;
+
+        #[repr(C)]
+        struct CreateArgs {
+            epm_region: KeystoneRegion, // Enclave region
+            upm_region: KeystoneRegion, // Untrusted region
+
+            runtime_paddr: usize,
+            user_paddr: usize,
+            free_paddr: usize,
+            free_requested: usize,
+        }
+
+        // TODO: We should validate that the memory pointed by a0 is valid, and well aligned
+        let args = unsafe { ptr::read(ctx.get(Register::X10) as *const CreateArgs) };
+
+        ERR_SM_ENCLAVE_SUCCESS
+    }
+
+    fn destroy_enclave(ctx: &mut VirtContext) -> usize {
+        log::debug!("Keystone: Destroy enclave");
+        ERR_SM_ENCLAVE_SUCCESS
     }
 }
 
+/// To check how ecalls are handled, see https://github.com/riscv-software-src/opensbi/blob/2ffa0a153d804910c20b82974bfe2dedcf35a777/lib/sbi/sbi_ecall.c#L98
 impl PolicyModule for KeystonePolicy {
     fn name() -> &'static str {
         "Keystone Policy"
@@ -72,11 +84,23 @@ impl PolicyModule for KeystonePolicy {
 
     fn ecall_from_payload(ctx: &mut VirtContext) -> PolicyHookResult {
         let eid = ctx.get(Register::X17);
-        if eid == KEYSTONE_EID {
-            Self::handle_ecall(ctx);
-            PolicyHookResult::Overwrite
-        } else {
-            PolicyHookResult::Ignore
+        let fid = ctx.get(Register::X16);
+        if eid != KEYSTONE_EID {
+            return PolicyHookResult::Ignore;
         }
+
+        let err_code: usize = match fid {
+            CREATE_ENCLAVE_FID => Self::create_enclave(ctx),
+            DESTROY_ENCLAVE_FID => Self::destroy_enclave(ctx),
+            _ => {
+                log::debug!("Keystone: Unknown FID {}", fid);
+                ERR_SM_NOT_IMPLEMENTED
+            }
+        };
+
+        ctx.set(Register::X10, err_code);
+        ctx.pc += 4;
+
+        PolicyHookResult::Overwrite
     }
 }
