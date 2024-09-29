@@ -1145,25 +1145,26 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if new_value & UBE_FILTER != 0 {
                     todo!("UBE filter is not implemented - please implement it");
                 }
-                // TVM : 20 : read-only 0 (NO S-MODE)
-                new_value &= !(0b1 << 20); // clear TVM
+                // TVM & TSR are read only when no S-mode is available
                 if !mctx.hw.has_s_mode {
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::TVM_OFFSET,
-                        mstatus::TVM_FILTER,
-                        0,
-                    );
-                }
-                // TW : 21 : write anything
-                // TSR : 22 : read-only 0 (NO S-MODE)
-                if !mctx.hw.has_s_mode {
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::TSR_OFFSET,
-                        mstatus::TSR_FILTER,
-                        0,
-                    );
+                    // TVM : 20
+                    if !mctx.hw.has_s_mode {
+                        VirtCsr::set_csr_field(
+                            &mut new_value,
+                            mstatus::TVM_OFFSET,
+                            mstatus::TVM_FILTER,
+                            0,
+                        );
+                    }
+                    // TSR : 22
+                    if !mctx.hw.has_s_mode {
+                        VirtCsr::set_csr_field(
+                            &mut new_value,
+                            mstatus::TSR_OFFSET,
+                            mstatus::TSR_FILTER,
+                            0,
+                        );
+                    }
                 }
                 // FS : 13 : read-only 0 (NO S-MODE, F extension)
                 if !mctx.hw.has_s_mode {
