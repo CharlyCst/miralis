@@ -9,6 +9,7 @@ spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
 qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
+qemu_virt_u_boot_payload := "./config/test/qemu-virt-u-boot-payload.toml"
 qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
 qemu_virt_sifive_u54_spike := "./config/test/qemu-virt-sifive-u54-spike.toml"
 qemu_virt_rustsbi_test_kernel := "./config/test/qemu-rustsbi-test-kernel.toml"
@@ -64,9 +65,12 @@ test:
 	# Testing with external projects
 	cargo run -- run --config {{qemu_virt}} --firmware opensbi
 	cargo run -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
-	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
 	cargo run -- run --config {{qemu_virt_sifive_u54}} --firmware linux
 	cargo run -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
+
+	# Testing with S-mode payloads
+	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
+	cargo run -- run --config {{qemu_virt_u_boot_payload}} --firmware opensbi-jump
 
 	# Test benchmark code
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
