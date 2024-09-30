@@ -3,6 +3,7 @@
 //! This is a logger implementation that uses the Miralis SBI to log messages.
 
 use core::fmt::Write;
+use core::sync::atomic::{AtomicBool, Ordering};
 
 use log::{LevelFilter, Metadata, Record};
 
@@ -38,10 +39,18 @@ impl log::Log for Logger {
 ///
 /// This function is called automatically by `setup_binary!`.
 pub fn init() {
+    static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
     static LOGGER: Logger = Logger {};
 
-    log::set_logger(&LOGGER).unwrap();
-    log::set_max_level(LevelFilter::Trace);
+    match IS_INITIALIZED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
+        Ok(_) => {
+            log::set_logger(&LOGGER).unwrap();
+            log::set_max_level(LevelFilter::Trace);
+        }
+        Err(_) => {
+            log::warn!("Logger is already initialized, skipping init");
+        }
+    };
 }
 
 // —————————————————————————————— Stack Buffer —————————————————————————————— //

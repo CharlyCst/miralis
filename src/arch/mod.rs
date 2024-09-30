@@ -330,6 +330,8 @@ pub mod mie {
     /// Constant to filter out writable bits of mip.
     pub const MIP_WRITE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
 
+    pub const MIP_MACHINE_FILTER: usize = MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
+
     // Mie fields constants
     /// SSIE
     pub const SSIE_OFFSET: usize = 1;

@@ -249,6 +249,7 @@ impl VirtContext {
                 }
 
                 Arch::wfi();
+
                 self.pc += 4;
             }
             Instr::Csrrw { csr, .. }
@@ -264,46 +265,54 @@ impl VirtContext {
             Instr::Csrrw { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
                 self.set_csr(csr, self.get(rs1), mctx);
+                self.add_interrupt_bit(csr, tmp);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrs { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
                 self.set_csr(csr, tmp | self.get(rs1), mctx);
+                self.add_interrupt_bit(csr, tmp);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrwi { csr, rd, uimm } => {
-                self.set(rd, self.get(csr));
+                let tmp = self.get(csr);
+                self.add_interrupt_bit(csr, tmp);
+                self.set(rd, tmp);
                 self.set_csr(csr, *uimm, mctx);
                 self.pc += 4;
             }
             Instr::Csrrsi { csr, rd, uimm } => {
                 let tmp = self.get(csr);
                 self.set_csr(csr, tmp | uimm, mctx);
+                self.add_interrupt_bit(csr, tmp);
+                // check if mip -> add hw bit
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrc { csr, rd, rs1 } => {
                 let tmp = self.get(csr);
                 self.set_csr(csr, tmp & !self.get(rs1), mctx);
+                self.add_interrupt_bit(csr, tmp);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Csrrci { csr, rd, uimm } => {
                 let tmp = self.get(csr);
                 self.set_csr(csr, tmp & !uimm, mctx);
+                self.add_interrupt_bit(csr, tmp);
                 self.set(rd, tmp);
                 self.pc += 4;
             }
             Instr::Mret => {
                 match parse_mpp_return_mode(self.csr.mstatus) {
                     Mode::M => {
-                        log::trace!("mret to m-mode to {:x}", self.trap_info.mepc);
+                        log::trace!("mret to m-mode from {:x}", self.trap_info.mepc);
                         // Mret is jumping back to machine mode, do nothing
                     }
                     Mode::S if mctx.hw.has_s_mode => {
-                        log::trace!("mret to s-mode with MPP to {:x}", self.trap_info.mepc);
+                        log::trace!("mret to s-mode with MPP from {:x}", self.trap_info.mepc);
                         // Mret is jumping to supervisor mode, the runner is the guest OS
                         self.mode = Mode::S;
 
@@ -490,7 +499,7 @@ impl VirtContext {
 
                 match device
                     .device_interface
-                    .write_device(offset, *len, value & mask)
+                    .write_device(offset, *len, value & mask, self)
                 {
                     Ok(()) => {
                         // Update the program counter (pc) based on compression
@@ -513,9 +522,13 @@ impl VirtContext {
 
     pub fn emulate_jump_trap_handler(&mut self) {
         // We are now emulating a trap, registers need to be updated
-        log::trace!("Emulating jump to trap handler");
+        log::trace!("Emulating jump to trap handler to {:x?}", self.trap_info);
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus;
+        // MPIE bit should be preserved; otherwise, MPIE would be equal to vMIE
+        // Global MIE bit is 0 inside the trap handler according to the spec, so MIE = 0 = vMIE
+        self.csr.mstatus = (self.trap_info.mstatus & !mstatus::MPIE_FILTER)
+            | ((self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET
+                << mstatus::MPIE_OFFSET);
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
 
@@ -524,9 +537,12 @@ impl VirtContext {
         // controller. (refer to documentation for further detail).
         // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
         // the firmware want to read virtual mip.
-        self.csr.mip = self.trap_info.mip
-            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
-            | self.csr.mip & mie::SEIE_FILTER;
+        // self.csr.mip = self.trap_info.mip
+        //     & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+        //     | self.csr.mip & mie::SEIE_FILTER;
+
+        self.csr.mip = (self.trap_info.mip & mie::MIE_WRITE_FILTER)
+            | ((self.trap_info.mip | self.csr.mip) & mie::MIP_MACHINE_FILTER);
 
         match self.mode {
             Mode::M => {
@@ -627,11 +643,24 @@ impl VirtContext {
                 // Set mtimecmp > mtime to clear mip.mtip
                 // We set a deadline as far as possible in the future for now, the firmware can
                 // re-write mtimecmp through the virtual CLINT to trigger an interrupt earlier.
+                log::trace!("Machine timer interrupt");
                 let mut clint = Plat::get_clint().lock();
                 clint
                     .write_mtimecmp(mctx.hw.hart, usize::MAX)
                     .expect("Failed to write mtimecmp");
                 self.emulate_jump_trap_handler();
+            }
+            MCause::MachineSoftInt => {
+                log::trace!("Machine software interrupt");
+                let mut clint = Plat::get_clint().lock();
+                clint
+                    .write_msip(mctx.hw.hart, 0)
+                    .expect("Failed to write msip");
+                self.emulate_jump_trap_handler();
+            }
+            MCause::MachineExternalInt => {
+                log::trace!("Machine external interrupt");
+                panic!("Was not expecting to get MEI, this should be delegated");
             }
             _ => {
                 if cause.is_interrupt() {
@@ -703,7 +732,7 @@ impl VirtContext {
                     abi::log::MIRALIS_DEBUG => log::debug!("> {}", message),
                     abi::log::MIRALIS_TRACE => log::trace!("> {}", message),
                     _ => {
-                        log::info!("Miralis log SBI call with invalid level: {}", log_level)
+                        //log::info!("Miralis log SBI call with invalid level: {}", log_level)
                     }
                 }
 
@@ -716,7 +745,95 @@ impl VirtContext {
                 Benchmark::record_counters();
                 Plat::exit_success();
             }
-            _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
+            20 => {
+                // On the VisionFive 2 board mip sometimes isn't properly cleared after
+                // plic_handle_irq (Linux function), as it should be
+                // So this part clears the mip on ecall from modified Linux
+                let mip_value = Arch::read_csr(Csr::Mip);
+                log::trace!("Mip: {:b}", mip_value);
+
+                if mip_value & (1 << 9) == 0 {
+                    let mask: usize = !(1 << 5);
+                    unsafe { Arch::write_csr(Csr::Mip, mip_value & mask) };
+                } else {
+                    let mask: usize = !(1 << 9);
+                    unsafe { Arch::write_csr(Csr::Mip, mip_value & mask) };
+                }
+
+                log::trace!("Mip patched: {:b}", Arch::read_csr(Csr::Mip));
+                self.pc += 4;
+            }
+            _ => {
+                log::warn!("Invalid Miralis FID: 0x{:x}", fid);
+                self.pc += 4;
+            }
+        }
+    }
+
+    fn add_interrupt_bit(&mut self, csr: &Csr, value: usize) -> usize {
+        if csr.eq(&Csr::Mip) {
+            value | (Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER)
+        } else {
+            value
+        }
+    }
+
+    pub fn update_interrupts(&mut self, mctx: &mut MiralisContext) {
+        let irq_to_set = if (self.csr.mstatus & mstatus::MIE_FILTER) != 0 {
+            (((self.csr.mip & !self.trap_info.mip) & mie::MIP_MACHINE_FILTER) & !self.csr.mideleg)
+                & self.csr.mie
+        } else {
+            0
+        };
+
+        // MEI is expected to be delegated at almost all times (for S-mode to receive interrupts)
+        // This virtualization approach might not be the most suitable one here
+        if irq_to_set & mie::MEIE_FILTER != 0 {
+            todo!("Add plic device");
+        }
+
+        if irq_to_set & mie::MTIE_FILTER != 0 {
+            log::trace!("Set up M-mode timer interrupt");
+
+            // From my understanding, there are two potential ways to handle re-raising interrupts here:
+            // 1. Hardware-based re-raising: This seems like the more reliable option,
+            //    but there might be some overhead, such as delays in MTI arrival. This could be
+            //    problematic for timing-sensitive systems.
+            // 2. Software-based injection: This approach involves injecting the interrupt directly.
+            //    However, in its current state, it seems a bit unstable and has caused occasional
+            //    RustSBI test failures towards the end.
+
+            // I’m leaving the alternative code below commented out for now, as I'm not entirely
+            // sure if all edge cases are handled correctly.
+
+            // self.trap_info.mcause = MCause::MachineTimerInt as usize;
+            // self.trap_info.mepc = self.pc + 4;
+            // self.trap_info.mip = self.csr.mip;
+            // self.trap_info.mstatus = (self.csr.mstatus & !mstatus::MIE_FILTER)
+            //     | ((self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET
+            //         << mstatus::MPIE_OFFSET);
+            // self.trap_info.mtval = 0;
+            // self.emulate_jump_trap_handler();
+            let mut clint = Plat::get_clint().lock();
+            clint
+                .write_mtimecmp(mctx.hw.hart, usize::MIN)
+                .expect("Failed to write mtimecmp");
+        }
+
+        if irq_to_set & mie::MSIE_FILTER != 0 {
+            log::trace!("Set up M-mode software interrupt");
+            // self.trap_info.mcause = MCause::MachineSoftInt as usize;
+            // self.trap_info.mepc = self.pc + 4;
+            // self.trap_info.mip = self.csr.mip;
+            // self.trap_info.mstatus = (self.csr.mstatus & !mstatus::MIE_FILTER)
+            //     | ((self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET
+            //         << mstatus::MPIE_OFFSET);
+            // self.trap_info.mtval = 0;
+            // self.emulate_jump_trap_handler();
+            let mut clint = Plat::get_clint().lock();
+            clint
+                .write_msip(mctx.hw.hart, 1)
+                .expect("Failed to write msip");
         }
     }
 
@@ -820,9 +937,9 @@ impl VirtContext {
         // controller. (refer to documentation for further detail).
         // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
         // the firmware want to read virtual mip.
-        self.csr.mip = Arch::read_csr(Csr::Mip)
-            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
-            | self.csr.mip & mie::SEIE_FILTER;
+        // self.csr.mip = Arch::read_csr(Csr::Mip)
+        //     & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+        //     | self.csr.mip & mie::SEIE_FILTER;
 
         self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, 0);
 
@@ -941,8 +1058,9 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mie => self.csr.mie,
             Csr::Mip => {
                 self.csr.mip
-                    | Arch::read_csr(Csr::Mip)
-                        & (mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+                // | Arch::read_csr(Csr::Mip)
+                //     & (mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MTIE_FILTER)
+                // Same, *IE -> *IP
             } // Allows to read the interrupt signal from interrupt controller.
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
@@ -1228,12 +1346,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                             Arch::clear_csr_bits(Csr::Mip, mie::SEIE_FILTER);
                         }
                     } else {
+                        log::warn!("set vSEIP to 1");
                         unsafe {
                             Arch::set_csr_bits(Csr::Mip, mie::SEIE_FILTER);
                         }
                     }
                 }
-                self.csr.mip = value;
+                // Preserve machine-mode interrupts
+                self.csr.mip = value | self.csr.mip & mie::MIP_MACHINE_FILTER;
             }
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
@@ -1274,7 +1394,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
-            Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
+            Csr::Mideleg => {
+                self.csr.mideleg = value & hw.interrupts & !mie::MSIE_FILTER & !mie::MTIE_FILTER
+            }
             Csr::Mtinst => {
                 if mctx.hw.has_h_mode {
                     self.csr.mtinst = value
@@ -1355,8 +1477,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
                 // Clear S bits
-                let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
-                // Set S bits to new value
+                let mip = self.get(Csr::Mip) & !mie::SIE_FILTER; //is seip handled here ok?
+                                                                 // Set S bits to new value
                 self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
             }
             Csr::Satp => {

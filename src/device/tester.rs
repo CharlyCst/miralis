@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::device::{DeviceAccess, Width};
+use crate::virt::VirtContext;
 
 // ————————————————————————————— Virtual Test Device —————————————————————————————— //
 
@@ -32,6 +33,7 @@ impl DeviceAccess for VirtTestDevice {
         offset: usize,
         w_width: Width,
         value: usize,
+        _ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
         self.validate_offset(offset)?;
         self.validate_width(w_width)?;
