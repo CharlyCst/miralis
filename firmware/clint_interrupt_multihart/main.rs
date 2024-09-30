@@ -8,6 +8,16 @@ use miralis_abi::{failure, setup_binary, success};
 
 setup_binary!(main);
 
+/// This test verifies the functionality of virtualized Machine Software Interrupt (MSI) between two harts.
+/// It ensures that one hart can trigger an interrupt on another hart by writing to the target hart's
+/// memory-mapped interrupt register.
+///
+/// Specifically, the test checks:
+/// 1. Hart A can successfully write to Hart B's MSI memory-mapped register.
+/// 2. Hart B correctly receives and handles the MSI triggered by Hart A's write.
+///
+/// This test ensures proper inter-hart communication through software interrupts, confirming that
+/// MSIs can be triggered and handled correctly in a multi-hart environment.
 fn main() -> ! {
     let hart_id: usize;
     unsafe {
@@ -64,10 +74,8 @@ extern "C" fn trap_handler() {
     let mcause: usize;
     unsafe {
         asm!(
-            "csrc mstatus, {mstatus_mie}", // Disable interrupts
             "csrr {0}, mcause",
             out(reg) mcause,
-            mstatus_mie = in(reg) 0x8,
         );
     }
 

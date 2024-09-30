@@ -248,7 +248,6 @@ impl VirtContext {
                     Arch::write_csr(Csr::Mie, self.csr.mie);
                 }
 
-                self.update_interrupts(mctx);
                 Arch::wfi();
 
                 self.pc += 4;
@@ -523,9 +522,13 @@ impl VirtContext {
 
     pub fn emulate_jump_trap_handler(&mut self) {
         // We are now emulating a trap, registers need to be updated
-        log::trace!("Emulating jump to trap handler");
+        log::trace!("Emulating jump to trap handler to {:x?}", self.trap_info);
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus;
+        // MPIE bit should be preserved; otherwise, MPIE would be equal to vMIE
+        // Global MIE bit is 0 inside the trap handler according to the spec, so MIE = 0 = vMIE
+        self.csr.mstatus = (self.trap_info.mstatus & !mstatus::MPIE_FILTER)
+            | ((self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET
+                << mstatus::MPIE_OFFSET);
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
 
@@ -784,13 +787,33 @@ impl VirtContext {
         };
 
         // MEI is expected to be delegated at almost all times (for S-mode to receive interrupts)
-        // This virtualization approach might not be the most suitable one
+        // This virtualization approach might not be the most suitable one here
         if irq_to_set & mie::MEIE_FILTER != 0 {
             todo!("Add plic device");
         }
 
         if irq_to_set & mie::MTIE_FILTER != 0 {
-            log::trace!("Set up M timer interrupt");
+            log::trace!("Set up M-mode timer interrupt");
+
+            // From my understanding, there are two potential ways to handle re-raising interrupts here:
+            // 1. Hardware-based re-raising: This seems like the more reliable option,
+            //    but there might be some overhead, such as delays in MTI arrival. This could be
+            //    problematic for timing-sensitive systems.
+            // 2. Software-based injection: This approach involves injecting the interrupt directly.
+            //    However, in its current state, it seems a bit unstable and has caused occasional
+            //    RustSBI test failures towards the end.
+
+            // I’m leaving the alternative code below commented out for now, as I'm not entirely
+            // sure if all edge cases are handled correctly.
+
+            // self.trap_info.mcause = MCause::MachineTimerInt as usize;
+            // self.trap_info.mepc = self.pc + 4;
+            // self.trap_info.mip = self.csr.mip;
+            // self.trap_info.mstatus = (self.csr.mstatus & !mstatus::MIE_FILTER)
+            //     | ((self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET
+            //         << mstatus::MPIE_OFFSET);
+            // self.trap_info.mtval = 0;
+            // self.emulate_jump_trap_handler();
             let mut clint = Plat::get_clint().lock();
             clint
                 .write_mtimecmp(mctx.hw.hart, usize::MIN)
@@ -798,7 +821,15 @@ impl VirtContext {
         }
 
         if irq_to_set & mie::MSIE_FILTER != 0 {
-            log::trace!("Set up M software interrupt");
+            log::trace!("Set up M-mode software interrupt");
+            // self.trap_info.mcause = MCause::MachineSoftInt as usize;
+            // self.trap_info.mepc = self.pc + 4;
+            // self.trap_info.mip = self.csr.mip;
+            // self.trap_info.mstatus = (self.csr.mstatus & !mstatus::MIE_FILTER)
+            //     | ((self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET
+            //         << mstatus::MPIE_OFFSET);
+            // self.trap_info.mtval = 0;
+            // self.emulate_jump_trap_handler();
             let mut clint = Plat::get_clint().lock();
             clint
                 .write_msip(mctx.hw.hart, 1)
@@ -1362,7 +1393,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
-            Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
+            Csr::Mideleg => {
+                self.csr.mideleg = value & hw.interrupts & !mie::MSIE_FILTER & !mie::MTIE_FILTER
+            }
             Csr::Mtinst => {
                 if mctx.hw.has_h_mode {
                     self.csr.mtinst = value

@@ -58,12 +58,14 @@ impl VirtClint {
         let mtimecmp = driver.read_mtimecmp(ctx.hart_id).unwrap();
         let mtime = driver.read_mtime();
 
-        if msip == 0 {
-            ctx.csr.mip &= !(mie::MSIE_FILTER);
+        if (ctx.csr.mip & mie::MSIE_FILTER) != 0 && msip == 0 {
+            // If the vMIP.MSIP bit was set, but MSIP of CLINT is 0, clear the vMIP.MSIP bit
+            ctx.csr.mip &= !mie::MSIE_FILTER;
             log::trace!("vMSIP cleared");
         }
-        if mtime < mtimecmp {
-            ctx.csr.mip &= !(mie::MTIE_FILTER);
+        if (ctx.csr.mip & mie::MTIE_FILTER) != 0 && mtime < mtimecmp {
+            // If the vMIP.MSIP bit was set, but MTIMECMP is in the future, clear the vMIP.MSIP bit
+            ctx.csr.mip &= !mie::MTIE_FILTER;
             log::trace!("vMTIP cleared");
         }
     }

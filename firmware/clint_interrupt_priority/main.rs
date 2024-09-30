@@ -8,6 +8,10 @@ use miralis_abi::{failure, setup_binary, success};
 
 setup_binary!(main);
 
+/// This test verifies that the priority of clearing virtualized Machine Software Interrupt (MSI)
+/// and Machine Timer Interrupt (MTI) is correct, with MSI taking precedence over MTI.
+/// It also ensures that both interrupts can be properly cleared by writing to their respective
+/// memory-mapped registers.
 fn main() -> ! {
     // Set up two interrupts simultaniously
     set_msip(0, 1);
@@ -21,26 +25,26 @@ fn main() -> ! {
     // Configure trap handler and enable interrupts
     unsafe {
         asm!(
-            "csrw mtvec, {handler}",       // Setup trap handler
-            "csrc mstatus, {mstatus_mie}", // Enable interrupts
-            "csrs mie, {mtie}",            // Enable MTIE and MSIE
+            "csrw mtvec, {handler}",        // Setup trap handler
+            "csrs mstatus, {mstatus_mie}",  // Enable interrupts
+            "csrs mie, {mie}",              // Enable MTIE and MSIE
             handler = in(reg) _raw_interrupt_trap_handler as usize,
-            mtie = in(reg) 0x88,
+            mie = in(reg) 0x88,
             mstatus_mie = in(reg) 0x8,
         );
     }
 
     // Expect to trap on both interrupts one by one
-    for _ in 1..2 {
+    for _ in 1..10000 {
         unsafe {
-            asm!("wfi");
+            asm!("nop");
         }
     }
 
     let mip: usize;
     unsafe {
         asm!(
-            "csrr {mip}, mip",            // Enable MTIE and MSIE
+            "csrr {mip}, mip",
             mip = out(reg) mip,
         );
     }
@@ -93,12 +97,10 @@ extern "C" fn trap_handler() {
     let mcause: usize;
     unsafe {
         asm!(
-            "csrc mstatus, {mstatus_mie}", // Disable interrupts
             "csrr {0}, mip",
             "csrr {1}, mcause",
             out(reg) mip,
             out(reg) mcause,
-            mstatus_mie = in(reg) 0x8,
         );
     }
     log::trace!("MIP: {:b}", mip);
@@ -123,11 +125,7 @@ extern "C" fn trap_handler() {
     }
 
     unsafe {
-        asm!(
-            "csrs mstatus, {mstatus_mie}",  // Enable interrupts
-            "mret",
-            mstatus_mie = in(reg) 0x8,
-        );
+        asm!("mret",);
     }
 }
 

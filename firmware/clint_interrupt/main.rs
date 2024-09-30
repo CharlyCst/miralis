@@ -8,9 +8,14 @@ use miralis_abi::{failure, setup_binary, success};
 
 setup_binary!(main);
 
+/// This test verifies the general functionality of MTI (Machine Timer Interrupt) virtualization, including:
+/// 1. The timer interrupt is delivered within a reasonable time when the timer is set and interrupts are enabled.
+/// 2. Firmware cannot directly clear the M-mode timer interrupt (MTI) by writing to `vMIP.MTIP`.
+/// 3. Writing to the appropriate memory-mapped register correctly clears the interrupt.
+/// 4. If the virtual interrupt is not cleared, the firmware will trap on each execution cycle.
 fn main() -> ! {
     // Setup a timer deadline
-    set_mtimecmp_future_value(10000);
+    set_mtimecmp_future_value(0);
 
     // Configure trap handler and enable interrupts
     unsafe {
@@ -25,8 +30,7 @@ fn main() -> ! {
     for _ in 1..REPETITIONS {
         unsafe {
             asm!(
-                "csrs mstatus, {mstatus_mie}",  // Enable interrupts (MIE)
-                "nop",
+                "csrs mstatus, {mstatus_mie}",  // Enable global interrupts (MIE), expect to trap immediately
                 mstatus_mie = in(reg) 0x8,
             )
         };
@@ -71,14 +75,12 @@ extern "C" fn trap_handler() {
 
     unsafe {
         asm!(
-            "csrc mstatus, {mstatus_mie}", // Disable interrupts (MIE)
             "csrr {0}, mip",
             "csrr {1}, mcause",
             "csrr {2}, mepc",
             out(reg) mip,
             out(reg) mcause,
             out(reg) mepc,
-            mstatus_mie = in(reg) 0x8,
         );
     }
 

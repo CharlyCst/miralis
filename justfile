@@ -57,7 +57,7 @@ test:
 	cargo run -- run --config {{qemu_virt}} --firmware device
 	cargo run -- run --config {{qemu_virt}} --firmware hypervisor
 	cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt_priority
-	#cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt
+	cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt
 	cargo run -- run --config {{qemu_virt_2harts}} --firmware clint_interrupt_multihart
 	cargo run -- run --config {{qemu_virt_release}} --firmware default
 
@@ -98,6 +98,7 @@ spike-test:
 	cargo run -- run --config {{spike}} --firmware vectored_mtvec
 	cargo run -- run --config {{spike}} --firmware device
 	cargo run -- run --config {{spike}} --firmware default
+	cargo run -- run --config {{spike}} --firmware clint_interrupt
 	cargo run -- run --config {{spike}} --firmware clint_interrupt_priority
 
 	# Testing with Miralis as firmware
