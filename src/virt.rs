@@ -568,7 +568,7 @@ impl VirtContext {
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = decode(instr);
-                log::info!("Faulting instruction: {:?}", instr);
+                log::debug!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {

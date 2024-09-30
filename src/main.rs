@@ -22,6 +22,7 @@ mod policy;
 mod utils;
 mod virt;
 
+use log::error;
 use arch::pmp::pmpcfg;
 use arch::{pmp, Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
