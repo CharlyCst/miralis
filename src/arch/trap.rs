@@ -6,7 +6,7 @@ use core::fmt;
 
 const INTERRUPT_BIT: usize = 1 << (usize::BITS as usize - 1);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(usize)]
 #[allow(clippy::enum_clike_unportable_variant)]
 pub enum MCause {
