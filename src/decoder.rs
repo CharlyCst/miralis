@@ -397,7 +397,7 @@ impl MiralisContext {
             0x747 => Csr::Mseccfg,
             0xF15 => Csr::Mconfigptr,
             0x302 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     log::warn!(
                         "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
                         csr
@@ -408,7 +408,7 @@ impl MiralisContext {
                 }
             }
             0x303 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     log::warn!(
                         "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
                         csr
@@ -419,7 +419,7 @@ impl MiralisContext {
                 }
             }
             0x34A => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     log::warn!(
                     "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
                     csr
@@ -430,7 +430,7 @@ impl MiralisContext {
                 }
             }
             0x34B => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     log::warn!(
                     "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
                     csr
@@ -508,84 +508,84 @@ impl MiralisContext {
             0x343 => Csr::Mtval,
             // Supervisor-level CSRs
             0x100 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sstatus
                 }
             }
             0x104 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sie
                 }
             }
             0x105 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Stvec
                 }
             }
             0x106 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Scounteren
                 }
             }
             0x10A => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Senvcfg
                 }
             }
             0x140 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sscratch
                 }
             }
             0x141 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sepc
                 }
             }
             0x142 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Scause
                 }
             }
             0x143 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Stval
                 }
             }
             0x144 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sip
                 }
             }
             0x180 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Satp
                 }
             }
             0x5A8 => {
-                if !self.hw.has_s_mode {
+                if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Scontext
@@ -594,161 +594,161 @@ impl MiralisContext {
 
             // Hypervisor and Virtual Supervisor CSRs
             0x600 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hstatus
                 }
             }
             0x602 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hedeleg
                 }
             }
             0x603 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hideleg
                 }
             }
             0x645 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hvip
                 }
             }
             0x644 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hip
                 }
             }
             0x604 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hie
                 }
             }
             0xe12 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hgeip
                 }
             }
             0x607 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hgeie
                 }
             }
             0x60a => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Henvcfg
                 }
             }
             0x606 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hcounteren
                 }
             }
             0x605 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Htimedelta
                 }
             }
             0x643 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Htval
                 }
             }
             0x64a => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Htinst
                 }
             }
             0x680 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hgatp
                 }
             }
             0x200 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsstatus
                 }
             }
             0x204 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsie
                 }
             }
             0x205 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vstvec
                 }
             }
             0x240 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsscratch
                 }
             }
             0x241 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsepc
                 }
             }
             0x242 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vscause
                 }
             }
             0x243 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vstval
                 }
             }
             0x244 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsip
                 }
             }
             0x280 => {
-                if !self.hw.has_h_mode {
+                if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsatp

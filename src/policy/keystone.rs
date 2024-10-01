@@ -4,6 +4,7 @@
 //! enclaves by leveraging PMP for memory isolation.
 
 use crate::arch::Register;
+use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::{RegisterContextGetter, VirtContext};
 
@@ -18,21 +19,37 @@ const KEYSTONE_FID: usize = 0x08424b45;
 pub struct KeystonePolicy {}
 
 impl PolicyModule for KeystonePolicy {
+    fn init() -> Self {
+        KeystonePolicy {}
+    }
+
     fn name() -> &'static str {
         "Keystone Policy"
     }
 
-    fn ecall_from_firmware(_ctx: &mut VirtContext) -> PolicyHookResult {
+    fn ecall_from_firmware(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        _ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
         PolicyHookResult::Ignore
     }
 
-    fn ecall_from_payload(ctx: &mut VirtContext) -> PolicyHookResult {
+    fn ecall_from_payload(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
         let fid = ctx.get(Register::X17);
         if fid == KEYSTONE_FID {
-            // TODO: do something with the ecall
+            ctx.pc += 4;
             PolicyHookResult::Overwrite
         } else {
             PolicyHookResult::Ignore
         }
     }
+
+    fn jump_from_payload_to_firmware(&mut self, _: &mut VirtContext) {}
+
+    fn jump_from_firmware_to_payload(&mut self, _: &mut VirtContext) {}
 }

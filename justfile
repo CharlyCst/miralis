@@ -3,6 +3,7 @@ config           := "config.toml"
 benchmark        := "ecall_benchmark"
 spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
+qemu_virt_protect_payload        := "./config/test/qemu-virt-protect-payload.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
@@ -50,7 +51,6 @@ test:
 	cargo run -- run --config {{qemu_virt}} --firmware mcause
 	cargo run -- run --config {{qemu_virt}} --firmware mret
 	cargo run -- run --config {{qemu_virt}} --firmware os_ctx_switch
-	cargo run -- run --config {{qemu_virt}} --firmware sandbox
 	cargo run -- run --config {{qemu_virt}} --firmware interrupt
 	cargo run -- run --config {{qemu_virt}} --firmware os_ecall
 	cargo run -- run --config {{qemu_virt}} --firmware vectored_mtvec
@@ -74,6 +74,10 @@ test:
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
+
+	# Test with different policies
+	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware protect_payload
+	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
 
 spike-benchmarks:
     cargo run -- run --config {{spike}} --firmware tracing_firmware

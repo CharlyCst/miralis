@@ -52,6 +52,11 @@ pub fn miralis_end_benchmark() -> ! {
     }
 }
 
+/// Ask Miralis to lock the payload
+pub fn lock_payload() {
+    unsafe { miralis_ecall(abi::MIRALIS_LOCK_FID).ok() };
+}
+
 /// Ask Miralis to log a string with the provided log level.
 pub fn miralis_log(level: Level, message: &str) {
     // Prepare ecall arguments

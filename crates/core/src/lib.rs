@@ -24,6 +24,8 @@ pub mod abi {
     pub const MIRALIS_LOG_FID: usize = 2;
     /// Benchmark prints and exit.
     pub const MIRALIS_BENCHMARK_FID: usize = 3;
+    /// Ecall to lock the policy module
+    pub const MIRALIS_LOCK_FID: usize = 4;
 
     /// Log level constants, with the same semantic as the `log` crate.
     pub mod log {

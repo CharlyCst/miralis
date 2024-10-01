@@ -138,6 +138,8 @@ pub enum PolicyModule {
     Default,
     #[serde(rename = "keystone")]
     Keystone,
+    #[serde(rename = "protect_payload")]
+    ProtectPayload,
 }
 
 impl fmt::Display for PolicyModule {
@@ -145,6 +147,7 @@ impl fmt::Display for PolicyModule {
         match self {
             PolicyModule::Default => write!(f, "default"),
             PolicyModule::Keystone => write!(f, "keystone"),
+            PolicyModule::ProtectPayload => write!(f, "protect_payload"),
         }
     }
 }
