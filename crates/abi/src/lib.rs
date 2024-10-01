@@ -12,7 +12,7 @@ use core::hint;
 
 pub use config_helpers::{is_enabled, parse_usize_or};
 use log::Level;
-use miralis_core::abi;
+use miralis_core::{abi, abi_protect_payload};
 
 use crate::logger::StackBuffer;
 
@@ -50,6 +50,11 @@ pub fn miralis_end_benchmark() -> ! {
     loop {
         hint::spin_loop();
     }
+}
+
+/// Ask Miralis to lock the payload
+pub fn lock_payload() {
+    unsafe { miralis_ecall(abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID).ok() };
 }
 
 /// Ask Miralis to log a string with the provided log level.

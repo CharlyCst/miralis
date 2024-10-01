@@ -34,3 +34,12 @@ pub mod abi {
         pub const MIRALIS_TRACE: usize = 5;
     }
 }
+
+pub mod abi_protect_payload {
+    use crate::abi::MIRALIS_EID;
+
+    /// Protect payload SBI Extension ID.
+    pub const MIRALIS_PROTECT_PAYLOAD_EID: usize = MIRALIS_EID + 1;
+    /// Ecall to lock the payload
+    pub const MIRALIS_PROTECT_PAYLOAD_LOCK_FID: usize = 0x1;
+}
