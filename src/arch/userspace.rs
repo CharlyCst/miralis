@@ -8,14 +8,24 @@ use core::{ptr, usize};
 
 use spin::Mutex;
 
-use super::{mie, mstatus, Architecture, Csr, MCause, Mode};
+use super::{mie, mstatus, Architecture, Csr, ExtensionsCapability, MCause, Mode};
 use crate::arch::pmp::PmpFlush;
 use crate::arch::{HardwareCapability, PmpGroup};
 use crate::decoder::Instr;
 use crate::main;
 use crate::virt::VirtContext;
 
-static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(0, 16, false, true));
+static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
+    0,
+    16,
+    ExtensionsCapability {
+        has_h_extension: false,
+        has_s_extension: true,
+        has_f_extension: false,
+        has_d_extension: false,
+        has_q_extension: false,
+    },
+));
 
 /// User space mock, running on the host architecture.
 pub struct HostArch {}
@@ -100,8 +110,13 @@ impl Architecture for HostArch {
                 senvcfg: true,
                 nb_pmp: 16,
             },
-            has_h_mode: false,
-            has_s_mode: true,
+            extensions: ExtensionsCapability {
+                has_h_extension: false,
+                has_s_extension: true,
+                has_f_extension: false,
+                has_d_extension: false,
+                has_q_extension: false,
+            },
         }
     }
 
