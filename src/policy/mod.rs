@@ -64,4 +64,6 @@ pub trait PolicyModule {
     fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext);
 
     fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext);
+
+    const NUMBER_PMPS: usize;
 }
