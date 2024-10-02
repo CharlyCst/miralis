@@ -3,7 +3,7 @@
 use miralis_core::abi_protect_payload;
 
 use crate::arch::pmp::{build_napot, pmpcfg};
-use crate::arch::{Arch, Architecture, MCause, Register};
+use crate::arch::{MCause, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::{RegisterContextGetter, VirtContext};
@@ -118,6 +118,8 @@ impl PolicyModule for ProtectPayloadPolicy {
         // Step 2: Restore sensitives privileged registers
         self.write_confidential_registers(ctx, true)
     }
+
+    const NUMBER_PMPS: usize = 1;
 }
 
 // TODO: Check what to do with fcsr & sip & cycle
@@ -151,16 +153,9 @@ impl ProtectPayloadPolicy {
         self.confidential_values_firmware = get_confidential_values(ctx);
         self.confidential_values_payload = get_confidential_values(ctx);
         // TODO: Make it dynamic in the future
-        // Then set pmp entry protection
-        mctx.pmp.set(
-            mctx.devices.len() + 2,
-            build_napot(0x80400000, 0x80000).unwrap(),
-            pmpcfg::NAPOT,
-        );
-
-        unsafe {
-            Arch::write_pmp(&mctx.pmp).flush();
-        }
+        // First set pmp entry protection
+        mctx.pmp
+            .set_from_policy(0, build_napot(0x80400000, 0x80000).unwrap(), pmpcfg::NAPOT);
 
         // Then we can mark the payload as protected
         self.protected = true;
