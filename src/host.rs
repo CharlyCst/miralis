@@ -23,7 +23,7 @@ impl MiralisContext {
     /// Creates a new Miralis context with default values.
     pub fn new(hw: HardwareCapability) -> Self {
         Self {
-            pmp: PmpGroup::new(hw.available_reg.nb_pmp),
+            pmp: PmpGroup::init_pmp_group(hw.available_reg.nb_pmp),
             virt_pmp_offset: 0,
             hw,
             devices: Plat::create_virtual_devices(),

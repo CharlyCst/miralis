@@ -36,4 +36,6 @@ impl PolicyModule for DefaultPolicy {
     fn switch_from_payload_to_firmware(&mut self, _: &mut VirtContext) {}
 
     fn switch_from_firmware_to_payload(&mut self, _: &mut VirtContext) {}
+
+    const NUMBER_PMPS: usize = 0;
 }
