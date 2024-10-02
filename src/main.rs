@@ -14,7 +14,7 @@ mod config;
 mod debug;
 mod decoder;
 mod device;
-mod driver;
+pub mod driver;
 mod host;
 mod logger;
 mod platform;

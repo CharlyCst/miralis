@@ -4,7 +4,6 @@ use crate::arch::Width;
 
 pub mod clint;
 pub mod tester;
-
 // ———————————————————————————— Virtual Devices ————————————————————————————— //
 
 /// Represents a virtual memory-mapped device
