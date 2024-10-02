@@ -10,6 +10,7 @@ use crate::virt::RegisterContextSetter;
 use crate::{RegisterContextGetter, VirtContext};
 use core::ptr;
 
+
 /// Keystone parameters
 ///
 /// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sm/src/platform/generic/platform.h#L11
@@ -35,6 +36,7 @@ const GET_SEALING_KEY_FID: usize = 3003;
 const STOP_ENCLAVE_FID: usize = 3004;
 const EXIT_ENCLAVE_FID: usize = 3006;
 
+
 /// Keystone return codes
 ///
 /// See https://github.com/keystone-enclave/keystone/blob/master/sdk/include/shared/sm_err.h
@@ -44,10 +46,13 @@ enum ReturnCode {
     NotImplemented = 100100,
 }
 
+
 /// Enclave definitions
 ///
 /// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sm/src/enclave.h
+#[derive(Default)]
 enum EnclaveState {
+    #[default]
     Invalid = -1,
     Destroying = 0,
     Allocated,
@@ -56,13 +61,16 @@ enum EnclaveState {
     Running,
 }
 
+#[derive(Default)]
 enum EnclaveRegionType {
+    #[default]
     Invalid,
     EPM,
     UTM,
     Other,
 }
 
+#[derive(Default)]
 struct RuntimeParams {
     dram_base: usize,
     dram_size: usize,
@@ -74,11 +82,13 @@ struct RuntimeParams {
     free_requested: usize,
 }
 
+#[derive(Default)]
 struct EnclaveRegion {
     pmp_rid: i32,
     enclave_type: EnclaveRegionType,
 }
 
+#[derive(Default)]
 struct Enclave {
     eid: usize, // Enclave ID
     satp: usize, // Enclave's page table base
@@ -90,9 +100,11 @@ struct Enclave {
     // TODO: Add fields related to platform specific data
 }
 
+
 /// The keystone policy module
 ///
 /// See https://keystone-enclave.org/
+#[derive(Default)]
 pub struct KeystonePolicy {
     enclaves: [Enclave; ENCL_MAX],
 }
@@ -112,7 +124,7 @@ impl KeystonePolicy {
         Err(ReturnCode::NoFreeResources)
     }
 
-    fn create_enclave(ctx: &mut VirtContext) -> ReturnCode {
+    fn create_enclave(&mut self, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Create enclave");
 
         // Read the arguments passed to create_enclave
@@ -150,14 +162,15 @@ impl KeystonePolicy {
         };
 
         // Find a free enclave slot
-        // let enclave_index = match Self::allocate_enclave {
-        //     Ok(index) => index,
-        //     Err(code) => return code,
-        // };
+        let enclave_index = match Self::allocate_enclave {
+            Ok(index) => index,
+            Err(code) => return code,
+        };
+
         ReturnCode::Success
     }
 
-    fn destroy_enclave(ctx: &mut VirtContext) -> ReturnCode {
+    fn destroy_enclave(&mut self, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Destroy enclave");
         ReturnCode::NotImplemented
     }
@@ -166,7 +179,7 @@ impl KeystonePolicy {
 /// To check how ecalls are handled, see https://github.com/riscv-software-src/opensbi/blob/2ffa0a153d804910c20b82974bfe2dedcf35a777/lib/sbi/sbi_ecall.c#L98
 impl PolicyModule for KeystonePolicy {
     fn init() -> Self {
-        KeystonePolicy {}
+        Self::default()
     }
 
     fn name() -> &'static str {
@@ -193,8 +206,8 @@ impl PolicyModule for KeystonePolicy {
         }
 
         let return_code: ReturnCode = match fid {
-            CREATE_ENCLAVE_FID => Self::create_enclave(ctx),
-            DESTROY_ENCLAVE_FID => Self::destroy_enclave(ctx),
+            CREATE_ENCLAVE_FID => Self::create_enclave(self, ctx),
+            DESTROY_ENCLAVE_FID => Self::destroy_enclave(self, ctx),
             _ => {
                 log::debug!("Keystone: Unknown FID {}", fid);
                 ReturnCode::NotImplemented
