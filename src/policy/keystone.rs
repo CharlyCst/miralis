@@ -4,6 +4,7 @@
 //! enclaves by leveraging PMP for memory isolation.
 
 use crate::arch::Register;
+use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::RegisterContextSetter;
 use crate::{RegisterContextGetter, VirtContext};
@@ -164,15 +165,27 @@ impl KeystonePolicy {
 
 /// To check how ecalls are handled, see https://github.com/riscv-software-src/opensbi/blob/2ffa0a153d804910c20b82974bfe2dedcf35a777/lib/sbi/sbi_ecall.c#L98
 impl PolicyModule for KeystonePolicy {
+    fn init() -> Self {
+        KeystonePolicy {}
+    }
+
     fn name() -> &'static str {
         "Keystone Policy"
     }
 
-    fn ecall_from_firmware(_ctx: &mut VirtContext) -> PolicyHookResult {
+    fn ecall_from_firmware(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        _ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
         PolicyHookResult::Ignore
     }
 
-    fn ecall_from_payload(ctx: &mut VirtContext) -> PolicyHookResult {
+    fn ecall_from_payload(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
         let eid = ctx.get(Register::X17);
         let fid = ctx.get(Register::X16);
         if eid != KEYSTONE_EID {
@@ -193,4 +206,8 @@ impl PolicyModule for KeystonePolicy {
 
         PolicyHookResult::Overwrite
     }
+
+    fn switch_from_payload_to_firmware(&mut self, _: &mut VirtContext) {}
+
+    fn switch_from_firmware_to_payload(&mut self, _: &mut VirtContext) {}
 }

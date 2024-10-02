@@ -94,12 +94,10 @@ pub struct HardwareCapability {
     pub interrupts: usize,
     /// Structure indicating the presence of optional registers.
     pub available_reg: RegistersCapability,
+    /// Structure indicating the presence of optional extensions.
+    pub extensions: ExtensionsCapability,
     /// The hart ID, as read from mhartid.
     pub hart: usize,
-    /// RISC-V Hypervisor extension available
-    pub has_h_mode: bool,
-    /// RISC-V Supervision extension available
-    pub has_s_mode: bool,
     /// Prevent the struct from being used on another core.
     _marker: PhantomNotSendNotSync,
 }
@@ -113,6 +111,21 @@ pub struct RegistersCapability {
     pub senvcfg: bool,
     /// The number of implemented and non-zero PMP registers
     pub nb_pmp: usize,
+}
+
+/// A struct that contains information about the available extensions
+#[derive(Debug, Clone)]
+pub struct ExtensionsCapability {
+    /// Hypervisor extension
+    pub has_h_extension: bool,
+    /// Supervisor extension
+    pub has_s_extension: bool,
+    /// Single precision floating point extension
+    pub has_f_extension: bool,
+    /// Double precision floating point extension
+    pub has_d_extension: bool,
+    /// Quadruple precision floating point extension
+    pub has_q_extension: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
@@ -380,6 +393,33 @@ pub mod mtvec {
             _ => panic!("Invalid trap-vector mode."),
         }
     }
+}
+
+// ————————————————————————————— Hypervisor Status ————————————————————————————— //
+
+/// Constants for the Machine Status (mstatus) CSR.
+#[allow(unused)]
+pub mod hstatus {
+
+    // VSBE
+    pub const VSBE_OFFSET: usize = 5;
+    pub const VSBE_FILTER: usize = 0b1 << VSBE_OFFSET;
+
+    // TVM
+    pub const VTVM_OFFSET: usize = 20;
+    pub const VTVM_FILTER: usize = 0b1 << VTVM_OFFSET;
+
+    // TW
+    pub const VTW_OFFSET: usize = 21;
+    pub const VTW_FILTER: usize = 0b1 << VTW_OFFSET;
+
+    // TSR
+    pub const VTSR_OFFSET: usize = 22;
+    pub const VTSR_FILTER: usize = 0b1 << VTSR_OFFSET;
+
+    // VSXL
+    pub const VSXL_OFFSET: usize = 32;
+    pub const VSXL_FILTER: usize = 0b11 << VSXL_OFFSET;
 }
 
 // ——————————————————————— Width of Access Instructions —————————————————————— //

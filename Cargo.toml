@@ -16,6 +16,7 @@ members = [
     "firmware/mret",
     "firmware/os_ctx_switch",
     "firmware/sandbox",
+    "firmware/protect_payload",
     "firmware/interrupt",
     "firmware/os_ecall",
     "firmware/device",

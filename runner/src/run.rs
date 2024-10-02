@@ -136,7 +136,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
     }
 
     log::debug!(
-        "{}\n{}",
+        "{} {}",
         QEMU,
         qemu_cmd
             .get_args()

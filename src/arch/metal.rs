@@ -3,7 +3,9 @@ use core::arch::{asm, global_asm};
 use core::marker::PhantomData;
 use core::{ptr, usize};
 
-use super::{Arch, Architecture, Csr, MCause, Mode, RegistersCapability, TrapInfo};
+use super::{
+    Arch, Architecture, Csr, ExtensionsCapability, MCause, Mode, RegistersCapability, TrapInfo,
+};
 use crate::arch::pmp::PmpFlush;
 use crate::arch::{mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
 use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
@@ -311,10 +313,7 @@ impl Architecture for MetalArch {
         Self::write_csr(Csr::Mstatus, mstatus);
         Self::write_csr(Csr::Mtvec, mtvec);
 
-        // Detect if H extension available
         let misa = Self::read_csr(Csr::Misa);
-        let has_h_mode: bool = (misa as usize & misa::H) != 0;
-        let has_s_mode: bool = (misa as usize & misa::S) != 0;
 
         // Return hardware configuration
         HardwareCapability {
@@ -326,8 +325,13 @@ impl Architecture for MetalArch {
                 senvcfg: is_senvcfg_present,
                 nb_pmp,
             },
-            has_h_mode: has_h_mode,
-            has_s_mode: has_s_mode,
+            extensions: ExtensionsCapability {
+                has_h_extension: (misa as usize & misa::H) != 0,
+                has_s_extension: (misa as usize & misa::S) != 0,
+                has_f_extension: (misa as usize & misa::S) != 0,
+                has_d_extension: (misa as usize & misa::D) != 0,
+                has_q_extension: (misa as usize & misa::Q) != 0,
+            },
         }
     }
 

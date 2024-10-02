@@ -83,11 +83,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     let nb_virt_pmp;
     let virtual_devices = Plat::create_virtual_devices();
+    let mut policy: Policy = Policy::init();
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
-
     // Initialize Miralis's own context
     let mut mctx = MiralisContext::new(hw);
 
@@ -108,9 +108,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
             mctx.pmp
                 .set(i + 1, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
         }
-
+        // This PMP entry is used by the policy module to protect the memory
+        let policy_index = devices.len() + 2;
+        mctx.pmp.set(policy_index, 0, pmpcfg::INACTIVE);
         // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-        let inactive_index = devices.len() + 2;
+        let inactive_index = devices.len() + 3;
         mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
 
         // Finally, set the last PMP to grant access to the whole memory
@@ -126,7 +128,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         // Compute the number of virtual PMPs available
         // It's whatever is left after setting pmp's for devices, pmp for address translation,
         // inactive entry and the last pmp to allow all the access
-        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 3;
+        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 4;
 
         if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
             nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
@@ -138,7 +140,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     }
 
     // Initialize the virtual context and configure architecture
-    let mut ctx = VirtContext::new(hart_id, nb_virt_pmp, mctx.hw.has_h_mode, mctx.hw.has_s_mode);
+    let mut ctx = VirtContext::new(hart_id, nb_virt_pmp, mctx.hw.extensions.clone());
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
@@ -164,10 +166,10 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Plat::exit_success();
     }
 
-    main_loop(&mut ctx, &mut mctx);
+    main_loop(&mut ctx, &mut mctx, &mut policy);
 }
 
-fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
+fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) -> ! {
     loop {
         Benchmark::start_interval_counters(Scope::RunVCPU);
 
@@ -178,14 +180,14 @@ fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ! {
         Benchmark::stop_interval_counters(Scope::RunVCPU);
         Benchmark::start_interval_counters(Scope::HandleTrap);
 
-        handle_trap(ctx, mctx);
+        handle_trap(ctx, mctx, policy);
 
         Benchmark::stop_interval_counters(Scope::HandleTrap);
         Benchmark::increment_counter(Counter::TotalExits);
     }
 }
 
-fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
     if log::log_enabled!(log::Level::Trace) {
         log_ctx(ctx);
     }
@@ -209,8 +211,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     match exec_mode {
-        ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx),
-        ExecutionMode::Payload => ctx.handle_payload_trap(),
+        ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx, policy),
+        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
     }
 
     if exec_mode == ExecutionMode::Firmware {
@@ -226,10 +228,12 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             log::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
+            policy.switch_from_firmware_to_payload(ctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
+            policy.switch_from_payload_to_firmware(ctx);
         }
         _ => {} // No execution mode transition
     }
@@ -362,18 +366,15 @@ mod tests {
     use crate::arch::{mstatus, Arch, Architecture, Csr, MCause, Mode};
     use crate::handle_trap;
     use crate::host::MiralisContext;
+    use crate::policy::{Policy, PolicyModule};
     use crate::virt::VirtContext;
 
     #[test]
     fn handle_trap_state() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut ctx = VirtContext::new(
-            0,
-            mctx.hw.available_reg.nb_pmp,
-            mctx.hw.has_h_mode,
-            mctx.hw.has_s_mode,
-        );
+        let mut policy = Policy::init();
+        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         // Firmware is running
         ctx.mode = Mode::M;
@@ -395,7 +396,7 @@ mod tests {
             Arch::write_csr(Csr::Mip, 0b1);
             Arch::write_csr(Csr::Mideleg, 0);
         };
-        handle_trap(&mut ctx, &mut mctx);
+        handle_trap(&mut ctx, &mut mctx, &mut policy);
 
         assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "mideleg must be 0");
         assert_eq!(Arch::read_csr(Csr::Mie), 0b1, "mie must be 1");
