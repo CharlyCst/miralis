@@ -162,7 +162,7 @@ impl KeystonePolicy {
         };
 
         // Find a free enclave slot
-        let enclave_index = match Self::allocate_enclave {
+        let enclave_index = match Self::allocate_enclave(self) {
             Ok(index) => index,
             Err(code) => return code,
         };
