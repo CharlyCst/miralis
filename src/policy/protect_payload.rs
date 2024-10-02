@@ -10,8 +10,10 @@ use crate::virt::{RegisterContextGetter, VirtContext};
 
 /// The protect payload policy module, which allow the payload to protect himself from the firmware at some point in time and enfore a boundary between the two components.
 pub struct ProtectPayloadPolicy {
-    pub protected: bool,
+    protected: bool,
     general_register: [usize; 32],
+    confidential_values_firmware: ConfidentialCSRs,
+    confidential_values_payload: ConfidentialCSRs,
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
@@ -19,6 +21,26 @@ impl PolicyModule for ProtectPayloadPolicy {
         ProtectPayloadPolicy {
             protected: false,
             general_register: [0; 32],
+            confidential_values_firmware: ConfidentialCSRs {
+                stvec: 0,
+                scounteren: 0,
+                senvcfg: 0,
+                sscratch: 0,
+                sepc: 0,
+                scause: 0,
+                stval: 0,
+                satp: 0,
+            },
+            confidential_values_payload: ConfidentialCSRs {
+                stvec: 0,
+                scounteren: 0,
+                senvcfg: 0,
+                sscratch: 0,
+                sepc: 0,
+                scause: 0,
+                stval: 0,
+                satp: 0,
+            },
         }
     }
     fn name() -> &'static str {
@@ -35,7 +57,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
-            self.lock(mctx);
+            self.lock(mctx, ctx);
             ctx.pc += 4;
             PolicyHookResult::Overwrite
         } else {
@@ -53,7 +75,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
-            self.lock(mctx);
+            self.lock(mctx, ctx);
             ctx.pc += 4;
             PolicyHookResult::Overwrite
         } else {
@@ -74,6 +96,10 @@ impl PolicyModule for ProtectPayloadPolicy {
                 ctx.regs[i] = 0;
             }
         }
+
+        // Step 2: Save sensitives privileged registers
+        self.confidential_values_payload = get_confidential_values(ctx);
+        self.write_confidential_registers(ctx, false)
     }
 
     fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext) {
@@ -88,13 +114,44 @@ impl PolicyModule for ProtectPayloadPolicy {
                 ctx.regs[i] = self.general_register[i];
             }
         }
+
+        // Step 2: Restore sensitives privileged registers
+        self.write_confidential_registers(ctx, true)
+    }
+}
+
+// TODO: Check what to do with fcsr & sip & cycle
+pub struct ConfidentialCSRs {
+    pub stvec: usize,
+    pub scounteren: usize,
+    pub senvcfg: usize,
+    pub sscratch: usize,
+    pub sepc: usize,
+    pub scause: usize,
+    pub stval: usize,
+    pub satp: usize,
+}
+
+fn get_confidential_values(ctx: &mut VirtContext) -> ConfidentialCSRs {
+    ConfidentialCSRs {
+        stvec: ctx.csr.stvec,
+        scounteren: ctx.csr.scounteren,
+        senvcfg: ctx.csr.senvcfg,
+        sscratch: ctx.csr.sscratch,
+        sepc: ctx.csr.sepc,
+        scause: ctx.csr.scause,
+        stval: ctx.csr.stval,
+        satp: ctx.csr.satp,
     }
 }
 
 impl ProtectPayloadPolicy {
-    fn lock(&mut self, mctx: &mut MiralisContext) {
+    fn lock(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) {
+        // Step 1: Get view of confidential registers
+        self.confidential_values_firmware = get_confidential_values(ctx);
+        self.confidential_values_payload = get_confidential_values(ctx);
         // TODO: Make it dynamic in the future
-        // First set pmp entry protection
+        // Then set pmp entry protection
         mctx.pmp.set(
             mctx.devices.len() + 2,
             build_napot(0x80400000, 0x80000).unwrap(),
@@ -119,5 +176,27 @@ impl ProtectPayloadPolicy {
 
     fn restore_register(&mut self, idx: usize, ctx: &mut VirtContext) -> bool {
         !(ctx.trap_info.get_cause() == MCause::EcallFromSMode && (10..12).contains(&idx))
+    }
+
+    fn write_confidential_registers(&mut self, ctx: &mut VirtContext, restore: bool) {
+        if restore {
+            ctx.csr.stvec = self.confidential_values_payload.stvec;
+            ctx.csr.scounteren = self.confidential_values_payload.scounteren;
+            ctx.csr.senvcfg = self.confidential_values_payload.senvcfg;
+            ctx.csr.sscratch = self.confidential_values_payload.sscratch;
+            ctx.csr.sepc = self.confidential_values_payload.sepc;
+            ctx.csr.scause = self.confidential_values_payload.scause;
+            ctx.csr.stval = self.confidential_values_payload.stval;
+            ctx.csr.satp = self.confidential_values_payload.satp;
+        } else {
+            ctx.csr.stvec = self.confidential_values_firmware.stvec;
+            ctx.csr.scounteren = self.confidential_values_firmware.scounteren;
+            ctx.csr.senvcfg = self.confidential_values_firmware.senvcfg;
+            ctx.csr.sscratch = self.confidential_values_firmware.sscratch;
+            ctx.csr.sepc = self.confidential_values_firmware.sepc;
+            ctx.csr.scause = self.confidential_values_firmware.scause;
+            ctx.csr.stval = self.confidential_values_firmware.stval;
+            ctx.csr.satp = self.confidential_values_firmware.satp;
+        }
     }
 }
