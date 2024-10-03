@@ -17,7 +17,6 @@ members = [
     "firmware/os_ctx_switch",
     "firmware/sandbox",
     "firmware/test_protect_payload_firmware",
-    "firmware/test_payload_lock",
     "firmware/interrupt",
     "firmware/os_ecall",
     "firmware/device",
