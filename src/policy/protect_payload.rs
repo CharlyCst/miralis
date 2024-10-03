@@ -57,6 +57,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
+            log::info!("Locking payload from firmware");
             self.lock(mctx, ctx);
             ctx.pc += 4;
             PolicyHookResult::Overwrite
@@ -75,6 +76,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
+            log::info!("Locking payload from payload");
             self.lock(mctx, ctx);
             ctx.pc += 4;
             PolicyHookResult::Overwrite
@@ -83,7 +85,11 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
     }
 
-    fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext) {
+    fn switch_from_payload_to_firmware(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
         if !self.protected {
             return;
         }
@@ -99,10 +105,18 @@ impl PolicyModule for ProtectPayloadPolicy {
 
         // Step 2: Save sensitives privileged registers
         self.confidential_values_payload = get_confidential_values(ctx);
-        self.write_confidential_registers(ctx, false)
+        self.write_confidential_registers(ctx, false);
+
+        // Step 3: Lock memory
+        mctx.pmp
+            .set_from_policy(0, build_napot(0x80400000, 0x80000).unwrap(), pmpcfg::NAPOT);
     }
 
-    fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext) {
+    fn switch_from_firmware_to_payload(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
         if !self.protected {
             return;
         }
@@ -116,7 +130,10 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         // Step 2: Restore sensitives privileged registers
-        self.write_confidential_registers(ctx, true)
+        self.write_confidential_registers(ctx, true);
+
+        // Step 3: Unlock memory
+        mctx.pmp.set_from_policy(0, 0, pmpcfg::INACTIVE);
     }
 
     const NUMBER_PMPS: usize = 1;
@@ -157,7 +174,7 @@ impl ProtectPayloadPolicy {
         mctx.pmp
             .set_from_policy(0, build_napot(0x80400000, 0x80000).unwrap(), pmpcfg::NAPOT);
 
-        // Then we can mark the payload as protected
+        // Step 2: Mark as protected
         self.protected = true;
     }
 

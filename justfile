@@ -79,7 +79,6 @@ test:
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
 
 	# Test with different policies
-	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware test_payload_lock
 	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
 	cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
 

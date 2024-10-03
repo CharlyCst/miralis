@@ -177,12 +177,12 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             log::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
-            policy.switch_from_firmware_to_payload(ctx);
+            policy.switch_from_firmware_to_payload(ctx, mctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
-            policy.switch_from_payload_to_firmware(ctx);
+            policy.switch_from_payload_to_firmware(ctx, mctx);
         }
         _ => {} // No execution mode transition
     }

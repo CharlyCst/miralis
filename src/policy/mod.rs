@@ -61,9 +61,9 @@ pub trait PolicyModule {
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
     ) -> PolicyHookResult;
-    fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext);
+    fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
 
-    fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext);
+    fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
 
     const NUMBER_PMPS: usize;
 }

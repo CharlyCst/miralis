@@ -563,7 +563,7 @@ impl VirtContext {
         match cause {
             MCause::EcallFromUMode if policy.ecall_from_firmware(mctx, self).overwrites() => {
                 // Nothing to do, the policy module handles those ecalls
-                log::info!("Catching E-call from firmware in the policy module");
+                log::trace!("Catching E-call from firmware in the policy module");
             }
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
@@ -658,6 +658,7 @@ impl VirtContext {
         match cause {
             MCause::EcallFromSMode if policy.ecall_from_payload(mctx, self).overwrites() => {
                 // Nothing to do, the Policy module handles those ecalls
+                log::trace!("Catching E-call from payload in the policy module");
             }
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
