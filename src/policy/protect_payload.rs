@@ -57,6 +57,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
+            log::info!("Locking payload from firmware");
             self.lock(mctx, ctx);
             ctx.pc += 4;
             PolicyHookResult::Overwrite
@@ -75,6 +76,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
+            log::info!("Locking payload from payload");
             self.lock(mctx, ctx);
             ctx.pc += 4;
             PolicyHookResult::Overwrite
@@ -83,7 +85,11 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
     }
 
-    fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext) {
+    fn switch_from_payload_to_firmware(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
         if !self.protected {
             return;
         }
@@ -99,10 +105,25 @@ impl PolicyModule for ProtectPayloadPolicy {
 
         // Step 2: Save sensitives privileged registers
         self.confidential_values_payload = get_confidential_values(ctx);
-        self.write_confidential_registers(ctx, false)
+        self.write_confidential_registers(ctx, false);
+
+        // Step 3: Lock memory
+        mctx.pmp.set(
+            mctx.devices.len() + 2,
+            build_napot(0x80400000, 0x80000).unwrap(),
+            pmpcfg::NAPOT,
+        );
+
+        unsafe {
+            Arch::write_pmp(&mctx.pmp).flush();
+        }
     }
 
-    fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext) {
+    fn switch_from_firmware_to_payload(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
         if !self.protected {
             return;
         }
@@ -116,7 +137,14 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         // Step 2: Restore sensitives privileged registers
-        self.write_confidential_registers(ctx, true)
+        self.write_confidential_registers(ctx, true);
+
+        // Step 3: Unlock memory
+        mctx.pmp.set(mctx.devices.len() + 2, 0, pmpcfg::INACTIVE);
+
+        unsafe {
+            Arch::write_pmp(&mctx.pmp).flush();
+        }
     }
 }
 
@@ -146,23 +174,12 @@ fn get_confidential_values(ctx: &mut VirtContext) -> ConfidentialCSRs {
 }
 
 impl ProtectPayloadPolicy {
-    fn lock(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) {
+    fn lock(&mut self, _mctx: &mut MiralisContext, ctx: &mut VirtContext) {
         // Step 1: Get view of confidential registers
         self.confidential_values_firmware = get_confidential_values(ctx);
         self.confidential_values_payload = get_confidential_values(ctx);
-        // TODO: Make it dynamic in the future
-        // Then set pmp entry protection
-        mctx.pmp.set(
-            mctx.devices.len() + 2,
-            build_napot(0x80400000, 0x80000).unwrap(),
-            pmpcfg::NAPOT,
-        );
 
-        unsafe {
-            Arch::write_pmp(&mctx.pmp).flush();
-        }
-
-        // Then we can mark the payload as protected
+        // Step 2: Mark as protected
         self.protected = true;
     }
 
