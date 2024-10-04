@@ -53,29 +53,58 @@ global_asm!(
 .align 4
 .global _raw_trap_handler
 _raw_trap_handler:
-    // Skip illegal instruction (pc += 4)
+    // Skip instruction (pc += 4)
     csrrw x5, mepc, x5
     addi x5, x5, 4
     csrrw x5, mepc, x5
-    // Set mscratch to 1
-    csrrw x5, mscratch, x5
-    addi x5, x0, 1
-    csrrw x5, mscratch, x5
+
+    // If ecall test --> jump to it
+    csrr t0, mcause
+    li   t1, 9
+    beq  t0, t1, test_ecall
+
     // Set x3 to 0 - for test_same_registers_after_trap
     li t6, 0
+
     // If mcause is 7 or 2, it might be triggered by the instruction sd t5, 0(t6) | csrr t0, mcause
     // Therefore we don't want to load it a second time
     csrr t0, mcause
     li   t1, 7
-    beq  t0, t1, skip
+    beq  t0, t1, done
     csrr t0, mcause
     li   t1, 2
-    beq  t0, t1, skip
-    // Make sure we get an access fault and we can't to that
+    beq  t0, t1, done
+
+    // Make sure we can't change the payload memory
     li t6, 0x80400000
     li t5, 60
     sd t5, 0(t6)
-skip:
+
+test_ecall:
+    // Test Ecall
+    csrr t0, mcause
+    li   t1, 2
+    bne  t0, t1, done
+
+    // Make sure Ecall forwarding rule works by checking if all input registers are equal to 60
+    li   t2, 60
+    bne  a0, t2, infinite_loop
+    //bne  a1, t2, infinite_loop
+    //bne  a2, t2, infinite_loop
+    //bne  a3, t2, infinite_loop
+    //bne  a4, t2, infinite_loop
+    //bne  a5, t2, infinite_loop
+    //bne  a6, t2, infinite_loop
+    //bne  a7, t2, infinite_loop
+    // Set return registers to 61
+    // li a0, 61
+    // li a1, 61
+    j done
+
+// TODO: make a failure ecall here
+infinite_loop:
+    j infinite_loop
+done:
     // Return back to miralis
     mret
 #"

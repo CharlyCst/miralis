@@ -33,6 +33,12 @@ fn main() -> ! {
         "Test same region after trap failed"
     );
 
+    // Make sure the ecall parameters goes through
+    assert!(
+        test_ecall_rule(),
+        "Ecall test failed"
+    );
+
     // and exit
     success();
 }
@@ -56,4 +62,17 @@ fn test_same_region_after_trap() -> bool {
     }
 
     value != 60
+}
+
+fn test_ecall_rule() -> bool {
+    unsafe {
+        asm!(
+        "li a0, 60",
+        "li a7, 0x08475bcd",
+        "ecall", out("x10") _,
+        );
+
+    }
+
+    true
 }
