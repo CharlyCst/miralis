@@ -53,32 +53,37 @@ global_asm!(
 .align 4
 .global _raw_trap_handler
 _raw_trap_handler:
-    // Skip illegal instruction (pc += 4)
+    // Advance PC by 4 (skip instruction)
     csrrw x5, mepc, x5
-    addi x5, x5, 4
+    addi  x5, x5, 4
     csrrw x5, mepc, x5
-    // Set mscratch to 1
-    csrrw x5, mscratch, x5
-    addi x5, x0, 1
-    csrrw x5, mscratch, x5
-    // Set t6 to 0 - for test_same_registers_after_trap
-    li t6, 0
-    // If mcause is 7 or 2, it might be triggered by the instruction sd t5, 0(t6) | csrr t0, mcause
-    // Therefore we don't want to load it a second time
-    csrr t0, mcause
-    li   t1, 7
-    beq  t0, t1, skip
-    csrr t0, mcause
-    li   t1, 2
-    beq  t0, t1, skip
-    // Make sure we get an access fault and we can't to that
-    li t6, 0x80400000
-    li t5, 60
-    sd t5, 0(t6)
-skip:
-    // Return back to miralis
+
+    // Verify if all input registers are equal to 60
+    li    t2, 60
+    bne   a0, t2, infinite_loop
+    bne   a1, t2, infinite_loop
+    bne   a2, t2, infinite_loop
+    bne   a3, t2, infinite_loop
+    bne   a4, t2, infinite_loop
+    bne   a5, t2, infinite_loop
+
+    // Set return values for successful ecall
+    li    a0, 0xdeadbeef
+    li    a1, 0xdeadbeef
+    j     done
+
+infinite_loop:
+    // Infinite loop in case of failure
+    wfi
+    j     infinite_loop
+
+done:
+    // Make sure we can't read this 0xdeadbeef in the payload
+    li    s2, 0xdeadbeef
+
+    // Return to Miralis
     mret
-#"
+"
 );
 
 extern "C" {

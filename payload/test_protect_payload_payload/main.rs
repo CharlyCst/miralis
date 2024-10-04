@@ -21,39 +21,38 @@ fn main() -> ! {
     // Lock payload to firmware
     lock_payload();
 
-    // Make sure the firmware can't overwrite the set of registers
-    assert!(
-        test_same_registers_after_trap(),
-        "Test same register after trap failed"
-    );
-
-    // Make sure the firmware can't overwrite a memory region
-    assert!(
-        test_same_region_after_trap(),
-        "Test same region after trap failed"
-    );
+    // Make sure the ecall parameters goes through
+    assert!(test_ecall_rule(), "Ecall test failed");
 
     // and exit
     success();
 }
 
-fn test_same_registers_after_trap() -> bool {
-    let x3: usize;
+fn test_ecall_rule() -> bool {
+    let ret_value_1: usize;
+    let ret_value_2: usize;
+    let s2_value: usize;
     unsafe {
-        asm!("li t6, 60", "csrw mscratch, zero");
-        asm!("", out("t6") x3);
+        asm!(
+        "li a0, 60",
+        "li a1, 60",
+        "li a2, 60",
+        "li a3, 60",
+        "li a4, 60",
+        "li a5, 60",
+        "li x17, 0x08475bd0",
+        "ecall",
+        out("x10") ret_value_1,
+        out("x11") ret_value_2,
+        out("x12") _,
+        out("x13") _,
+        out("x14") _,
+        out("x15") _,
+        out("x16") _,
+        out("x17") _,
+        out("x18") s2_value,
+        );
     }
 
-    x3 == 60
-}
-
-fn test_same_region_after_trap() -> bool {
-    let address: *const usize = 0x80400000 as *const usize;
-    let value: usize;
-
-    unsafe {
-        value = *address;
-    }
-
-    value != 60
+    ret_value_1 == 0xdeadbeef && ret_value_2 == 0xdeadbeef && s2_value != 0xdeadbeef
 }
