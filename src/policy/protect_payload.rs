@@ -4,6 +4,7 @@ use miralis_core::abi_protect_payload;
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
+use crate::arch::MCause::EcallFromSMode;
 use crate::arch::{MCause, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
@@ -13,6 +14,7 @@ use crate::virt::{RegisterContextGetter, VirtContext};
 pub struct ProtectPayloadPolicy {
     protected: bool,
     general_register: [usize; 32],
+    rules: [ForwardingRule; ForwardingRule::NB_RULES],
     last_cause: MCause,
 }
 
@@ -21,6 +23,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         ProtectPayloadPolicy {
             protected: false,
             general_register: [0; 32],
+            rules: ForwardingRule::build_forwarding_rules(),
             // It is important to let the first mode be EcallFromSMode as the firmware passes some information to the OS.
             // Setting this last_cause allows to pass the arguments during the first call.
             last_cause: MCause::EcallFromSMode,
@@ -73,11 +76,14 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
-        // Restore general purpose registers
-        for i in 0..32 {
+        // Step 1: Restore general purpose registers
+        let trap_cause = MCause::try_from(ctx.trap_info.mcause).unwrap();
+        let filter_rule = ForwardingRule::match_rule(trap_cause, &mut self.rules);
+
+        for i in 0..self.general_register.len() {
             self.general_register[i] = ctx.regs[i];
             // We don't clear ecall registers
-            if self.clear_register(i, ctx) {
+            if !filter_rule.allow_in[i] {
                 ctx.regs[i] = 0;
             }
         }
@@ -87,7 +93,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx.pmp
             .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
 
-        self.last_cause = ctx.trap_info.get_cause();
+        self.last_cause = trap_cause;
     }
 
     fn switch_from_firmware_to_payload(
@@ -95,10 +101,11 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
+        let register_filter = ForwardingRule::match_rule(self.last_cause, &mut self.rules);
+
         // Restore general purpose registers
-        for i in 0..32 {
-            // 10 & 11 are return registers
-            if self.restore_register(i, ctx) {
+        for i in 0..self.general_register.len() {
+            if !register_filter.allow_out[i] {
                 ctx.regs[i] = self.general_register[i];
             }
         }
@@ -123,12 +130,65 @@ impl ProtectPayloadPolicy {
     fn is_policy_call(&mut self, ctx: &VirtContext) -> bool {
         ctx.get(Register::X17) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID
     }
+}
 
-    fn clear_register(&mut self, idx: usize, ctx: &mut VirtContext) -> bool {
-        !(10..18).contains(&idx) || ctx.trap_info.get_cause() != MCause::EcallFromSMode
+// ———————————————————————————————— Explicit Forwarding Rules ———————————————————————————————— //
+
+#[derive(Clone)]
+pub struct ForwardingRule {
+    mcause: MCause,
+    allow_in: [bool; 32],
+    allow_out: [bool; 32],
+}
+
+impl ForwardingRule {
+    pub const NB_RULES: usize = 1;
+
+    fn match_rule(trap_cause: MCause, rules: &mut [ForwardingRule; 1]) -> ForwardingRule {
+        for rule in rules {
+            if trap_cause == rule.mcause {
+                return rule.clone();
+            }
+        }
+
+        Self::new_allow_nothing(trap_cause)
     }
 
-    fn restore_register(&mut self, idx: usize, _ctx: &mut VirtContext) -> bool {
-        !(10..12).contains(&idx) || self.last_cause != MCause::EcallFromSMode
+    fn build_forwarding_rules() -> [ForwardingRule; Self::NB_RULES] {
+        let mut rules = [Self::new_allow_nothing(EcallFromSMode); 1];
+
+        // Build Ecall rule
+        rules[0]
+            .allow_register_in(Register::X10)
+            .allow_register_in(Register::X11)
+            .allow_register_in(Register::X12)
+            .allow_register_in(Register::X13)
+            .allow_register_in(Register::X14)
+            .allow_register_in(Register::X15)
+            .allow_register_in(Register::X16)
+            .allow_register_in(Register::X17)
+            .allow_register_out(Register::X10)
+            .allow_register_out(Register::X11);
+
+        rules
+    }
+
+    #[allow(unused)]
+    fn new_allow_nothing(mcause: MCause) -> Self {
+        ForwardingRule {
+            mcause,
+            allow_in: [false; 32],
+            allow_out: [false; 32],
+        }
+    }
+
+    fn allow_register_in(&mut self, reg: Register) -> &mut Self {
+        self.allow_in[reg as usize] = true;
+        self
+    }
+
+    fn allow_register_out(&mut self, reg: Register) -> &mut Self {
+        self.allow_out[reg as usize] = true;
+        self
     }
 }
