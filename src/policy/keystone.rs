@@ -3,6 +3,9 @@
 //! This policy module enforces the Keystone policies, i.e. it enables the creation of user-level
 //! enclaves by leveraging PMP for memory isolation.
 
+#![allow(unused)]
+todo!("Remove the above warning");
+
 use crate::arch::Register;
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
