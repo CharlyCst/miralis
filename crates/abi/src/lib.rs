@@ -54,7 +54,7 @@ pub fn miralis_end_benchmark() -> ! {
 
 /// Ask Miralis to lock the payload
 pub fn lock_payload() {
-    unsafe { miralis_ecall(abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID).ok() };
+    unsafe { policy_ecall(abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID).ok() };
 }
 
 /// Ask Miralis to log a string with the provided log level.
@@ -197,6 +197,12 @@ unsafe fn miralis_ecall(_fid: usize) -> Result<usize, usize> {
 }
 
 #[inline]
+#[cfg(not(target_arch = "riscv64"))]
+unsafe fn policy_ecall(_fid: usize) -> Result<usize, usize> {
+    panic!("Tried to use `policy ecall` on non RISC-V archiecture");
+}
+
+#[inline]
 #[cfg(target_arch = "riscv64")]
 unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
     let error: usize;
@@ -208,6 +214,27 @@ unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
         in("a7") abi::MIRALIS_EID,
         out("a0") error,
         out("a1") value,
+    );
+
+    if error != 0 {
+        Err(error)
+    } else {
+        Ok(value)
+    }
+}
+
+#[inline]
+#[cfg(target_arch = "riscv64")]
+unsafe fn policy_ecall(fid: usize) -> Result<usize, usize> {
+    let error: usize;
+    let value: usize;
+
+    core::arch::asm!(
+    "ecall",
+    in("a6") fid,
+    in("a7") abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID,
+    out("a0") error,
+    out("a1") value,
     );
 
     if error != 0 {

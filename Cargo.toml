@@ -16,7 +16,7 @@ members = [
     "firmware/mret",
     "firmware/os_ctx_switch",
     "firmware/sandbox",
-    "firmware/protect_payload",
+    "firmware/test_protect_payload_firmware",
     "firmware/interrupt",
     "firmware/os_ecall",
     "firmware/device",
@@ -27,6 +27,7 @@ members = [
 
     # Payload
     "payload/hello_world",
+    "payload/test_protect_payload_payload",
     # Crates
     "crates/abi",
     "crates/core",

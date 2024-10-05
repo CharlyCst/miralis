@@ -3,12 +3,13 @@ config           := "config.toml"
 benchmark        := "ecall_benchmark"
 spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
-qemu_virt_protect_payload        := "./config/test/qemu-virt-protect-payload.toml"
+qemu_virt_protect_payload        := "./config/test/qemu-virt-test-payload-lock.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
+qemu_virt_test_protect_paylod := "./config/test/qemu-virt-test-protect-payload.toml"
 qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
 qemu_virt_u_boot_payload := "./config/test/qemu-virt-u-boot-payload.toml"
 qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
@@ -77,12 +78,12 @@ test:
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
 
+	# Test with different policies
+	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
+	cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
+
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
-
-	# Test with different policies
-	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware protect_payload
-	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
 
 spike-benchmarks:
     cargo run -- run --config {{spike}} --firmware tracing_firmware
