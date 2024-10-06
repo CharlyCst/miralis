@@ -6,6 +6,7 @@ qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_2harts := "./config/test/qemu-virt.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
+spike_latency_benchmark := "./config/test/spike-latency-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
 qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
@@ -76,7 +77,7 @@ test:
 	just build-firmware default {{qemu_virt}}
 
 spike-benchmarks:
-    cargo run -- run --config {{spike}} --firmware tracing_firmware
+    cargo run -- run --config {{spike_latency_benchmark}} --firmware tracing_firmware
     cargo run -- run --config {{spike_virt_benchmark}} --firmware csr_write
     cargo run -- run --config {{spike_virt_benchmark}} --firmware ecall_benchmark
 

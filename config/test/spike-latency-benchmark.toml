@@ -1,0 +1,14 @@
+# A simple configuration to run on the Spike platform
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 8
+delegate_perf_counters=true
+
+
+[platform]
+name = "spike"
+
