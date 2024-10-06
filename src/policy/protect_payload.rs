@@ -1,15 +1,32 @@
 //! The protect payload policy, it protects the payload.
 
+use core::slice;
+use core::sync::atomic::{AtomicBool, Ordering};
+
 use miralis_core::abi_protect_payload;
+use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register};
+use crate::config::PAYLOAD_HASH_SIZE;
 use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::{RegisterContextGetter, VirtContext};
+
+const LINUX_LOCK_PAYLOAD_HASH: [u8; 32] = [
+    241, 90, 158, 184, 200, 210, 145, 178, 30, 80, 200, 161, 56, 120, 75, 241, 68, 38, 21, 2, 248,
+    112, 128, 155, 31, 240, 37, 94, 203, 66, 243, 167,
+];
+
+const TEST_POLICY_PAYLOAD: [u8; 32] = [
+    138, 39, 74, 50, 74, 113, 151, 180, 78, 91, 92, 25, 132, 84, 192, 119, 38, 36, 19, 147, 193,
+    166, 149, 149, 158, 179, 237, 5, 158, 54, 245, 69,
+];
+
+static FIRST_JUMP: AtomicBool = AtomicBool::new(true);
 
 /// The protect payload policy module, which allow the payload to protect himself from the firmware at some point in time and enfore a boundary between the two components.
 pub struct ProtectPayloadPolicy {
@@ -17,7 +34,6 @@ pub struct ProtectPayloadPolicy {
     general_register: [usize; 32],
     rules: [ForwardingRule; ForwardingRule::NB_RULES],
     last_cause: MCause,
-    first_jump: bool,
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
@@ -29,7 +45,6 @@ impl PolicyModule for ProtectPayloadPolicy {
             // It is important to let the first mode be EcallFromSMode as the firmware passes some information to the OS.
             // Setting this last_cause allows to pass the arguments during the first call.
             last_cause: MCause::EcallFromSMode,
-            first_jump: true,
         }
     }
     fn name() -> &'static str {
@@ -91,15 +106,32 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
-        // TODO: add a proper barrier to ensure synchronization
-        if self.first_jump {
-            // Lock memory from all cores
-            Plat::broadcast_policy_interrupt();
-        }
-
         // Unlock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
         mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
+
+        // Attempt to set `flag` to false only if it is currently true
+        if FIRST_JUMP
+            .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+        {
+            // Lock memory from all cores
+            // TODO: add a proper barrier to ensure synchronization
+            Plat::broadcast_policy_interrupt();
+
+            let hashed_value = hash_payload(PAYLOAD_HASH_SIZE, ctx.pc);
+
+            let not_linux_payload = hashed_value != LINUX_LOCK_PAYLOAD_HASH;
+            let not_test_payload = hashed_value != TEST_POLICY_PAYLOAD;
+
+            // TODO: In the future, we should throw an error
+            if not_linux_payload && not_test_payload {
+                log::error!("Loaded payload is suspicious");
+                log::error!("Hashed value: {:?}", hashed_value);
+                log::error!("Expected value: {:?}", LINUX_LOCK_PAYLOAD_HASH);
+                log::error!("Protect Payload policy: Invalid hash");
+            }
+        }
     }
 
     // In this policy module, if we receive an interrupt from Miralis, it implies we need to lock the memory
@@ -108,8 +140,6 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
         mctx.pmp
             .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
-
-        self.first_jump = false
     }
 
     const NUMBER_PMPS: usize = 2;
@@ -291,5 +321,32 @@ impl ForwardingRule {
     fn allow_register_out(&mut self, reg: Register) -> &mut Self {
         self.allow_out[reg as usize] = true;
         self
+    }
+}
+
+// ———————————————————————————————— Hash primitive ———————————————————————————————— //
+
+fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
+    let payload_start: usize = 0x80400000;
+    let payload_end: usize = 0x80400000 + size_to_hash;
+
+    assert!(
+        payload_start <= payload_end,
+        "Invalid memory range for payload hashing"
+    );
+
+    unsafe {
+        let mut hasher = Sha3::v256();
+
+        let payload_content =
+            slice::from_raw_parts(payload_start as *const u8, payload_end - payload_start);
+        hasher.update(payload_content);
+
+        hasher.update(&pc_start.to_le_bytes());
+
+        let mut hashed_value = [0u8; 32];
+        hasher.finalize(&mut hashed_value);
+
+        hashed_value
     }
 }

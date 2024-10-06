@@ -133,6 +133,7 @@ pub struct Target {
 #[serde(deny_unknown_fields)]
 pub struct Policy {
     pub name: Option<PolicyModule>,
+    pub payload_size: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -311,6 +312,7 @@ impl Policy {
     fn buid_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
         envs.insert("MIRALIS_POLICY_NAME", &self.name);
+        envs.insert("PAYLOAD_HASH_SIZE", &self.payload_size);
         envs.envs
     }
 }
