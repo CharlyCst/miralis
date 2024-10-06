@@ -324,6 +324,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "protect_payload"
+version = "0.1.0"
+dependencies = [
+ "miralis_abi",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"

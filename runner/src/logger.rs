@@ -47,8 +47,14 @@ impl log::Log for RunnerLogger {
                 Level::Warn => {
                     println!("\x1b[33m{}\x1b[0m", record.args());
                 }
-                Level::Info | Level::Debug | Level::Trace => {
+                Level::Info => {
                     println!("{}", record.args());
+                }
+                Level::Debug => {
+                    println!("\x1b[34m{}\x1b[0m", record.args());
+                }
+                Level::Trace => {
+                    println!("\x1b[36m{}\x1b[0m", record.args());
                 }
             }
         }
