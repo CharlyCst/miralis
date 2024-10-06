@@ -59,6 +59,7 @@ pub struct Debug {
 #[serde(deny_unknown_fields)]
 pub struct VCpu {
     pub max_pmp: Option<usize>,
+    pub delegate_perf_counters: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -244,6 +245,10 @@ impl VCpu {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
         envs.insert("MIRALIS_VCPU_MAX_PMP", &self.max_pmp);
+        envs.insert(
+            "MIRALIS_DELEGATE_PERF_COUNTER",
+            &self.delegate_perf_counters,
+        );
         envs.envs
     }
 }

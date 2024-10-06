@@ -9,6 +9,7 @@ use crate::arch::{
     ExtensionsCapability, MCause, Mode, Register, TrapInfo,
 };
 use crate::benchmark::Benchmark;
+use crate::config::DELEGATE_PERF_COUNTER;
 use crate::decoder::Instr;
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
@@ -823,7 +824,9 @@ impl VirtContext {
             & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
             | self.csr.mip & mie::SEIE_FILTER;
 
-        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, 0);
+        let delegate_perf_counter_mask: usize = if DELEGATE_PERF_COUNTER { 1 } else { 0 };
+
+        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, delegate_perf_counter_mask);
 
         if mctx.hw.available_reg.senvcfg {
             self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
@@ -836,7 +839,7 @@ impl VirtContext {
         // If S extension is present - save the registers
         if mctx.hw.extensions.has_s_extension {
             self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
-            self.csr.scounteren = Arch::write_csr(Csr::Scounteren, 0);
+            self.csr.scounteren = Arch::write_csr(Csr::Scounteren, delegate_perf_counter_mask);
             self.csr.satp = Arch::write_csr(Csr::Satp, 0);
 
             self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
