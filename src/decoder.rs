@@ -756,7 +756,7 @@ impl MiralisContext {
             }
 
             _ => {
-                log::info!("Unknown CSR: 0x{:x}", csr);
+                log::debug!("Unknown CSR: 0x{:x}", csr);
                 Csr::Unknown
             }
         }
