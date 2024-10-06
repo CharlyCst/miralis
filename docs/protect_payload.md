@@ -31,6 +31,31 @@ Two payload states are equivalent if and only if:
 - $\text{memory}_1 \equiv \text{memory}_2$,
 - $\text{gp}_1 \equiv \text{gp}_2 $, and
 - $\text{csr}_1 \equiv \text{csr}_2$.
+### Expected architectural transitions per interrupts / traps - wip
+
+#### Interrupts
+
+- Supervisor software interupt: equivalent state
+- Machine software interup: equivalent state
+- Supervisor timer interrupt: equivalent state
+- Machine timer interrupt: equivalent state
+- Supervisor external interrupt: equivalent state
+- Machine external itnerrupt: equivalent state
+
+#### Traps
+
+- Instruction address misaligned: stop execution?
+- Instruction access fault: stop execution?
+- Illegal instruction: pc += 4
+- Breakpoint: equivalent state
+- Load address misaligned: stop execution?
+- Load access fault: stop execution?
+- Store/AMO address misaligned: stop execution?
+- Ecall from S-mode: pc += 4
+- Instruction page fault: We must assert it happens in S-mode
+- Load page fault: We must assert it happens in S-mode
+- Store/AMO page fault: We must assert it happens in S-mode
+
 
 ### State Transitions
 
@@ -100,10 +125,10 @@ Before entering the firmware, `policy.from_payload_to_firmware` locks the payloa
 **Case 2: Synchronous trap**  
 In this case, the trap handler must increment the PC (e.g., by 4) to resume execution. We assume that Miralis handles this correctly, ensuring that the architectural state remains unchanged.
 
+### Assertion 3: The Firmware Cannot set the CSR registers in the payload in a non-desired state.
+
+Before jumping the payload, there is a call to policy.from_firmware_to_payload. Therefore the policy can set the CSR registers in arbitraty state before jumping in the payload. This concludes the proof.
+
 ---
 
 This concludes the proof of the security guarantees provided by the strict payload policy.
-
-### Assertion 3: The Firmware Cannot set the CSR payload in a non-desired state.
-
-Before jumping the payload, there is a call to policy.from_firmware_to_payload. Therefore the policy can set the CSR registers in arbitraty state before jumping in the payload. This concludes the proof.
