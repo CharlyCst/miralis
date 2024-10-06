@@ -17,6 +17,8 @@ miralis_core = { path = "../crates/core" }
 miralis_abi = { path = "../crates/abi" }
 config_helpers = { path = "../crates/config_helpers" }
 config_select = { path = "../crates/config_select/" }
+# This import is only used in the protect payload policy
+tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 
 [features]
 # When running on host architecture as a userspace application, such as when
