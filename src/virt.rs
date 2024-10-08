@@ -786,7 +786,7 @@ impl VirtContext {
         mctx.pmp.load_with_offset(
             &self.csr.pmpaddr,
             &self.csr.pmpcfg,
-            mctx.virt_pmp_offset as usize,
+            mctx.pmp.virt_pmp_offset,
             self.nb_pmp,
         );
         // Deny all addresses by default if at least one PMP is implemented
@@ -871,8 +871,7 @@ impl VirtContext {
         }
 
         // Remove Firmware PMP from the hardware
-        mctx.pmp
-            .clear_range(mctx.virt_pmp_offset as usize, self.nb_pmp);
+        mctx.pmp.clear_range(mctx.pmp.virt_pmp_offset, self.nb_pmp);
         // Allow all addresses by default
         let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
         mctx.pmp
