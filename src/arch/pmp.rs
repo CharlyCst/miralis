@@ -3,6 +3,9 @@
 //! This module handles exposes structure to store and manipulate PMPs, including checking for
 //! addresses matching PMP ranges.
 
+use core::fmt;
+use core::fmt::Formatter;
+
 use super::Architecture;
 use crate::arch::pmp::pmplayout::{
     ALL_CATCH_OFFSET, DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, POLICY_OFFSET,
@@ -103,7 +106,10 @@ pub struct PmpGroup {
     modified: bool,
     /// Number of supported PMP registers
     pub nb_pmp: u8,
+    /// Number of virtual PMP available
     pub nb_virt_pmp: usize,
+    /// The offset of the virtual PMP registers, compared to physical PMP.
+    pub virt_pmp_offset: usize,
 }
 
 /// A struct that can be consumed to flush the caches, making the latest PMP configuration
@@ -114,6 +120,25 @@ pub struct PmpGroup {
 #[must_use = "caches must be flushed before PMP change can take effect"]
 pub struct PmpFlush();
 
+impl fmt::Display for PmpGroup {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "\n===============================")?;
+        writeln!(f, "\n           PMP Entries       \n")?;
+
+        for i in 0..self.nb_pmp {
+            writeln!(f, "===============================")?;
+            writeln!(
+                f,
+                "{:16x} | {}",
+                self.pmpaddr[i as usize],
+                self.get_cfg(i as usize)
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
 impl PmpGroup {
     const fn new(nb_pmp: usize) -> Self {
         PmpGroup {
@@ -122,6 +147,7 @@ impl PmpGroup {
             modified: false,
             nb_pmp: nb_pmp as u8,
             nb_virt_pmp: 0,
+            virt_pmp_offset: 0,
         }
     }
 
@@ -183,6 +209,9 @@ impl PmpGroup {
         } else {
             pmp.nb_virt_pmp = 0;
         }
+
+        // Finally we can set the PMP offset
+        pmp.virt_pmp_offset = VIRTUAL_PMPS;
 
         pmp
     }
