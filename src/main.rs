@@ -58,6 +58,8 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 
+use crate::config::DELEGATE_PERF_COUNTER;
+
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
@@ -105,6 +107,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
             &mut mctx,
         );
         ctx.pc = firmware_addr;
+
+        if DELEGATE_PERF_COUNTER {
+            Arch::write_csr(Csr::Mcounteren, 0x1);
+            Arch::write_csr(Csr::Scounteren, 0x1);
+        }
     }
 
     // In case we compile Miralis as firmware, we stop execution at that point for the moment
