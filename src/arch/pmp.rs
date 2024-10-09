@@ -8,8 +8,8 @@ use core::fmt::Formatter;
 
 use super::Architecture;
 use crate::arch::pmp::pmplayout::{
-    ALL_CATCH_OFFSET, DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, POLICY_OFFSET,
-    POLICY_SIZE, VIRTUAL_PMPS,
+    ALL_CATCH_OFFSET, DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP,
+    POLICY_OFFSET, POLICY_SIZE, VIRTUAL_PMP_OFFSET,
 };
 use crate::arch::Arch;
 use crate::config;
@@ -40,7 +40,10 @@ pub mod pmplayout {
     pub const INACTIVE_ENTRY_SIZE: usize = 1;
     pub const INACTIVE_ENTRY_OFFSET: usize = POLICY_OFFSET + POLICY_SIZE;
 
-    pub const VIRTUAL_PMPS: usize = INACTIVE_ENTRY_OFFSET + INACTIVE_ENTRY_SIZE + 1;
+    /// Offset at which the virtual PMPs can start
+    pub const VIRTUAL_PMP_OFFSET: usize = INACTIVE_ENTRY_OFFSET + INACTIVE_ENTRY_SIZE;
+    /// At the very end, there is a last PMP entry
+    pub const MIRALIS_TOTAL_PMP: usize = VIRTUAL_PMP_OFFSET + 1;
 }
 
 /// PMP Configuration
@@ -200,7 +203,7 @@ impl PmpGroup {
             // Compute the number of virtual PMPs available
             // It's whatever is left after setting pmp's for devices, pmp for address translation,
             // inactive entry and the last pmp to allow all the access
-            let remaining_pmp_entries = pmp.nb_pmp as usize - VIRTUAL_PMPS;
+            let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
             if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
                 pmp.nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
             } else {
@@ -211,7 +214,7 @@ impl PmpGroup {
         }
 
         // Finally we can set the PMP offset
-        pmp.virt_pmp_offset = VIRTUAL_PMPS;
+        pmp.virt_pmp_offset = VIRTUAL_PMP_OFFSET;
 
         pmp
     }
