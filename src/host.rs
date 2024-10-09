@@ -11,8 +11,6 @@ use crate::platform::{Plat, Platform};
 pub struct MiralisContext {
     /// Configuration of the host PMP
     pub pmp: PmpGroup,
-    /// The offset of the virutal PMP registers, compared to physical PMP.
-    pub virt_pmp_offset: u8,
     /// Hardware capabilities of the core (hart).
     pub hw: HardwareCapability,
     /// List of device with PMP
@@ -24,7 +22,6 @@ impl MiralisContext {
     pub fn new(hw: HardwareCapability) -> Self {
         Self {
             pmp: PmpGroup::init_pmp_group(hw.available_reg.nb_pmp),
-            virt_pmp_offset: 0,
             hw,
             devices: Plat::create_virtual_devices(),
         }

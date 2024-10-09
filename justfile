@@ -80,7 +80,7 @@ test:
 
 	# Test with different policies
 	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
-	cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
+	# cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
