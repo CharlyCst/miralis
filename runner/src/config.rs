@@ -35,6 +35,8 @@ pub struct Config {
     pub target: Targets,
     #[serde(default)]
     pub policy: Policy,
+    #[serde(default)]
+    pub linux: LinuxConfig,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -159,6 +161,13 @@ pub enum Profiles {
     Debug,
     #[serde(rename = "release")]
     Release,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct LinuxConfig {
+    pub fs_path: Option<String>,
+    pub kernel_path: Option<String>,
 }
 
 // ————————————————————————— Environment Variables —————————————————————————— //

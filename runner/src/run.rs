@@ -124,6 +124,14 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         }
     }
 
+    if let Some(fs_path) = &cfg.linux.fs_path {
+        qemu_cmd.arg("-initrd").arg(fs_path);
+    }
+
+    if let Some(kernel_path) = &cfg.linux.kernel_path {
+        qemu_cmd.arg("-kernel").arg(kernel_path);
+    }
+
     if let Some(nb_harts) = cfg.platform.nb_harts {
         assert!(nb_harts > 0, "Must use at least one core");
         qemu_cmd.arg("-smp").arg(format!("{}", nb_harts));
