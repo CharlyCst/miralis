@@ -142,7 +142,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         /*self.write_confidential_registers(ctx, true);*/
 
         // Step 3: Unlock memory
-        mctx.pmp.set_from_policy(0, 0, pmpcfg::INACTIVE);
+        mctx.pmp.set_from_policy(0, 0x80400000/4, pmpcfg::INACTIVE);
         mctx.pmp
             .set_from_policy(1, usize::MAX / 4, pmpcfg::TOR | pmpcfg::RWX);
     }

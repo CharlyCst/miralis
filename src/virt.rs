@@ -792,8 +792,11 @@ impl VirtContext {
         // Deny all addresses by default if at least one PMP is implemented
         if self.nb_pmp > 0 {
             let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-            mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
+            //mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
         }
+
+        log::info!("{}", mctx.pmp);
+        Plat::exit_success();
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
