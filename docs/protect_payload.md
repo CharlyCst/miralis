@@ -17,8 +17,8 @@ The strict payload policy ensures two key guarantees:
 - Miralis is a trusted component and is free of bugs.
 - Side-channel attacks are out of scope.
 - The underlying hardware is trusted and behaves correctly.
-- The strict payload policy is always enforced and "locked."
 - The firmware does not alter the set of CSR registers and Miralis enforces interrupt delegation to S-mode.
+- Miralis is running on a single core at the moment 
 
 ### Formal Definitions
 
@@ -31,6 +31,7 @@ Two payload states are equivalent if and only if:
 - $\text{memory}_1 \equiv \text{memory}_2$,
 - $\text{gp}_1 \equiv \text{gp}_2 $, and
 - $\text{csr}_1 \equiv \text{csr}_2$.
+
 ### Expected architectural transitions per interrupts / traps - wip
 
 #### Interrupts
@@ -40,7 +41,7 @@ Two payload states are equivalent if and only if:
 - Supervisor timer interrupt: equivalent state
 - Machine timer interrupt: equivalent state
 - Supervisor external interrupt: equivalent state
-- Machine external itnerrupt: equivalent state
+- Machine external interrupt: equivalent state
 
 #### Traps
 
@@ -61,7 +62,11 @@ Two payload states are equivalent if and only if:
 
 The following diagram illustrates the state transitions in our model:
 
+
+TODO: Replace in Ascii art
 ![State Transitions](transitions.png)
+
+On a single core, transitions are transactional and happen in a total order. 
 
 ### Axioms:
 
@@ -94,6 +99,10 @@ This follows directly from Lemma 1, as the reverse transition involves invoking 
 
 The first time we jump to the payload, Miralis enforces the absence of state corruption by the firmware. The proof is constructive. Before we jump to the payload for the fist time, Miralis will hash the binary content of the payload and compare with a fixed hashed value and continues the execution only if the hashed values are similar. Therefore any state anomaly in the payload is going to be detected.
 
+**Lemma 4: Trap and interrupts can only happend in VM and S-mode**
+
+*Proof:*
+Miralis disables the interrupts in M-mode and any trap in M-mode make the program panic.
 
 ### Assertion 1: The Firmware Cannot Leak Information from the S-mode Payload - except the source code it loads
 
