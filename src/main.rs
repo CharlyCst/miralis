@@ -7,6 +7,23 @@
 // We need both std and main to be able to run tests in user-space on the host architecture.
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+#![feature(
+    // used for meaningful panic code
+    panic_info_message,
+    // used for calculating offsets for assembly
+    asm_const,
+    // const_mut_ref for LinkedList implementation used in the heap allocator
+    const_mut_refs,
+    pointer_is_aligned,
+    pointer_is_aligned_to,
+    result_option_inspect,
+    pointer_byte_offsets,
+    // used for formal verification framework (RefinedRust annotations)
+    register_tool,
+    custom_inner_attributes,
+    stmt_expr_attributes,
+)]
+extern crate alloc;
 
 mod arch;
 mod benchmark;
@@ -21,10 +38,13 @@ mod platform;
 mod policy;
 mod utils;
 mod virt;
+mod ace;
 
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
+use flattened_device_tree::error::FdtError;
+use flattened_device_tree::FlattenedDeviceTree;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
@@ -74,7 +94,17 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Arch::read_csr(Csr::Misa) & !misa::DISABLED
     );
     log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
-    log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
+    log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
+
+    // INIT ACE
+    let result = ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8);
+    match result {
+        Ok(_) => log::info!("Operation succeeded."),
+        Err(e) => log::info!("Error occurred: {:?}", e),
+    }
+
+    Plat::exit_success();
+    // END INIT ACE
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();

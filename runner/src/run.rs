@@ -89,13 +89,30 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("-bios")
         .arg(miralis)
         .arg("-m")
-        .arg("2048")
-        .arg("-device")
-        .arg(format!(
+        .arg("8G")
+        .arg("-machine")
+        .arg("virt")
+        .arg("-cpu")
+        .arg("rv64");
+        //.arg("-device")
+        /*.arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
-            firmware.to_str().unwrap(),
+            "/home/francois/Documents/ACE-RISCV/ace-build/security-monitor/opensbi/platform/generic/firmware/fw_payload.bin",
             FIRMWARE_ADDR
-        ));
+        ))*/
+        /*.arg("-kernel")
+        .arg("./artifacts/opensbi_cove")
+        .arg("-append")
+        .arg("console=ttyS0 ro root=/dev/vda")
+        .arg("-drive").arg("if=none,format=raw,file=/home/francois/Documents/ACE-RISCV/ace-build/hypervisor/buildroot/images/rootfs.ext4,id=hd0")
+        .arg("-device")
+        .arg("virtio-blk-device,scsi=off,drive=hd0")
+        .arg("-netdev")
+        .arg("user,id=net0,net=192.168.100.1/24,dhcpstart=192.168.100.128,hostfwd=tcp::3024-:22")
+        .arg("-device")
+        .arg("virtio-net-device,netdev=net0")
+        .arg("-device")
+        .arg("virtio-rng-pci");*/
 
     // If a payload is defined in the config, try to load it at the specified address.
     if let Some(payload) = &cfg.target.payload {

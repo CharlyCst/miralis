@@ -652,6 +652,9 @@ impl VirtContext {
 
     /// Handle the trap coming from the payload
     pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
+        log::warn!("Payload trap!!!");
+        log::warn!("{:?} {} {:x}", self.trap_info, self.get(Register::X16), self.get(Register::X17));
+
         let cause = self.trap_info.get_cause();
 
         // We only care about ecalls.

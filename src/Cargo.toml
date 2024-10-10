@@ -11,12 +11,21 @@ path = "main.rs"
 
 [dependencies]
 uart_16550 = "0.3.0"
-spin = "0.5.2"
 log = { workspace = true }
 miralis_core = { path = "../crates/core" }
 miralis_abi = { path = "../crates/abi" }
 config_helpers = { path = "../crates/config_helpers" }
 config_select = { path = "../crates/config_select/" }
+flattened_device_tree = {path = "../crates/flattened_device_tree" }
+pointers_utility = {path = "../crates/pointers_utility" }
+opensbi-sys = {path = "../crates/opensbi-sys"}
+
+# ACE security monitor imports
+memoffset = { version = "0.9", default-features = false, features = ["unstable_const"] }
+riscv-decode = "0.2"
+spin = {version="0.9", default-features = false, features = ["once", "rwlock", "spin_mutex"]}
+sha2 = { version = "0.10", default-features = false }
+thiserror-no-std = "2.0"
 
 [features]
 # When running on host architecture as a userspace application, such as when
