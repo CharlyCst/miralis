@@ -4,6 +4,7 @@ use miralis_core::abi;
 
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
+use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
 use crate::arch::{
     hstatus, mie, misa, mstatus, mtvec, parse_mpp_return_mode, satp, Arch, Architecture, Csr,
     ExtensionsCapability, MCause, Mode, Register, TrapInfo,
@@ -899,7 +900,8 @@ impl VirtContext {
         // Deny all addresses by default if at least one PMP is implemented
         if self.nb_pmp > 0 {
             let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-            mctx.pmp.set(last_pmp_idx, usize::MAX, pmpcfg::NAPOT);
+            mctx.pmp
+                .set_napot(last_pmp_idx, 0, usize::MAX, NO_PERMISSIONS);
         }
     }
 
@@ -984,8 +986,7 @@ impl VirtContext {
         mctx.pmp.clear_range(mctx.pmp.virt_pmp_offset, self.nb_pmp);
         // Allow all addresses by default
         let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-        mctx.pmp
-            .set(last_pmp_idx, usize::MAX, pmpcfg::RWX | pmpcfg::NAPOT);
+        mctx.pmp.set_napot(last_pmp_idx, 0, usize::MAX, pmpcfg::RWX);
     }
 }
 
@@ -1237,12 +1238,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // pMPRV is never set to 1 outside of a virtual access handler.
                 if mprv != previous_mprv {
                     log::trace!("vMPRV set to {:b}", mprv);
-                    let config = if mprv != 0 {
-                        pmpcfg::TOR | pmpcfg::X
+                    if mprv != 0 {
+                        pmp.set_tor(0, usize::MAX, pmpcfg::X);
                     } else {
-                        pmpcfg::INACTIVE
-                    };
-                    pmp.set(0, usize::MAX, config);
+                        pmp.set_inactive(0, usize::MAX);
+                    }
                     unsafe { Arch::sfencevma(None, None) };
                 }
 
