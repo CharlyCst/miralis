@@ -1,6 +1,9 @@
 //! The protect payload policy, it protects the payload.
 
+use core::slice;
+
 use miralis_core::abi_protect_payload;
+use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::{build_napot, pmpcfg};
 use crate::arch::{MCause, Register};
@@ -210,5 +213,24 @@ impl ProtectPayloadPolicy {
             ctx.csr.stval = self.confidential_values_firmware.stval;
             ctx.csr.satp = self.confidential_values_firmware.satp;
         }
+    }
+}
+
+// ———————————————————————————————— Hash primitive ———————————————————————————————— //
+
+#[allow(dead_code)]
+fn hash_memory_range(start: usize, end: usize) -> [u8; 32] {
+    assert!(start <= end, "Invalid memory range for payload hashing");
+
+    unsafe {
+        let data = slice::from_raw_parts(start as *const u8, end - start);
+
+        let mut hasher = Sha3::v256();
+        hasher.update(data);
+
+        let mut hashed_value = [0u8; 32];
+        hasher.finalize(&mut hashed_value);
+
+        hashed_value
     }
 }
