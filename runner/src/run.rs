@@ -85,6 +85,14 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
     if let Some(cpu) = &cfg.qemu.cpu {
         qemu_cmd.arg("-cpu").arg(cpu);
     }
+    if let Some(kernel_path) = &cfg.qemu.kernel {
+        log::info!("{}", kernel_path);
+        qemu_cmd.arg("-kernel").arg(kernel_path);
+    }
+    if let Some(initrd_path) = &cfg.qemu.initrd {
+        log::info!("{}", initrd_path);
+        qemu_cmd.arg("-initrd").arg(initrd_path);
+    }
     qemu_cmd
         .arg("-bios")
         .arg(miralis)

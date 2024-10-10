@@ -2,7 +2,7 @@
 
 use miralis_core::abi_protect_payload;
 
-use crate::arch::pmp::{build_napot, pmpcfg};
+use crate::arch::pmp::pmpcfg;
 use crate::arch::{MCause, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
@@ -14,6 +14,7 @@ pub struct ProtectPayloadPolicy {
     general_register: [usize; 32],
     confidential_values_firmware: ConfidentialCSRs,
     confidential_values_payload: ConfidentialCSRs,
+    last_cause: MCause,
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
@@ -41,6 +42,9 @@ impl PolicyModule for ProtectPayloadPolicy {
                 stval: 0,
                 satp: 0,
             },
+            // It is important to let the first mode be EcallFromSMode as the firmware passes some information to the OS.
+            // Setting this last_cause allows to pass the arguments during the first call.
+            last_cause: MCause::EcallFromSMode,
         }
     }
     fn name() -> &'static str {
@@ -103,13 +107,17 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
+        // TODO: Work on that section
         // Step 2: Save sensitives privileged registers
-        self.confidential_values_payload = get_confidential_values(ctx);
-        self.write_confidential_registers(ctx, false);
+        /*self.confidential_values_payload = get_confidential_values(ctx);
+        self.write_confidential_registers(ctx, false);*/
 
         // Step 3: Lock memory
         mctx.pmp
-            .set_from_policy(0, build_napot(0x80400000, 0x80000).unwrap(), pmpcfg::NAPOT);
+            .set_from_policy(0, 0x80400000 / 4, pmpcfg::INACTIVE);
+        mctx.pmp.set_from_policy(1, usize::MAX / 4, pmpcfg::TOR);
+
+        self.last_cause = ctx.trap_info.get_cause();
     }
 
     fn switch_from_firmware_to_payload(
@@ -129,14 +137,18 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
+        // TODO: Work on that section
         // Step 2: Restore sensitives privileged registers
-        self.write_confidential_registers(ctx, true);
+        /*self.write_confidential_registers(ctx, true);*/
 
         // Step 3: Unlock memory
-        mctx.pmp.set_from_policy(0, 0, pmpcfg::INACTIVE);
+        mctx.pmp
+            .set_from_policy(0, 0x80400000 / 4, pmpcfg::INACTIVE);
+        mctx.pmp
+            .set_from_policy(1, usize::MAX / 4, pmpcfg::TOR | pmpcfg::RWX);
     }
 
-    const NUMBER_PMPS: usize = 1;
+    const NUMBER_PMPS: usize = 2;
 }
 
 // TODO: Check what to do with fcsr & sip & cycle
@@ -165,14 +177,10 @@ fn get_confidential_values(ctx: &mut VirtContext) -> ConfidentialCSRs {
 }
 
 impl ProtectPayloadPolicy {
-    fn lock(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) {
+    fn lock(&mut self, _mctx: &mut MiralisContext, ctx: &mut VirtContext) {
         // Step 1: Get view of confidential registers
         self.confidential_values_firmware = get_confidential_values(ctx);
         self.confidential_values_payload = get_confidential_values(ctx);
-        // TODO: Make it dynamic in the future
-        // First set pmp entry protection
-        mctx.pmp
-            .set_from_policy(0, build_napot(0x80400000, 0x80000).unwrap(), pmpcfg::NAPOT);
 
         // Step 2: Mark as protected
         self.protected = true;
@@ -183,13 +191,15 @@ impl ProtectPayloadPolicy {
     }
 
     fn clear_register(&mut self, idx: usize, ctx: &mut VirtContext) -> bool {
-        !(ctx.trap_info.get_cause() == MCause::EcallFromSMode && (10..18).contains(&idx))
+        !(10..18).contains(&idx) || ctx.trap_info.get_cause() != MCause::EcallFromSMode
     }
 
-    fn restore_register(&mut self, idx: usize, ctx: &mut VirtContext) -> bool {
-        !(ctx.trap_info.get_cause() == MCause::EcallFromSMode && (10..12).contains(&idx))
+    fn restore_register(&mut self, idx: usize, _ctx: &mut VirtContext) -> bool {
+        !(10..12).contains(&idx) || self.last_cause != MCause::EcallFromSMode
     }
 
+    // TODO: Handle csr registers as next step
+    #[allow(unused)]
     fn write_confidential_registers(&mut self, ctx: &mut VirtContext, restore: bool) {
         if restore {
             ctx.csr.stvec = self.confidential_values_payload.stvec;
