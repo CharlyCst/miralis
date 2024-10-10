@@ -16,12 +16,22 @@ path = "main.rs"
 
 [dependencies]
 uart_16550 = "0.3.0"
-spin = "0.5.2"
 log = { workspace = true }
 miralis_core = { path = "../crates/core", version = "0.1.0" }
 miralis_abi = { path = "../crates/abi", version = "0.1.0" }
 config_helpers = { path = "../crates/config_helpers", version = "0.1.0" }
 config_select = { path = "../crates/config_select/", version = "0.1.0" }
+flattened_device_tree = {path = "../crates/flattened_device_tree" }
+pointers_utility = {path = "../crates/pointers_utility" }
+opensbi-sys = {path = "../crates/opensbi-sys"}
+fdt-rs = { version = "0.4", default-features = false, features = [] }
+
+# ACE security monitor imports
+memoffset = { version = "0.9", default-features = false, features = ["unstable_const"] }
+riscv-decode = "0.2"
+spin = {version="0.9", default-features = false, features = ["once", "rwlock", "spin_mutex"]}
+sha2 = { version = "0.10", default-features = false }
+thiserror-no-std = "2.0"
 # This import is only used in the protect payload policy
 tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 

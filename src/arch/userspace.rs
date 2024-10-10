@@ -23,6 +23,9 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
     ExtensionsCapability {
         has_h_extension: false,
         has_s_extension: true,
+        _has_f_extension: false,
+        _has_d_extension: false,
+        _has_q_extension: false,
     },
 ));
 
@@ -113,6 +116,9 @@ impl Architecture for HostArch {
             extensions: ExtensionsCapability {
                 has_h_extension: false,
                 has_s_extension: true,
+                _has_f_extension: false,
+                _has_d_extension: false,
+                _has_q_extension: false,
             },
         }
     }
@@ -297,6 +303,10 @@ impl Architecture for HostArch {
         _dest: &mut [u8],
         _mode: Mode,
     ) -> Result<(), ()> {
+        todo!();
+    }
+
+    fn install_handler(_: usize) {
         todo!();
     }
 

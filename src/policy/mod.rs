@@ -7,6 +7,7 @@ use config_select::select_env;
 use crate::host::MiralisContext;
 use crate::virt::VirtContext;
 
+pub mod ace;
 mod default;
 mod keystone;
 mod protect_payload;
@@ -14,7 +15,8 @@ mod protect_payload;
 pub type Policy = select_env!["MIRALIS_POLICY_NAME":
     "keystone" => keystone::KeystonePolicy
     "protect_payload" => protect_payload::ProtectPayloadPolicy
-    _          => default::DefaultPolicy
+    _ => ace::AcePolicy
+    // _          => default::DefaultPolicy
 ];
 
 /// The result of a call into a policy hook function
@@ -49,7 +51,7 @@ impl PolicyHookResult {
 /// The role of a policy module is to enforce a set of policies on the firmware, for instance
 /// restricting which memory is accessible to the firmware, how which `ecall`s are intercepted.
 pub trait PolicyModule {
-    fn init() -> Self;
+    fn init(mctx: &mut MiralisContext, device_tree_blob_addr: usize) -> Self;
     fn name() -> &'static str;
 
     /// Handle an ecall from the virtualized firmware.

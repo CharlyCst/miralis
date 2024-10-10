@@ -9,7 +9,7 @@ use crate::virt::VirtContext;
 pub struct DefaultPolicy {}
 
 impl PolicyModule for DefaultPolicy {
-    fn init() -> Self {
+    fn init(_mctx: &mut MiralisContext, _device_tree_blob_addr: usize) -> Self {
         DefaultPolicy {}
     }
 

@@ -59,6 +59,9 @@ pub trait Architecture {
     /// Wait for interrupt
     fn wfi();
 
+    /// Install a trap handler
+    fn install_handler(handler: usize);
+
     /// Detect available hardware capabilities.
     ///
     /// Capabilities are local to a core: two cores (harts in RISC-V parlance) can have different
@@ -133,6 +136,12 @@ pub struct ExtensionsCapability {
     pub has_h_extension: bool,
     /// Supervisor extension
     pub has_s_extension: bool,
+    /// Single precision floating point extension
+    pub _has_f_extension: bool,
+    /// Double precision floating point extension
+    pub _has_d_extension: bool,
+    /// Quadruple precision floating point extension
+    pub _has_q_extension: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

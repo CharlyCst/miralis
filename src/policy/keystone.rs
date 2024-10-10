@@ -172,7 +172,7 @@ impl KeystonePolicy {
 
 /// To check how ecalls are handled, see https://github.com/riscv-software-src/opensbi/blob/2ffa0a153d804910c20b82974bfe2dedcf35a777/lib/sbi/sbi_ecall.c#L98
 impl PolicyModule for KeystonePolicy {
-    fn init() -> Self {
+    fn init(_mctx: &mut MiralisContext, _device_tree_blob_addr: usize) -> Self {
         Self::default()
     }
 

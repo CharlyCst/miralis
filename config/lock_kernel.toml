@@ -24,3 +24,21 @@ start_address = 0x80200000
 # Size of the firmware stack for each hart (i.e. core)
 # Default to 0x8000
 stack_size = 0x8000
+
+[target.payload]
+# Name or path to the payload binary
+name = "hello_world"
+
+# Build profile for the payload (dev profile is set by default)
+profile = "dev"
+
+# Payload binary will be compiled with this value as a start address
+# Default to "0x80400000"
+start_address = 0x80400000
+
+# Size of the payload stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000
+
+[policy]
+name="ace"

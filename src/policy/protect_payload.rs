@@ -37,7 +37,7 @@ pub struct ProtectPayloadPolicy {
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
-    fn init() -> Self {
+    fn init(_mctx: &mut MiralisContext, _device_tree_blob_addr: usize) -> Self {
         ProtectPayloadPolicy {
             protected: false,
             general_register: [0; 32],

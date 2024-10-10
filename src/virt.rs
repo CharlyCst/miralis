@@ -559,7 +559,6 @@ impl VirtContext {
         self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
-
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
@@ -1009,17 +1008,6 @@ impl VirtContext {
 }
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
-
-/// A module exposing the traits to manipulate registers of a virtual context.
-///
-/// To get and set registers from a virtual context, first import all the traits:
-///
-/// ```
-/// use crate::virt::traits::*;
-/// ```
-pub mod traits {
-    pub use super::{HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter};
-}
 
 /// A trait implemented by virtual contexts to read registers.
 pub trait RegisterContextGetter<R> {

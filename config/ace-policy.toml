@@ -4,15 +4,12 @@
 level = "info"
 color = true
 
-[debug]
-max_firmware_exits = 2000
 
 [vcpu]
 max_pmp = 8
 
 [platform]
-nb_harts = 1
-name = "spike"
+nb_harts = 2
 
 [benchmark]
 enable = false
@@ -41,17 +38,6 @@ start_address = 0x80200000
 # Default to 0x8000
 stack_size = 0x8000
 
-[target.payload]
-# Name or path to the payload binary
-name = "rustsbi-test-kernel"
 
-# Build profile for the payload (dev profile is set by default)
-profile = "dev"
-
-# Payload binary will be compiled with this value as a start address
-# Default to "0x80400000"
-start_address = 0x80400000
-
-# Size of the payload stack for each hart (i.e. core)
-# Default to 0x8000
-stack_size = 0x8000
+[policy]
+name = "ace"

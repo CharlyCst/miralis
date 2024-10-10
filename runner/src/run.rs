@@ -17,8 +17,10 @@ use crate::RunArgs;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
+
 /// The QEMU executable
-pub const QEMU: &str = "qemu-system-riscv64";
+pub const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
+// pub const QEMU: &str = "qemu-system-riscv64";
 
 /// The Spike executable
 pub const SPIKE: &str = "spike";
@@ -30,7 +32,7 @@ const QEMU_ARGS: &[&str] = &[
     "-machine", "virt",
 ];
 /// Address at which the firmware is loaded in memory.
-const FIRMWARE_ADDR: u64 = 0x80200000;
+const _FIRMWARE_ADDR: u64 = 0x80200000;
 
 /// Address at which the payload is loaded in memory.
 const PAYLOAD_ADDR: u64 = 0x80400000;
@@ -132,12 +134,27 @@ pub fn get_qemu_cmd(
     qemu_cmd
         .arg("-bios")
         .arg(miralis)
+        .arg("-m")
+        .arg("8G")
+        .arg("-machine")
+        .arg("virt")
+        .arg("-cpu")
+        .arg("rv64")
+        //.arg("-kernel") // Loaded at 0x80200000
+        //.arg(firmware.to_str().unwrap());
+        .arg("-kernel")
+        .arg("./artifacts/opensbi_cove")
+        .arg("-append")
+        .arg("console=ttyS0 ro root=/dev/vda")
+        .arg("-drive").arg("if=none,format=raw,file=/home/francois/Documents/ACE-RISCV/ace-build/hypervisor/buildroot/images/rootfs.ext4,id=hd0")
         .arg("-device")
-        .arg(format!(
-            "loader,file={},addr=0x{:x},force-raw=on",
-            firmware.to_str().unwrap(),
-            FIRMWARE_ADDR
-        ));
+        .arg("virtio-blk-device,scsi=off,drive=hd0")
+        .arg("-netdev")
+        .arg("user,id=net0,net=192.168.100.1/24,dhcpstart=192.168.100.128,hostfwd=tcp::3024-:22")
+        .arg("-device")
+        .arg("virtio-net-device,netdev=net0")
+        .arg("-device")
+        .arg("virtio-rng-pci");
 
     // If a payload is defined in the config, try to load it at the specified address.
     let payload = payload.or_else(|| {

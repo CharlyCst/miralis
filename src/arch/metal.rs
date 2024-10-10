@@ -19,15 +19,6 @@ use crate::{
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
 
-impl MetalArch {
-    fn install_handler(handler: usize) {
-        // Set trap handler
-        unsafe { Self::write_csr(Csr::Mtvec, handler) };
-        let mtvec: usize = Self::read_csr(Csr::Mtvec);
-        assert_eq!(handler, mtvec, "Failed to set trap handler");
-    }
-}
-
 impl Architecture for MetalArch {
     fn init() {
         // Install trap handler
@@ -289,6 +280,8 @@ impl Architecture for MetalArch {
         };
         let nb_pmp = find_nb_of_non_zero_pmp(nb_implemented_pmp);
 
+        assert!(nb_pmp == 16, "PMP should be 16");
+
         log::debug!("Number of PMP: {}", nb_pmp);
 
         // Save current CSRs
@@ -330,6 +323,9 @@ impl Architecture for MetalArch {
             extensions: ExtensionsCapability {
                 has_h_extension: (misa as usize & misa::H) != 0,
                 has_s_extension: (misa as usize & misa::S) != 0,
+                _has_f_extension: (misa as usize & misa::S) != 0,
+                _has_d_extension: (misa as usize & misa::D) != 0,
+                _has_q_extension: (misa as usize & misa::Q) != 0,
             },
         }
     }
@@ -512,6 +508,13 @@ impl Architecture for MetalArch {
                 )
             }
         }
+    }
+
+    fn install_handler(handler: usize) {
+        // Set trap handler
+        unsafe { Self::write_csr(Csr::Mtvec, handler) };
+        let mtvec: usize = Self::read_csr(Csr::Mtvec);
+        assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {

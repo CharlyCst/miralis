@@ -38,6 +38,9 @@ members = [
     "crates/core",
     "crates/config_helpers",
     "crates/config_select",
+    "crates/flattened_device_tree",
+    "crates/pointers_utility",
+    "crates/opensbi-sys",
     "crates/test_helpers",
 
     # Tooling
