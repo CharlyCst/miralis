@@ -106,7 +106,7 @@ impl TryFrom<usize> for MCause {
 
 /// Contains all the information automatically written by the hardware during a trap
 #[repr(C)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct TrapInfo {
     // mtval2 and mtinst only exist with the hypervisor extension
     pub mepc: usize,
@@ -130,6 +130,16 @@ impl TrapInfo {
 }
 
 // ———————————————————————————————— Display ————————————————————————————————— //
+
+impl fmt::Debug for TrapInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "TrapInfo : Mepc=0x{:x} Mstatus=0x{:x} MCause=0x{:?} Mip=0x{:x} Mtval=0x{:x}",
+            self.mepc, self.mstatus, self.mcause, self.mip, self.mtval
+        )
+    }
+}
 
 impl fmt::Debug for MCause {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

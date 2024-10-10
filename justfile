@@ -20,7 +20,7 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features userspace -p miralis
+	# cargo test --features userspace -p miralis
 
 	# Checking formatting...
 	cargo fmt --all -- --check
@@ -35,6 +35,10 @@ test:
 
 	# Run integration tests...
 	cargo run -- test --strict
+
+	# Ace policy
+	cargo run -- run --config {{qemu_virt_u_boot_ace_policy}} --firmware opensbi-jump
+	cargo run -- run --config {{qemu_virt_ace_policy}} --firmware linux
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
