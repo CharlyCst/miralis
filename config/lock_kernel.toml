@@ -1,0 +1,39 @@
+[policy]
+name = "protect_payload"
+
+[target.miralis]
+# Build profile for Miralis (dev profile is set by default)
+profile = "dev"
+
+# Miralis binary will be compiled with this value as a start address
+# Default to "0x80000000"
+start_address = 0x80000000
+
+# Size of the Miralis' stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000
+
+[target.firmware]
+# Build profile for the firmware (dev profile is set by default)
+profile = "dev"
+
+# Firmware binary will be compiled with this value as a start address
+# Default to "0x80200000"
+start_address = 0x80200000
+
+# Size of the firmware stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000
+
+
+[target.payload]
+# Name or path to the payload binary
+name = "/home/francois/Bureau/kernel/linux/arch/riscv/boot/Image"
+# Start address ot the linux kernel
+start_address = 0x80400000
+
+[qemu]
+# We want to give a path to the -kernel argument in qemu
+kernel="/home/francois/Bureau/kernel/linux/arch/riscv/boot/Image"
+# Path of the linux kernel initramfs
+initrd="/home/francois/Bureau/kernel/initramfs/initramfs.cpio.gz"
