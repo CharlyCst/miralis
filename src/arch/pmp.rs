@@ -7,6 +7,7 @@ use core::fmt;
 use core::fmt::Formatter;
 
 use super::Architecture;
+use crate::arch::pmp::pmpcfg::{INACTIVE, NAPOT, TOR};
 use crate::arch::pmp::pmplayout::{
     ALL_CATCH_OFFSET, DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP,
     POLICY_OFFSET, POLICY_SIZE, VIRTUAL_PMP_OFFSET,
@@ -58,6 +59,8 @@ pub mod pmpcfg {
     pub const X: u8 = 0b00000100;
     /// Read, Write, and Execute access
     pub const RWX: u8 = R | W | X;
+    /// No permissions
+    pub const NO_PERMISSIONS: u8 = 0x0;
 
     /// Address is Top Of Range (TOP)
     pub const TOR: u8 = 0b00001000;
@@ -85,6 +88,10 @@ pub mod pmpcfg {
 /// This function checks for a minimum size of 8 and for proper alignment. If the requirements are
 /// not satisfied None is returned instead.
 pub const fn build_napot(start: usize, size: usize) -> Option<usize> {
+    if start == 0 && size == usize::MAX {
+        return Some(usize::MAX);
+    }
+
     if size < 8 {
         // Minimum NAPOT size is 8
         return None;
@@ -99,6 +106,11 @@ pub const fn build_napot(start: usize, size: usize) -> Option<usize> {
     }
 
     Some((start >> 2) | ((size - 1) >> 3))
+}
+
+/// Build a valid TOR pmpaddr value from a provided until memory location.
+pub const fn build_tor(until: usize) -> usize {
+    until >> 2
 }
 
 // ——————————————————————————————— PMP Group ———————————————————————————————— //
@@ -161,44 +173,38 @@ impl PmpGroup {
         // Configure PMP registers, if available
         if pmp.nb_pmp >= 8 {
             // By activating this entry it's possible to catch all memory accesses
-            pmp.set(ALL_CATCH_OFFSET, usize::MAX, pmpcfg::INACTIVE);
+            pmp.set_inactive(ALL_CATCH_OFFSET, 0);
 
             // Protect Miralis
             let (start, size) = Plat::get_miralis_memory_start_and_size();
-            pmp.set(
-                MIRALIS_OFFSET,
-                build_napot(start, size).unwrap(),
-                pmpcfg::NAPOT,
-            );
+            pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
 
             // Protect virtual devices
-            pmp.set(
+            pmp.set_napot(
                 DEVICES_OFFSET,
-                build_napot(virtual_devices[0].start_addr, virtual_devices[0].size).unwrap(),
-                pmpcfg::NAPOT,
+                virtual_devices[0].start_addr,
+                virtual_devices[0].size,
+                pmpcfg::NO_PERMISSIONS,
             );
 
-            pmp.set(
+            pmp.set_napot(
                 DEVICES_OFFSET + 1,
-                build_napot(virtual_devices[1].start_addr, virtual_devices[1].size).unwrap(),
-                pmpcfg::NAPOT,
+                virtual_devices[1].start_addr,
+                virtual_devices[1].size,
+                pmpcfg::NO_PERMISSIONS,
             );
 
             // This PMP entry is used by the policy module for its own purpose
             #[allow(clippy::reversed_empty_ranges)]
             for idx in 0..POLICY_SIZE {
-                pmp.set(POLICY_OFFSET + idx, 0, pmpcfg::INACTIVE);
+                pmp.set_inactive(POLICY_OFFSET + idx, 0);
             }
 
             // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-            pmp.set(INACTIVE_ENTRY_OFFSET, 0, pmpcfg::INACTIVE);
+            pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
 
             // Finally, set the last PMP to grant access to the whole memory
-            pmp.set(
-                (pmp.nb_pmp - 1) as usize,
-                usize::MAX,
-                pmpcfg::RWX | pmpcfg::NAPOT,
-            );
+            pmp.set_napot((pmp.nb_pmp - 1) as usize, 0, usize::MAX, pmpcfg::RWX);
 
             // Compute the number of virtual PMPs available
             // It's whatever is left after setting pmp's for devices, pmp for address translation,
@@ -219,8 +225,31 @@ impl PmpGroup {
         pmp
     }
 
+    /// This function builds a PMP Napot entry, note that the caller must only set the permissions bits and don't have to care about the low level formatting details to build the napot entry.
+    pub fn set_napot(&mut self, idx: usize, from: usize, to: usize, permissions: u8) {
+        assert!(
+            permissions < 8,
+            "Permissions should not set NAPOT or TOP bits"
+        );
+        self.set(idx, build_napot(from, to).unwrap(), permissions | NAPOT);
+    }
+
+    /// This function builds a PMP Tor entry, note that the caller must only set the permissions bits and don't have to care about the low level formatting details such as dividing the address by 4.
+    pub fn set_tor(&mut self, idx: usize, until: usize, permissions: u8) {
+        assert!(
+            permissions < 8,
+            "Permissions should not set NAPOT or TOP bits"
+        );
+        self.set(idx, build_tor(until), permissions | TOR);
+    }
+
+    /// This function builds a PMP inactive entry, note that the caller must not set the permission bits and can set a base address for the next pmp entry and it can simply give the address without dividing by 4.
+    pub fn set_inactive(&mut self, idx: usize, addr: usize) {
+        self.set(idx, build_tor(addr), INACTIVE);
+    }
+
     /// Set a pmpaddr and its corresponding pmpcfg.
-    pub fn set(&mut self, idx: usize, addr: usize, cfg: u8) {
+    fn set(&mut self, idx: usize, addr: usize, cfg: u8) {
         // Sanitize CFG
         let cfg = cfg & pmpcfg::VALID_BITS;
         assert!(cfg & pmpcfg::L == 0, "Lock bit not yet supported on PMPs");
