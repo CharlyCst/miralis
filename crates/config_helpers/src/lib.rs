@@ -19,6 +19,19 @@ macro_rules! is_enabled {
     };
 }
 
+#[macro_export]
+macro_rules! is_enabled_default_false {
+    ($env_var: tt) => {
+        match option_env!($env_var) {
+            Some(env_var) => match env_var.as_bytes() {
+                b"false" => false,
+                _ => true,
+            },
+            None => false,
+        }
+    };
+}
+
 // ————————————————————————————— String Parsing ————————————————————————————— //
 // Required to parse environment variables at compile time.
 // Can be removed once usize::from_str_radix stabilized as const, hopefully soon.

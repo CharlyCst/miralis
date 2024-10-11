@@ -4,7 +4,8 @@
 //! environment variables by the runner during Miralis build).
 
 use config_helpers::{
-    is_enabled, parse_str_list, parse_str_or, parse_usize, parse_usize_or, str_list_len,
+    is_enabled, is_enabled_default_false, parse_str_list, parse_str_or, parse_usize,
+    parse_usize_or, str_list_len,
 };
 
 use crate::platform::{Plat, Platform};
@@ -56,6 +57,9 @@ pub const PLATFORM_NB_HARTS: usize = {
         Plat::NB_HARTS
     }
 };
+
+/// Delegate performance counters
+pub const DELEGATE_PERF_COUNTER: bool = is_enabled_default_false!("MIRALIS_DELEGATE_PERF_COUNTER");
 
 /// Boot hart id
 #[allow(dead_code)] // Because rust analyzer doesn't understand that it is used in metals.rs

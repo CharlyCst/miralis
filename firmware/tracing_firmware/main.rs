@@ -1,3 +1,9 @@
+//! Tracing firmware payload
+//!
+//! This payload measure the cost of a context switch in two situations
+//! Situation 1: VM-mode firmware <--> Miralis
+//! Situation 2: S-mode payload <--> VM-mode firmware
+
 #![no_std]
 #![no_main]
 
@@ -9,6 +15,7 @@ setup_binary!(main);
 
 fn enable_mcycle_in_smode() {
     unsafe {
+        // This allows to read cycle in S-mode - for the payload
         let mcounteren: u32;
         asm!("csrr {}, mcounteren", out(reg) mcounteren);
         asm!("csrw mcounteren, {}", in(reg) mcounteren | 1);
@@ -16,10 +23,24 @@ fn enable_mcycle_in_smode() {
 }
 
 fn main() -> ! {
+    let trap: usize = _empty_handler as usize;
+
     enable_mcycle_in_smode();
 
+    unsafe {
+        asm!(
+        "csrw mtvec, {mtvec}", // Write mtvec with trap handler
+        mtvec = in(reg) trap,
+        );
+    }
+
+    log::info!("Start benchmarking from Firmware");
+
+    measure();
+
+    log::info!("Start benchmarking from Payload");
+
     let os: usize = operating_system as usize;
-    let trap: usize = _empty_handler as usize;
     let mpp = 0b1 << 11; // MPP = S-mode
 
     unsafe {
@@ -29,14 +50,12 @@ fn main() -> ! {
         "csrw pmpaddr0, t4",   // All memory
         "auipc t4, 0",
         "addi t4, t4, 24",
-        "csrw mtvec, {mtvec}", // Write mtvec with trap handler
         "csrw mstatus, {mpp}", // Write MPP of mstatus to S-mode
         "csrw mepc, {os}",     // Write MEPC
         "mret",                // Jump to OS
 
 
         os = in(reg) os,
-        mtvec = in(reg) trap,
         mpp = in(reg) mpp,
         out("t4") _,
         );
@@ -97,13 +116,16 @@ pub fn bubble_sort(arr: &mut [usize; NB_REPEATS]) {
     }
 }
 
-fn operating_system() -> ! {
+fn operating_system() {
     unsafe {
         asm!("la sp, 0x80700000");
     }
 
-    log::info!("Start benchmarking");
+    measure();
+    success();
+}
 
+fn measure() {
     let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
 
     for i in 0..NB_REPEATS {
@@ -115,8 +137,6 @@ fn operating_system() -> ! {
 
     log::info!("Average measure : {}", average_measure);
     print_statistics(stats);
-
-    success();
 }
 
 fn trigger_ctx_switch_to_firmware() -> usize {
@@ -126,8 +146,8 @@ fn trigger_ctx_switch_to_firmware() -> usize {
     unsafe {
         // Read the `mcycle` register (assuming 64-bit RISC-V)
         asm!("csrr {}, cycle", out(reg) begin);
-        // We can trigger any illegal instruction - the handler doesn't do anything
-        asm!("mret");
+        // We trigger an illegal instruction
+        asm!("csrw mscratch, zero");
         // Read the `mcycle` register (assuming 64-bit RISC-V)
         asm!("csrr {}, cycle", out(reg) end);
     }
@@ -142,9 +162,9 @@ fn trigger_ctx_switch_to_firmware_batched() -> usize {
     unsafe {
         // Read the `mcycle` register (assuming 64-bit RISC-V)
         asm!("csrr {}, cycle", out(reg) begin);
-        for i in 0..NB_REPEATS {
-            // We can trigger any illegal instruction - the handler doesn't do anything
-            asm!("mret");
+        for _ in 0..NB_REPEATS {
+            // We can trigger an illegal instruction
+            asm!("csrw mscratch, zero");
         }
 
         // Read the `mcycle` register (assuming 64-bit RISC-V)
