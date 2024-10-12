@@ -93,13 +93,13 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("-machine")
         .arg("virt")
         .arg("-cpu")
-        .arg("rv64");
-        //.arg("-device")
-        /*.arg(format!(
+        .arg("rv64")
+        .arg("-device")
+        .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
-            "/home/francois/Documents/ACE-RISCV/ace-build/security-monitor/opensbi/platform/generic/firmware/fw_payload.bin",
+            firmware.to_str().unwrap(),
             FIRMWARE_ADDR
-        ))*/
+        ));
         /*.arg("-kernel")
         .arg("./artifacts/opensbi_cove")
         .arg("-append")

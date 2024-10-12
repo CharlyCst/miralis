@@ -102,8 +102,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Ok(_) => log::info!("Operation succeeded."),
         Err(e) => log::info!("Error occurred: {:?}", e),
     }
-
-    Plat::exit_success();
     // END INIT ACE
 
     log::info!("Preparing jump into firmware");
