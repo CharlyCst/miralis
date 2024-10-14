@@ -128,11 +128,10 @@ fn initialize_memory_layout(fdt: &FlattenedDeviceTree) -> Result<(ConfidentialMe
     let memory_start = fdt_memory_region.base as *mut usize;
     // In assembly that executed this initialization function splitted the memory into two regions where
     // the second region's size is equal or greater than the first ones.
-    assert!(fdt_memory_region.size == 0x200000000, "Currently this is hardcoded for 8Gb of memory, todo: modify the device tree");
-    let non_confidential_memory_size = 0x100000000; //fdt_memory_region.size.try_into().map_err(|_| Error::InvalidMemoryBoundary())?;
+    let non_confidential_memory_size = fdt_memory_region.size.try_into().map_err(|_| Error::InvalidMemoryBoundary())?;
     let confidential_memory_size = non_confidential_memory_size;
     let memory_size = non_confidential_memory_size + confidential_memory_size;
-    let memory_end = 0x280000000 as *const usize;// memory_start.wrapping_byte_add(memory_size) as *const usize;
+    let memory_end = memory_start.wrapping_byte_add(memory_size) as *const usize;
     log::info!("Memory 0x{:#?}-0x{:#?}", memory_start, memory_end);
 
     // First region of memory is defined as non-confidential memory

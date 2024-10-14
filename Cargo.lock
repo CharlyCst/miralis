@@ -588,6 +588,7 @@ version = "0.1.0"
 dependencies = [
  "config_helpers",
  "config_select",
+ "fdt-rs",
  "flattened_device_tree",
  "log",
  "memoffset 0.9.1",
