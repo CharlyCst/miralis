@@ -21,7 +21,6 @@ mod platform;
 mod policy;
 mod utils;
 mod virt;
-
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
@@ -74,7 +73,15 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Arch::read_csr(Csr::Misa) & !misa::DISABLED
     );
     log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
-    log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
+    log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
+
+    // INIT ACE
+    /*let result = ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8);
+    match result {
+        Ok(_) => log::info!("Operation succeeded."),
+        Err(e) => log::info!("Error occurred: {:?}", e),
+    }*/
+    // END INIT ACE
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();
