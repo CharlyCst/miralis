@@ -14,7 +14,8 @@ use crate::RunArgs;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
-const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
+//const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
+const QEMU: &str = "qemu-system-riscv64";
 const SPIKE: &str = "spike";
 
 #[rustfmt::skip]
