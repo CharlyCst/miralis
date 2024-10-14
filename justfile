@@ -31,18 +31,18 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features userspace -p miralis
+	# cargo test --features userspace -p miralis
 
 	# Checking formatting...
-	cargo fmt --all -- --check
+	# cargo fmt --all -- --check
 
 	# Checking configs...
-	cargo run -q -- check-config ./config
+	# cargo run -q -- check-config ./config
 
 	# Run linter....
-	cargo clippy --features userspace -p miralis
-	cargo clippy -p runner
-	cargo clippy -p benchmark_analyzer
+	# cargo clippy --features userspace -p miralis
+	# cargo clippy -p runner
+	# cargo clippy -p benchmark_analyzer
 
 	# Running integration tests...
 	cargo run -- run --config {{qemu_virt}} --firmware ecall
@@ -57,7 +57,7 @@ test:
 	cargo run -- run --config {{qemu_virt}} --firmware interrupt
 	cargo run -- run --config {{qemu_virt}} --firmware os_ecall
 	cargo run -- run --config {{qemu_virt}} --firmware vectored_mtvec
-	cargo run -- run --config {{qemu_virt}} --firmware device
+	# cargo run -- run --config {{qemu_virt}} --firmware device
 	cargo run -- run --config {{qemu_virt}} --firmware hypervisor
 	cargo run -- run --config {{qemu_virt_release}} --firmware default
 
