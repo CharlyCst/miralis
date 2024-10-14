@@ -23,6 +23,7 @@
     custom_inner_attributes,
     stmt_expr_attributes,
 )]
+
 extern crate alloc;
 
 mod arch;
@@ -97,11 +98,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     // INIT ACE
-    let result = ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8);
+    /*let result = ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8);
     match result {
         Ok(_) => log::info!("Operation succeeded."),
         Err(e) => log::info!("Error occurred: {:?}", e),
-    }
+    }*/
     // END INIT ACE
 
     log::info!("Preparing jump into firmware");
