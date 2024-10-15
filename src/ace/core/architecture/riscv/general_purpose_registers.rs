@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use core::ops::Range;
 
 #[repr(C)]
-pub struct GeneralPurposeRegisters([usize; 32]);
+pub struct GeneralPurposeRegisters(pub(crate) [usize; 32]);
 
 impl GeneralPurposeRegisters {
     const LEN: usize = 32;

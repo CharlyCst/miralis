@@ -316,7 +316,7 @@ pub const CSR: &ControlStatusRegister = &ControlStatusRegister {
 };
 
 #[derive(Copy, Clone)]
-pub struct ReadWriteRiscvCsr<const V: u16>(usize);
+pub struct ReadWriteRiscvCsr<const V: u16>(pub usize);
 
 impl<const V: u16> ReadWriteRiscvCsr<V> {
     pub const fn new() -> Self {

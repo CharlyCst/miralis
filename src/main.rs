@@ -219,7 +219,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtContext) {
     // Save normal registers
     for i in 0..32 {
-        hw.hypervisor_hart.hypervisor_hart_state.gprs[i] = ctx.regs[i]
+        hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i] = ctx.regs[i]
     }
 
     // Save CSR registers
@@ -290,7 +290,7 @@ extern "C" {
 
 /// This functions transfers the control to the ACE security monitor from Miralis
 fn miralis_to_ace_ctx_switch(ace_ctx: &mut HardwareHart, virt_ctx: &mut VirtContext) {
-    // todo!("Cool we are jumping here!");
+    todo!("Cool we are jumping here!");
     // Step 1: Overwrite Hardware hart with virtcontext
     overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
 
@@ -303,8 +303,10 @@ fn miralis_to_ace_ctx_switch(ace_ctx: &mut HardwareHart, virt_ctx: &mut VirtCont
     ace_ctx.hypervisor_hart_mut().csrs_mut().mtvec.write((trap_vector_address >> 2) << 2);
 
     // Step 4: Jump to the payload
-    let ace_flow = unsafe { NonConfidentialFlow::create(ace_ctx.as_mut().expect(NonConfidentialFlow::CTX_SWITCH_ERROR_MSG)) };
-    ace_flow.apply_and_exit_to_hypervisor(SbiResponse);
+    /*let ace_flow = unsafe { NonConfidentialFlow::create(ace_ctx.as_mut().expect(NonConfidentialFlow::CTX_SWITCH_ERROR_MSG)) };
+    ace_flow.apply_and_exit_to_hypervisor(SbiResponse(SbiResponse{
+        0: (),
+    }));*/
 }
 
 fn ace_to_miralis_ctx_switch(virt_ctx: &mut VirtContext, ace_ctx: &mut HardwareHart) {
@@ -374,6 +376,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
             log::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
+            //miralis_to_ace_ctx_switch(ace_ctx, miralis)
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
