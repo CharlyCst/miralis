@@ -33,7 +33,7 @@ pub struct NonConfidentialFlow<'a> {
 }
 
 impl<'a> NonConfidentialFlow<'a> {
-    const CTX_SWITCH_ERROR_MSG: &'static str = "Bug: invalid argument provided by the assembly context switch";
+    pub(crate) const CTX_SWITCH_ERROR_MSG: &'static str = "Bug: invalid argument provided by the assembly context switch";
 
     /// Creates an instance of the `NonConfidentialFlow`. A confidential hart must not be assigned to the hardware hart.
     pub fn create(hardware_hart: &'a mut HardwareHart) -> Self {
@@ -51,6 +51,9 @@ impl<'a> NonConfidentialFlow<'a> {
     /// * Pointer is a not null and points to a memory region owned by the physical hart executing this code.
     #[no_mangle]
     unsafe extern "C" fn route_trap_from_hypervisor_or_vm(hart_ptr: *mut HardwareHart) -> ! {
+
+        log::error!("We reached this code, so it is a good sign, now the next step is to implement this part");
+        todo!("Implement this code");
         // Below unsafe is ok because the lightweight context switch (assembly) guarantees that it provides us with a valid pointer to the
         // hardware hart's dump area in main memory. This area in main memory is exclusively owned by the physical hart executing this code.
         // Specifically, every physical hart has its own are in the main memory and its `mscratch` register stores the address. See the
@@ -110,7 +113,7 @@ impl<'a> NonConfidentialFlow<'a> {
     /// Resumes execution of the hypervisor hart and applies state transformation. This is an exit node (Rust->Assembly) of the
     /// non-confidential part of the finite state machine (FSM), executed as a result of processing hypervisor request (there was no
     /// context switch between security domains).
-    pub(super) fn apply_and_exit_to_hypervisor(mut self, transformation: ApplyToHypervisorHart) -> ! {
+    pub(crate) fn apply_and_exit_to_hypervisor(mut self, transformation: ApplyToHypervisorHart) -> ! {
         match transformation {
             ApplyToHypervisorHart::SbiResponse(v) => v.apply_to_hypervisor_hart(self.hypervisor_hart_mut()),
             ApplyToHypervisorHart::OpenSbiResponse(v) => v.apply_to_hypervisor_hart(self.hypervisor_hart_mut()),

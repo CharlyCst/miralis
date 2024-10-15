@@ -16,7 +16,7 @@ pub const HART_STACK_ADDRESS_OFFSET: usize = memoffset::offset_of!(HardwareHart,
 #[repr(C)]
 pub struct HardwareHart {
     // We store a hypervisor hart that was executing on this physical hart when making a call to the security monitor.
-    hypervisor_hart: HypervisorHart,
+    pub hypervisor_hart: HypervisorHart,
     // We keep the confidential hart associated with this hardware hart. The virtual hart can be 1) a dummy hart
     // in case there is any confidential VM's virtual hart associated to it, or 2) an confidential VM's virtual hart.
     // In the latter case, the hardware hart and confidential VM's control data swap their virtual harts (a dummy

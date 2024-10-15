@@ -41,6 +41,7 @@ mod utils;
 mod virt;
 mod ace;
 
+use core::fmt::Pointer;
 use core::ptr;
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
@@ -83,6 +84,10 @@ use userspace_linker_definitions::*;
 
 use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use fdt_rs::prelude::{FallibleIterator, PropReader};
+use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
+use crate::ace::core::control_data::HardwareHart;
+use crate::ace::non_confidential_flow::DeclassifyToHypervisor::SbiResponse;
+use crate::ace::non_confidential_flow::NonConfidentialFlow;
 
 fn read_unaligned_u64(ptr: *const u8) -> u64 {
     // Step 1: Create a temporary array to hold the bytes
@@ -211,6 +216,102 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     main_loop(&mut ctx, &mut mctx, &mut policy);
 }
 
+fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtContext) {
+    // Save normal registers
+    for i in 0..32 {
+        hw.hypervisor_hart.hypervisor_hart_state.gprs[i] = ctx.regs[i]
+    }
+
+    // Save CSR registers
+
+    // M mode registers
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(ctx.csr.mepc);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mcause = ReadWriteRiscvCsr(ctx.csr.mcause);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.medeleg = ReadWriteRiscvCsr(ctx.csr.medeleg);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mideleg = ReadWriteRiscvCsr(ctx.csr.mideleg);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mie = ReadWriteRiscvCsr(ctx.csr.mie);
+    // hw.hypervisor_hart.hypervisor_hart_state.csrs.mip = ReadWriteRiscvCsr(ctx.csr.mip);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mstatus = ReadWriteRiscvCsr(ctx.csr.mstatus);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtinst = ReadWriteRiscvCsr(ctx.csr.mtinst);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval = ReadWriteRiscvCsr(ctx.csr.mtval);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval2 = ReadWriteRiscvCsr(ctx.csr.mtval2);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtvec = ReadWriteRiscvCsr(ctx.csr.mtvec);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.mscratch = ReadWriteRiscvCsr(ctx.csr.mscratch);
+
+    // S mode registers
+    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sstatus = ReadWriteRiscvCsr(ctx.csr.sstatus);
+    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sie = ReadWriteRiscvCsr(ctx.csr.sie);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.stvec = ReadWriteRiscvCsr(ctx.csr.stvec);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.scounteren = ReadWriteRiscvCsr(ctx.csr.scounteren);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.senvcfg = ReadWriteRiscvCsr(ctx.csr.senvcfg);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.sscratch = ReadWriteRiscvCsr(ctx.csr.sscratch);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.sepc = ReadWriteRiscvCsr(ctx.csr.sepc);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.scause = ReadWriteRiscvCsr(ctx.csr.scause);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.stval = ReadWriteRiscvCsr(ctx.csr.stval);
+    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sip = ReadWriteRiscvCsr(ctx.csr.sip);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.satp = ReadWriteRiscvCsr(ctx.csr.satp);
+
+    // HS mode registers
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hstatus = ReadWriteRiscvCsr(ctx.csr.hstatus);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hedeleg = ReadWriteRiscvCsr(ctx.csr.hedeleg);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hideleg = ReadWriteRiscvCsr(ctx.csr.hideleg);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hie = ReadWriteRiscvCsr(ctx.csr.hie);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hcounteren = ReadWriteRiscvCsr(ctx.csr.hcounteren);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgeie = ReadWriteRiscvCsr(ctx.csr.hgeie);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.htval = ReadWriteRiscvCsr(ctx.csr.htval);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hip = ReadWriteRiscvCsr(ctx.csr.hip);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hvip = ReadWriteRiscvCsr(ctx.csr.hvip);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.htinst = ReadWriteRiscvCsr(ctx.csr.htinst);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgeip = ReadWriteRiscvCsr(ctx.csr.hgeip);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.henvcfg = ReadWriteRiscvCsr(ctx.csr.henvcfg);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgatp = ReadWriteRiscvCsr(ctx.csr.hgatp);
+
+    // HS mode debug registers
+    // hw.hypervisor_hart.hypervisor_hart_state.csrs.hcontext = ReadWriteRiscvCsr(ctx.csr.hcontext);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.htimedelta = ReadWriteRiscvCsr(ctx.csr.htimedelta);
+
+    // VS mode registers
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsstatus = ReadWriteRiscvCsr(ctx.csr.vsstatus);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsie = ReadWriteRiscvCsr(ctx.csr.vsie);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsip = ReadWriteRiscvCsr(ctx.csr.vsip);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vstvec = ReadWriteRiscvCsr(ctx.csr.vstvec);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsscratch = ReadWriteRiscvCsr(ctx.csr.vsscratch);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsepc = ReadWriteRiscvCsr(ctx.csr.vsepc);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vscause = ReadWriteRiscvCsr(ctx.csr.vscause);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vstval = ReadWriteRiscvCsr(ctx.csr.vstval);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsatp = ReadWriteRiscvCsr(ctx.csr.vsatp);
+}
+
+extern "C" {
+    // Assembly function that is an entry point to the security monitor from the hypervisor or a virtual machine.
+    fn enter_from_hypervisor_or_vm_asm() -> !;
+}
+
+
+/// This functions transfers the control to the ACE security monitor from Miralis
+fn miralis_to_ace_ctx_switch(ace_ctx: &mut HardwareHart, virt_ctx: &mut VirtContext) {
+    // todo!("Cool we are jumping here!");
+    // Step 1: Overwrite Hardware hart with virtcontext
+    overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
+
+    // Step 2: Change mscratch value
+    // todo: this is incomplete
+    ace_ctx.swap_mscratch();
+
+    // Step 3: Change trap handler
+    let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
+    ace_ctx.hypervisor_hart_mut().csrs_mut().mtvec.write((trap_vector_address >> 2) << 2);
+
+    // Step 4: Jump to the payload
+    let ace_flow = unsafe { NonConfidentialFlow::create(ace_ctx.as_mut().expect(NonConfidentialFlow::CTX_SWITCH_ERROR_MSG)) };
+    ace_flow.apply_and_exit_to_hypervisor(SbiResponse);
+}
+
+fn ace_to_miralis_ctx_switch(virt_ctx: &mut VirtContext, ace_ctx: &mut HardwareHart) {
+    todo!("Implement this function");
+}
+
+
 fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) -> ! {
     loop {
         Benchmark::start_interval_counters(Scope::RunVCPU);
@@ -228,6 +329,8 @@ fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Poli
         Benchmark::increment_counter(Counter::TotalExits);
     }
 }
+
+
 
 fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
     if log::log_enabled!(log::Level::Trace) {

@@ -8,8 +8,8 @@ use crate::ace::core::architecture::riscv::{ControlStatusRegisters, FloatingPoin
 /// Defines the state of a processor's core (hart) when stored in main memory.
 #[repr(C)]
 pub struct HartArchitecturalState {
-    gprs: GeneralPurposeRegisters,
-    csrs: ControlStatusRegisters,
+    pub gprs: GeneralPurposeRegisters,
+    pub csrs: ControlStatusRegisters,
     fprs: FloatingPointUnit,
     sstc: SupervisorTimerExtension,
 }

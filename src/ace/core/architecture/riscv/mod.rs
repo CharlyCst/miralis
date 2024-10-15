@@ -22,9 +22,9 @@ pub mod sbi;
 pub mod specification;
 pub mod tlb;
 
-mod control_status_registers;
+pub mod control_status_registers;
 mod extensions;
-mod general_purpose_registers;
+pub mod general_purpose_registers;
 mod hart_lifecycle_state;
 mod trap_cause;
 

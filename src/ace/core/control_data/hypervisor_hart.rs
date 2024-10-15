@@ -17,7 +17,7 @@ use crate::ace::error::Error;
 pub struct HypervisorHart {
     // Safety: HypervisorHart and ConfidentialHart must both start with the HartArchitecturalState element because based on this we
     // automatically calculate offsets of registers' and CSRs' for the asm code.
-    hypervisor_hart_state: HartArchitecturalState,
+    pub hypervisor_hart_state: HartArchitecturalState,
     // Shared memory between the hypervisor and confidential hart is located in non-confidential memory (owned by the hypervisor).
     // Hypervisor sets this shared memory before creating any confidential VM. This shared memory is used to pass data/arguments of calls
     // to the security monitor (COVH) or to the hypervisor (COVG).
