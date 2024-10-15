@@ -288,6 +288,10 @@ fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtCon
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vsatp = ReadWriteRiscvCsr(ctx.csr.vsatp);
 }
 
+fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut HardwareHart) {
+
+}
+
 extern "C" {
     // Assembly function that is an entry point to the security monitor from the hypervisor or a virtual machine.
     fn enter_from_hypervisor_or_vm_asm() -> !;
@@ -300,9 +304,6 @@ extern "C" {
 
 /// This functions transfers the control to the ACE security monitor from Miralis
 fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
-
-    log::error!("{:x}",virt_ctx.pc);
-
     // Step 0: Get ACE Context
     let hart_id = virt_ctx.hart_id;
     assert!(hart_id == 0, "Implement this code for multihart");
@@ -314,31 +315,16 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
     let mut harts = HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").lock();
     let mut ace_ctx: &mut HardwareHart = harts.get_mut(hart_id).expect("Bug. Incorrectly setup memory region for harts states");
 
-    //todo!("Cool we are jumping here!");
     // Step 1: Overwrite Hardware hart with virtcontext
     overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
 
     ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
 
-    // TODO: Not sure it works like that
+    // TODO: Is it enough?
     // Step 2: Change mscratch value
     unsafe {
-        CSR.mscratch.write(&ace_ctx as *const _ as usize);
+        CSR.mscratch.write(ace_ctx as *const _ as usize);
     }
-
-    unsafe {
-        let ace_ctx_ptr = &ace_ctx as *const _ as usize; // Convert to raw pointer as usize
-        let offset_ptr = (ace_ctx_ptr + 256) as *const usize; // Replace `SomeType` with the actual type
-
-        // Read the value at the offset pointer
-        let value_at_offset = unsafe { *offset_ptr };
-
-        // Do something with `value_at_offset`
-        log::error!("Value at offset: 0x{:x}", value_at_offset);
-    }
-
-    Plat::exit_success();
-
 
     // Step 3: Change trap handler
     let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
@@ -350,7 +336,7 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
     }
 }
 
-fn ace_to_miralis_ctx_switch(virt_ctx: &mut VirtContext, ace_ctx: &mut HardwareHart) {
+fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) {
     todo!("Implement this function");
 }
 

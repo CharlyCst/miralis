@@ -53,6 +53,16 @@ pub struct VirtContext {
 }
 
 impl VirtContext {
+    pub const fn new_empty() -> VirtContext {
+        Self::new(0, 0, ExtensionsCapability{
+            has_h_extension: false,
+            has_s_extension: false,
+            has_f_extension: false,
+            has_d_extension: false,
+            has_q_extension: false,
+        })
+    }
+
     pub const fn new(
         hart_id: usize,
         nb_pmp_registers_left: usize,
