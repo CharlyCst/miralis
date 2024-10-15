@@ -33,7 +33,7 @@ extern "C" {
 ///
 /// Initialization procedure must guarantee that the mscratch register contains the address of the memory region that
 /// stores the state of the executing hart.
-static HARTS_STATES: Once<Mutex<Vec<HardwareHart>>> = Once::new();
+pub static HARTS_STATES: Once<Mutex<Vec<HardwareHart>>> = Once::new();
 
 /// The entry point to the security monitor initialization procedure. It should be called by the booting firmware (e.g.,
 /// OpenSBI) during the boot process to initialize ACE. After the return, the control flow returns to the booting

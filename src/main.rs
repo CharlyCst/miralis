@@ -41,6 +41,7 @@ mod utils;
 mod virt;
 mod ace;
 
+use alloc::vec::Vec;
 use core::fmt::Pointer;
 use core::ptr;
 use arch::{Arch, Architecture};
@@ -84,9 +85,14 @@ use userspace_linker_definitions::*;
 
 use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use fdt_rs::prelude::{FallibleIterator, PropReader};
+use spin::{Mutex, Once};
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
+use crate::ace::core::architecture::CSR;
+use crate::ace::core::architecture::fence::fence_wo;
 use crate::ace::core::control_data::HardwareHart;
-use crate::ace::non_confidential_flow::DeclassifyToHypervisor::SbiResponse;
+use crate::ace::core::initialization::HARTS_STATES;
+use crate::ace::non_confidential_flow::apply_to_hypervisor::ApplyToHypervisorHart;
+use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::SbiResponse;
 use crate::ace::non_confidential_flow::NonConfidentialFlow;
 
 fn read_unaligned_u64(ptr: *const u8) -> u64 {
@@ -285,28 +291,63 @@ fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtCon
 extern "C" {
     // Assembly function that is an entry point to the security monitor from the hypervisor or a virtual machine.
     fn enter_from_hypervisor_or_vm_asm() -> !;
+
+    /// To ensure safety, specify all possible valid states that KVM expects to see and prove that security monitor
+    /// never returns to KVM with other state. For example, only a subset of exceptions/interrupts can be handled by KVM.
+    /// KVM kill the vcpu if it receives unexpected exception because it does not know what to do with it.
+    fn exit_to_hypervisor_asm() -> !;
 }
 
-
 /// This functions transfers the control to the ACE security monitor from Miralis
-fn miralis_to_ace_ctx_switch(ace_ctx: &mut HardwareHart, virt_ctx: &mut VirtContext) {
-    todo!("Cool we are jumping here!");
+fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
+
+    log::error!("{:x}",virt_ctx.pc);
+
+    // Step 0: Get ACE Context
+    let hart_id = virt_ctx.hart_id;
+    assert!(hart_id == 0, "Implement this code for multihart");
+
+    while !HARTS_STATES.is_completed() {
+        fence_wo();
+    }
+
+    let mut harts = HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").lock();
+    let mut ace_ctx: &mut HardwareHart = harts.get_mut(hart_id).expect("Bug. Incorrectly setup memory region for harts states");
+
+    //todo!("Cool we are jumping here!");
     // Step 1: Overwrite Hardware hart with virtcontext
     overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
 
+    ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
+
+    // TODO: Not sure it works like that
     // Step 2: Change mscratch value
-    // todo: this is incomplete
-    ace_ctx.swap_mscratch();
+    unsafe {
+        CSR.mscratch.write(&ace_ctx as *const _ as usize);
+    }
+
+    unsafe {
+        let ace_ctx_ptr = &ace_ctx as *const _ as usize; // Convert to raw pointer as usize
+        let offset_ptr = (ace_ctx_ptr + 256) as *const usize; // Replace `SomeType` with the actual type
+
+        // Read the value at the offset pointer
+        let value_at_offset = unsafe { *offset_ptr };
+
+        // Do something with `value_at_offset`
+        log::error!("Value at offset: 0x{:x}", value_at_offset);
+    }
+
+    Plat::exit_success();
+
 
     // Step 3: Change trap handler
     let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
     ace_ctx.hypervisor_hart_mut().csrs_mut().mtvec.write((trap_vector_address >> 2) << 2);
 
-    // Step 4: Jump to the payload
-    /*let ace_flow = unsafe { NonConfidentialFlow::create(ace_ctx.as_mut().expect(NonConfidentialFlow::CTX_SWITCH_ERROR_MSG)) };
-    ace_flow.apply_and_exit_to_hypervisor(SbiResponse(SbiResponse{
-        0: (),
-    }));*/
+    // Step 4: Jump to the payload - todo: Do we need to apply a response? It seems not to be the case
+    unsafe {
+        exit_to_hypervisor_asm();
+    }
 }
 
 fn ace_to_miralis_ctx_switch(virt_ctx: &mut VirtContext, ace_ctx: &mut HardwareHart) {
@@ -373,13 +414,14 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
-            log::debug!("Execution mode: Firmware -> Payload");
+            //log::warn!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
-            //miralis_to_ace_ctx_switch(ace_ctx, miralis)
+            //log::error!("Return PC {:x}", ctx.pc);
+            miralis_to_ace_ctx_switch(ctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            log::debug!("Execution mode: Payload -> Firmware");
+            //log::warn!("Execution mode: Payload -> Firmware {:?}", ctx.trap_info);
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
         }
