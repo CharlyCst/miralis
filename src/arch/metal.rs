@@ -19,14 +19,7 @@ use crate::{
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
 
-impl MetalArch {
-    fn install_handler(handler: usize) {
-        // Set trap handler
-        unsafe { Self::write_csr(Csr::Mtvec, handler) };
-        let mtvec: usize = Self::read_csr(Csr::Mtvec);
-        assert_eq!(handler, mtvec, "Failed to set trap handler");
-    }
-}
+
 
 impl Architecture for MetalArch {
     fn init() {
@@ -512,6 +505,13 @@ impl Architecture for MetalArch {
                 )
             }
         }
+    }
+
+    fn install_handler(handler: usize) {
+        // Set trap handler
+        unsafe { Self::write_csr(Csr::Mtvec, handler) };
+        let mtvec: usize = Self::read_csr(Csr::Mtvec);
+        assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {

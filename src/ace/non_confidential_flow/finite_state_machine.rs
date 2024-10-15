@@ -66,7 +66,7 @@ impl<'a> NonConfidentialFlow<'a> {
         todo!("Make sure mcause is valid first");
 
         // Modification for Miralis
-        match TrapCause::from_hart_architectural_state(flow.hypervisor_hart().hypervisor_hart_state()) {
+        /*match TrapCause::from_hart_architectural_state(flow.hypervisor_hart().hypervisor_hart_state()) {
             Interrupt => ace_to_miralis_ctx_switch(flow.hardware_hart),
             IllegalInstruction => ace_to_miralis_ctx_switch(flow.hardware_hart),
             LoadAddressMisaligned => ace_to_miralis_ctx_switch(flow.hardware_hart),
@@ -76,7 +76,7 @@ impl<'a> NonConfidentialFlow<'a> {
             HsEcall(_) => panic!("What should we do with that?"),
             MachineEcall => ace_to_miralis_ctx_switch(flow.hardware_hart),
             _ => {},
-        }
+        }*/
 
         // End Modification for Miralis
         match TrapCause::from_hart_architectural_state(flow.hypervisor_hart().hypervisor_hart_state()) {

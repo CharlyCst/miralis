@@ -40,6 +40,8 @@ mod policy;
 mod utils;
 mod virt;
 mod ace;
+mod device_tree;
+mod monitor_switch;
 
 use alloc::vec::Vec;
 use core::fmt::Pointer;
@@ -52,10 +54,22 @@ use flattened_device_tree::FlattenedDeviceTree;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-use crate::arch::{misa, Csr, Register};
+use crate::arch::{misa, Csr, ExtensionsCapability, HardwareCapability, Register};
 use crate::host::MiralisContext;
 use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
+
+use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
+use fdt_rs::prelude::{FallibleIterator, PropReader};
+use spin::{Mutex, Once};
+use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
+use crate::ace::core::architecture::CSR;
+use crate::ace::core::architecture::fence::fence_wo;
+use crate::ace::core::control_data::HardwareHart;
+use crate::ace::core::initialization::HARTS_STATES;
+use crate::ace::non_confidential_flow::apply_to_hypervisor::ApplyToHypervisorHart;
+use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::SbiResponse;
+use crate::ace::non_confidential_flow::NonConfidentialFlow;
 
 // Defined in the linker script
 #[cfg(not(feature = "userspace"))]
@@ -81,73 +95,8 @@ mod userspace_linker_definitions {
 
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
-
-
-use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
-use fdt_rs::prelude::{FallibleIterator, PropReader};
-use spin::{Mutex, Once};
-use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
-use crate::ace::core::architecture::CSR;
-use crate::ace::core::architecture::fence::fence_wo;
-use crate::ace::core::control_data::HardwareHart;
-use crate::ace::core::initialization::HARTS_STATES;
-use crate::ace::non_confidential_flow::apply_to_hypervisor::ApplyToHypervisorHart;
-use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::SbiResponse;
-use crate::ace::non_confidential_flow::NonConfidentialFlow;
-
-fn read_unaligned_u64(ptr: *const u8) -> u64 {
-    // Step 1: Create a temporary array to hold the bytes
-    let mut buf = [0u8; 8]; // For u64, we need 8 bytes
-
-    // Step 2: Read the bytes from the unaligned pointer
-    unsafe {
-        // Copy bytes from the pointer into the buffer
-        for i in 0..8 {
-            buf[i] = *ptr.add(i); // Use add(i) to get each byte
-        }
-    }
-
-    // Step 3: Convert the byte array to u64
-    u64::from_be_bytes(buf) // Convert to u64 (you can use from_be_bytes if needed)
-}
-
-fn write_unaligned_u64(ptr: *mut u8, value: u64) {
-    // Step 1: Convert the u64 value to a byte array
-    let bytes = value.to_be_bytes(); // You can use to_be_bytes() or to_ne_bytes() depending on endianness
-
-    // Step 2: Write the bytes to the unaligned pointer
-    unsafe {
-        for i in 0..8 {
-            *ptr.add(i) = bytes[i]; // Use add(i) to get each byte's address
-        }
-    }
-}
-
-
-fn divide_memory_region_size(device_tree_blob_addr:usize) -> Result<(), FdtError> {
-    let fdt: FlattenedDeviceTree;
-    unsafe {
-        fdt = FlattenedDeviceTree::from_raw_pointer(device_tree_blob_addr as *const u8)?
-    }
-
-    let mem_prop = fdt.inner.props()
-        .find(|p| Ok(p.name()? == "device_type" && p.str()? == "memory"))?
-        .ok_or_else(|| FdtError::NoMemoryNode())?;
-
-    let reg_prop = mem_prop.node()
-        .props()
-        .find(|p| Ok(p.name().unwrap_or("empty") == "reg"))?
-        .ok_or_else(|| FdtError::NoMemoryNode())?;
-
-    unsafe {
-        let ptr: *const u8 = reg_prop.propbuf().as_ptr().add(8);
-
-        let memory_size = read_unaligned_u64(ptr);
-        write_unaligned_u64(ptr as *mut u8, memory_size / 2);
-    }
-
-    Ok(())
-}
+use crate::device_tree::divide_memory_region_size;
+use crate::monitor_switch::{overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart};
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
@@ -169,13 +118,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     // INIT ACE
     // Step 1: Break forward tree
-
     divide_memory_region_size(device_tree_blob_addr);
 
     // Step 2: Initialise
-    let result = ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8);
-    match result {
-        Ok(_) => log::info!("Operation succeeded."),
+    match ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8) {
+        Ok(_) => log::info!("Initialized ACE security monitor."),
         Err(e) => log::info!("Error occurred: {:?}", e),
     }
     // END INIT ACE
@@ -222,76 +169,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     main_loop(&mut ctx, &mut mctx, &mut policy);
 }
 
-fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtContext) {
-    // Save normal registers
-    for i in 0..32 {
-        hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i] = ctx.regs[i]
-    }
-
-    // Save CSR registers
-
-    // M mode registers
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(ctx.csr.mepc);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mcause = ReadWriteRiscvCsr(ctx.csr.mcause);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.medeleg = ReadWriteRiscvCsr(ctx.csr.medeleg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mideleg = ReadWriteRiscvCsr(ctx.csr.mideleg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mie = ReadWriteRiscvCsr(ctx.csr.mie);
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.mip = ReadWriteRiscvCsr(ctx.csr.mip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mstatus = ReadWriteRiscvCsr(ctx.csr.mstatus);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtinst = ReadWriteRiscvCsr(ctx.csr.mtinst);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval = ReadWriteRiscvCsr(ctx.csr.mtval);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval2 = ReadWriteRiscvCsr(ctx.csr.mtval2);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mtvec = ReadWriteRiscvCsr(ctx.csr.mtvec);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.mscratch = ReadWriteRiscvCsr(ctx.csr.mscratch);
-
-    // S mode registers
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sstatus = ReadWriteRiscvCsr(ctx.csr.sstatus);
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sie = ReadWriteRiscvCsr(ctx.csr.sie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.stvec = ReadWriteRiscvCsr(ctx.csr.stvec);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.scounteren = ReadWriteRiscvCsr(ctx.csr.scounteren);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.senvcfg = ReadWriteRiscvCsr(ctx.csr.senvcfg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.sscratch = ReadWriteRiscvCsr(ctx.csr.sscratch);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.sepc = ReadWriteRiscvCsr(ctx.csr.sepc);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.scause = ReadWriteRiscvCsr(ctx.csr.scause);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.stval = ReadWriteRiscvCsr(ctx.csr.stval);
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sip = ReadWriteRiscvCsr(ctx.csr.sip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.satp = ReadWriteRiscvCsr(ctx.csr.satp);
-
-    // HS mode registers
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hstatus = ReadWriteRiscvCsr(ctx.csr.hstatus);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hedeleg = ReadWriteRiscvCsr(ctx.csr.hedeleg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hideleg = ReadWriteRiscvCsr(ctx.csr.hideleg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hie = ReadWriteRiscvCsr(ctx.csr.hie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hcounteren = ReadWriteRiscvCsr(ctx.csr.hcounteren);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgeie = ReadWriteRiscvCsr(ctx.csr.hgeie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.htval = ReadWriteRiscvCsr(ctx.csr.htval);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hip = ReadWriteRiscvCsr(ctx.csr.hip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hvip = ReadWriteRiscvCsr(ctx.csr.hvip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.htinst = ReadWriteRiscvCsr(ctx.csr.htinst);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgeip = ReadWriteRiscvCsr(ctx.csr.hgeip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.henvcfg = ReadWriteRiscvCsr(ctx.csr.henvcfg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgatp = ReadWriteRiscvCsr(ctx.csr.hgatp);
-
-    // HS mode debug registers
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.hcontext = ReadWriteRiscvCsr(ctx.csr.hcontext);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.htimedelta = ReadWriteRiscvCsr(ctx.csr.htimedelta);
-
-    // VS mode registers
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsstatus = ReadWriteRiscvCsr(ctx.csr.vsstatus);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsie = ReadWriteRiscvCsr(ctx.csr.vsie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsip = ReadWriteRiscvCsr(ctx.csr.vsip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vstvec = ReadWriteRiscvCsr(ctx.csr.vstvec);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsscratch = ReadWriteRiscvCsr(ctx.csr.vsscratch);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsepc = ReadWriteRiscvCsr(ctx.csr.vsepc);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vscause = ReadWriteRiscvCsr(ctx.csr.vscause);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vstval = ReadWriteRiscvCsr(ctx.csr.vstval);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsatp = ReadWriteRiscvCsr(ctx.csr.vsatp);
-}
-
-fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut HardwareHart) {
-
-}
-
 extern "C" {
     // Assembly function that is an entry point to the security monitor from the hypervisor or a virtual machine.
     fn enter_from_hypervisor_or_vm_asm() -> !;
@@ -300,6 +177,9 @@ extern "C" {
     /// never returns to KVM with other state. For example, only a subset of exceptions/interrupts can be handled by KVM.
     /// KVM kill the vcpu if it receives unexpected exception because it does not know what to do with it.
     fn exit_to_hypervisor_asm() -> !;
+
+    // Miralis raw trap handler
+    fn _raw_trap_handler();
 }
 
 /// This functions transfers the control to the ACE security monitor from Miralis
@@ -317,7 +197,7 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
 
     // Step 1: Overwrite Hardware hart with virtcontext
     overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
-
+    // Step 1-bis: Set mepc value to pc before jumping
     ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
 
     // TODO: Is it enough?
@@ -336,8 +216,26 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
     }
 }
 
-fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) {
-    todo!("Implement this function");
+// TODO: Make 3 input variables global
+fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart, ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
+    // Step 0: Get Virt context
+    // TODO: Comment on handle cela?
+
+    // Step 1: Overwrite Hardware hart with virtcontext
+    // overwrite_virtctx_with_hardware_hart();
+    // Step 1-bis: Set mepc value to pc before jumping
+    // TODO: Is it the correct register to set pc?
+    ctx.pc = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
+
+    // Step 2: Change mscratch value
+    // Normally here we should not do anything as miralis installs mepc in _run_vcpu
+
+    // Step 3: Change trap handler - install Miralis trap handler
+    Arch::install_handler(_raw_trap_handler as usize);
+
+    // Step 4: Jump in the Miralis trap handler - and enter the main loop
+    handle_trap(ctx, mctx, policy);
+    main_loop(ctx, mctx, policy)
 }
 
 
@@ -358,8 +256,6 @@ fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Poli
         Benchmark::increment_counter(Counter::TotalExits);
     }
 }
-
-
 
 fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
     if log::log_enabled!(log::Level::Trace) {
@@ -403,7 +299,6 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
             //log::warn!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
-            //log::error!("Return PC {:x}", ctx.pc);
             miralis_to_ace_ctx_switch(ctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {

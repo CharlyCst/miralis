@@ -57,6 +57,9 @@ pub trait Architecture {
     /// Wait for interrupt
     fn wfi();
 
+    /// Install a trap handler
+    fn install_handler(handler: usize);
+
     /// Detect available hardware capabilities.
     ///
     /// Capabilities are local to a core: two cores (harts in RISC-V parlance) can have different

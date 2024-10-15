@@ -294,4 +294,6 @@ impl Architecture for HostArch {
     unsafe fn handle_virtual_load_store(_instr: Instr, _ctx: &mut VirtContext) {
         todo!();
     }
+
+    fn install_handler(_: usize) { todo!(); }
 }
