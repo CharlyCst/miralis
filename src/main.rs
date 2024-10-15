@@ -96,7 +96,7 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 use crate::device_tree::divide_memory_region_size;
-use crate::monitor_switch::{overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart};
+use crate::monitor_switch::{address_to_miralis_context, address_to_policy, address_to_virt_context, overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart};
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
@@ -183,7 +183,7 @@ extern "C" {
 }
 
 /// This functions transfers the control to the ACE security monitor from Miralis
-fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
+fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
     // Step 0: Get ACE Context
     let hart_id = virt_ctx.hart_id;
     assert!(hart_id == 0, "Implement this code for multihart");
@@ -199,6 +199,10 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
     overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
     // Step 1-bis: Set mepc value to pc before jumping
     ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
+
+    ace_ctx.ctx_ptr = (virt_ctx as *const VirtContext) as usize;
+    ace_ctx.mctx_ptr = (mctx as *const MiralisContext) as usize;
+    ace_ctx.policy_ptr = (policy as *const Policy) as usize;
 
     // TODO: Is it enough?
     // Step 2: Change mscratch value
@@ -216,10 +220,14 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext) {
     }
 }
 
+
 // TODO: Make 3 input variables global
-fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart, ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
-    // Step 0: Get Virt context
-    // TODO: Comment on handle cela?
+fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart, mctx: &mut MiralisContext, policy: &mut Policy) {
+
+    // Step 0: Get miralis contexts
+    let ctx: &mut VirtContext = address_to_virt_context(ace_ctx.ctx_ptr);
+    let mctx: &mut MiralisContext = address_to_miralis_context(ace_ctx.mctx_ptr);
+    let policy: &mut Policy = address_to_policy(ace_ctx.policy_ptr);
 
     // Step 1: Overwrite Hardware hart with virtcontext
     // overwrite_virtctx_with_hardware_hart();
@@ -299,7 +307,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
             //log::warn!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
-            miralis_to_ace_ctx_switch(ctx);
+            miralis_to_ace_ctx_switch(ctx, mctx, policy);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             //log::warn!("Execution mode: Payload -> Firmware {:?}", ctx.trap_info);

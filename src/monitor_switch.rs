@@ -1,5 +1,7 @@
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
 use crate::ace::core::control_data::HardwareHart;
+use crate::host::MiralisContext;
+use crate::policy::Policy;
 use crate::virt::VirtContext;
 
 pub fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtContext) {
@@ -132,4 +134,34 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut Hardw
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vscause = ReadWriteRiscvCsr(ctx.csr.vscause);
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vstval = ReadWriteRiscvCsr(ctx.csr.vstval);
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vsatp = ReadWriteRiscvCsr(ctx.csr.vsatp);
+}
+
+pub fn address_to_virt_context<'a>(addr: usize) -> &'a mut VirtContext {
+    // Convert usize to a raw pointer
+    let ptr = addr as *mut VirtContext;
+
+    // Unsafe block required to dereference the raw pointer
+    unsafe {
+        &mut *ptr // Dereference the pointer to get a mutable reference
+    }
+}
+
+pub fn address_to_miralis_context<'a>(addr: usize) -> &'a mut MiralisContext {
+    // Convert usize to a raw pointer
+    let ptr = addr as *mut MiralisContext;
+
+    // Unsafe block required to dereference the raw pointer
+    unsafe {
+        &mut *ptr // Dereference the pointer to get a mutable reference
+    }
+}
+
+pub fn address_to_policy<'a>(addr: usize) -> &'a mut Policy {
+    // Convert usize to a raw pointer
+    let ptr = addr as *mut Policy;
+
+    // Unsafe block required to dereference the raw pointer
+    unsafe {
+        &mut *ptr // Dereference the pointer to get a mutable reference
+    }
 }

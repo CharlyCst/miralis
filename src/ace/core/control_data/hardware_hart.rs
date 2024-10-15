@@ -5,6 +5,8 @@ use crate::ace::core::architecture::CSR;
 use crate::ace::core::control_data::{ConfidentialHart, HypervisorHart};
 use crate::ace::core::memory_protector::HypervisorMemoryProtector;
 use crate::ace::core::page_allocator::{Allocated, Page, UnAllocated};
+use crate::host::MiralisContext;
+use crate::virt::VirtContext;
 
 pub const HART_STACK_ADDRESS_OFFSET: usize = memoffset::offset_of!(HardwareHart, stack_address);
 
@@ -31,6 +33,13 @@ pub struct HardwareHart {
     // data structures and our security monitor also uses mscratch to keep track of the address of the hart state
     // in memory.
     previous_mscratch: usize,
+
+    // Address of miralis virtual context
+    pub ctx_ptr: usize,
+    // Address of miralis context
+    pub mctx_ptr: usize,
+    // Address of miralis policy module
+    pub policy_ptr: usize,
 }
 
 impl HardwareHart {
@@ -43,6 +52,9 @@ impl HardwareHart {
             stack_address: stack.end_address(),
             stack: stack.zeroize(),
             previous_mscratch: 0,
+            ctx_ptr: 0,
+            mctx_ptr: 0,
+            policy_ptr: 0,
         }
     }
 
