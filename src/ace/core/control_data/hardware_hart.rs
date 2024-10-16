@@ -5,9 +5,6 @@ use crate::ace::core::architecture::CSR;
 use crate::ace::core::control_data::{ConfidentialHart, HypervisorHart};
 use crate::ace::core::memory_protector::HypervisorMemoryProtector;
 use crate::ace::core::page_allocator::{Allocated, Page, UnAllocated};
-use crate::host::MiralisContext;
-use crate::virt::VirtContext;
-
 pub const HART_STACK_ADDRESS_OFFSET: usize = memoffset::offset_of!(HardwareHart, stack_address);
 
 /// Represents a state of a physical hart that executes in the security monitor. It is always associated with a hypervisor hart that made a

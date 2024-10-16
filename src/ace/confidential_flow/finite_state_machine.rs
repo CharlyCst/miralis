@@ -97,7 +97,7 @@ impl<'a> ConfidentialFlow<'a> {
             GuestLoadPageFault => MmioLoadRequest::from_confidential_hart(flow.confidential_hart()).handle(flow),
             VirtualInstruction => VirtualInstruction::from_confidential_hart(flow.confidential_hart()).handle(flow),
             GuestStorePageFault => MmioStoreRequest::from_confidential_hart(flow.confidential_hart()).handle(flow),
-            trap_reason => {
+            _trap_reason => {
                 debug!("Bug: Not supported trap cause {:?}, maybe due to incorrect exception delegation?", trap_reason);
                 ShutdownRequest::from_confidential_hart(flow.confidential_hart()).handle(flow)
             }

@@ -3,9 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 extern crate bindgen;
 
-use std::env;
-use std::path::{Path, PathBuf};
-
 static INSTALL_DIR: &str = "INSTALL_DIR";
 
 fn main() {

@@ -72,17 +72,17 @@ impl<'a> NonConfidentialFlow<'a> {
             LoadAccessFault => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAddressMisaligned => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAccessFault => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Base(ProbeExtension)) => todo!(), //ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(TsmGetInfo)) => todo!(), //GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(PromoteToTvm)) => todo!(), //PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(TvmVcpuRun)) => todo!(), //RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(DestroyTvm)) => todo!(), //DestroyConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(_)) => todo!(), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(ProbeFeature)) => todo!(), //NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(SetupSharedMemory)) => todo!(), //NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(_)) => todo!(), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Base(ProbeExtension)) => todo!("Enable base probe extension"), //ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(TsmGetInfo)) => todo!("Enable tsm get info"), //GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(PromoteToTvm)) => todo!("Enable promote to vm"), //PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(TvmVcpuRun)) => todo!("Enable tvm to cpu run"), //RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(DestroyTvm)) => todo!("Enable destroy tvm"), //DestroyConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(_)) => todo!("Enable Covh"), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Nacl(ProbeFeature)) => todo!("Enable probe feature"), //NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Nacl(SetupSharedMemory)) => todo!("Enable setup shared memory"), //NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Nacl(_)) => todo!("Enable nacl"), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(_) => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            MachineEcall => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            MachineEcall => panic!("Machine ecall, is it normal (it might be)"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             trap_reason => panic!("Bug: Incorrect interrupt delegation configuration: {:?}", trap_reason),
         }
     }
@@ -122,7 +122,7 @@ impl<'a> NonConfidentialFlow<'a> {
     pub(crate) fn apply_and_exit_to_hypervisor(mut self, transformation: ApplyToHypervisorHart) -> ! {
         match transformation {
             ApplyToHypervisorHart::SbiResponse(v) => v.apply_to_hypervisor_hart(self.hypervisor_hart_mut()),
-            ApplyToHypervisorHart::OpenSbiResponse(v) => v.apply_to_hypervisor_hart(self.hypervisor_hart_mut()),
+            //ApplyToHypervisorHart::OpenSbiResponse(v) => v.apply_to_hypervisor_hart(self.hypervisor_hart_mut()),
             ApplyToHypervisorHart::SetSharedMemory(v) => v.apply_to_hypervisor_hart(self.hypervisor_hart_mut()),
         }
         unsafe { exit_to_hypervisor_asm() }

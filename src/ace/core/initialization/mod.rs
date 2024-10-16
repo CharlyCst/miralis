@@ -45,7 +45,7 @@ extern "C" fn init_security_monitor_asm(cold_boot: bool, flattened_device_tree_a
     if cold_boot {
         if let Err(error) = init_security_monitor(flattened_device_tree_address) {
             // TODO: lock access to attestation keys/seed/credentials.
-            debug!("Failed to initialize the security monitor: {:?}", error);
+            log::error!("Failed to initialize the security monitor: {:?}", error);
         }
     }
 }
@@ -163,7 +163,6 @@ fn initalize_security_monitor_state(
     // we need to decide what is the confidential memory address range and split this memory
     // into regions owned by heap allocator and page allocator.
     let confidential_memory_size = confidential_memory_start.offset_from(confidential_memory_end);
-    let confidential_memory_size = confidential_memory_start.offset_from(confidential_memory_end);
     assert!(confidential_memory_size > 0);
 
     let number_of_pages = confidential_memory_size as usize / PageSize::smallest().in_bytes();
@@ -241,7 +240,7 @@ extern "C" fn ace_setup_this_hart() {
     // owned by the hypervisor. The setup method enables the memory isolation. It is safe to call it because
     // the `MemoryLayout` has been already initialized by the boot hart.
     if let Err(error) = unsafe { HypervisorMemoryProtector::setup() } {
-        debug!("Failed to setup hypervisor memory protector: {:?}", error);
+        log::error!("Failed to setup hypervisor memory protector: {:?}", error);
         // TODO: block access to attestation keys/registers on this hart?
         return;
     }

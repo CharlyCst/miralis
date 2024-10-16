@@ -15,7 +15,7 @@ use crate::{ensure, ensure_not};
 
 pub struct ConfidentialVm {
     id: ConfidentialVmId,
-    measurements: StaticMeasurements,
+    _measurements: StaticMeasurements,
     confidential_harts: Vec<ConfidentialHart>,
     remote_commands: BTreeMap<usize, Mutex<Vec<ConfidentialHartRemoteCommand>>>,
     memory_protector: ConfidentialVmMemoryProtector,
@@ -51,7 +51,7 @@ impl ConfidentialVm {
             .collect();
         Self {
             id,
-            measurements,
+            _measurements: measurements,
             confidential_harts,
             memory_protector,
             remote_commands,

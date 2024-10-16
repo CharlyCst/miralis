@@ -57,9 +57,9 @@ impl VirtContext {
         Self::new(0, 0, ExtensionsCapability{
             has_h_extension: false,
             has_s_extension: false,
-            has_f_extension: false,
-            has_d_extension: false,
-            has_q_extension: false,
+            _has_f_extension: false,
+            _has_d_extension: false,
+            _has_q_extension: false,
         })
     }
 

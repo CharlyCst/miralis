@@ -321,9 +321,9 @@ impl Architecture for MetalArch {
             extensions: ExtensionsCapability {
                 has_h_extension: (misa as usize & misa::H) != 0,
                 has_s_extension: (misa as usize & misa::S) != 0,
-                has_f_extension: (misa as usize & misa::S) != 0,
-                has_d_extension: (misa as usize & misa::D) != 0,
-                has_q_extension: (misa as usize & misa::Q) != 0,
+                _has_f_extension: (misa as usize & misa::S) != 0,
+                _has_d_extension: (misa as usize & misa::D) != 0,
+                _has_q_extension: (misa as usize & misa::Q) != 0,
             },
         }
     }

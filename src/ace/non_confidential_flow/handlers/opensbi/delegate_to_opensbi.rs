@@ -1,9 +1,8 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
-use crate::ace::core::architecture::GeneralPurposeRegister;
 use crate::ace::core::control_data::HypervisorHart;
-use crate::ace::non_confidential_flow::{ApplyToHypervisorHart, NonConfidentialFlow};
+use crate::ace::non_confidential_flow::{NonConfidentialFlow};
 
 /*extern "C" {
     fn sbi_trap_handler(regs: *mut sbi_trap_regs) -> *mut sbi_trap_regs;
@@ -15,10 +14,10 @@ pub struct DelegateToOpensbi {
 }
 
 impl DelegateToOpensbi {
-    pub fn from_hypervisor_hart(hypervisor_hart: &HypervisorHart) -> Self {
+    pub fn from_hypervisor_hart(_hypervisor_hart: &HypervisorHart) -> Self {
         panic!("implement");
-        Self {
-            /*trap_regs: opensbi_sys::sbi_trap_regs {
+        /*Self {
+            trap_regs: opensbi_sys::sbi_trap_regs {
                 zero: 0,
                 ra: hypervisor_hart.gprs().read(GeneralPurposeRegister::ra).try_into().unwrap_or(0),
                 sp: hypervisor_hart.gprs().read(GeneralPurposeRegister::sp).try_into().unwrap_or(0),
@@ -55,11 +54,11 @@ impl DelegateToOpensbi {
                 mstatus: hypervisor_hart.csrs().mstatus.read_from_main_memory().try_into().unwrap_or(0),
                 // TODO: mstatusH exists only in rv32. Adjust this in case we want to support rv32
                 mstatusH: 0,
-            }*/
-        }
+            }
+        }*/
     }
 
-    pub fn handle(mut self, mut non_confidential_flow: NonConfidentialFlow) -> ! {
+    pub fn handle(/*mut*/ self, /*mut*/ _non_confidential_flow: NonConfidentialFlow) -> ! {
         // We must ensure that the swap is called twice, before and after executing the OpenSBI handler. Otherwise, we end
         // up having incorrect address in mscratch and the context switches to/from the security monitor will not work
         // anymore.
@@ -71,7 +70,7 @@ impl DelegateToOpensbi {
         panic!("implement");
     }
 
-    pub fn apply_to_hypervisor_hart(&self, hypervisor_hart: &mut HypervisorHart) {
+    pub fn apply_to_hypervisor_hart(&self, _hypervisor_hart: &mut HypervisorHart) {
         /*hypervisor_hart.gprs_mut().write(GeneralPurposeRegister::a0, self.trap_regs.a0.try_into().unwrap());
         hypervisor_hart.gprs_mut().write(GeneralPurposeRegister::a1, self.trap_regs.a1.try_into().unwrap());
         hypervisor_hart.csrs_mut().mstatus.save_value_in_main_memory(self.trap_regs.mstatus.try_into().unwrap());

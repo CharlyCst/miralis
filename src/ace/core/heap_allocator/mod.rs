@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::ace::core::memory_layout::ConfidentialMemoryAddress;
 use allocator::HeapAllocator;
-use crate::debug;
-
 mod allocator;
 
 /// global allocator allocates memory on the security monitor's heap.

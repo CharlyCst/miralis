@@ -14,10 +14,7 @@
     asm_const,
     // const_mut_ref for LinkedList implementation used in the heap allocator
     const_mut_refs,
-    pointer_is_aligned,
     pointer_is_aligned_to,
-    result_option_inspect,
-    pointer_byte_offsets,
     // used for formal verification framework (RefinedRust annotations)
     register_tool,
     custom_inner_attributes,
@@ -43,33 +40,22 @@ mod ace;
 mod device_tree;
 mod monitor_switch;
 
-use alloc::vec::Vec;
-use core::fmt::Pointer;
-use core::ptr;
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
-use flattened_device_tree::error::FdtError;
-use flattened_device_tree::FlattenedDeviceTree;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-use crate::arch::{misa, mstatus, Csr, ExtensionsCapability, HardwareCapability, Register};
+use crate::arch::{misa, mstatus, Csr, Register};
 use crate::host::MiralisContext;
 use crate::virt::traits::*;
-use crate::virt::{ExecutionMode, VirtContext, VirtCsr};
+use crate::virt::{ExecutionMode, VirtContext};
 
 use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
-use fdt_rs::prelude::{FallibleIterator, PropReader};
-use spin::{Mutex, Once};
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
 use crate::ace::core::architecture::CSR;
-use crate::ace::core::architecture::fence::fence_wo;
 use crate::ace::core::control_data::HardwareHart;
 use crate::ace::core::initialization::HARTS_STATES;
-use crate::ace::non_confidential_flow::apply_to_hypervisor::ApplyToHypervisorHart;
-use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::SbiResponse;
-use crate::ace::non_confidential_flow::NonConfidentialFlow;
 
 // Defined in the linker script
 #[cfg(not(feature = "userspace"))]
@@ -118,12 +104,15 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     // INIT ACE
     // Step 1: Break forward tree
-    divide_memory_region_size(device_tree_blob_addr);
+    match divide_memory_region_size(device_tree_blob_addr) {
+        Ok(_) => log::debug!("Splitted the device tree with success"),
+        Err(e) => log::error!("Failed to split the device tree {:?}", e),
+    }
 
     // Step 2: Initialise
     match ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8) {
         Ok(_) => log::info!("Initialized ACE security monitor."),
-        Err(e) => log::info!("Error occurred: {:?}", e),
+        Err(e) => log::error!("Error occurred: {:?}", e),
     }
     // END INIT ACE
 
@@ -189,7 +178,7 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisConte
     assert!(hart_id == 0, "Implement this code for multihart - don't forget the while !HARTS_STATES.is_completed");
 
     let mut harts = HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").lock();
-    let mut ace_ctx: &mut HardwareHart = harts.get_mut(hart_id).expect("Bug. Incorrectly setup memory region for harts states");
+    let ace_ctx: &mut HardwareHart = harts.get_mut(hart_id).expect("Bug. Incorrectly setup memory region for harts states");
 
     unsafe {
         HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").force_unlock();
@@ -206,9 +195,8 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisConte
 
     // TODO: Is it enough?
     // Step 2: Change mscratch value
-    unsafe {
-        CSR.mscratch.write(ace_ctx as *const _ as usize);
-    }
+    CSR.mscratch.write(ace_ctx as *const _ as usize);
+
 
     // Step 3: Change trap handler
     let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
