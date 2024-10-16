@@ -61,7 +61,7 @@ impl<'a> NonConfidentialFlow<'a> {
 
         log::error!("We reached this code, so it is a good sign, now the next step is to implement this part");
         log::warn!("Mcause : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mcause.read());
-        log::warn!("MTval : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mtval.read());
+        log::warn!("Mepc : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read());
 
         todo!("Make sure mcause is valid first");
 

@@ -54,10 +54,10 @@ use flattened_device_tree::FlattenedDeviceTree;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-use crate::arch::{misa, Csr, ExtensionsCapability, HardwareCapability, Register};
+use crate::arch::{misa, mstatus, Csr, ExtensionsCapability, HardwareCapability, Register};
 use crate::host::MiralisContext;
 use crate::virt::traits::*;
-use crate::virt::{ExecutionMode, VirtContext};
+use crate::virt::{ExecutionMode, VirtContext, VirtCsr};
 
 use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use fdt_rs::prelude::{FallibleIterator, PropReader};
@@ -186,11 +186,7 @@ extern "C" {
 fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
     // Step 0: Get ACE Context
     let hart_id = virt_ctx.hart_id;
-    assert!(hart_id == 0, "Implement this code for multihart");
-
-    while !HARTS_STATES.is_completed() {
-        fence_wo();
-    }
+    assert!(hart_id == 0, "Implement this code for multihart - don't forget the while !HARTS_STATES.is_completed");
 
     let mut harts = HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").lock();
     let mut ace_ctx: &mut HardwareHart = harts.get_mut(hart_id).expect("Bug. Incorrectly setup memory region for harts states");
@@ -306,11 +302,13 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             //log::warn!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
-            policy.switch_from_firmware_to_payload(ctx, mctx);
+            //policy.switch_from_firmware_to_payload(ctx, mctx);
             miralis_to_ace_ctx_switch(ctx, mctx, policy);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            //log::warn!("Execution mode: Payload -> Firmware {:?}", ctx.trap_info);
+            log::warn!("Execution mode: Payload -> Firmware {:?}", ctx.trap_info);
+            log::warn!("{:?}", ctx.trap_info);
+            Plat::exit_success();
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
         }
