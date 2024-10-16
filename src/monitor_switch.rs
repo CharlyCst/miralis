@@ -37,26 +37,26 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut Hardw
     ctx.csr.mscratch = hw.hypervisor_hart.hypervisor_hart_state.csrs.mscratch.read();
 
     // S mode registers
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sstatus = ReadWriteRiscvCsr(ctx.csr.sstatus);
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sie = ReadWriteRiscvCsr(ctx.csr.sie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.stvec = ReadWriteRiscvCsr(ctx.csr.stvec);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.scounteren = ReadWriteRiscvCsr(ctx.csr.scounteren);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.senvcfg = ReadWriteRiscvCsr(ctx.csr.senvcfg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.sscratch = ReadWriteRiscvCsr(ctx.csr.sscratch);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.sepc = ReadWriteRiscvCsr(ctx.csr.sepc);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.scause = ReadWriteRiscvCsr(ctx.csr.scause);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.stval = ReadWriteRiscvCsr(ctx.csr.stval);
-    // hw.hypervisor_hart.hypervisor_hart_state.csrs.sip = ReadWriteRiscvCsr(ctx.csr.sip);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.satp = ReadWriteRiscvCsr(ctx.csr.satp);
+    // ctx.csr.sstatus = hw.hypervisor_hart.hypervisor_hart_state.csrs.sstatus.read();
+    // ctx.csr.sie = hw.hypervisor_hart.hypervisor_hart_state.csrs.sie.read();
+    ctx.csr.stvec = hw.hypervisor_hart.hypervisor_hart_state.csrs.stvec.read();
+    ctx.csr.scounteren = hw.hypervisor_hart.hypervisor_hart_state.csrs.scounteren.read();
+    ctx.csr.senvcfg = hw.hypervisor_hart.hypervisor_hart_state.csrs.senvcfg.read();
+    ctx.csr.sscratch = hw.hypervisor_hart.hypervisor_hart_state.csrs.sscratch.read();
+    ctx.csr.sepc = hw.hypervisor_hart.hypervisor_hart_state.csrs.sepc.read();
+    ctx.csr.scause = hw.hypervisor_hart.hypervisor_hart_state.csrs.scause.read();
+    ctx.csr.stval = hw.hypervisor_hart.hypervisor_hart_state.csrs.stval.read();
+    // ctx.csr.sip= hw.hypervisor_hart.hypervisor_hart_state.csrs.sip.read();
+    ctx.csr.satp = hw.hypervisor_hart.hypervisor_hart_state.csrs.satp.read();
 
     // HS mode registers
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hstatus = ReadWriteRiscvCsr(ctx.csr.hstatus);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hedeleg = ReadWriteRiscvCsr(ctx.csr.hedeleg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hideleg = ReadWriteRiscvCsr(ctx.csr.hideleg);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hie = ReadWriteRiscvCsr(ctx.csr.hie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hcounteren = ReadWriteRiscvCsr(ctx.csr.hcounteren);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.hgeie = ReadWriteRiscvCsr(ctx.csr.hgeie);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.htval = ReadWriteRiscvCsr(ctx.csr.htval);
+    /*ctx.csr.hstatus = hw.hypervisor_hart.hypervisor_hart_state.csrs.hstatus.read();
+    ctx.csr.hedeleg = hw.hypervisor_hart.hypervisor_hart_state.csrs.hedeleg.read();
+    ctx.csr.hideleg = hw.hypervisor_hart.hypervisor_hart_state.csrs.hideleg.read();
+    ctx.csr.hie = hw.hypervisor_hart.hypervisor_hart_state.csrs.hie.read();
+    ctx.csr.hcounteren = hw.hypervisor_hart.hypervisor_hart_state.csrs.hcounteren.read();
+    ctx.csr.hgeie = hw.hypervisor_hart.hypervisor_hart_state.csrs.hgeie.read();
+    ctx.csr.htval = hw.hypervisor_hart.hypervisor_hart_state.csrs.htval.read();
     hw.hypervisor_hart.hypervisor_hart_state.csrs.hip = ReadWriteRiscvCsr(ctx.csr.hip);
     hw.hypervisor_hart.hypervisor_hart_state.csrs.hvip = ReadWriteRiscvCsr(ctx.csr.hvip);
     hw.hypervisor_hart.hypervisor_hart_state.csrs.htinst = ReadWriteRiscvCsr(ctx.csr.htinst);
@@ -77,7 +77,7 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut Hardw
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vsepc = ReadWriteRiscvCsr(ctx.csr.vsepc);
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vscause = ReadWriteRiscvCsr(ctx.csr.vscause);
     hw.hypervisor_hart.hypervisor_hart_state.csrs.vstval = ReadWriteRiscvCsr(ctx.csr.vstval);
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsatp = ReadWriteRiscvCsr(ctx.csr.vsatp);
+    hw.hypervisor_hart.hypervisor_hart_state.csrs.vsatp = ReadWriteRiscvCsr(ctx.csr.vsatp);*/
 }
 
 pub fn address_to_virt_context<'a>(addr: usize) -> &'a mut VirtContext {

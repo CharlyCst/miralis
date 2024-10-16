@@ -52,6 +52,7 @@ impl<'a> NonConfidentialFlow<'a> {
     /// * Pointer is a not null and points to a memory region owned by the physical hart executing this code.
     #[no_mangle]
     unsafe extern "C" fn route_trap_from_hypervisor_or_vm(hart_ptr: *mut HardwareHart) -> ! {
+        //log::info!("Back in the handler");
         // Below unsafe is ok because the lightweight context switch (assembly) guarantees that it provides us with a valid pointer to the
         // hardware hart's dump area in main memory. This area in main memory is exclusively owned by the physical hart executing this code.
         // Specifically, every physical hart has its own are in the main memory and its `mscratch` register stores the address. See the
@@ -63,21 +64,6 @@ impl<'a> NonConfidentialFlow<'a> {
         log::warn!("Mcause : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mcause.read());
         log::warn!("Mepc : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read());
 
-        todo!("Make sure mcause is valid first");
-
-        // Modification for Miralis
-        /*match TrapCause::from_hart_architectural_state(flow.hypervisor_hart().hypervisor_hart_state()) {
-            Interrupt => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            IllegalInstruction => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            LoadAddressMisaligned => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            LoadAccessFault => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            StoreAddressMisaligned => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            StoreAccessFault => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            HsEcall(_) => panic!("What should we do with that?"),
-            MachineEcall => ace_to_miralis_ctx_switch(flow.hardware_hart),
-            _ => {},
-        }*/
-
         // End Modification for Miralis
         match TrapCause::from_hart_architectural_state(flow.hypervisor_hart().hypervisor_hart_state()) {
             Interrupt => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
@@ -86,16 +72,16 @@ impl<'a> NonConfidentialFlow<'a> {
             LoadAccessFault => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAddressMisaligned => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAccessFault => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Base(ProbeExtension)) => ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(TsmGetInfo)) => GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(PromoteToTvm)) => PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(TvmVcpuRun)) => RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(DestroyTvm)) => DestroyConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(_)) => InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(ProbeFeature)) => NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(SetupSharedMemory)) => NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(_)) => InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(_) => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Base(ProbeExtension)) => todo!(), //ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(TsmGetInfo)) => todo!(), //GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(PromoteToTvm)) => todo!(), //PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(TvmVcpuRun)) => todo!(), //RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(DestroyTvm)) => todo!(), //DestroyConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(_)) => todo!(), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Nacl(ProbeFeature)) => todo!(), //NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Nacl(SetupSharedMemory)) => todo!(), //NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Nacl(_)) => todo!(), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(_) => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             MachineEcall => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             trap_reason => panic!("Bug: Incorrect interrupt delegation configuration: {:?}", trap_reason),
         }
