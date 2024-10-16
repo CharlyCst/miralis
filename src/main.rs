@@ -195,14 +195,10 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisConte
         HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").force_unlock();
     }
 
-
     // Step 1: Overwrite Hardware hart with virtcontext
     overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
     // Step 1-bis: Set mepc value to pc before jumping
     ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
-
-    //log::error!("Address of virtctx: {:x}", (virt_ctx as *const VirtContext) as usize);
-    //log::info!("{:x}", virt_ctx.pc);
 
     ace_ctx.ctx_ptr = (virt_ctx as *const VirtContext) as usize;
     ace_ctx.mctx_ptr = (mctx as *const MiralisContext) as usize;
@@ -228,22 +224,20 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisConte
 // TODO: Make 3 input variables global
 fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
 
-    // Step 0: Get miralis contexts0
-
-
-
+    // Step 0: Get miralis contexts
     let ctx: &mut VirtContext = address_to_virt_context(ace_ctx.ctx_ptr);
     let mctx: &mut MiralisContext = address_to_miralis_context(ace_ctx.mctx_ptr);
     let policy: &mut Policy = address_to_policy(ace_ctx.policy_ptr);
 
-    //log::error!("Address of virtctx: {:x}", (ctx as *const VirtContext) as usize);
-    //log::info!("{:x}", ctx.pc);
-
-    // Step 1: Overwrite Hardware hart with virtcontext
+    // Step 1: Fill virt context from hardware hart
     overwrite_virtctx_with_hardware_hart(ctx, ace_ctx);
-    // Step 1-bis: Set mepc value to pc before jumping
-    // TODO: Is it the correct register to set pc?
+    // Todo: restore the stack pointer register here
     ctx.pc = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
+    ctx.trap_info.mtval = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mtval.read();
+    ctx.trap_info.mepc = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
+    ctx.trap_info.mcause = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mcause.read();
+    ctx.trap_info.mip = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mip.read();
+    ctx.trap_info.mstatus = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mstatus.read();
 
     // Step 2: Change mscratch value
     // Normally here we should not do anything as miralis installs mepc in _run_vcpu
@@ -255,16 +249,13 @@ fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
     log::warn!("Payload -> Firmware {:?}", ctx.trap_info);
     handle_trap(ctx, mctx, policy);
 
-
     unsafe {
         Arch::run_vcpu(ctx);
     }
 
-    log::error!("Survived!");
-
     handle_trap(ctx, mctx, policy);
 
-    Plat::exit_success();
+    main_loop(ctx, mctx, policy);
 }
 
 
@@ -275,8 +266,6 @@ fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Poli
         unsafe {
             Arch::run_vcpu(ctx);
         }
-
-
 
         Benchmark::stop_interval_counters(Scope::RunVCPU);
         Benchmark::start_interval_counters(Scope::HandleTrap);
@@ -292,8 +281,6 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     if log::log_enabled!(log::Level::Trace) {
         log_ctx(ctx);
     }
-
-    log::error!("{:?}", ctx.trap_info);
 
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {
@@ -329,13 +316,11 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
-            log::warn!("Execution mode: Firmware -> Payload {:?}", ctx.trap_info);
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
             miralis_to_ace_ctx_switch(ctx, mctx, policy);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            log::warn!("Execution mode: Payload -> Firmware {:?}", ctx.trap_info);
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
         }

@@ -14,8 +14,8 @@ use crate::RunArgs;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
-const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
-// const QEMU: &str = "qemu-system-riscv64";
+// const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
+const QEMU: &str = "qemu-system-riscv64";
 const SPIKE: &str = "spike";
 
 #[rustfmt::skip]
@@ -95,13 +95,13 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("virt")
         .arg("-cpu")
         .arg("rv64")
-        /*.arg("-device")
+        .arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
             firmware.to_str().unwrap(),
             FIRMWARE_ADDR
-        ));*/
-       .arg("-kernel")
+        ));
+       /*.arg("-kernel")
         .arg("./artifacts/opensbi_cove")
         .arg("-append")
         .arg("console=ttyS0 ro root=/dev/vda")
@@ -113,7 +113,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("-device")
         .arg("virtio-net-device,netdev=net0")
         .arg("-device")
-        .arg("virtio-rng-pci");
+        .arg("virtio-rng-pci");*/
 
     // If a payload is defined in the config, try to load it at the specified address.
     if let Some(payload) = &cfg.target.payload {
