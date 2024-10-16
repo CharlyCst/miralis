@@ -53,6 +53,16 @@ pub struct VirtContext {
 }
 
 impl VirtContext {
+    pub const fn new_empty() -> VirtContext {
+        Self::new(0, 0, ExtensionsCapability{
+            has_h_extension: false,
+            has_s_extension: false,
+            _has_f_extension: false,
+            _has_d_extension: false,
+            _has_q_extension: false,
+        })
+    }
+
     pub const fn new(
         hart_id: usize,
         nb_pmp_registers_left: usize,
@@ -652,6 +662,10 @@ impl VirtContext {
 
     /// Handle the trap coming from the payload
     pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
+        log::warn!("Payload trap!!!");
+        log::warn!("{:?} {} {:x}", self.trap_info, self.get(Register::X16), self.get(Register::X17));
+
+
         let cause = self.trap_info.get_cause();
 
         // We only care about ecalls.
