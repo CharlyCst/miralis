@@ -16,3 +16,19 @@ enable = false
 
 [policy]
 name = "keystone"
+
+[target.miralis]
+profile = "dev"
+start_address = 0x80000000
+stack_size = 0x8000
+
+[target.firmware]
+name="opensbi-jump"
+profile = "dev"
+start_address = 0x80200000
+
+[target.payload]
+name = "./images/Image"
+profile = "dev"
+start_address = 0x80400000
+stack_size = 0x80000
