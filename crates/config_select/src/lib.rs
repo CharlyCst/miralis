@@ -16,7 +16,7 @@ use syn::{LitStr, Path, Token};
 /// ```
 #[proc_macro]
 pub fn select_env(tokens: TokenStream) -> TokenStream {
-    let select_macro: SelectMacro = syn::parse(tokens).expect("Failed to parse proc maco");
+    let select_macro: SelectMacro = syn::parse(tokens).expect("Failed to parse proc macro");
     let env = std::env::var(&select_macro.env_var).ok();
 
     // Search for an arm matching the value of the macro
@@ -40,7 +40,7 @@ pub fn select_env(tokens: TokenStream) -> TokenStream {
         // If no arm matches
         if let Some(env) = &env {
             panic!(
-                "Environement variable '{}' has value '{}' which doesn't match any case",
+                "Environment variable '{}' has value '{}' which doesn't match any case",
                 &select_macro.env_var, &env
             );
         } else {
