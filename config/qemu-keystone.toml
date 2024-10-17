@@ -9,10 +9,19 @@ max_pmp = 8
 
 [platform]
 nb_harts = 1
-boot_hart_id = 0
 
 [benchmark]
 enable = false
+
+[target.miralis]
+profile = "dev"
+start_address = 0x80000000
+stack_size = 0x8000
+
+[target.firmware]
+profile = "dev"
+start_address = 0x80200000
+stack_size = 0x8000
 
 [policy]
 name = "keystone"
