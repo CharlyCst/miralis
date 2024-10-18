@@ -72,7 +72,7 @@ impl<'a> NonConfidentialFlow<'a> {
             LoadAccessFault => todo!("Load access fault"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAddressMisaligned => todo!("Store Address Misaligned"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAccessFault => todo!("Implement Store AccessFault"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            //HsEcall(Base(ProbeExtension)) => todo!("Enable base probe extension"), //ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Base(ProbeExtension)) => ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(TsmGetInfo)) => todo!("Enable tsm get info"), //GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(PromoteToTvm)) => todo!("Enable promote to vm"), //PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(TvmVcpuRun)) => todo!("Enable tvm to cpu run"), //RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
