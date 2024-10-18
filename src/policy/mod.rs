@@ -10,6 +10,7 @@ use crate::virt::VirtContext;
 mod default;
 mod keystone;
 mod protect_payload;
+mod ace;
 
 pub type Policy = select_env!["MIRALIS_POLICY_NAME":
     "keystone" => keystone::KeystonePolicy

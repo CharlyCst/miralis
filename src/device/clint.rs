@@ -48,7 +48,7 @@ impl VirtClint {
     }
 
     pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
-        log::trace!("Read from CLINT at offset 0x{:x}", offset);
+        log::error!("Read from CLINT at offset 0x{:x}", offset);
         self.validate_offset(offset)?;
         let driver = self.driver.lock();
 
