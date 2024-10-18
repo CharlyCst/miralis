@@ -524,7 +524,6 @@ impl VirtContext {
         self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
-
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
@@ -565,6 +564,8 @@ impl VirtContext {
                 }
             }
         }
+
+
     }
 
     /// Handle the trap coming from the firmware
@@ -662,9 +663,6 @@ impl VirtContext {
 
     /// Handle the trap coming from the payload
     pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
-        log::warn!("Payload trap!!!");
-        log::warn!("{:?} {} {:x}", self.trap_info, self.get(Register::X16), self.get(Register::X17));
-
 
         let cause = self.trap_info.get_cause();
 

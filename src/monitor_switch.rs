@@ -32,7 +32,7 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut Hardw
     ctx.csr.mtinst = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtinst.read();
     ctx.csr.mtval = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval.read();
     ctx.csr.mtval2 = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval2.read();
-    ctx.csr.mtvec = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtvec.read();
+    // ctx.csr.mtvec = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtvec.read();
     ctx.csr.mscratch = hw.hypervisor_hart.hypervisor_hart_state.csrs.mscratch.read();
 
     // S mode registers

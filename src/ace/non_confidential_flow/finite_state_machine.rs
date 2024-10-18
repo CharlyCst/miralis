@@ -60,19 +60,19 @@ impl<'a> NonConfidentialFlow<'a> {
         let flow = unsafe { Self::create(hart_ptr.as_mut().expect(Self::CTX_SWITCH_ERROR_MSG)) };
 
 
-        log::error!("We reached this code, so it is a good sign, now the next step is to implement this part");
+        /*log::error!("We reached this code, so it is a good sign, now the next step is to implement this part");
         log::warn!("Mcause : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mcause.read());
-        log::warn!("Mepc : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read());
+        log::warn!("Mepc : 0x{:x}", flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read());*/
 
         // End Modification for Miralis
         match TrapCause::from_hart_architectural_state(flow.hypervisor_hart().hypervisor_hart_state()) {
-            Interrupt => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            IllegalInstruction => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            LoadAddressMisaligned => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            LoadAccessFault => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            StoreAddressMisaligned => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            StoreAccessFault => DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Base(ProbeExtension)) => todo!("Enable base probe extension"), //ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            Interrupt => todo!("Implement interrupt"), // DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            IllegalInstruction => todo!("Implement illegal instruction"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            LoadAddressMisaligned => todo!("Implement load address misaligned"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            LoadAccessFault => todo!("Load access fault"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            StoreAddressMisaligned => todo!("Store Address Misaligned"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            StoreAccessFault => todo!("Implement Store AccessFault"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            //HsEcall(Base(ProbeExtension)) => todo!("Enable base probe extension"), //ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(TsmGetInfo)) => todo!("Enable tsm get info"), //GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(PromoteToTvm)) => todo!("Enable promote to vm"), //PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(TvmVcpuRun)) => todo!("Enable tvm to cpu run"), //RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),

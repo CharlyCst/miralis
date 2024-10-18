@@ -46,7 +46,7 @@ use config::PLATFORM_NAME;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-use crate::arch::{misa, mstatus, Csr, Register};
+use crate::arch::{misa, mstatus, Csr, Register, parse_mpp_return_mode};
 use crate::host::MiralisContext;
 use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
@@ -202,6 +202,8 @@ fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisConte
     let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
     ace_ctx.hypervisor_hart_mut().csrs_mut().mtvec.write((trap_vector_address >> 2) << 2);
 
+    log::debug!("Firmware -> Payload");
+
     // Step 4: Jump to the payload - todo: Do we need to apply a response? It seems not to be the case
     unsafe {
         exit_to_hypervisor_asm();
@@ -227,14 +229,21 @@ fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
     ctx.trap_info.mip = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mip.read();
     ctx.trap_info.mstatus = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mstatus.read();
 
+    // restore correct trap handler
+
+
+    // Restoring the current mode
+    parse_mpp_return_mode(ctx.trap_info.mstatus);
+
     // Step 2: Change mscratch value
     // Normally here we should not do anything as miralis installs mepc in _run_vcpu
 
     // Step 3: Change trap handler - install Miralis trap handler
     Arch::install_handler(_raw_trap_handler as usize);
+    //ctx.csr.mtvec = _raw_trap_handler as usize;
 
     // Step 4: Jump in the Miralis trap handler - and enter the main loop
-    log::warn!("Payload -> Firmware {:?}", ctx.trap_info);
+    log::debug!("Payload -> Firmware {:?}", ctx.trap_info);
     handle_trap(ctx, mctx, policy);
 
     unsafe {
@@ -290,7 +299,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     ctx.nb_exits += 1;
     match exec_mode {
         ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx, policy),
-        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
+        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy)
     }
 
     if exec_mode == ExecutionMode::Firmware {
@@ -311,6 +320,10 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
+        }
+        (ExecutionMode::Payload, ExecutionMode::Payload) => {
+            // We want to jump from another trap handler again
+            panic!("We can have this");
         }
         _ => {} // No execution mode transition
     }
