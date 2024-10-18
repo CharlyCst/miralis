@@ -72,7 +72,7 @@ impl<'a> NonConfidentialFlow<'a> {
             LoadAccessFault => todo!("Load access fault"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAddressMisaligned => todo!("Store Address Misaligned"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAccessFault => todo!("Implement Store AccessFault"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Base(ProbeExtension)) => ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            // HsEcall(Base(ProbeExtension)) => ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(TsmGetInfo)) => todo!("Enable tsm get info"), //GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(PromoteToTvm)) => todo!("Enable promote to vm"), //PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Covh(TvmVcpuRun)) => todo!("Enable tvm to cpu run"), //RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
@@ -81,6 +81,7 @@ impl<'a> NonConfidentialFlow<'a> {
             HsEcall(Nacl(ProbeFeature)) => todo!("Enable probe feature"), //NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Nacl(SetupSharedMemory)) => todo!("Enable setup shared memory"), //NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Nacl(_)) => todo!("Enable nacl"), //InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            // TODO: Add handling of the other case
             HsEcall(_) => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             MachineEcall => panic!("Machine ecall, is it normal (it might be)"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             trap_reason => panic!("Bug: Incorrect interrupt delegation configuration: {:?}", trap_reason),
