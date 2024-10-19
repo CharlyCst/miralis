@@ -71,14 +71,30 @@ impl<'a> NonConfidentialFlow<'a> {
             StoreAddressMisaligned => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAccessFault => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             // HsEcall(Base(ProbeExtension)) => ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(TsmGetInfo)) => GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(PromoteToTvm)) => PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(TvmVcpuRun)) => RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(DestroyTvm)) => DestroyConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Covh(_)) => InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(ProbeFeature)) => NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(SetupSharedMemory)) => NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            HsEcall(Nacl(_)) => InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Covh(TsmGetInfo)) => {
+                GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Covh(PromoteToTvm)) => {
+                PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Covh(TvmVcpuRun)) => {
+                RunConfidentialHart::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Covh(DestroyTvm)) => {
+                DestroyConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Covh(_)) => {
+                InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Nacl(ProbeFeature)) => {
+                NaclProbeFeature::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Nacl(SetupSharedMemory)) => {
+                NaclSetupSharedMemory::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
+            HsEcall(Nacl(_)) => {
+                InvalidCall::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
+            }
             // TODO: Add handling of the other case
             HsEcall(_) => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             MachineEcall => panic!("Machine ecall, is it normal (it might be)"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),

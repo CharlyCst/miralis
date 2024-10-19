@@ -8,7 +8,7 @@ use core::mem;
 use pointers_utility::{ptr_align, ptr_byte_add_mut, ptr_byte_offset};
 
 use crate::ace::error::Error;
-use crate::{ensure};
+use crate::ensure;
 
 ///! TODO: This is a temporal allocator implementation that will be replaced in the future with a version that
 ///! is safer and prevents fragmentation.

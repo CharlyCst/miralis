@@ -53,7 +53,6 @@ pub struct VirtContext {
 }
 
 impl VirtContext {
-
     pub const fn new(
         hart_id: usize,
         nb_pmp_registers_left: usize,

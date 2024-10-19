@@ -67,24 +67,24 @@ fn read_memory(address: usize) -> u64 {
 
 #[cfg(feature = "verbose")]
 macro_rules! _debug {
-	($($args:tt)+) => ({
-		use core::fmt::Write;
-		if let Err(_) = write!(crate::debug::Console::new(), $($args)+) {
+    ($($args:tt)+) => ({
+        use core::fmt::Write;
+        if let Err(_) = write!(crate::debug::Console::new(), $($args)+) {
             // we can safely ignore
         }
-	});
+    });
 }
 
 #[cfg(feature = "verbose")]
 macro_rules! debug {
-	() => ({
+    () => ({
         _debug!("\r\n")
     });
-	($fmt:expr) => ({
-		_debug!(concat!("#ACE: ", $fmt, "\r\n"))
+    ($fmt:expr) => ({
+        _debug!(concat!("#ACE: ", $fmt, "\r\n"))
     });
-	($fmt:expr, $($args:tt)+) => ({
-		_debug!(concat!("#ACE: ", $fmt, "\r\n"), $($args)+)
+    ($fmt:expr, $($args:tt)+) => ({
+        _debug!(concat!("#ACE: ", $fmt, "\r\n"), $($args)+)
     });
 }*/
 

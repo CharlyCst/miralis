@@ -14,7 +14,7 @@
     stmt_expr_attributes,
     asm_const,
     const_mut_refs,
-    raw_ref_op,
+    raw_ref_op
 )]
 
 extern crate alloc;
@@ -42,7 +42,6 @@ use config::PLATFORM_NAME;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-
 // Defined in the linker script
 #[cfg(not(feature = "userspace"))]
 extern "C" {
@@ -67,9 +66,13 @@ mod userspace_linker_definitions {
 
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
+
 use crate::arch::{misa, Csr, Register};
 use crate::host::MiralisContext;
-use crate::virt::{ExecutionMode, HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter, VirtContext};
+use crate::virt::{
+    ExecutionMode, HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter,
+    VirtContext,
+};
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
@@ -340,7 +343,7 @@ mod tests {
     fn handle_trap_state() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut policy = Policy::init();
+        let mut policy = Policy::init(0x0);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         // Firmware is running
