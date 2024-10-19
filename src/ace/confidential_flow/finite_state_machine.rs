@@ -430,10 +430,11 @@ impl<'a> ConfidentialFlow<'a> {
         self.hardware_hart.confidential_hart_mut()
     }
 
+    #[allow(elided_named_lifetimes)]
     fn confidential_hart(&'a self) -> &ConfidentialHart {
         self.hardware_hart.confidential_hart()
     }
-
+    #[allow(elided_named_lifetimes)]
     fn hypervisor_hart(&'a self) -> &HypervisorHart {
         &self.hardware_hart.hypervisor_hart()
     }

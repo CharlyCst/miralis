@@ -17,6 +17,7 @@ pub(super) fn init_heap(start_address: ConfidentialMemoryAddress, heap_size: usi
         start_address.as_usize() + heap_size
     );
     unsafe {
+        #[allow(static_mut_refs)]
         HEAP_ALLOCATOR
             .lock()
             .add_free_memory_region(start_address.into_mut_ptr(), heap_size);
