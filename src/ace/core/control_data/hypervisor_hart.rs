@@ -5,7 +5,8 @@ use crate::ace::core::architecture::riscv::sbi::NaclSharedMemory;
 use crate::ace::core::architecture::riscv::specification::SR_FS;
 use crate::ace::core::architecture::specification::SR_FS_DIRTY;
 use crate::ace::core::architecture::{
-    ControlStatusRegisters, GeneralPurposeRegisters, HardwareExtension, HartArchitecturalState, SupervisorTimerExtension,
+    ControlStatusRegisters, GeneralPurposeRegisters, HardwareExtension, HartArchitecturalState,
+    SupervisorTimerExtension,
 };
 use crate::ace::core::hardware_setup::HardwareSetup;
 use crate::ace::core::memory_layout::NonConfidentialMemoryAddress;
@@ -63,11 +64,18 @@ impl HypervisorHart {
         if HardwareSetup::is_extension_supported(HardwareExtension::FloatingPointExtension) {
             self.csrs().mstatus.read_and_set_bits(SR_FS);
             // below unsafe is ok because we checked that FPU hardware is available and we enabled it in mstatus.
-            unsafe { self.hypervisor_hart_state.fprs_mut().restore_from_main_memory() };
+            unsafe {
+                self.hypervisor_hart_state
+                    .fprs_mut()
+                    .restore_from_main_memory()
+            };
         }
     }
 
-    pub fn set_shared_memory(&mut self, base_address: NonConfidentialMemoryAddress) -> Result<(), Error> {
+    pub fn set_shared_memory(
+        &mut self,
+        base_address: NonConfidentialMemoryAddress,
+    ) -> Result<(), Error> {
         self.shared_memory.set(base_address)
     }
 

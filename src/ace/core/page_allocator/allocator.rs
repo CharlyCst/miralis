@@ -1,13 +1,15 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
+use alloc::vec;
+use alloc::vec::Vec;
+
+use spin::{Once, RwLock, RwLockWriteGuard};
+
 use super::page::{Page, UnAllocated};
 use crate::ace::core::architecture::PageSize;
 use crate::ace::core::memory_layout::{ConfidentialMemoryAddress, MemoryLayout};
 use crate::ace::error::Error;
-use alloc::vec;
-use alloc::vec::Vec;
-use spin::{Once, RwLock, RwLockWriteGuard};
 use crate::{debug, ensure, ensure_not};
 
 /// A static global structure containing unallocated pages. Once<> guarantees that the PageAllocator can only be initialized once.
@@ -26,7 +28,6 @@ pub struct PageAllocator {
     root: PageStorageTreeNode,
 }
 
-
 impl PageAllocator {
     const NOT_INITIALIZED: &'static str = "Bug. Page allocator not initialized.";
 
@@ -41,7 +42,10 @@ impl PageAllocator {
     ///
     /// Caller must pass the ownership of the memory region [memory_start, memory_end).
 
-    pub unsafe fn initialize(memory_start: ConfidentialMemoryAddress, memory_end: *const usize) -> Result<(), Error> {
+    pub unsafe fn initialize(
+        memory_start: ConfidentialMemoryAddress,
+        memory_end: *const usize,
+    ) -> Result<(), Error> {
         ensure_not!(PAGE_ALLOCATOR.is_completed(), Error::Reinitialization())?;
         let mut page_allocator = Self::empty();
         page_allocator.add_memory_region(memory_start, memory_end)?;
@@ -54,18 +58,31 @@ impl PageAllocator {
     /// Postcondition: an initialized memory allocator is returned
 
     fn empty() -> Self {
-        Self { root: PageStorageTreeNode::empty(), base_address: 0, page_size: PageSize::largest() }
+        Self {
+            root: PageStorageTreeNode::empty(),
+            base_address: 0,
+            page_size: PageSize::largest(),
+        }
     }
 
     unsafe fn add_memory_region(
-        &mut self, memory_region_start: ConfidentialMemoryAddress, memory_region_end: *const usize,
+        &mut self,
+        memory_region_start: ConfidentialMemoryAddress,
+        memory_region_end: *const usize,
     ) -> Result<(), Error> {
-        log::info!("Memory tracker: adding memory region: 0x{:x} - 0x{:x}", memory_region_start.as_usize(), memory_region_end as usize);
+        log::info!(
+            "Memory tracker: adding memory region: 0x{:x} - 0x{:x}",
+            memory_region_start.as_usize(),
+            memory_region_end as usize
+        );
         assert!(memory_region_start.is_aligned_to(PageSize::smallest().in_bytes()));
         assert!(memory_region_end.is_aligned_to(PageSize::smallest().in_bytes()));
         assert!(memory_region_start.as_usize() < memory_region_end as usize);
         // Page allocator supports maximum one page of largest size.
-        ensure_not!(memory_region_start.offset_from(memory_region_end) > self.page_size.in_bytes() as isize, Error::TooMuchMemory())?;
+        ensure_not!(
+            memory_region_start.offset_from(memory_region_end) > self.page_size.in_bytes() as isize,
+            Error::TooMuchMemory()
+        )?;
 
         // Our strategy is to create as few page tokens as possible to keep the memory overhead as low as possible. Therefore, we prefer to
         // create page tokens for the largest page size when possible. We use a greedy approach. We look for the largest possible page that
@@ -94,28 +111,48 @@ impl PageAllocator {
         //  ^1 GiB                   ^2 MiB                   ^2 MiB                   ^2 MiB      ^memory_region_end
 
         // According to the RISC-V spec, pages must be aligned to their size.
-        let is_address_page_aligned =
-            |address: &ConfidentialMemoryAddress, page_size: &PageSize| address.is_aligned_to(page_size.in_bytes());
+        let is_address_page_aligned = |address: &ConfidentialMemoryAddress,
+                                       page_size: &PageSize| {
+            address.is_aligned_to(page_size.in_bytes())
+        };
 
         // Page can be created only if all bytes are belonging to the given memory region
         let can_create_page = |address: &ConfidentialMemoryAddress, page_size: &PageSize| {
             let page_last_address = page_size.in_bytes() - 1;
-            memory_layout.confidential_address_at_offset_bounded(&address, page_last_address, memory_region_end).is_ok()
+            memory_layout
+                .confidential_address_at_offset_bounded(
+                    &address,
+                    page_last_address,
+                    memory_region_end,
+                )
+                .is_ok()
         };
 
         while let Some(address) = memory_address.take() {
             // Let's find the largest possible size of a page that could align to this address.
-            while let Some(larger_size) = page_size.larger().filter(|larger_size| is_address_page_aligned(&address, &larger_size)) {
+            while let Some(larger_size) = page_size
+                .larger()
+                .filter(|larger_size| is_address_page_aligned(&address, &larger_size))
+            {
                 page_size = larger_size;
             }
             // Now let's find the largest size of a page that really fits in the given memory region. We do not have to check the alignment,
             // because the larger pages sizes are multiplies of the smaller page sizes.
-            while let Some(smaller_size) = page_size.smaller().filter(|smaller_size| !can_create_page(&address, &smaller_size)) {
+            while let Some(smaller_size) = page_size
+                .smaller()
+                .filter(|smaller_size| !can_create_page(&address, &smaller_size))
+            {
                 page_size = smaller_size;
             }
             // The following line ensures that the while loop will complete because, regardless of whether we manage to create a page token
             // or not, we will increment the `memory_address` in each loop so that it eventually passes the end of the given memory region.
-            memory_address = memory_layout.confidential_address_at_offset_bounded(&address, page_size.in_bytes(), memory_region_end).ok();
+            memory_address = memory_layout
+                .confidential_address_at_offset_bounded(
+                    &address,
+                    page_size.in_bytes(),
+                    memory_region_end,
+                )
+                .ok();
             // If the next memory address (`memory_address`) is still in the memory range, then we are sure we can create the page token.
             // Otherwise, we must check the boundary condition: Are we creating the last page token over a memory whose last byte
             // (`address`+`page_size.in_bytes()`) is next to the end of the memory region (`memory_region_end`)?
@@ -123,7 +160,8 @@ impl PageAllocator {
                 let new_page_token = Page::<UnAllocated>::init(address, page_size.clone());
                 // NOTE We show that the page token is within the range of
                 // the allocator
-                self.root.store_page_token(self.base_address, self.page_size, new_page_token);
+                self.root
+                    .store_page_token(self.base_address, self.page_size, new_page_token);
             }
         }
         Ok(())
@@ -137,7 +175,11 @@ impl PageAllocator {
         Self::try_write(|page_allocator| {
             let base_address = page_allocator.base_address;
             let page_size = page_allocator.page_size;
-            Ok(page_allocator.root.acquire_page_token(base_address, page_size, page_size_to_allocate))
+            Ok(page_allocator.root.acquire_page_token(
+                base_address,
+                page_size,
+                page_size_to_allocate,
+            ))
         })?
     }
 
@@ -149,16 +191,22 @@ impl PageAllocator {
             let page_size = page_allocator.page_size;
             released_pages.into_iter().for_each(|page_token| {
                 // NOTE: we show that the token is within range of the allocator.
-                page_allocator.root.store_page_token(base_address, page_size, page_token);
+                page_allocator
+                    .root
+                    .store_page_token(base_address, page_size, page_token);
             });
             Ok(())
         })
-        .inspect_err(|_| debug!("Memory leak: failed to store released pages in the page allocator"));
+        .inspect_err(|_| {
+            debug!("Memory leak: failed to store released pages in the page allocator")
+        });
     }
 
     /// returns a mutable reference to the PageAllocator after obtaining a lock on the mutex
     fn try_write<F, O>(op: O) -> Result<F, Error>
-    where O: FnOnce(&mut RwLockWriteGuard<'static, PageAllocator>) -> Result<F, Error> {
+    where
+        O: FnOnce(&mut RwLockWriteGuard<'static, PageAllocator>) -> Result<F, Error>,
+    {
         op(&mut PAGE_ALLOCATOR.get().expect(Self::NOT_INITIALIZED).write())
     }
 }
@@ -188,7 +236,11 @@ impl PageStorageTreeNode {
     /// We can choose an arbitrary node size and base address.
     /// Precondition: the base address needs to be suitably aligned.
     pub fn empty() -> Self {
-        Self { page_token: None, max_allocable_page_size: None, children: vec![] }
+        Self {
+            page_token: None,
+            max_allocable_page_size: None,
+            children: vec![],
+        }
     }
 
     /// Recursively traverses the tree until it reaches the node that can store the given page token. Returns the largest size of a page
@@ -196,7 +248,10 @@ impl PageStorageTreeNode {
     /// PageSize variants. This method has an upper bounded computation complexity.
     ///
     pub fn store_page_token(
-        &mut self, this_node_base_address: usize, this_node_page_size: PageSize, page_token: Page<UnAllocated>,
+        &mut self,
+        this_node_base_address: usize,
+        this_node_page_size: PageSize,
+        page_token: Page<UnAllocated>,
     ) -> PageSize {
         assert!(this_node_page_size >= *page_token.size());
         if &this_node_page_size == page_token.size() {
@@ -210,10 +265,19 @@ impl PageStorageTreeNode {
             self.initialize_children_if_needed(this_node_page_size);
 
             // Calculate which child should we invoke recursively.
-            let index = self.calculate_child_index(this_node_base_address, this_node_page_size, &page_token);
+            let index = self.calculate_child_index(
+                this_node_base_address,
+                this_node_page_size,
+                &page_token,
+            );
             // Let's go recursively to the node where this page belongs to.
-            let (child_base_address, child_page_size) = self.child_address_and_size(this_node_base_address, this_node_page_size, index);
-            let allocable_page_size = self.children[index].store_page_token(child_base_address, child_page_size, page_token);
+            let (child_base_address, child_page_size) =
+                self.child_address_and_size(this_node_base_address, this_node_page_size, index);
+            let allocable_page_size = self.children[index].store_page_token(
+                child_base_address,
+                child_page_size,
+                page_token,
+            );
             // We are coming back from the recursion.
             self.try_to_merge_page_tokens(this_node_page_size);
             if Some(allocable_page_size) > self.max_allocable_page_size {
@@ -231,9 +295,15 @@ impl PageStorageTreeNode {
     ///
     /// Invariants: requested page size to acquire must not be greater than a page size allocable at this node.
     pub fn acquire_page_token(
-        &mut self, this_node_base_address: usize, this_node_page_size: PageSize, page_size_to_acquire: PageSize,
+        &mut self,
+        this_node_base_address: usize,
+        this_node_page_size: PageSize,
+        page_size_to_acquire: PageSize,
     ) -> Result<Page<UnAllocated>, Error> {
-        ensure!(self.max_allocable_page_size >= Some(page_size_to_acquire), Error::OutOfPages())?;
+        ensure!(
+            self.max_allocable_page_size >= Some(page_size_to_acquire),
+            Error::OutOfPages()
+        )?;
         if &this_node_page_size == &page_size_to_acquire {
             // End of recursion, we found the node from which we acquire a page token.
             assert!(self.page_token.is_some());
@@ -260,12 +330,20 @@ impl PageStorageTreeNode {
                 .iter()
                 .position(|node| node.max_allocable_page_size >= Some(page_size_to_acquire))
                 .ok_or(Error::OutOfPages())?;
-            let (child_base_address, child_page_size) = self.child_address_and_size(this_node_base_address, this_node_page_size, index);
+            let (child_base_address, child_page_size) =
+                self.child_address_and_size(this_node_base_address, this_node_page_size, index);
             // Invoke recursively this function to traverse to a node containing a page token of the requested size.
             // The below unwrap is ok because we found an index of a node that has requested allocation.
-            let page_token = self.children[index].acquire_page_token(child_base_address, child_page_size, page_size_to_acquire).unwrap();
+            let page_token = self.children[index]
+                .acquire_page_token(child_base_address, child_page_size, page_size_to_acquire)
+                .unwrap();
             // Let's refresh information about the largest allocable page size available in children.
-            self.max_allocable_page_size = self.children.iter().map(|child| child.max_allocable_page_size).max().flatten();
+            self.max_allocable_page_size = self
+                .children
+                .iter()
+                .map(|child| child.max_allocable_page_size)
+                .max()
+                .flatten();
             Ok(page_token)
         }
     }
@@ -274,7 +352,9 @@ impl PageStorageTreeNode {
     /// created lazily with this function.
     fn initialize_children_if_needed(&mut self, this_node_page_size: PageSize) {
         if self.children.is_empty() {
-            self.children = (0..this_node_page_size.number_of_smaller_pages()).map(|_| Self::empty()).collect();
+            self.children = (0..this_node_page_size.number_of_smaller_pages())
+                .map(|_| Self::empty())
+                .collect();
         }
     }
 
@@ -299,7 +379,11 @@ impl PageStorageTreeNode {
         let mut smaller_pages = self.page_token.take().unwrap().divide();
         assert!(smaller_pages.len() == self.children.len());
         smaller_pages.drain(..).for_each(|smaller_page_token| {
-            let index = self.calculate_child_index(this_node_base_address, this_node_page_size, &smaller_page_token);
+            let index = self.calculate_child_index(
+                this_node_base_address,
+                this_node_page_size,
+                &smaller_page_token,
+            );
             self.children[index].store_page_token_in_this_node(smaller_page_token);
         });
         let smaller_size = self.max_allocable_page_size.unwrap().smaller().unwrap();
@@ -310,8 +394,14 @@ impl PageStorageTreeNode {
     fn try_to_merge_page_tokens(&mut self, this_node_page_size: PageSize) {
         if self.children.iter().all(|child| child.page_token.is_some()) {
             // All children have page tokens, thus we can merge them.
-            let pages_to_merge = self.children.iter_mut().map(|child| child.acquire_page_token_from_this_node()).collect();
-            self.store_page_token_in_this_node(unsafe { Page::merge(pages_to_merge, this_node_page_size) });
+            let pages_to_merge = self
+                .children
+                .iter_mut()
+                .map(|child| child.acquire_page_token_from_this_node())
+                .collect();
+            self.store_page_token_in_this_node(unsafe {
+                Page::merge(pages_to_merge, this_node_page_size)
+            });
             self.max_allocable_page_size = Some(this_node_page_size);
         }
     }
@@ -319,18 +409,30 @@ impl PageStorageTreeNode {
     /// Returns the index of a child that can store the page token.
     // TODO: the token is in the range of the child node.
     // TODO: does not work at this level of abstraction. Use a raw specification.
-    fn calculate_child_index(&self, this_node_base_address: usize, this_node_page_size: PageSize, page_token: &Page<UnAllocated>) -> usize {
+    fn calculate_child_index(
+        &self,
+        this_node_base_address: usize,
+        this_node_page_size: PageSize,
+        page_token: &Page<UnAllocated>,
+    ) -> usize {
         assert!(this_node_page_size > *page_token.size());
-        let index = (page_token.start_address() - this_node_base_address) / this_node_page_size.smaller().unwrap().in_bytes();
+        let index = (page_token.start_address() - this_node_base_address)
+            / this_node_page_size.smaller().unwrap().in_bytes();
         assert!(index < self.children.len());
         index
     }
 
     /// Returns the base address and the page size of the child at the given index
-    fn child_address_and_size(&self, this_node_base_address: usize, this_node_page_size: PageSize, index: usize) -> (usize, PageSize) {
+    fn child_address_and_size(
+        &self,
+        this_node_base_address: usize,
+        this_node_page_size: PageSize,
+        index: usize,
+    ) -> (usize, PageSize) {
         assert!(index < self.children.len());
         assert!(this_node_page_size.smaller().is_some());
-        let child_base_address = this_node_base_address + index * this_node_page_size.smaller().unwrap().in_bytes();
+        let child_base_address =
+            this_node_base_address + index * this_node_page_size.smaller().unwrap().in_bytes();
         let child_page_size = this_node_page_size.smaller().unwrap();
         (child_base_address, child_page_size)
     }

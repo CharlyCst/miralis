@@ -25,6 +25,10 @@ impl HardwareExtension {
     }
 
     pub fn all() -> [HardwareExtension; 3] {
-        [Self::FloatingPointExtension, Self::VectorExtension, Self::SupervisorTimerExtension]
+        [
+            Self::FloatingPointExtension,
+            Self::VectorExtension,
+            Self::SupervisorTimerExtension,
+        ]
     }
 }

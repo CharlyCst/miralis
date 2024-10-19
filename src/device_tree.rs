@@ -30,18 +30,18 @@ fn write_unaligned_u64(ptr: *mut u8, value: u64) {
     }
 }
 
-
-pub fn divide_memory_region_size(device_tree_blob_addr:usize) -> Result<(), FdtError> {
+pub fn divide_memory_region_size(device_tree_blob_addr: usize) -> Result<(), FdtError> {
     let fdt: FlattenedDeviceTree;
-    unsafe {
-        fdt = FlattenedDeviceTree::from_raw_pointer(device_tree_blob_addr as *const u8)?
-    }
+    unsafe { fdt = FlattenedDeviceTree::from_raw_pointer(device_tree_blob_addr as *const u8)? }
 
-    let mem_prop = fdt.inner.props()
+    let mem_prop = fdt
+        .inner
+        .props()
         .find(|p| Ok(p.name()? == "device_type" && p.str()? == "memory"))?
         .ok_or_else(|| FdtError::NoMemoryNode())?;
 
-    let reg_prop = mem_prop.node()
+    let reg_prop = mem_prop
+        .node()
         .props()
         .find(|p| Ok(p.name().unwrap_or("empty") == "reg"))?
         .ok_or_else(|| FdtError::NoMemoryNode())?;

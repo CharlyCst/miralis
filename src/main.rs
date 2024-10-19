@@ -23,39 +23,38 @@
 
 extern crate alloc;
 
+mod ace;
 mod arch;
 mod benchmark;
 mod config;
 mod debug;
 mod decoder;
 mod device;
+mod device_tree;
 mod driver;
 mod host;
 mod logger;
+mod monitor_switch;
 mod platform;
 mod policy;
 mod utils;
 mod virt;
-mod ace;
-mod device_tree;
-mod monitor_switch;
 
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
+use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-use crate::arch::{misa, mstatus, Csr, Register, parse_mpp_return_mode};
-use crate::host::MiralisContext;
-use crate::virt::traits::*;
-use crate::virt::{ExecutionMode, VirtContext};
-
-use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
 use crate::ace::core::architecture::CSR;
 use crate::ace::core::control_data::HardwareHart;
 use crate::ace::core::initialization::HARTS_STATES;
+use crate::arch::{misa, mstatus, parse_mpp_return_mode, Csr, Register};
+use crate::host::MiralisContext;
+use crate::virt::traits::*;
+use crate::virt::{ExecutionMode, VirtContext};
 
 // Defined in the linker script
 #[cfg(not(feature = "userspace"))]
@@ -82,7 +81,10 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 use crate::device_tree::divide_memory_region_size;
-use crate::monitor_switch::{address_to_miralis_context, address_to_policy, address_to_virt_context, overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart};
+use crate::monitor_switch::{
+    address_to_miralis_context, address_to_policy, address_to_virt_context,
+    overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart,
+};
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
@@ -102,25 +104,11 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
     log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
-    // INIT ACE
-    // Step 1: Break forward tree
-    match divide_memory_region_size(device_tree_blob_addr) {
-        Ok(_) => log::debug!("Splitted the device tree with success"),
-        Err(e) => log::error!("Failed to split the device tree {:?}", e),
-    }
-
-    // Step 2: Initialise
-    match ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8) {
-        Ok(_) => log::info!("Initialized ACE security monitor."),
-        Err(e) => log::error!("Error occurred: {:?}", e),
-    }
-    // END INIT ACE
-
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
-    let mut policy: Policy = Policy::init();
+    let mut policy: Policy = Policy::init(device_tree_blob_addr);
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
@@ -157,104 +145,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     main_loop(&mut ctx, &mut mctx, &mut policy);
 }
-
-extern "C" {
-    // Assembly function that is an entry point to the security monitor from the hypervisor or a virtual machine.
-    fn enter_from_hypervisor_or_vm_asm() -> !;
-
-    /// To ensure safety, specify all possible valid states that KVM expects to see and prove that security monitor
-    /// never returns to KVM with other state. For example, only a subset of exceptions/interrupts can be handled by KVM.
-    /// KVM kill the vcpu if it receives unexpected exception because it does not know what to do with it.
-    fn exit_to_hypervisor_asm() -> !;
-
-    // Miralis raw trap handler
-    fn _raw_trap_handler();
-}
-
-/// This functions transfers the control to the ACE security monitor from Miralis
-fn miralis_to_ace_ctx_switch(virt_ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
-    // Step 0: Get ACE Context
-    let hart_id = virt_ctx.hart_id;
-    assert!(hart_id == 0, "Implement this code for multihart - don't forget the while !HARTS_STATES.is_completed");
-
-    let mut harts = HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").lock();
-    let ace_ctx: &mut HardwareHart = harts.get_mut(hart_id).expect("Bug. Incorrectly setup memory region for harts states");
-
-    unsafe {
-        HARTS_STATES.get().expect("Bug. Could not set mscratch before initializing memory region for harts states").force_unlock();
-    }
-
-    // Step 1: Overwrite Hardware hart with virtcontext
-    overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
-    // Step 1-bis: Set mepc value to pc before jumping
-    ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
-
-    ace_ctx.ctx_ptr = (virt_ctx as *const VirtContext) as usize;
-    ace_ctx.mctx_ptr = (mctx as *const MiralisContext) as usize;
-    ace_ctx.policy_ptr = (policy as *const Policy) as usize;
-
-    // TODO: Is it enough?
-    // Step 2: Change mscratch value
-    CSR.mscratch.write(ace_ctx as *const _ as usize);
-
-
-    // Step 3: Change trap handler
-    let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
-    ace_ctx.hypervisor_hart_mut().csrs_mut().mtvec.write((trap_vector_address >> 2) << 2);
-
-    log::debug!("Firmware -> Payload");
-
-    // Step 4: Jump to the payload - todo: Do we need to apply a response? It seems not to be the case
-    unsafe {
-        exit_to_hypervisor_asm();
-    }
-}
-
-
-// TODO: Make 3 input variables global
-fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
-
-    // Step 0: Get miralis contexts
-    let ctx: &mut VirtContext = address_to_virt_context(ace_ctx.ctx_ptr);
-    let mctx: &mut MiralisContext = address_to_miralis_context(ace_ctx.mctx_ptr);
-    let policy: &mut Policy = address_to_policy(ace_ctx.policy_ptr);
-
-    // Step 1: Fill virt context from hardware hart
-    overwrite_virtctx_with_hardware_hart(ctx, ace_ctx);
-    // Todo: restore the stack pointer register here
-    ctx.pc = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
-    ctx.trap_info.mtval = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mtval.read();
-    ctx.trap_info.mepc = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
-    ctx.trap_info.mcause = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mcause.read();
-    ctx.trap_info.mip = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mip.read();
-    ctx.trap_info.mstatus = ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mstatus.read();
-
-    // restore correct trap handler
-
-
-    // Restoring the current mode
-    parse_mpp_return_mode(ctx.trap_info.mstatus);
-
-    // Step 2: Change mscratch value
-    // Normally here we should not do anything as miralis installs mepc in _run_vcpu
-
-    // Step 3: Change trap handler - install Miralis trap handler
-    Arch::install_handler(_raw_trap_handler as usize);
-    //ctx.csr.mtvec = _raw_trap_handler as usize;
-
-    // Step 4: Jump in the Miralis trap handler - and enter the main loop
-    log::debug!("Payload -> Firmware {:?}", ctx.trap_info);
-    handle_trap(ctx, mctx, policy);
-
-    unsafe {
-        Arch::run_vcpu(ctx);
-    }
-
-    handle_trap(ctx, mctx, policy);
-
-    main_loop(ctx, mctx, policy);
-}
-
 
 fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) -> ! {
     loop {
@@ -299,7 +189,7 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     ctx.nb_exits += 1;
     match exec_mode {
         ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx, policy),
-        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy)
+        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
     }
 
     if exec_mode == ExecutionMode::Firmware {
@@ -315,15 +205,10 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
-            miralis_to_ace_ctx_switch(ctx, mctx, policy);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
-        }
-        (ExecutionMode::Payload, ExecutionMode::Payload) => {
-            // We want to jump from another trap handler again
-            panic!("We can have this");
         }
         _ => {} // No execution mode transition
     }

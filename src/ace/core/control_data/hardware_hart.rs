@@ -42,7 +42,11 @@ pub struct HardwareHart {
 impl HardwareHart {
     /// Creates the instance of a state associated with the physical hart. Id is the unique physical hart identifier used to by hardware
     /// during inter process interrupts (IPIs), e.g., on RISC-V this will be a number reported by mhartid.
-    pub fn init(id: usize, stack: Page<UnAllocated>, hypervisor_memory_protector: HypervisorMemoryProtector) -> Self {
+    pub fn init(
+        id: usize,
+        stack: Page<UnAllocated>,
+        hypervisor_memory_protector: HypervisorMemoryProtector,
+    ) -> Self {
         Self {
             hypervisor_hart: HypervisorHart::new(hypervisor_memory_protector),
             confidential_hart: ConfidentialHart::dummy(id),

@@ -11,7 +11,10 @@ pub struct MmioLoadPending {
 
 impl MmioLoadPending {
     pub fn new(instruction_length: usize, gpr_storing_load_result: GeneralPurposeRegister) -> Self {
-        Self { instruction_length, gpr_storing_load_result }
+        Self {
+            instruction_length,
+            gpr_storing_load_result,
+        }
     }
 
     pub fn instruction_length(&self) -> usize {

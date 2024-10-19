@@ -4,11 +4,13 @@
 use crate::ace::core::architecture::riscv::sbi::NaclSharedMemory;
 use crate::ace::core::architecture::riscv::specification::*;
 use crate::ace::core::architecture::{
-    ControlStatusRegisters, GeneralPurposeRegister, GeneralPurposeRegisters, HardwareExtension, HartArchitecturalState, HartLifecycleState,
-    SupervisorTimerExtension,
+    ControlStatusRegisters, GeneralPurposeRegister, GeneralPurposeRegisters, HardwareExtension,
+    HartArchitecturalState, HartLifecycleState, SupervisorTimerExtension,
 };
 use crate::ace::core::control_data::confidential_hart_remote_command::ConfidentialHartRemoteCommandExecutable;
-use crate::ace::core::control_data::{ConfidentialHartRemoteCommand, ConfidentialVmId, MeasurementDigest, ResumableOperation};
+use crate::ace::core::control_data::{
+    ConfidentialHartRemoteCommand, ConfidentialVmId, MeasurementDigest, ResumableOperation,
+};
 use crate::ace::core::hardware_setup::HardwareSetup;
 use crate::ace::error::Error;
 use crate::{ensure, ensure_not};
@@ -54,9 +56,13 @@ impl ConfidentialHart {
         | (1 << CAUSE_FETCH_PAGE_FAULT)
         | (1 << CAUSE_LOAD_PAGE_FAULT)
         | (1 << CAUSE_STORE_PAGE_FAULT);
-    const INITIAL_MSTATUS: usize =
-        ((1 << CSR_MSTATUS_MPV) | (1 << CSR_MSTATUS_MPP) | (1 << CSR_MSTATUS_SIE) | (1 << CSR_MSTATUS_SPIE)) & !(1 << CSR_MSTATUS_MPIE);
-    const INITIAL_HSTATUS: usize = (1 << CSR_HSTATUS_VTW) | (1 << CSR_HSTATUS_SPVP) | (1 << CSR_HSTATUS_UXL);
+    const INITIAL_MSTATUS: usize = ((1 << CSR_MSTATUS_MPV)
+        | (1 << CSR_MSTATUS_MPP)
+        | (1 << CSR_MSTATUS_SIE)
+        | (1 << CSR_MSTATUS_SPIE))
+        & !(1 << CSR_MSTATUS_MPIE);
+    const INITIAL_HSTATUS: usize =
+        (1 << CSR_HSTATUS_VTW) | (1 << CSR_HSTATUS_SPVP) | (1 << CSR_HSTATUS_UXL);
     const INITIAL_SSTATUS: usize = (1 << CSR_SSTATUS_SPIE) | (1 << CSR_SSTATUS_UXL);
     /// Configuration of delegation of RISC-V interrupts that will trap directly in the confidential hart. All other interrupts will trap in
     /// the security monitor.
@@ -81,38 +87,98 @@ impl ConfidentialHart {
     }
 
     /// Constructs a confidential hart with the state after a reset.
-    pub fn from_vm_hart_reset(id: usize, htimedelta: usize, shared_memory: &NaclSharedMemory) -> Self {
+    pub fn from_vm_hart_reset(
+        id: usize,
+        htimedelta: usize,
+        shared_memory: &NaclSharedMemory,
+    ) -> Self {
         let mut confidential_hart_state = HartArchitecturalState::empty();
-        confidential_hart_state.csrs_mut().mstatus.save_value_in_main_memory(Self::INITIAL_MSTATUS);
-        confidential_hart_state.csrs_mut().sstatus.save_value_in_main_memory(Self::INITIAL_SSTATUS);
-        confidential_hart_state.csrs_mut().hstatus.save_value_in_main_memory(Self::INITIAL_HSTATUS);
-        confidential_hart_state.csrs_mut().medeleg.save_value_in_main_memory(Self::EXCEPTION_DELEGATION);
-        confidential_hart_state.csrs_mut().hedeleg.save_value_in_main_memory(Self::EXCEPTION_DELEGATION);
-        confidential_hart_state.csrs_mut().mideleg.save_value_in_main_memory(Self::INTERRUPT_DELEGATION);
-        confidential_hart_state.csrs_mut().hideleg.save_value_in_main_memory(Self::INTERRUPT_DELEGATION);
+        confidential_hart_state
+            .csrs_mut()
+            .mstatus
+            .save_value_in_main_memory(Self::INITIAL_MSTATUS);
+        confidential_hart_state
+            .csrs_mut()
+            .sstatus
+            .save_value_in_main_memory(Self::INITIAL_SSTATUS);
+        confidential_hart_state
+            .csrs_mut()
+            .hstatus
+            .save_value_in_main_memory(Self::INITIAL_HSTATUS);
+        confidential_hart_state
+            .csrs_mut()
+            .medeleg
+            .save_value_in_main_memory(Self::EXCEPTION_DELEGATION);
+        confidential_hart_state
+            .csrs_mut()
+            .hedeleg
+            .save_value_in_main_memory(Self::EXCEPTION_DELEGATION);
+        confidential_hart_state
+            .csrs_mut()
+            .mideleg
+            .save_value_in_main_memory(Self::INTERRUPT_DELEGATION);
+        confidential_hart_state
+            .csrs_mut()
+            .hideleg
+            .save_value_in_main_memory(Self::INTERRUPT_DELEGATION);
         // the `vsie` register reflects `hie`, so we set up `hie` allowing only VS-level interrupts
-        confidential_hart_state.csrs_mut().hie.save_value_in_main_memory(Self::INTERRUPT_DELEGATION);
+        confidential_hart_state
+            .csrs_mut()
+            .hie
+            .save_value_in_main_memory(Self::INTERRUPT_DELEGATION);
         // Allow only hypervisor's timer interrupts to preemt confidential VM's execution
-        confidential_hart_state.csrs_mut().mie.save_value_in_main_memory(MIE_STIP_MASK);
-        confidential_hart_state.csrs_mut().htimedelta.save_value_in_main_memory(htimedelta);
+        confidential_hart_state
+            .csrs_mut()
+            .mie
+            .save_value_in_main_memory(MIE_STIP_MASK);
+        confidential_hart_state
+            .csrs_mut()
+            .htimedelta
+            .save_value_in_main_memory(htimedelta);
         // Setup the M-mode trap handler to the security monitor's entry point
-        confidential_hart_state.csrs_mut().mtvec.save_value_in_main_memory(enter_from_confidential_hart_asm as usize);
+        confidential_hart_state
+            .csrs_mut()
+            .mtvec
+            .save_value_in_main_memory(enter_from_confidential_hart_asm as usize);
 
         // There is a subset of S-mode CSRs that have no VS equivalent and preserve their function when virtualization is enabled (see
         // `Hypervisor and Virtual Supervisor CSRs` in Volume II: RISC-V Privileged Architectures V20211203).
-        confidential_hart_state.csrs_mut().henvcfg.save_nacl_value_in_main_memory(shared_memory);
-        let henvcfg = confidential_hart_state.csrs_mut().henvcfg.read_from_main_memory();
-        confidential_hart_state.csrs_mut().senvcfg.save_value_in_main_memory(henvcfg);
+        confidential_hart_state
+            .csrs_mut()
+            .henvcfg
+            .save_nacl_value_in_main_memory(shared_memory);
+        let henvcfg = confidential_hart_state
+            .csrs_mut()
+            .henvcfg
+            .read_from_main_memory();
+        confidential_hart_state
+            .csrs_mut()
+            .senvcfg
+            .save_value_in_main_memory(henvcfg);
         // Code running in VS-mode should directly access only the timer. Everything else must trap:
-        confidential_hart_state.csrs_mut().hcounteren.save_value_in_main_memory(HCOUNTEREN_TM_MASK);
-        confidential_hart_state.csrs_mut().scounteren.save_value_in_main_memory(HCOUNTEREN_TM_MASK);
+        confidential_hart_state
+            .csrs_mut()
+            .hcounteren
+            .save_value_in_main_memory(HCOUNTEREN_TM_MASK);
+        confidential_hart_state
+            .csrs_mut()
+            .scounteren
+            .save_value_in_main_memory(HCOUNTEREN_TM_MASK);
 
-        assert!(HardwareSetup::is_extension_supported(HardwareExtension::SupervisorTimerExtension));
+        assert!(HardwareSetup::is_extension_supported(
+            HardwareExtension::SupervisorTimerExtension
+        ));
         // Preempt execution as fast as possible to allow hypervisor control confidential hart execution duration
-        confidential_hart_state.sstc_mut().stimecmp.save_value_in_main_memory(0);
+        confidential_hart_state
+            .sstc_mut()
+            .stimecmp
+            .save_value_in_main_memory(0);
 
         if HardwareSetup::is_extension_supported(HardwareExtension::FloatingPointExtension) {
-            confidential_hart_state.csrs_mut().mstatus.enable_bits_on_saved_value(SR_FS_INITIAL);
+            confidential_hart_state
+                .csrs_mut()
+                .mstatus
+                .enable_bits_on_saved_value(SR_FS_INITIAL);
         }
 
         Self {
@@ -125,22 +191,54 @@ impl ConfidentialHart {
     }
 
     /// Constructs a confidential hart with the state of the non-confidential hart that made a call to promote the VM to confidential VM
-    pub fn from_vm_hart(id: usize, program_counter: usize, htimedelta: usize, shared_memory: &NaclSharedMemory) -> Self {
+    pub fn from_vm_hart(
+        id: usize,
+        program_counter: usize,
+        htimedelta: usize,
+        shared_memory: &NaclSharedMemory,
+    ) -> Self {
         // We first create a confidential hart in the reset state and then fill this state with the runtime state of the hart that made a
         // call to promote to confidential VM. This state consists of GPRs and VS-level CSRs.
         let mut confidential_hart = Self::from_vm_hart_reset(id, htimedelta, shared_memory);
         let confidential_hart_state = &mut confidential_hart.confidential_hart_state;
         confidential_hart_state.set_gprs(shared_memory.gprs());
-        confidential_hart_state.csrs_mut().vsstatus.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vsie.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vstvec.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vsscratch.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vsepc.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vscause.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vstval.save_nacl_value_in_main_memory(&shared_memory);
-        confidential_hart_state.csrs_mut().vsatp.save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vsstatus
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vsie
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vstvec
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vsscratch
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vsepc
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vscause
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vstval
+            .save_nacl_value_in_main_memory(&shared_memory);
+        confidential_hart_state
+            .csrs_mut()
+            .vsatp
+            .save_nacl_value_in_main_memory(&shared_memory);
         // Store the program counter of the VM, so that we can resume confidential VM at the point it became promoted.
-        confidential_hart_state.csrs_mut().mepc.save_value_in_main_memory(program_counter);
+        confidential_hart_state
+            .csrs_mut()
+            .mepc
+            .save_value_in_main_memory(program_counter);
         confidential_hart.lifecycle_state = HartLifecycleState::Started;
         confidential_hart.resumable_operation = Some(ResumableOperation::SbiRequest());
         confidential_hart
@@ -163,9 +261,17 @@ impl ConfidentialHart {
             // mstatus, so we do not have to set it back to the original value after this context switch.
             self.csrs().mstatus.read_and_set_bits(SR_FS);
             // below unsafe is ok because we checked that FPU hardware is available and we enabled it in mstatus.
-            unsafe { self.confidential_hart_state.fprs_mut().save_in_main_memory() };
-            self.csrs_mut().vsstatus.disable_bits_on_saved_value(SR_FS_DIRTY);
-            self.csrs_mut().vsstatus.enable_bits_on_saved_value(SR_FS_CLEAN);
+            unsafe {
+                self.confidential_hart_state
+                    .fprs_mut()
+                    .save_in_main_memory()
+            };
+            self.csrs_mut()
+                .vsstatus
+                .disable_bits_on_saved_value(SR_FS_DIRTY);
+            self.csrs_mut()
+                .vsstatus
+                .enable_bits_on_saved_value(SR_FS_CLEAN);
         }
     }
 
@@ -180,14 +286,22 @@ impl ConfidentialHart {
             // mstatus, so we do not have to set it back to the original value after this context switch.
             self.csrs().mstatus.read_and_set_bits(SR_FS);
             // below unsafe is ok because we checked that FPU hardware is available and we enabled it in mstatus.
-            unsafe { self.confidential_hart_state.fprs_mut().restore_from_main_memory() };
+            unsafe {
+                self.confidential_hart_state
+                    .fprs_mut()
+                    .restore_from_main_memory()
+            };
         }
     }
 
     pub fn measure(&self) -> MeasurementDigest {
         let mut measurement = MeasurementDigest::default();
-        self.confidential_hart_state.gprs().measure(&mut measurement);
-        self.confidential_hart_state.csrs().measure(&mut measurement);
+        self.confidential_hart_state
+            .gprs()
+            .measure(&mut measurement);
+        self.confidential_hart_state
+            .csrs()
+            .measure(&mut measurement);
         measurement
     }
 
@@ -209,7 +323,8 @@ impl ConfidentialHart {
 
     // Returns the id of the hardware hart executing the confidential hart.
     pub fn hardware_hart_id(&self) -> Option<usize> {
-        self.confidential_vm_id.map_or_else(|| Some(self.id), |_| None)
+        self.confidential_vm_id
+            .map_or_else(|| Some(self.id), |_| None)
     }
 
     pub fn gprs(&self) -> &GeneralPurposeRegisters {
@@ -246,7 +361,8 @@ impl ConfidentialHart {
 
     /// Returns true if this confidential hart can be scheduled on the physical hart.
     pub fn is_executable(&self) -> bool {
-        !self.is_dummy() && HartLifecycleState::STATES_ALLOWED_TO_EXECUTE.contains(&self.lifecycle_state)
+        !self.is_dummy()
+            && HartLifecycleState::STATES_ALLOWED_TO_EXECUTE.contains(&self.lifecycle_state)
     }
 }
 
@@ -283,45 +399,89 @@ impl ConfidentialHart {
     /// Changes the lifecycle state of the hart into the `StartPending` state. Confidential hart's state is set as if
     /// the hart was reset. This function is called as a response of another confidential hart (typically a boot hart)
     /// to start another confidential hart. Returns error if the confidential hart is not in stopped state.
-    pub fn transition_from_stopped_to_started(&mut self, start_address: usize, opaque: usize) -> Result<(), Error> {
+    pub fn transition_from_stopped_to_started(
+        &mut self,
+        start_address: usize,
+        opaque: usize,
+    ) -> Result<(), Error> {
         ensure_not!(self.is_dummy(), Error::HartAlreadyRunning())?;
-        ensure!(self.lifecycle_state == HartLifecycleState::Stopped, Error::CannotStartNotStoppedHart())?;
+        ensure!(
+            self.lifecycle_state == HartLifecycleState::Stopped,
+            Error::CannotStartNotStoppedHart()
+        )?;
         // Let's set up the confidential hart initial state so that it can be run
         self.lifecycle_state = HartLifecycleState::Started;
         // Following the SBI documentation of the function `hart start` in the HSM extension, only vsatp, vsstatus.SIE,
         // a0, a1 have defined values, all other registers are in an undefined state. The hart will start
         // executing in the supervisor mode with disabled MMU (vsatp=0).
-        self.confidential_hart_state.csrs_mut().vsatp.save_value_in_main_memory(0);
+        self.confidential_hart_state
+            .csrs_mut()
+            .vsatp
+            .save_value_in_main_memory(0);
         // start the new confidential hart with interrupts disabled
-        self.confidential_hart_state.csrs_mut().mstatus.disable_bit_on_saved_value(CSR_MSTATUS_SPIE);
-        self.confidential_hart_state.csrs_mut().mstatus.disable_bit_on_saved_value(CSR_MSTATUS_MPIE);
-        self.confidential_hart_state.csrs_mut().vsstatus.disable_bit_on_saved_value(CSR_STATUS_SIE);
-        self.confidential_hart_state.gprs_mut().write(GeneralPurposeRegister::a0, self.id);
-        self.confidential_hart_state.gprs_mut().write(GeneralPurposeRegister::a1, opaque);
-        self.confidential_hart_state.csrs_mut().mepc.save_value_in_main_memory(start_address);
+        self.confidential_hart_state
+            .csrs_mut()
+            .mstatus
+            .disable_bit_on_saved_value(CSR_MSTATUS_SPIE);
+        self.confidential_hart_state
+            .csrs_mut()
+            .mstatus
+            .disable_bit_on_saved_value(CSR_MSTATUS_MPIE);
+        self.confidential_hart_state
+            .csrs_mut()
+            .vsstatus
+            .disable_bit_on_saved_value(CSR_STATUS_SIE);
+        self.confidential_hart_state
+            .gprs_mut()
+            .write(GeneralPurposeRegister::a0, self.id);
+        self.confidential_hart_state
+            .gprs_mut()
+            .write(GeneralPurposeRegister::a1, opaque);
+        self.confidential_hart_state
+            .csrs_mut()
+            .mepc
+            .save_value_in_main_memory(start_address);
         Ok(())
     }
 
     pub fn transition_from_started_to_suspended(&mut self) -> Result<(), Error> {
         assert!(!self.is_dummy());
-        ensure!(self.lifecycle_state == HartLifecycleState::Started, Error::CannotSuspedNotStartedHart())?;
+        ensure!(
+            self.lifecycle_state == HartLifecycleState::Started,
+            Error::CannotSuspedNotStartedHart()
+        )?;
         self.lifecycle_state = HartLifecycleState::Suspended;
         Ok(())
     }
 
     pub fn transition_from_started_to_stopped(&mut self) -> Result<(), Error> {
         assert!(!self.is_dummy());
-        ensure!(self.lifecycle_state == HartLifecycleState::Started, Error::CannotStopNotStartedHart())?;
+        ensure!(
+            self.lifecycle_state == HartLifecycleState::Started,
+            Error::CannotStopNotStartedHart()
+        )?;
         self.lifecycle_state = HartLifecycleState::Stopped;
         Ok(())
     }
 
-    pub fn transition_from_suspended_to_started(&mut self, start_address: usize, opaque: usize) -> Result<(), Error> {
+    pub fn transition_from_suspended_to_started(
+        &mut self,
+        start_address: usize,
+        opaque: usize,
+    ) -> Result<(), Error> {
         assert!(!self.is_dummy());
-        ensure!(self.lifecycle_state == HartLifecycleState::Suspended, Error::CannotStartNotSuspendedHart())?;
+        ensure!(
+            self.lifecycle_state == HartLifecycleState::Suspended,
+            Error::CannotStartNotSuspendedHart()
+        )?;
         self.lifecycle_state = HartLifecycleState::Started;
-        self.confidential_hart_state.gprs_mut().write(GeneralPurposeRegister::a1, opaque);
-        self.confidential_hart_state.csrs_mut().mepc.save_value_in_main_memory(start_address);
+        self.confidential_hart_state
+            .gprs_mut()
+            .write(GeneralPurposeRegister::a1, opaque);
+        self.confidential_hart_state
+            .csrs_mut()
+            .mepc
+            .save_value_in_main_memory(start_address);
         Ok(())
     }
 
@@ -336,9 +496,15 @@ impl ConfidentialHart {
         match request {
             ConfidentialHartRemoteCommand::Ipi(v) => v.execute_on_confidential_hart(self),
             ConfidentialHartRemoteCommand::RemoteFenceI(v) => v.execute_on_confidential_hart(self),
-            ConfidentialHartRemoteCommand::RemoteSfenceVma(v) => v.execute_on_confidential_hart(self),
-            ConfidentialHartRemoteCommand::RemoteSfenceVmaAsid(v) => v.execute_on_confidential_hart(self),
-            ConfidentialHartRemoteCommand::RemoteHfenceGvmaVmid(v) => v.execute_on_confidential_hart(self),
+            ConfidentialHartRemoteCommand::RemoteSfenceVma(v) => {
+                v.execute_on_confidential_hart(self)
+            }
+            ConfidentialHartRemoteCommand::RemoteSfenceVmaAsid(v) => {
+                v.execute_on_confidential_hart(self)
+            }
+            ConfidentialHartRemoteCommand::RemoteHfenceGvmaVmid(v) => {
+                v.execute_on_confidential_hart(self)
+            }
             ConfidentialHartRemoteCommand::ShutdownRequest(_) => self.transition_to_shutdown(),
         }
     }

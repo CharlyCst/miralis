@@ -24,7 +24,9 @@ pub struct SharePageRequest {
 impl SharePageRequest {
     pub fn from_confidential_hart(confidential_hart: &ConfidentialHart) -> Self {
         Self {
-            address: ConfidentialVmPhysicalAddress::new(confidential_hart.gprs().read(GeneralPurposeRegister::a0)),
+            address: ConfidentialVmPhysicalAddress::new(
+                confidential_hart.gprs().read(GeneralPurposeRegister::a0),
+            ),
             size: confidential_hart.gprs().read(GeneralPurposeRegister::a1),
         }
     }
@@ -35,15 +37,26 @@ impl SharePageRequest {
                 .set_resumable_operation(ResumableOperation::SharePage(self))
                 .into_non_confidential_flow()
                 .declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::SbiRequest(sbi_request)),
-            Err(error) => {
-                confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error)))
-            }
+            Err(error) => confidential_flow.apply_and_exit_to_confidential_hart(
+                ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error)),
+            ),
         }
     }
 
     fn share_page_sbi_request(&self) -> Result<SbiRequest, Error> {
-        ensure!(self.address.usize() % SharedPage::SIZE.in_bytes() == 0, Error::AddressNotAligned())?;
-        ensure!(self.size == SharedPage::SIZE.in_bytes(), Error::InvalidParameter())?;
-        Ok(SbiRequest::new(CovgExtension::EXTID, CovgExtension::SBI_EXT_COVG_SHARE_MEMORY, self.address.usize(), self.size))
+        ensure!(
+            self.address.usize() % SharedPage::SIZE.in_bytes() == 0,
+            Error::AddressNotAligned()
+        )?;
+        ensure!(
+            self.size == SharedPage::SIZE.in_bytes(),
+            Error::InvalidParameter()
+        )?;
+        Ok(SbiRequest::new(
+            CovgExtension::EXTID,
+            CovgExtension::SBI_EXT_COVG_SHARE_MEMORY,
+            self.address.usize(),
+            self.size,
+        ))
     }
 }

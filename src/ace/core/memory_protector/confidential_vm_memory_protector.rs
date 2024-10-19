@@ -5,7 +5,9 @@ use crate::ace::core::architecture::mmu::{Hgatp, PageTable};
 use crate::ace::core::architecture::riscv::{mmu, pmp, tlb};
 use crate::ace::core::architecture::{PageSize, SharedPage};
 use crate::ace::core::control_data::{ConfidentialVmId, MeasurementDigest};
-use crate::ace::core::memory_layout::{ConfidentialMemoryAddress, ConfidentialVmPhysicalAddress, NonConfidentialMemoryAddress};
+use crate::ace::core::memory_layout::{
+    ConfidentialMemoryAddress, ConfidentialVmPhysicalAddress, NonConfidentialMemoryAddress,
+};
 use crate::ace::error::Error;
 
 /// Exposes an interface to configure the hardware memory isolation component in a way that
@@ -27,12 +29,19 @@ impl ConfidentialVmMemoryProtector {
     ///   * the configuration of the memory isolation component (MMU) is invalid.
     pub fn from_vm_state(hgatp: &Hgatp) -> Result<Self, Error> {
         let root_page_table = mmu::copy_mmu_configuration_from_non_confidential_memory(hgatp)?;
-        Ok(Self { root_page_table, hgatp: Hgatp::disabled() })
+        Ok(Self {
+            root_page_table,
+            hgatp: Hgatp::disabled(),
+        })
     }
 
     pub fn set_confidential_vm_id(&mut self, id: ConfidentialVmId) {
         assert!(self.hgatp.is_empty());
-        self.hgatp = Hgatp::new(self.root_page_table.address(), self.root_page_table.hgatp_mode(), id.usize());
+        self.hgatp = Hgatp::new(
+            self.root_page_table.address(),
+            self.root_page_table.hgatp_mode(),
+            id.usize(),
+        );
     }
 
     /// Modifies the configuration of the underlying hardware memory isolation component (e.g., MMU) in a way that a
@@ -44,7 +53,9 @@ impl ConfidentialVmMemoryProtector {
     /// non-confidential memory. To guarantee confidential VM's correctness, the caller must ensure that he will perform `TLB shutdown` on
     /// all confidential harts, so that all confidential harts see the newly mapped shared page.
     pub fn map_shared_page(
-        &mut self, hypervisor_address: NonConfidentialMemoryAddress, confidential_vm_physical_address: ConfidentialVmPhysicalAddress,
+        &mut self,
+        hypervisor_address: NonConfidentialMemoryAddress,
+        confidential_vm_physical_address: ConfidentialVmPhysicalAddress,
     ) -> Result<PageSize, Error> {
         let shared_page = SharedPage::new(hypervisor_address, confidential_vm_physical_address)?;
         let shared_page_size = shared_page.page_size();
@@ -57,13 +68,20 @@ impl ConfidentialVmMemoryProtector {
     ///
     /// To guarantee confidential VM's correctness, the caller must ensure that he will perform `TLB shutdown` on all confidential harts, so
     /// that all confidential harts do not use the unmaped shared page.
-    pub fn unmap_shared_page(&mut self, confidential_vm_physical_address: &ConfidentialVmPhysicalAddress) -> Result<PageSize, Error> {
-        self.root_page_table.unmap_shared_page(confidential_vm_physical_address)
+    pub fn unmap_shared_page(
+        &mut self,
+        confidential_vm_physical_address: &ConfidentialVmPhysicalAddress,
+    ) -> Result<PageSize, Error> {
+        self.root_page_table
+            .unmap_shared_page(confidential_vm_physical_address)
     }
 
     /// Translates guest physical address into a real physical address in the confidential memory. Returns error if the guest physical
     /// address is not mapped into the real physical address, i.e., page table walk fails.
-    pub fn translate_address(&self, address: &ConfidentialVmPhysicalAddress) -> Result<ConfidentialMemoryAddress, Error> {
+    pub fn translate_address(
+        &self,
+        address: &ConfidentialVmPhysicalAddress,
+    ) -> Result<ConfidentialMemoryAddress, Error> {
         self.root_page_table.translate(address)
     }
 

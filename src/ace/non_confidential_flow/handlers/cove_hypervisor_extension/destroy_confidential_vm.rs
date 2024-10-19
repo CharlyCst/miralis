@@ -13,13 +13,19 @@ pub struct DestroyConfidentialVm {
 
 impl DestroyConfidentialVm {
     pub fn from_hypervisor_hart(hypervisor_hart: &HypervisorHart) -> Self {
-        Self { confidential_vm_id: ConfidentialVmId::new(hypervisor_hart.gprs().read(GeneralPurposeRegister::a0)) }
+        Self {
+            confidential_vm_id: ConfidentialVmId::new(
+                hypervisor_hart.gprs().read(GeneralPurposeRegister::a0),
+            ),
+        }
     }
 
     pub fn handle(self, non_confidential_flow: NonConfidentialFlow) -> ! {
         non_confidential_flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(
-            ControlDataStorage::remove_confidential_vm(self.confidential_vm_id)
-                .map_or_else(|error| SbiResponse::error(error), |_| SbiResponse::success()),
+            ControlDataStorage::remove_confidential_vm(self.confidential_vm_id).map_or_else(
+                |error| SbiResponse::error(error),
+                |_| SbiResponse::success(),
+            ),
         ))
     }
 }

@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
-use crate::ace::confidential_flow::handlers::interrupts::{ExposeEnabledInterrupts, HandleInterrupt};
+use crate::ace::confidential_flow::handlers::interrupts::{
+    ExposeEnabledInterrupts, HandleInterrupt,
+};
 use crate::ace::confidential_flow::handlers::mmio::{MmioLoadRequest, MmioStoreRequest};
 use crate::ace::confidential_flow::handlers::sbi::{SbiRequest, SbiResponse};
 

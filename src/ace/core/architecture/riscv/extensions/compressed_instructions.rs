@@ -71,13 +71,15 @@ pub fn decode_result_register(mtinst: usize) -> Result<GeneralPurposeRegister, E
             } else if mtinst & INSN_MASK_C_LWSP == INSN_MATCH_C_LWSP {
                 Ok(0u32)
             } else if mtinst & INSN_MASK_C_SWSP == INSN_MATCH_C_SWSP {
-                let index = shift_right(mtinst, SH_RS2C as isize - log_regbytes as isize) & reg_mask;
+                let index =
+                    shift_right(mtinst, SH_RS2C as isize - log_regbytes as isize) & reg_mask;
                 let index = index / 8;
                 Ok(index as u32)
             } else if mtinst & INSN_MASK_C_LDSP == INSN_MATCH_C_LDSP {
                 Ok(0u32)
             } else if mtinst & INSN_MASK_C_SDSP == INSN_MATCH_C_SDSP {
-                let index = shift_right(mtinst, SH_RS2C as isize - log_regbytes as isize) & reg_mask;
+                let index =
+                    shift_right(mtinst, SH_RS2C as isize - log_regbytes as isize) & reg_mask;
                 let index = index / 8;
                 Ok(index as u32)
             } else {
@@ -85,5 +87,6 @@ pub fn decode_result_register(mtinst: usize) -> Result<GeneralPurposeRegister, E
             }
         }
     }? as usize;
-    Ok(GeneralPurposeRegister::try_from(register_index).map_err(|_| Error::InvalidCompressedRiscvInstruction(mtinst))?)
+    Ok(GeneralPurposeRegister::try_from(register_index)
+        .map_err(|_| Error::InvalidCompressedRiscvInstruction(mtinst))?)
 }

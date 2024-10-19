@@ -2,7 +2,9 @@
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
 use crate::ace::core::architecture::riscv::control_status_registers::ReadWriteRiscvCsr;
-use crate::ace::core::architecture::specification::{CSR_FCSR, CSR_FFLAGS, CSR_FRM, SR_FS, SR_FS_CLEAN, SR_FS_DIRTY};
+use crate::ace::core::architecture::specification::{
+    CSR_FCSR, CSR_FFLAGS, CSR_FRM, SR_FS, SR_FS_CLEAN, SR_FS_DIRTY,
+};
 
 macro_rules! fasm {
     ($op:tt, $token:expr, $mem:expr) =>  {
@@ -22,7 +24,12 @@ impl FloatingPointUnit {
     const LEN: usize = 32;
 
     pub fn empty() -> Self {
-        Self { fflags: ReadWriteRiscvCsr::new(), frm: ReadWriteRiscvCsr::new(), fcsr: ReadWriteRiscvCsr::new(), registers: [0; Self::LEN] }
+        Self {
+            fflags: ReadWriteRiscvCsr::new(),
+            frm: ReadWriteRiscvCsr::new(),
+            fcsr: ReadWriteRiscvCsr::new(),
+            registers: [0; Self::LEN],
+        }
     }
 
     /// Saves in main memory the float point unit state.

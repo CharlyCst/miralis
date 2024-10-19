@@ -5,10 +5,11 @@
 // This implementation is based on the code from Rivos. We just use a subset of functionalities and CSRs because we do not need all of them.
 // https://github.com/rivosinc/salus/blob/fd06d5959fd81c02b8763c1922f36cc0ebe7d301/riscv-regs/src/csrs/csr_access.rs#L47
 #![allow(unused)]
+use core::arch::asm;
+
 use super::specification::*;
 use crate::ace::core::architecture::riscv::sbi::NaclSharedMemory;
 use crate::ace::core::control_data::{DigestType, MeasurementDigest};
-use core::arch::asm;
 
 /// Represents all control status registers (CSRs) accessible to modes less privileged than M-mode.
 pub struct ControlStatusRegisters {

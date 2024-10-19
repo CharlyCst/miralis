@@ -15,18 +15,27 @@ pub struct NaclSetupSharedMemory {
 
 impl NaclSetupSharedMemory {
     pub fn from_hypervisor_hart(hypervisor_hart: &HypervisorHart) -> Self {
-        Self { shared_memory_base_address: hypervisor_hart.gprs().read(GeneralPurposeRegister::a0) }
+        Self {
+            shared_memory_base_address: hypervisor_hart.gprs().read(GeneralPurposeRegister::a0),
+        }
     }
 
     pub fn handle(self, non_confidential_flow: NonConfidentialFlow) -> ! {
-        non_confidential_flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SetSharedMemory(self))
+        non_confidential_flow
+            .apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SetSharedMemory(self))
     }
 
     pub fn apply_to_hypervisor_hart(&self, hypervisor_hart: &mut HypervisorHart) {
-        debug!("Registering NACL shared memory at {:x}", self.shared_memory_base_address);
+        debug!(
+            "Registering NACL shared memory at {:x}",
+            self.shared_memory_base_address
+        );
         NonConfidentialMemoryAddress::new(self.shared_memory_base_address as *mut usize)
             .and_then(|address| hypervisor_hart.set_shared_memory(address))
-            .map_or_else(|error| SbiResponse::error(error), |_| SbiResponse::success())
+            .map_or_else(
+                |error| SbiResponse::error(error),
+                |_| SbiResponse::success(),
+            )
             .apply_to_hypervisor_hart(hypervisor_hart);
     }
 }

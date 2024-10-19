@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::ace::core::architecture::riscv::extensions::supervisor_timer_extension::SupervisorTimerExtension;
 use crate::ace::core::architecture::riscv::specification::*;
-use crate::ace::core::architecture::riscv::{ControlStatusRegisters, FloatingPointUnit, GeneralPurposeRegister, GeneralPurposeRegisters};
+use crate::ace::core::architecture::riscv::{
+    ControlStatusRegisters, FloatingPointUnit, GeneralPurposeRegister, GeneralPurposeRegisters,
+};
 
 /// Defines the state of a processor's core (hart) when stored in main memory.
 #[repr(C)]
@@ -62,7 +64,8 @@ impl HartArchitecturalState {
 }
 
 const fn hart_gpr_offset(index: GeneralPurposeRegister) -> usize {
-    memoffset::offset_of!(HartArchitecturalState, gprs) + (index as usize) * core::mem::size_of::<u64>()
+    memoffset::offset_of!(HartArchitecturalState, gprs)
+        + (index as usize) * core::mem::size_of::<u64>()
 }
 
 // The below constants are used by the context switch written in assembly.
@@ -101,7 +104,7 @@ pub const HART_T3_OFFSET: usize = hart_gpr_offset(GeneralPurposeRegister::t3);
 pub const HART_T4_OFFSET: usize = hart_gpr_offset(GeneralPurposeRegister::t4);
 pub const HART_T5_OFFSET: usize = hart_gpr_offset(GeneralPurposeRegister::t5);
 pub const HART_T6_OFFSET: usize = hart_gpr_offset(GeneralPurposeRegister::t6);
-pub const HART_MEPC_OFFSET: usize =
-    memoffset::offset_of!(HartArchitecturalState, csrs) + memoffset::offset_of!(ControlStatusRegisters, mepc);
-pub const HART_MSTATUS_OFFSET: usize =
-    memoffset::offset_of!(HartArchitecturalState, csrs) + memoffset::offset_of!(ControlStatusRegisters, mstatus);
+pub const HART_MEPC_OFFSET: usize = memoffset::offset_of!(HartArchitecturalState, csrs)
+    + memoffset::offset_of!(ControlStatusRegisters, mepc);
+pub const HART_MSTATUS_OFFSET: usize = memoffset::offset_of!(HartArchitecturalState, csrs)
+    + memoffset::offset_of!(ControlStatusRegisters, mstatus);

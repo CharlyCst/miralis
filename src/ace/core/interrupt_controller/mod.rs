@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
+use spin::{Once, RwLock, RwLockReadGuard};
+
 use crate::ace::core::architecture::CSR;
 use crate::ace::error::Error;
-use spin::{Once, RwLock, RwLockReadGuard};
 use crate::ensure_not;
 
-const NOT_INITIALIZED_INTERRUPT_CONTROLLER: &str = "Bug. Could not access interrupt controller because it has not been initialized";
+const NOT_INITIALIZED_INTERRUPT_CONTROLLER: &str =
+    "Bug. Could not access interrupt controller because it has not been initialized";
 
 /// A static global structure for the interrupt controller. Once<> guarantees that it the interrupt controller can only
 /// be initialized once.
@@ -25,7 +27,10 @@ impl<'a> InterruptController {
     /// Constructs the global, unique interrupt controller instance.
     pub fn initialize() -> Result<(), Error> {
         let interrupt_controller = Self::new()?;
-        ensure_not!(INTERRUPT_CONTROLLER.is_completed(), Error::Reinitialization())?;
+        ensure_not!(
+            INTERRUPT_CONTROLLER.is_completed(),
+            Error::Reinitialization()
+        )?;
         INTERRUPT_CONTROLLER.call_once(|| RwLock::new(interrupt_controller));
         Ok(())
     }
@@ -51,7 +56,12 @@ impl<'a> InterruptController {
     }
 
     pub fn try_read<F, O>(op: O) -> Result<F, Error>
-    where O: FnOnce(&RwLockReadGuard<'_, InterruptController>) -> Result<F, Error> {
-        op(&INTERRUPT_CONTROLLER.get().expect(NOT_INITIALIZED_INTERRUPT_CONTROLLER).read())
+    where
+        O: FnOnce(&RwLockReadGuard<'_, InterruptController>) -> Result<F, Error>,
+    {
+        op(&INTERRUPT_CONTROLLER
+            .get()
+            .expect(NOT_INITIALIZED_INTERRUPT_CONTROLLER)
+            .read())
     }
 }

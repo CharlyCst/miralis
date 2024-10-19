@@ -7,9 +7,8 @@ extern crate alloc;
 
 #[macro_use]
 
-
 pub mod core;
+pub mod confidential_flow;
 pub mod debug;
 pub mod error;
 pub mod non_confidential_flow;
-pub mod confidential_flow;

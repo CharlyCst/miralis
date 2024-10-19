@@ -295,5 +295,7 @@ impl Architecture for HostArch {
         todo!();
     }
 
-    fn install_handler(_: usize) { todo!(); }
+    fn install_handler(_: usize) {
+        todo!();
+    }
 }

@@ -12,14 +12,21 @@ pub struct MmioStoreResponse {
 
 impl MmioStoreResponse {
     pub fn from_hypervisor_hart(_: &HypervisorHart, request: MmioStorePending) -> Self {
-        Self { instruction_length: request.instruction_length() }
+        Self {
+            instruction_length: request.instruction_length(),
+        }
     }
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
-        confidential_flow.declassify_and_exit_to_confidential_hart(DeclassifyToConfidentialVm::MmioStoreResponse(self))
+        confidential_flow.declassify_and_exit_to_confidential_hart(
+            DeclassifyToConfidentialVm::MmioStoreResponse(self),
+        )
     }
 
     pub fn declassify_to_confidential_hart(&self, confidential_hart: &mut ConfidentialHart) {
-        confidential_hart.csrs_mut().mepc.add(self.instruction_length);
+        confidential_hart
+            .csrs_mut()
+            .mepc
+            .add(self.instruction_length);
     }
 }

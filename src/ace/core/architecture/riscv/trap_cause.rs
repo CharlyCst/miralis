@@ -40,8 +40,12 @@ impl TrapCause {
                 CAUSE_LOAD_ACCESS => Self::LoadAccessFault,
                 CAUSE_MISALIGNED_STORE => Self::StoreAddressMisaligned,
                 CAUSE_STORE_ACCESS => Self::StoreAccessFault,
-                CAUSE_SUPERVISOR_ECALL => Self::HsEcall(SbiExtension::decode(extension_id, function_id)),
-                CAUSE_VIRTUAL_SUPERVISOR_ECALL => Self::VsEcall(SbiExtension::decode(extension_id, function_id)),
+                CAUSE_SUPERVISOR_ECALL => {
+                    Self::HsEcall(SbiExtension::decode(extension_id, function_id))
+                }
+                CAUSE_VIRTUAL_SUPERVISOR_ECALL => {
+                    Self::VsEcall(SbiExtension::decode(extension_id, function_id))
+                }
                 CAUSE_MACHINE_ECALL => Self::MachineEcall,
                 CAUSE_FETCH_GUEST_PAGE_FAULT => Self::GuestInstructionPageFault,
                 CAUSE_LOAD_GUEST_PAGE_FAULT => Self::GuestLoadPageFault,

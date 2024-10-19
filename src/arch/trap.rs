@@ -133,7 +133,11 @@ impl TrapInfo {
 
 impl fmt::Debug for TrapInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TrapInfo : Mepc=0x{:x} Mstatus=0x{:x} MCause=0x{:?} Mip=0x{:x} Mtval=0x{:x}", self.mepc, self.mstatus, self.mcause,self.mip, self.mtval)
+        write!(
+            f,
+            "TrapInfo : Mepc=0x{:x} Mstatus=0x{:x} MCause=0x{:?} Mip=0x{:x} Mtval=0x{:x}",
+            self.mepc, self.mstatus, self.mcause, self.mip, self.mtval
+        )
     }
 }
 

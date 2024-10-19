@@ -21,19 +21,22 @@ pub struct SbiHsmHartSuspend {
 
 impl SbiHsmHartSuspend {
     pub fn from_confidential_hart(confidential_hart: &ConfidentialHart) -> Self {
-        Self { resume_handler: SbiHsmHartResume::from_confidential_hart(confidential_hart) }
+        Self {
+            resume_handler: SbiHsmHartResume::from_confidential_hart(confidential_hart),
+        }
     }
 
     pub fn handle(self, mut confidential_flow: ConfidentialFlow) -> ! {
-        let sbi_request = SbiRequest::new(HsmExtension::EXTID, HsmExtension::HART_SUSPEND_FID, 0, 0);
+        let sbi_request =
+            SbiRequest::new(HsmExtension::EXTID, HsmExtension::HART_SUSPEND_FID, 0, 0);
         match confidential_flow.suspend_confidential_hart() {
             Ok(_) => confidential_flow
                 .set_resumable_operation(ResumableOperation::ResumeHart(self.resume_handler))
                 .into_non_confidential_flow()
                 .declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::SbiRequest(sbi_request)),
-            Err(error) => {
-                confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error)))
-            }
+            Err(error) => confidential_flow.apply_and_exit_to_confidential_hart(
+                ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error)),
+            ),
         }
     }
 }

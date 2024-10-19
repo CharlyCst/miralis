@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
+use alloc::collections::BTreeMap;
+
+use spin::{Mutex, MutexGuard, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
 use crate::ace::core::control_data::{ConfidentialVm, ConfidentialVmId};
 use crate::ace::error::Error;
-use alloc::collections::BTreeMap;
-use spin::{Mutex, MutexGuard, Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use crate::{debug, ensure, ensure_not};
 
 static CONTROL_DATA_STORAGE: Once<RwLock<ControlDataStorage>> = Once::new();
@@ -22,8 +24,13 @@ impl ControlDataStorage {
     const NOT_INITIALIZED: &'static str = "Bug: Control data not initialized";
 
     pub fn initialize() -> Result<(), Error> {
-        let control_data = Self { confidential_vms: BTreeMap::new() };
-        ensure_not!(CONTROL_DATA_STORAGE.is_completed(), Error::Reinitialization())?;
+        let control_data = Self {
+            confidential_vms: BTreeMap::new(),
+        };
+        ensure_not!(
+            CONTROL_DATA_STORAGE.is_completed(),
+            Error::Reinitialization()
+        )?;
         CONTROL_DATA_STORAGE.call_once(|| RwLock::new(control_data));
         Ok(())
     }
@@ -38,43 +45,87 @@ impl ControlDataStorage {
             .ok_or(Error::TooManyConfidentialVms())
     }
 
-    pub fn insert_confidential_vm(&mut self, confidential_vm: ConfidentialVm) -> Result<ConfidentialVmId, Error> {
+    pub fn insert_confidential_vm(
+        &mut self,
+        confidential_vm: ConfidentialVm,
+    ) -> Result<ConfidentialVmId, Error> {
         let id = confidential_vm.confidential_vm_id();
-        ensure!(!self.confidential_vms.contains_key(&id), Error::InvalidConfidentialVmId())?;
-        self.confidential_vms.insert(id, Mutex::new(confidential_vm));
+        ensure!(
+            !self.confidential_vms.contains_key(&id),
+            Error::InvalidConfidentialVmId()
+        )?;
+        self.confidential_vms
+            .insert(id, Mutex::new(confidential_vm));
         Ok(id)
     }
 
-    pub fn confidential_vm(&self, id: ConfidentialVmId) -> Result<MutexGuard<'_, ConfidentialVm>, Error> {
-        self.confidential_vms.get(&id).ok_or(Error::InvalidConfidentialVmId()).and_then(|v| Ok(v.lock()))
+    pub fn confidential_vm(
+        &self,
+        id: ConfidentialVmId,
+    ) -> Result<MutexGuard<'_, ConfidentialVm>, Error> {
+        self.confidential_vms
+            .get(&id)
+            .ok_or(Error::InvalidConfidentialVmId())
+            .and_then(|v| Ok(v.lock()))
     }
 
     pub fn remove_confidential_vm(confidential_vm_id: ConfidentialVmId) -> Result<(), Error> {
         ControlDataStorage::try_write(|control_data| {
-            ensure!(control_data.confidential_vm(confidential_vm_id)?.are_all_harts_shutdown(), Error::HartAlreadyRunning())?;
-            debug!("Removing ConfidentialVM[{:?}] from the control data structure", confidential_vm_id);
-            control_data.confidential_vms.remove(&confidential_vm_id).ok_or(Error::InvalidConfidentialVmId())
+            ensure!(
+                control_data
+                    .confidential_vm(confidential_vm_id)?
+                    .are_all_harts_shutdown(),
+                Error::HartAlreadyRunning()
+            )?;
+            debug!(
+                "Removing ConfidentialVM[{:?}] from the control data structure",
+                confidential_vm_id
+            );
+            control_data
+                .confidential_vms
+                .remove(&confidential_vm_id)
+                .ok_or(Error::InvalidConfidentialVmId())
         })
         .and_then(|vm| Ok(vm.into_inner().deallocate()))
     }
 
     fn try_read<F, O>(op: O) -> Result<F, Error>
-    where O: FnOnce(&RwLockReadGuard<'_, ControlDataStorage>) -> Result<F, Error> {
-        op(&CONTROL_DATA_STORAGE.get().expect(Self::NOT_INITIALIZED).read())
+    where
+        O: FnOnce(&RwLockReadGuard<'_, ControlDataStorage>) -> Result<F, Error>,
+    {
+        op(&CONTROL_DATA_STORAGE
+            .get()
+            .expect(Self::NOT_INITIALIZED)
+            .read())
     }
 
     pub fn try_write<F, O>(op: O) -> Result<F, Error>
-    where O: FnOnce(&mut RwLockWriteGuard<'static, ControlDataStorage>) -> Result<F, Error> {
-        op(&mut CONTROL_DATA_STORAGE.get().expect(Self::NOT_INITIALIZED).write())
+    where
+        O: FnOnce(&mut RwLockWriteGuard<'static, ControlDataStorage>) -> Result<F, Error>,
+    {
+        op(&mut CONTROL_DATA_STORAGE
+            .get()
+            .expect(Self::NOT_INITIALIZED)
+            .write())
     }
 
-    pub fn try_confidential_vm<F, O>(confidential_vm_id: ConfidentialVmId, op: O) -> Result<F, Error>
-    where O: FnOnce(MutexGuard<'_, ConfidentialVm>) -> Result<F, Error> {
+    pub fn try_confidential_vm<F, O>(
+        confidential_vm_id: ConfidentialVmId,
+        op: O,
+    ) -> Result<F, Error>
+    where
+        O: FnOnce(MutexGuard<'_, ConfidentialVm>) -> Result<F, Error>,
+    {
         Self::try_read(|mr| op(mr.confidential_vm(confidential_vm_id)?))
     }
 
-    pub fn try_confidential_vm_mut<F, O>(confidential_vm_id: ConfidentialVmId, op: O) -> Result<F, Error>
-    where O: FnOnce(MutexGuard<'_, ConfidentialVm>) -> Result<F, Error> {
+    pub fn try_confidential_vm_mut<F, O>(
+        confidential_vm_id: ConfidentialVmId,
+        op: O,
+    ) -> Result<F, Error>
+    where
+        O: FnOnce(MutexGuard<'_, ConfidentialVm>) -> Result<F, Error>,
+    {
         Self::try_read(|m| op(m.confidential_vm(confidential_vm_id)?))
     }
 }

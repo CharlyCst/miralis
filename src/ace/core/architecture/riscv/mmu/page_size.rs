@@ -90,11 +90,26 @@ mod tests {
     #[test]
     fn check_smaller_pages_constant() {
         let smaller_pages = |p: PageSize| p.in_bytes() / p.smaller().unwrap().in_bytes();
-        assert_eq!(PageSize::Size128TiB.number_of_smaller_pages(), smaller_pages(PageSize::Size128TiB));
-        assert_eq!(PageSize::Size512GiB.number_of_smaller_pages(), smaller_pages(PageSize::Size512GiB));
-        assert_eq!(PageSize::Size1GiB.number_of_smaller_pages(), smaller_pages(PageSize::Size1GiB));
-        assert_eq!(PageSize::Size2MiB.number_of_smaller_pages(), smaller_pages(PageSize::Size2MiB));
-        assert_eq!(PageSize::Size16KiB.number_of_smaller_pages(), smaller_pages(PageSize::Size16KiB));
+        assert_eq!(
+            PageSize::Size128TiB.number_of_smaller_pages(),
+            smaller_pages(PageSize::Size128TiB)
+        );
+        assert_eq!(
+            PageSize::Size512GiB.number_of_smaller_pages(),
+            smaller_pages(PageSize::Size512GiB)
+        );
+        assert_eq!(
+            PageSize::Size1GiB.number_of_smaller_pages(),
+            smaller_pages(PageSize::Size1GiB)
+        );
+        assert_eq!(
+            PageSize::Size2MiB.number_of_smaller_pages(),
+            smaller_pages(PageSize::Size2MiB)
+        );
+        assert_eq!(
+            PageSize::Size16KiB.number_of_smaller_pages(),
+            smaller_pages(PageSize::Size16KiB)
+        );
         assert_eq!(PageSize::Size4KiB.number_of_smaller_pages(), 0);
     }
 }

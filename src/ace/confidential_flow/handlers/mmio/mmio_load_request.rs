@@ -31,22 +31,37 @@ impl MmioLoadRequest {
         // According to the RISC-V privilege spec, mtinst encodes faulted instruction (bit 0 is 1) or a pseudo instruction
         assert!(self.mtinst & 0x1 > 0);
         let instruction = self.mtinst | 0x3;
-        let instruction_length = if is_bit_enabled(self.mtinst, 1) { riscv_decode::instruction_length(instruction as u16) } else { 2 };
+        let instruction_length = if is_bit_enabled(self.mtinst, 1) {
+            riscv_decode::instruction_length(instruction as u16)
+        } else {
+            2
+        };
 
         let fault_address = (self.mtval2 << 2) | (self.mtval & 0x3);
-        if !MmioAccessFault::tried_to_access_valid_mmio_region(confidential_flow.confidential_vm_id(), fault_address) {
-            let mmio_access_fault_handler = MmioAccessFault::new(CAUSE_LOAD_ACCESS.into(), self.mtval, instruction_length);
-            confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::MmioAccessFault(mmio_access_fault_handler));
+        if !MmioAccessFault::tried_to_access_valid_mmio_region(
+            confidential_flow.confidential_vm_id(),
+            fault_address,
+        ) {
+            let mmio_access_fault_handler =
+                MmioAccessFault::new(CAUSE_LOAD_ACCESS.into(), self.mtval, instruction_length);
+            confidential_flow.apply_and_exit_to_confidential_hart(
+                ApplyToConfidentialHart::MmioAccessFault(mmio_access_fault_handler),
+            );
         }
 
         match crate::ace::core::architecture::decode_result_register(instruction) {
             Ok(gpr) => confidential_flow
-                .set_resumable_operation(ResumableOperation::MmioLoad(MmioLoadPending::new(instruction_length, gpr)))
+                .set_resumable_operation(ResumableOperation::MmioLoad(MmioLoadPending::new(
+                    instruction_length,
+                    gpr,
+                )))
                 .into_non_confidential_flow()
                 .declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::MmioLoadRequest(self)),
             Err(error) => {
                 let transformation = DeclassifyToHypervisor::SbiResponse(SbiResponse::error(error));
-                confidential_flow.into_non_confidential_flow().declassify_and_exit_to_hypervisor(transformation)
+                confidential_flow
+                    .into_non_confidential_flow()
+                    .declassify_and_exit_to_hypervisor(transformation)
             }
         }
     }
@@ -56,8 +71,12 @@ impl MmioLoadRequest {
         // The security monitor exposes `scause` and `stval` via hart's CSRs but `htval` and `htinst` via the NACL shared memory.
         hypervisor_hart.csrs_mut().scause.write(self.mcause);
         hypervisor_hart.csrs_mut().stval.write(self.mtval);
-        hypervisor_hart.shared_memory_mut().write_csr(CSR_HTVAL.into(), self.mtval2);
-        hypervisor_hart.shared_memory_mut().write_csr(CSR_HTINST.into(), self.mtinst);
+        hypervisor_hart
+            .shared_memory_mut()
+            .write_csr(CSR_HTVAL.into(), self.mtval2);
+        hypervisor_hart
+            .shared_memory_mut()
+            .write_csr(CSR_HTINST.into(), self.mtinst);
         SbiResponse::success().declassify_to_hypervisor_hart(hypervisor_hart);
     }
 }

@@ -16,14 +16,19 @@ impl ConfidentialVmMmioRegion {
     pub fn new(start_address: usize, size_in_bytes: usize) -> Self {
         let base_address = ConfidentialVmPhysicalAddress::new(start_address);
         let one_past_the_end_address = base_address.add(size_in_bytes);
-        Self { base_address, one_past_the_end_address }
+        Self {
+            base_address,
+            one_past_the_end_address,
+        }
     }
 
     pub fn overlaps(&self, other: &Self) -> bool {
-        self.base_address < other.one_past_the_end_address && other.base_address < self.one_past_the_end_address
+        self.base_address < other.one_past_the_end_address
+            && other.base_address < self.one_past_the_end_address
     }
 
     pub fn contains(&self, other: &Self) -> bool {
-        self.base_address <= other.base_address && other.one_past_the_end_address < self.one_past_the_end_address
+        self.base_address <= other.base_address
+            && other.one_past_the_end_address < self.one_past_the_end_address
     }
 }

@@ -4,19 +4,18 @@
 #![no_std]
 #![no_main]
 #![feature(pointer_byte_offsets)]
-
 // used for RefinedRust annotations
 #![feature(register_tool)]
 #![register_tool(rr)]
 #![feature(custom_inner_attributes)]
 #![rr::coq_prefix("ace_ptr")]
 
-
 mod error;
 use core::mem::size_of;
+
 pub use error::PointerError;
 
-/// Calculates the offset in bytes between two pointers. 
+/// Calculates the offset in bytes between two pointers.
 pub fn ptr_byte_offset(pointer1: *const usize, pointer2: *const usize) -> isize {
     (pointer1 as isize) - (pointer2 as isize)
 }
@@ -24,7 +23,11 @@ pub fn ptr_byte_offset(pointer1: *const usize, pointer2: *const usize) -> isize 
 /// Aligns the pointer to specific size while making sure that the aligned pointer
 /// is still within the memory region owned by the original pointer. Check `ptr_byte_add_mut`
 /// to learn about guarantees for the returned pointer.
-pub fn ptr_align(pointer: *mut usize, align_in_bytes: usize, owned_region_end: *const usize) -> Result<*mut usize, PointerError> {
+pub fn ptr_align(
+    pointer: *mut usize,
+    align_in_bytes: usize,
+    owned_region_end: *const usize,
+) -> Result<*mut usize, PointerError> {
     let offset_to_align = pointer.align_offset(align_in_bytes) * size_of::<usize>();
     ptr_byte_add_mut(pointer, offset_to_align, owned_region_end)
 }
@@ -35,7 +38,9 @@ pub fn ptr_align(pointer: *mut usize, align_in_bytes: usize, owned_region_end: *
 /// of size one, if the original pointer is valid. Additional checks are required for making
 /// larger memory accesses.
 pub fn ptr_byte_add_mut(
-    pointer: *mut usize, offset_in_bytes: usize, owned_region_end: *const usize,
+    pointer: *mut usize,
+    offset_in_bytes: usize,
+    owned_region_end: *const usize,
 ) -> Result<*mut usize, PointerError> {
     let incremented_pointer = pointer.wrapping_byte_add(offset_in_bytes);
     // Safety: We check that the pointer is still within the owned region
@@ -55,7 +60,13 @@ pub fn ptr_byte_add_mut(
 /// of size one, if the original pointer is valid. Additional checks are required for making
 /// larger memory accesses.
 pub fn ptr_byte_add(
-    pointer: *const usize, offset_in_bytes: usize, owned_region_end: *const usize,
+    pointer: *const usize,
+    offset_in_bytes: usize,
+    owned_region_end: *const usize,
 ) -> Result<*const usize, PointerError> {
-    Ok(ptr_byte_add_mut(pointer as *mut usize, offset_in_bytes, owned_region_end)?)
+    Ok(ptr_byte_add_mut(
+        pointer as *mut usize,
+        offset_in_bytes,
+        owned_region_end,
+    )?)
 }

@@ -22,7 +22,10 @@ impl InvalidCall {
     }
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
-        debug!("Not supported call {:x} {:x}", self.extension_id, self.function_id);
+        debug!(
+            "Not supported call {:x} {:x}",
+            self.extension_id, self.function_id
+        );
         let error = Error::InvalidCall(self.extension_id, self.function_id);
         let transformation = ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error));
         confidential_flow.apply_and_exit_to_confidential_hart(transformation)

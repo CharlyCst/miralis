@@ -27,7 +27,11 @@ pub struct Hgatp(usize);
 
 impl Hgatp {
     pub fn new(address: usize, mode: HgatpMode, vmid: usize) -> Self {
-        Self((vmid << HGATP64_VMID_SHIFT) | (mode.code() << HGATP64_MODE_SHIFT) | (address >> HGATP_PAGE_SHIFT) & HGATP_PPN_MASK)
+        Self(
+            (vmid << HGATP64_VMID_SHIFT)
+                | (mode.code() << HGATP64_MODE_SHIFT)
+                | (address >> HGATP_PAGE_SHIFT) & HGATP_PPN_MASK,
+        )
     }
 
     pub fn disabled() -> Self {

@@ -1,11 +1,13 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
+use alloc::vec::Vec;
+
+use spin::{Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
 use crate::ace::core::architecture::riscv::specification::*;
 use crate::ace::core::architecture::HardwareExtension;
 use crate::ace::error::Error;
-use alloc::vec::Vec;
-use spin::{Once, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use crate::{debug, ensure, ensure_not};
 
 /// Global static description of hardware setup. It is created during the system initiization and used in runtime to perform operations that
@@ -18,11 +20,14 @@ pub struct HardwareSetup {
 
 impl HardwareSetup {
     const NOT_INITIALIZED: &'static str = "Bug: Hardware configuration setup not initialized";
-    const REQUIRED_BASE_EXTENSIONS: &'static [&'static str] = &[ATOMIC_EXTENSION, HYPERVISOR_EXTENSION];
+    const REQUIRED_BASE_EXTENSIONS: &'static [&'static str] =
+        &[ATOMIC_EXTENSION, HYPERVISOR_EXTENSION];
     const REQUIRED_EXTENSIONS: &'static [&'static str] = &[SSTC_EXTENSION, IFENCEI_EXTENSION];
 
     pub fn initialize() -> Result<(), Error> {
-        let hardware_setup = Self { isa_extensions: Vec::new() };
+        let hardware_setup = Self {
+            isa_extensions: Vec::new(),
+        };
         ensure_not!(HARDWARE_SETUP.is_completed(), Error::Reinitialization())?;
         HARDWARE_SETUP.call_once(|| RwLock::new(hardware_setup));
         Ok(())
@@ -35,8 +40,12 @@ impl HardwareSetup {
         let extensions = &prop.split('_').collect::<Vec<&str>>();
         Self::REQUIRED_BASE_EXTENSIONS
             .into_iter()
-            .try_for_each(|ext| ensure!(extensions[0].contains(*ext), Error::MissingCpuExtension()))?;
-        Self::REQUIRED_EXTENSIONS.into_iter().try_for_each(|ext| ensure!(extensions.contains(ext), Error::MissingCpuExtension()))?;
+            .try_for_each(|ext| {
+                ensure!(extensions[0].contains(*ext), Error::MissingCpuExtension())
+            })?;
+        Self::REQUIRED_EXTENSIONS
+            .into_iter()
+            .try_for_each(|ext| ensure!(extensions.contains(ext), Error::MissingCpuExtension()))?;
         Ok(())
     }
 
@@ -45,16 +54,21 @@ impl HardwareSetup {
     }
 
     pub fn is_extension_supported(extension: HardwareExtension) -> bool {
-        Self::try_read(|hardware_setup| Ok(hardware_setup.isa_extensions.contains(&extension))).unwrap_or(false)
+        Self::try_read(|hardware_setup| Ok(hardware_setup.isa_extensions.contains(&extension)))
+            .unwrap_or(false)
     }
 
     fn try_read<F, O>(op: O) -> Result<F, Error>
-    where O: FnOnce(&RwLockReadGuard<'_, Self>) -> Result<F, Error> {
+    where
+        O: FnOnce(&RwLockReadGuard<'_, Self>) -> Result<F, Error>,
+    {
         op(&HARDWARE_SETUP.get().expect(Self::NOT_INITIALIZED).read())
     }
 
     fn try_write<F, O>(op: O) -> Result<F, Error>
-    where O: FnOnce(&mut RwLockWriteGuard<'static, Self>) -> Result<F, Error> {
+    where
+        O: FnOnce(&mut RwLockWriteGuard<'static, Self>) -> Result<F, Error>,
+    {
         op(&mut HARDWARE_SETUP.get().expect(Self::NOT_INITIALIZED).write())
     }
 }

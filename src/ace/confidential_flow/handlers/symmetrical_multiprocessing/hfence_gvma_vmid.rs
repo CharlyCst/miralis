@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: Apache-2.0
 use crate::ace::confidential_flow::handlers::symmetrical_multiprocessing::Ipi;
 use crate::ace::core::architecture::PageSize;
-use crate::ace::core::control_data::{ConfidentialHart, ConfidentialHartRemoteCommandExecutable, ConfidentialVmId};
+use crate::ace::core::control_data::{
+    ConfidentialHart, ConfidentialHartRemoteCommandExecutable, ConfidentialVmId,
+};
 use crate::ace::core::memory_layout::ConfidentialVmPhysicalAddress;
 
 /// An inter hart request sent by the security monitor to clear G-stage level cached address translations.
@@ -16,8 +18,17 @@ pub struct RemoteHfenceGvmaVmid {
 }
 
 impl RemoteHfenceGvmaVmid {
-    pub fn all_harts(start_address: &ConfidentialVmPhysicalAddress, _size: PageSize, _vmid: ConfidentialVmId) -> Self {
-        Self { ipi: Ipi::all_harts(), _start_address: start_address.usize(), _size, _vmid }
+    pub fn all_harts(
+        start_address: &ConfidentialVmPhysicalAddress,
+        _size: PageSize,
+        _vmid: ConfidentialVmId,
+    ) -> Self {
+        Self {
+            ipi: Ipi::all_harts(),
+            _start_address: start_address.usize(),
+            _size,
+            _vmid,
+        }
     }
 }
 

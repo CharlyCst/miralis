@@ -2,7 +2,9 @@
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
 pub use confidential_hart::ConfidentialHart;
-pub use confidential_hart_remote_command::{ConfidentialHartRemoteCommand, ConfidentialHartRemoteCommandExecutable};
+pub use confidential_hart_remote_command::{
+    ConfidentialHartRemoteCommand, ConfidentialHartRemoteCommandExecutable,
+};
 pub use confidential_vm::ConfidentialVm;
 pub use confidential_vm_id::ConfidentialVmId;
 pub use confidential_vm_measurement::{DigestType, MeasurementDigest, StaticMeasurements};

@@ -10,10 +10,13 @@ pub fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut Vir
     }
 
     // And restore CSR registers from main memory
-    hw.hypervisor_hart.hypervisor_hart_state.csrs.save_in_main_memory();
+    hw.hypervisor_hart
+        .hypervisor_hart_state
+        .csrs
+        .save_in_main_memory();
 }
 
-pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut HardwareHart) {
+pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext, hw: &mut HardwareHart) {
     // Save normal registers
     for i in 0..32 {
         ctx.regs[i] = hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i]
@@ -33,15 +36,30 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext,hw: &mut Hardw
     ctx.csr.mtval = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval.read();
     ctx.csr.mtval2 = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtval2.read();
     // ctx.csr.mtvec = hw.hypervisor_hart.hypervisor_hart_state.csrs.mtvec.read();
-    ctx.csr.mscratch = hw.hypervisor_hart.hypervisor_hart_state.csrs.mscratch.read();
+    ctx.csr.mscratch = hw
+        .hypervisor_hart
+        .hypervisor_hart_state
+        .csrs
+        .mscratch
+        .read();
 
     // S mode registers
     // ctx.csr.sstatus = hw.hypervisor_hart.hypervisor_hart_state.csrs.sstatus.read();
     // ctx.csr.sie = hw.hypervisor_hart.hypervisor_hart_state.csrs.sie.read();
     ctx.csr.stvec = hw.hypervisor_hart.hypervisor_hart_state.csrs.stvec.read();
-    ctx.csr.scounteren = hw.hypervisor_hart.hypervisor_hart_state.csrs.scounteren.read();
+    ctx.csr.scounteren = hw
+        .hypervisor_hart
+        .hypervisor_hart_state
+        .csrs
+        .scounteren
+        .read();
     ctx.csr.senvcfg = hw.hypervisor_hart.hypervisor_hart_state.csrs.senvcfg.read();
-    ctx.csr.sscratch = hw.hypervisor_hart.hypervisor_hart_state.csrs.sscratch.read();
+    ctx.csr.sscratch = hw
+        .hypervisor_hart
+        .hypervisor_hart_state
+        .csrs
+        .sscratch
+        .read();
     ctx.csr.sepc = hw.hypervisor_hart.hypervisor_hart_state.csrs.sepc.read();
     ctx.csr.scause = hw.hypervisor_hart.hypervisor_hart_state.csrs.scause.read();
     ctx.csr.stval = hw.hypervisor_hart.hypervisor_hart_state.csrs.stval.read();

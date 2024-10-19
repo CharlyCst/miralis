@@ -25,9 +25,16 @@ impl HypervisorMemoryProtector {
     pub unsafe fn setup() -> Result<(), Error> {
         // We use RISC-V PMP mechanism to define that the confidential memory region is not accessible.
         // We use RISC-V IOPMP mechanism to ensure that no IO devices can access confidential memory region.
-        let (confidential_memory_start, confidential_memory_end) = MemoryLayout::read().confidential_memory_boundary();
-        pmp::split_memory_into_confidential_and_non_confidential(confidential_memory_start, confidential_memory_end)?;
-        iopmp::protect_confidential_memory_from_io_devices(confidential_memory_start, confidential_memory_end)?;
+        let (confidential_memory_start, confidential_memory_end) =
+            MemoryLayout::read().confidential_memory_boundary();
+        pmp::split_memory_into_confidential_and_non_confidential(
+            confidential_memory_start,
+            confidential_memory_end,
+        )?;
+        iopmp::protect_confidential_memory_from_io_devices(
+            confidential_memory_start,
+            confidential_memory_end,
+        )?;
 
         // Enable memory isolation protection. TLB shutdown is not needed because every hart will run this code during its initialization
         // and below function will clear all cached TLBs.

@@ -2,7 +2,9 @@
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
 use crate::ace::core::architecture::PageSize;
-use crate::ace::core::memory_layout::{ConfidentialVmPhysicalAddress, MemoryLayout, NonConfidentialMemoryAddress};
+use crate::ace::core::memory_layout::{
+    ConfidentialVmPhysicalAddress, MemoryLayout, NonConfidentialMemoryAddress,
+};
 use crate::ace::error::Error;
 
 /// `SharedPage` stores internally a raw pointer to an address in non-confidential memory that the shared page
@@ -21,11 +23,16 @@ impl SharedPage {
     pub const SIZE: PageSize = PageSize::Size4KiB;
 
     pub fn new(
-        hypervisor_address: NonConfidentialMemoryAddress, confidential_vm_address: ConfidentialVmPhysicalAddress,
+        hypervisor_address: NonConfidentialMemoryAddress,
+        confidential_vm_address: ConfidentialVmPhysicalAddress,
     ) -> Result<Self, Error> {
         // Security: we check that the end address is located in the non-confidential memory
-        MemoryLayout::read().non_confidential_address_at_offset(&hypervisor_address, Self::SIZE.in_bytes() - 1)?;
-        Ok(Self { hypervisor_address, confidential_vm_address })
+        MemoryLayout::read()
+            .non_confidential_address_at_offset(&hypervisor_address, Self::SIZE.in_bytes() - 1)?;
+        Ok(Self {
+            hypervisor_address,
+            confidential_vm_address,
+        })
     }
 
     pub fn page_size(&self) -> PageSize {

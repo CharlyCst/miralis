@@ -15,7 +15,9 @@ pub struct HandleInterrupt {
 
 impl HandleInterrupt {
     pub fn from_confidential_hart(confidential_hart: &ConfidentialHart) -> Self {
-        Self { pending_interrupts: confidential_hart.csrs().mip.read() }
+        Self {
+            pending_interrupts: confidential_hart.csrs().mip.read(),
+        }
     }
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
@@ -28,12 +30,17 @@ impl HandleInterrupt {
             // The only interrupts that we can see here are:
             // * M-mode timer that the security monitor set to preemt execution of a confidential VM
             // * M-mode software or external interrupt
-            confidential_flow.into_non_confidential_flow().declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::Interrupt(self))
+            confidential_flow
+                .into_non_confidential_flow()
+                .declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::Interrupt(self))
         }
     }
 
     pub fn declassify_to_hypervisor_hart(&self, hypervisor_hart: &mut HypervisorHart) {
-        hypervisor_hart.csrs_mut().scause.write(self.pending_interrupts | SCAUSE_INTERRUPT_MASK);
+        hypervisor_hart
+            .csrs_mut()
+            .scause
+            .write(self.pending_interrupts | SCAUSE_INTERRUPT_MASK);
         SbiResponse::success().declassify_to_hypervisor_hart(hypervisor_hart);
     }
 }

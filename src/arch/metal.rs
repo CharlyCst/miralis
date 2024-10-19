@@ -19,8 +19,6 @@ use crate::{
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
 
-
-
 impl Architecture for MetalArch {
     fn init() {
         // Install trap handler

@@ -5,7 +5,9 @@ use crate::ace::confidential_flow::handlers::sbi::{SbiRequest, SbiResponse};
 use crate::ace::confidential_flow::{ApplyToConfidentialHart, ConfidentialFlow};
 use crate::ace::core::architecture::sbi::CovgExtension;
 use crate::ace::core::architecture::{GeneralPurposeRegister, PageSize};
-use crate::ace::core::control_data::{ConfidentialHart, ConfidentialVmMmioRegion, ControlDataStorage, ResumableOperation};
+use crate::ace::core::control_data::{
+    ConfidentialHart, ConfidentialVmMmioRegion, ControlDataStorage, ResumableOperation,
+};
 use crate::ace::error::Error;
 use crate::ace::non_confidential_flow::DeclassifyToHypervisor;
 use crate::ensure;
@@ -24,22 +26,43 @@ impl RemoveMmioRegion {
     }
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
-        match ControlDataStorage::try_confidential_vm(confidential_flow.confidential_vm_id(), |mut confidential_vm| {
-            ensure!(self.region_start_address % PageSize::Size4KiB.in_bytes() == 0, Error::AddressNotAligned())?;
-            ensure!(self.region_length % PageSize::Size4KiB.in_bytes() == 0, Error::AddressNotAligned())?;
-            Ok(confidential_vm.remove_mmio_region(&ConfidentialVmMmioRegion::new(self.region_start_address, self.region_length)))
-        }) {
+        match ControlDataStorage::try_confidential_vm(
+            confidential_flow.confidential_vm_id(),
+            |mut confidential_vm| {
+                ensure!(
+                    self.region_start_address % PageSize::Size4KiB.in_bytes() == 0,
+                    Error::AddressNotAligned()
+                )?;
+                ensure!(
+                    self.region_length % PageSize::Size4KiB.in_bytes() == 0,
+                    Error::AddressNotAligned()
+                )?;
+                Ok(
+                    confidential_vm.remove_mmio_region(&ConfidentialVmMmioRegion::new(
+                        self.region_start_address,
+                        self.region_length,
+                    )),
+                )
+            },
+        ) {
             Ok(_) => confidential_flow
                 .set_resumable_operation(ResumableOperation::SbiRequest())
                 .into_non_confidential_flow()
-                .declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::SbiRequest(self.sbi_remove_mmio_region())),
-            Err(error) => {
-                confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error)))
-            }
+                .declassify_and_exit_to_hypervisor(DeclassifyToHypervisor::SbiRequest(
+                    self.sbi_remove_mmio_region(),
+                )),
+            Err(error) => confidential_flow.apply_and_exit_to_confidential_hart(
+                ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error)),
+            ),
         }
     }
 
     fn sbi_remove_mmio_region(&self) -> SbiRequest {
-        SbiRequest::new(CovgExtension::EXTID, CovgExtension::SBI_EXT_COVG_REMOVE_MMIO_REGION, self.region_start_address, self.region_length)
+        SbiRequest::new(
+            CovgExtension::EXTID,
+            CovgExtension::SBI_EXT_COVG_REMOVE_MMIO_REGION,
+            self.region_start_address,
+            self.region_length,
+        )
     }
 }

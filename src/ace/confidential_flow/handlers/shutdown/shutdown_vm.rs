@@ -20,14 +20,19 @@ pub struct ShutdownRequest {
 
 impl ShutdownRequest {
     pub fn from_confidential_hart(confidential_hart: &ConfidentialHart) -> Self {
-        Self { calling_hart_id: confidential_hart.confidential_hart_id() }
+        Self {
+            calling_hart_id: confidential_hart.confidential_hart_id(),
+        }
     }
 
     pub fn handle(self, mut confidential_flow: ConfidentialFlow) -> ! {
-        match confidential_flow.broadcast_remote_command(ConfidentialHartRemoteCommand::ShutdownRequest(self)) {
+        match confidential_flow
+            .broadcast_remote_command(ConfidentialHartRemoteCommand::ShutdownRequest(self))
+        {
             Ok(_) => shutdown_confidential_hart(confidential_flow),
             Err(error) => {
-                let transformation = ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error));
+                let transformation =
+                    ApplyToConfidentialHart::SbiResponse(SbiResponse::error(error));
                 confidential_flow.apply_and_exit_to_confidential_hart(transformation)
             }
         }

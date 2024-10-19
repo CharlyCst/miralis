@@ -2,7 +2,7 @@
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
 use crate::ace::core::control_data::HypervisorHart;
-use crate::ace::non_confidential_flow::{NonConfidentialFlow};
+use crate::ace::non_confidential_flow::NonConfidentialFlow;
 
 /*extern "C" {
     fn sbi_trap_handler(regs: *mut sbi_trap_regs) -> *mut sbi_trap_regs;
@@ -58,7 +58,10 @@ impl DelegateToOpensbi {
         }*/
     }
 
-    pub fn handle(/*mut*/ self, /*mut*/ _non_confidential_flow: NonConfidentialFlow) -> ! {
+    pub fn handle(
+        /*mut*/ self,
+        /*mut*/ _non_confidential_flow: NonConfidentialFlow,
+    ) -> ! {
         // We must ensure that the swap is called twice, before and after executing the OpenSBI handler. Otherwise, we end
         // up having incorrect address in mscratch and the context switches to/from the security monitor will not work
         // anymore.

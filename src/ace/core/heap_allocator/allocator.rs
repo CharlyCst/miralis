@@ -2,10 +2,12 @@
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-FileContributor: Heavily based on https://os.phil-opp.com/allocator-designs/
 // SPDX-License-Identifier: Apache-2.0
-use crate::ace::error::Error;
 use core::alloc::{GlobalAlloc, Layout};
 use core::mem;
+
 use pointers_utility::{ptr_align, ptr_byte_add_mut, ptr_byte_offset};
+
+use crate::ace::error::Error;
 use crate::{debug, ensure};
 
 ///! TODO: This is a temporal allocator implementation that will be replaced in the future with a version that
@@ -19,7 +21,9 @@ pub struct LinkedListAllocator {
 
 impl LinkedListAllocator {
     pub(self) const fn empty() -> Self {
-        Self { head: FreeMemoryRegion::new(0) }
+        Self {
+            head: FreeMemoryRegion::new(0),
+        }
     }
 
     // TODO: We should merge continous chunks of memory to prevent fragmentation. Fragmentation
@@ -47,10 +51,16 @@ impl LinkedListAllocator {
         }
     }
 
-    pub(self) fn find_free_memory_region(&mut self, size: usize, align: usize) -> Option<(*mut usize, *mut usize, usize)> {
+    pub(self) fn find_free_memory_region(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> Option<(*mut usize, *mut usize, usize)> {
         let mut current = &mut self.head;
         while let Some(ref mut region) = current.next {
-            if let Ok((alloc_start, alloc_end, free_space_left)) = region.try_allocation(size, align) {
+            if let Ok((alloc_start, alloc_end, free_space_left)) =
+                region.try_allocation(size, align)
+            {
                 current.next = region.next.take();
                 let ret = Some((alloc_start, alloc_end, free_space_left));
                 return ret;
@@ -83,20 +93,35 @@ impl FreeMemoryRegion {
 
     // TODO: this function should return three disjoined continous memory regions if allocation is possible
     // One region would represent the allocation, and two other the remaining free memory.
-    pub(self) fn try_allocation(&mut self, size_in_bytes: usize, align_in_bytes: usize) -> Result<(*mut usize, *mut usize, usize), Error> {
-        let alloc_start = ptr_align(self.start_address_ptr(), align_in_bytes, self.end_address_ptr())?;
+    pub(self) fn try_allocation(
+        &mut self,
+        size_in_bytes: usize,
+        align_in_bytes: usize,
+    ) -> Result<(*mut usize, *mut usize, usize), Error> {
+        let alloc_start = ptr_align(
+            self.start_address_ptr(),
+            align_in_bytes,
+            self.end_address_ptr(),
+        )?;
         let alloc_end = ptr_byte_add_mut(alloc_start, size_in_bytes, self.end_address_ptr())?;
 
         // We only allow allocating from the given region if there is enough space to reuse the resulting space for a
         // FreeMemoryRegion
         let free_space_left = ptr_byte_offset(self.end_address_ptr(), alloc_end);
-        ensure!(free_space_left == 0 || free_space_left >= (mem::size_of::<FreeMemoryRegion>() as isize), Error::OutOfMemory())?;
+        ensure!(
+            free_space_left == 0
+                || free_space_left >= (mem::size_of::<FreeMemoryRegion>() as isize),
+            Error::OutOfMemory()
+        )?;
 
         Ok((alloc_start, alloc_end, free_space_left as usize))
     }
 
     pub(self) fn align_to(layout: Layout) -> (usize, usize) {
-        let layout = layout.align_to(mem::align_of::<FreeMemoryRegion>()).unwrap().pad_to_align();
+        let layout = layout
+            .align_to(mem::align_of::<FreeMemoryRegion>())
+            .unwrap()
+            .pad_to_align();
         let size = layout.size().max(mem::size_of::<FreeMemoryRegion>());
         (size, layout.align())
     }
@@ -136,10 +161,12 @@ impl HeapAllocator {
     fn alloc_dynamic(&self, layout: Layout) -> Option<*mut u8> {
         let (size, align) = FreeMemoryRegion::align_to(layout);
         let mut allocator = self.lock();
-        allocator.find_free_memory_region(size, align).and_then(|(alloc_start, alloc_end, free_space_left)| {
-            allocator.add_free_memory_region(alloc_end, free_space_left);
-            Some(alloc_start as *mut u8)
-        })
+        allocator.find_free_memory_region(size, align).and_then(
+            |(alloc_start, alloc_end, free_space_left)| {
+                allocator.add_free_memory_region(alloc_end, free_space_left);
+                Some(alloc_start as *mut u8)
+            },
+        )
     }
 }
 
@@ -149,7 +176,9 @@ pub struct Locked<A> {
 
 impl<A> Locked<A> {
     pub(self) const fn new(inner: A) -> Self {
-        Locked { inner: spin::Mutex::new(inner) }
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
     }
 
     pub fn lock(&self) -> spin::MutexGuard<A> {

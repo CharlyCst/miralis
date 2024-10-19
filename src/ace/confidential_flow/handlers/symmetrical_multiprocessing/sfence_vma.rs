@@ -5,7 +5,9 @@ use crate::ace::confidential_flow::handlers::sbi::SbiResponse;
 use crate::ace::confidential_flow::handlers::symmetrical_multiprocessing::Ipi;
 use crate::ace::confidential_flow::{ApplyToConfidentialHart, ConfidentialFlow};
 use crate::ace::core::architecture::GeneralPurposeRegister;
-use crate::ace::core::control_data::{ConfidentialHart, ConfidentialHartRemoteCommand, ConfidentialHartRemoteCommandExecutable};
+use crate::ace::core::control_data::{
+    ConfidentialHart, ConfidentialHartRemoteCommand, ConfidentialHartRemoteCommandExecutable,
+};
 
 /// Handles a request from one confidential hart to execute sfence.vma instruction on remote confidential harts.
 #[derive(Clone)]
@@ -20,7 +22,11 @@ impl RemoteSfenceVma {
         let ipi = Ipi::from_confidential_hart(confidential_hart);
         let _start_address = confidential_hart.gprs().read(GeneralPurposeRegister::a2);
         let _size = confidential_hart.gprs().read(GeneralPurposeRegister::a3);
-        Self { ipi, _start_address, _size }
+        Self {
+            ipi,
+            _start_address,
+            _size,
+        }
     }
 
     pub fn handle(self, mut confidential_flow: ConfidentialFlow) -> ! {
@@ -28,7 +34,9 @@ impl RemoteSfenceVma {
             .broadcast_remote_command(ConfidentialHartRemoteCommand::RemoteSfenceVma(self))
             .and_then(|_| Ok(SbiResponse::success()))
             .unwrap_or_else(|error| SbiResponse::error(error));
-        confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(transformation))
+        confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(
+            transformation,
+        ))
     }
 }
 

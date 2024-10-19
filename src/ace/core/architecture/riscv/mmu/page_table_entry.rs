@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: 2023 IBM Corporation
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
+use alloc::boxed::Box;
+
 use super::specification::*;
 use crate::ace::core::architecture::mmu::page_table::PageTable;
 use crate::ace::core::architecture::SharedPage;
 use crate::ace::core::memory_layout::NonConfidentialMemoryAddress;
 use crate::ace::core::page_allocator::{Allocated, Page};
 use crate::ace::error::Error;
-use alloc::boxed::Box;
 
 /// Logical page table entry contains variants specific to the security monitor architecture. These new variants distinguish among certain
 /// types (e.g., shared page, confidential data page) that are not covered by the general RISC-V specification.
@@ -55,7 +56,9 @@ impl PageTableEntry {
     pub fn deserialize(serialized_entry: usize) -> Self {
         match serialized_entry & PAGE_TABLE_ENTRY_TYPE_MASK {
             PAGE_TABLE_ENTRY_NOT_MAPPED => Self::NotMapped,
-            PAGE_TABLE_ENTRY_POINTER => Self::PointerToNextPageTable(Self::decode_pointer(serialized_entry)),
+            PAGE_TABLE_ENTRY_POINTER => {
+                Self::PointerToNextPageTable(Self::decode_pointer(serialized_entry))
+            }
             _ => Self::PointerToDataPage(Self::decode_pointer(serialized_entry)),
         }
     }

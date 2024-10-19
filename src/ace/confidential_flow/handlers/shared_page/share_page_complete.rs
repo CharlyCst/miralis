@@ -6,7 +6,9 @@ use crate::ace::confidential_flow::handlers::shared_page::SharePageRequest;
 use crate::ace::confidential_flow::handlers::symmetrical_multiprocessing::RemoteHfenceGvmaVmid;
 use crate::ace::confidential_flow::{ApplyToConfidentialHart, ConfidentialFlow};
 use crate::ace::core::architecture::GeneralPurposeRegister;
-use crate::ace::core::control_data::{ConfidentialHartRemoteCommand, ControlDataStorage, HypervisorHart};
+use crate::ace::core::control_data::{
+    ConfidentialHartRemoteCommand, ControlDataStorage, HypervisorHart,
+};
 use crate::ace::core::memory_layout::NonConfidentialMemoryAddress;
 use crate::ace::error::Error;
 use crate::ensure;
@@ -23,10 +25,17 @@ pub struct SharePageComplete {
 }
 
 impl SharePageComplete {
-    pub fn from_hypervisor_hart(hypervisor_hart: &HypervisorHart, request: SharePageRequest) -> Self {
+    pub fn from_hypervisor_hart(
+        hypervisor_hart: &HypervisorHart,
+        request: SharePageRequest,
+    ) -> Self {
         Self {
-            response_code: hypervisor_hart.shared_memory().gpr(GeneralPurposeRegister::a0),
-            hypervisor_page_address: hypervisor_hart.shared_memory().gpr(GeneralPurposeRegister::a1),
+            response_code: hypervisor_hart
+                .shared_memory()
+                .gpr(GeneralPurposeRegister::a0),
+            hypervisor_page_address: hypervisor_hart
+                .shared_memory()
+                .gpr(GeneralPurposeRegister::a1),
             request,
         }
     }
@@ -36,19 +45,33 @@ impl SharePageComplete {
             .map_shared_page(&confidential_flow)
             .and_then(|_| Ok(SbiResponse::success()))
             .unwrap_or_else(|error| SbiResponse::error(error));
-        confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(transformation))
+        confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(
+            transformation,
+        ))
     }
 
     fn map_shared_page(&self, confidential_flow: &ConfidentialFlow) -> Result<(), Error> {
         ensure!(self.response_code == 0, Error::Failed())?;
         // Security: check that the start address is located in the non-confidential memory
-        let hypervisor_address = NonConfidentialMemoryAddress::new(self.hypervisor_page_address as *mut usize)?;
+        let hypervisor_address =
+            NonConfidentialMemoryAddress::new(self.hypervisor_page_address as *mut usize)?;
 
-        ControlDataStorage::try_confidential_vm_mut(confidential_flow.confidential_vm_id(), |mut confidential_vm| {
-            let page_size = confidential_vm.memory_protector_mut().map_shared_page(hypervisor_address, self.request.address)?;
-            let request = RemoteHfenceGvmaVmid::all_harts(&self.request.address, page_size, confidential_flow.confidential_vm_id());
-            confidential_vm.broadcast_remote_command(ConfidentialHartRemoteCommand::RemoteHfenceGvmaVmid(request))?;
-            Ok(())
-        })
+        ControlDataStorage::try_confidential_vm_mut(
+            confidential_flow.confidential_vm_id(),
+            |mut confidential_vm| {
+                let page_size = confidential_vm
+                    .memory_protector_mut()
+                    .map_shared_page(hypervisor_address, self.request.address)?;
+                let request = RemoteHfenceGvmaVmid::all_harts(
+                    &self.request.address,
+                    page_size,
+                    confidential_flow.confidential_vm_id(),
+                );
+                confidential_vm.broadcast_remote_command(
+                    ConfidentialHartRemoteCommand::RemoteHfenceGvmaVmid(request),
+                )?;
+                Ok(())
+            },
+        )
     }
 }

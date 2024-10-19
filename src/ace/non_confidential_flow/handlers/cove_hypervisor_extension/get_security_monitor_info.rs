@@ -34,7 +34,8 @@ impl GetSecurityMonitorInfo {
             |error| SbiResponse::error(error),
             |number_of_written_bytes| SbiResponse::success_with_code(number_of_written_bytes),
         );
-        non_confidential_flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(sbi_response))
+        non_confidential_flow
+            .apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(sbi_response))
     }
 
     fn fill_tsm_info_state(&self) -> Result<usize, Error> {
@@ -48,8 +49,13 @@ impl GetSecurityMonitorInfo {
         // Check that the input arguments define a memory region in non-confidential memory that is large enough to store the
         // `SecurityMonitorInfo` structure.
         let ptr = NonConfidentialMemoryAddress::new(self.tsm_info_address as *mut usize)?;
-        NonConfidentialMemoryAddress::new((self.tsm_info_address + self.tsm_info_len) as *mut usize)?;
-        ensure!(self.tsm_info_len >= core::mem::size_of::<SecurityMonitorInfo>(), Error::InvalidParameter())?;
+        NonConfidentialMemoryAddress::new(
+            (self.tsm_info_address + self.tsm_info_len) as *mut usize,
+        )?;
+        ensure!(
+            self.tsm_info_len >= core::mem::size_of::<SecurityMonitorInfo>(),
+            Error::InvalidParameter()
+        )?;
         // below unsafe operation is ok because pointer is a valid address in non-confidential memory, and we have enough space to write the
         // reponse.
         unsafe { (ptr.as_ptr() as *mut SecurityMonitorInfo).write(info) };

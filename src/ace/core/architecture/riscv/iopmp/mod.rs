@@ -4,7 +4,8 @@
 use crate::ace::error::Error;
 
 pub fn protect_confidential_memory_from_io_devices(
-    _confidential_memory_start: usize, _confidential_memory_end: usize,
+    _confidential_memory_start: usize,
+    _confidential_memory_end: usize,
 ) -> Result<(), Error> {
     // TODO: implement IOPMP configuration
     Ok(())

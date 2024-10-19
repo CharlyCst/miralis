@@ -2,9 +2,10 @@
 // SPDX-FileContributor: Wojciech Ozga <woz@zurich.ibm.com>, IBM Research - Zurich
 // SPDX-License-Identifier: Apache-2.0
 #![allow(unused)]
-use crate::ace::core::architecture::CSR;
 use core::convert::TryInto;
 use core::fmt::{Error, Write};
+
+use crate::ace::core::architecture::CSR;
 
 #[macro_export]
 macro_rules! ensure {
@@ -37,12 +38,20 @@ pub fn __print_pmp_configuration() {
     let pmpcfg0 = CSR.pmpcfg0.read();
     let pmp0 = CSR.pmpaddr0.read();
     let pmp0cfg = pmpcfg0 & 0b11111111;
-    debug!("pmp0 value: {:x}, shifted {:x}", pmp0, pmp0 << PMP_ADDRESS_SHIFT);
+    debug!(
+        "pmp0 value: {:x}, shifted {:x}",
+        pmp0,
+        pmp0 << PMP_ADDRESS_SHIFT
+    );
     debug!("pmp0 cfg: {:?}", pmp0cfg);
 
     let pmp1 = CSR.pmpaddr1.read();
     let pmp1cfg = pmpcfg0 & 0b1111111100000000;
-    debug!("pmp1 value: {:x}, shifted {:x}", pmp1, pmp1 << PMP_ADDRESS_SHIFT);
+    debug!(
+        "pmp1 value: {:x}, shifted {:x}",
+        pmp1,
+        pmp1 << PMP_ADDRESS_SHIFT
+    );
     debug!("pmp1 cfg: {:?}", pmp1cfg);
 }
 

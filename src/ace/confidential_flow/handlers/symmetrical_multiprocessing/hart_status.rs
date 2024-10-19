@@ -14,15 +14,22 @@ pub struct SbiHsmHartStatus {
 
 impl SbiHsmHartStatus {
     pub fn from_confidential_hart(confidential_hart: &ConfidentialHart) -> Self {
-        Self { confidential_hart_id: confidential_hart.gprs().read(GeneralPurposeRegister::a0) }
+        Self {
+            confidential_hart_id: confidential_hart.gprs().read(GeneralPurposeRegister::a0),
+        }
     }
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
-        let transformation = ControlDataStorage::try_confidential_vm(confidential_flow.confidential_vm_id(), |ref mut confidential_vm| {
-            confidential_vm.confidential_hart_lifecycle_state(self.confidential_hart_id)
-        })
+        let transformation = ControlDataStorage::try_confidential_vm(
+            confidential_flow.confidential_vm_id(),
+            |ref mut confidential_vm| {
+                confidential_vm.confidential_hart_lifecycle_state(self.confidential_hart_id)
+            },
+        )
         .and_then(|lifecycle_state| Ok(SbiResponse::success_with_code(lifecycle_state.sbi_code())))
         .unwrap_or_else(|error| SbiResponse::error(error));
-        confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(transformation))
+        confidential_flow.apply_and_exit_to_confidential_hart(ApplyToConfidentialHart::SbiResponse(
+            transformation,
+        ))
     }
 }

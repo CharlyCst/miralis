@@ -4,7 +4,8 @@
 use sha2::digest::crypto_common::generic_array::GenericArray;
 
 pub type DigestType = sha2::Sha384;
-pub type MeasurementDigest = GenericArray<u8, <DigestType as sha2::digest::OutputSizeUser>::OutputSize>;
+pub type MeasurementDigest =
+    GenericArray<u8, <DigestType as sha2::digest::OutputSizeUser>::OutputSize>;
 
 /// Number of registers storing boottime integrity measurements. CoVE spec requires at least 1 and maximum 8.
 const NUMBER_OF_REGISTERS: usize = 8;

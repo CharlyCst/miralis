@@ -18,16 +18,29 @@ impl SbiResponse {
     }
 
     pub fn success_with_code(code: usize) -> Self {
-        Self { a0: SBI_SUCCESS as usize, a1: code }
+        Self {
+            a0: SBI_SUCCESS as usize,
+            a1: code,
+        }
     }
 
     pub fn error(error: Error) -> Self {
-        Self { a0: error.sbi_error_code(), a1: 0 }
+        Self {
+            a0: error.sbi_error_code(),
+            a1: 0,
+        }
     }
 
     pub fn apply_to_hypervisor_hart(&self, hypervisor_hart: &mut HypervisorHart) {
-        hypervisor_hart.csrs_mut().mepc.add(ECALL_INSTRUCTION_LENGTH);
-        hypervisor_hart.gprs_mut().write(GeneralPurposeRegister::a0, self.a0);
-        hypervisor_hart.gprs_mut().write(GeneralPurposeRegister::a1, self.a1);
+        hypervisor_hart
+            .csrs_mut()
+            .mepc
+            .add(ECALL_INSTRUCTION_LENGTH);
+        hypervisor_hart
+            .gprs_mut()
+            .write(GeneralPurposeRegister::a0, self.a0);
+        hypervisor_hart
+            .gprs_mut()
+            .write(GeneralPurposeRegister::a1, self.a1);
     }
 }

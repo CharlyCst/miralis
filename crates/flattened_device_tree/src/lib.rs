@@ -4,10 +4,11 @@
 #![no_std]
 #![no_main]
 
-use fdt_rs::base::DevTree;
-use fdt_rs::prelude::{FallibleIterator, PropReader};
-use fdt_rs::base::DevTreeNode;
 use core::mem::align_of;
+
+use fdt_rs::base::{DevTree, DevTreeNode};
+use fdt_rs::prelude::{FallibleIterator, PropReader};
+
 use crate::error::FdtError;
 use crate::error::FdtError::FdtPointerNotAligned;
 
@@ -15,12 +16,12 @@ pub mod error;
 
 /// This is a wrapper over a third party library that parses the flattened device tree (FDT).
 pub struct FlattenedDeviceTree<'a> {
-    pub inner: DevTree<'a>
+    pub inner: DevTree<'a>,
 }
 
 impl<'a> FlattenedDeviceTree<'a> {
     pub const FDT_HEADER_SIZE: usize = 40;
-    
+
     /// Creates an instance of a wrapper over the library that parses the flattened device tree (FDT). Returns error if address is not a 8-bytes aligned pointer to the valid flattened device tree (FDT).
     ///
     /// # Safety
@@ -31,7 +32,9 @@ impl<'a> FlattenedDeviceTree<'a> {
         if address.align_offset(align_of::<u64>()) != 0 {
             return Err(FdtPointerNotAligned());
         }
-        Ok(Self { inner: unsafe { DevTree::from_raw_pointer(address)? } })
+        Ok(Self {
+            inner: unsafe { DevTree::from_raw_pointer(address)? },
+        })
     }
 
     pub unsafe fn total_size(address: *const u8) -> Result<usize, FdtError> {
@@ -56,17 +59,23 @@ impl<'a> FlattenedDeviceTree<'a> {
             .filter_map(|n| Some(Hart { inner: n.ok()? }))
     }
 
-    pub fn memory(&self) -> Result<FdtMemoryRegion, FdtError>  {
-        let mem_prop = self.inner.props()
+    pub fn memory(&self) -> Result<FdtMemoryRegion, FdtError> {
+        let mem_prop = self
+            .inner
+            .props()
             .find(|p| Ok(p.name()? == "device_type" && p.str()? == "memory"))?
             .ok_or_else(|| FdtError::NoMemoryNode())?;
 
-        let reg_prop = mem_prop.node()
+        let reg_prop = mem_prop
+            .node()
             .props()
             .find(|p| Ok(p.name().unwrap_or("empty") == "reg"))?
             .ok_or_else(|| FdtError::NoMemoryNode())?;
 
-        Ok(FdtMemoryRegion { base: reg_prop.u64(0)?, size: reg_prop.u64(1)? })
+        Ok(FdtMemoryRegion {
+            base: reg_prop.u64(0)?,
+            size: reg_prop.u64(1)?,
+        })
     }
 }
 
@@ -89,8 +98,9 @@ impl<'a, 'dt> Hart<'a, 'dt> {
 
     pub fn property_str(&self, name: &str) -> Option<&str> {
         let prop = self.inner.props().find(|p| Ok(p.name()? == name)).ok()??;
-        let value = core::str::from_utf8(prop.propbuf()).ok().and_then(|v| v.strip_suffix('\0'))?;
+        let value = core::str::from_utf8(prop.propbuf())
+            .ok()
+            .and_then(|v| v.strip_suffix('\0'))?;
         Some(value)
     }
-
 }

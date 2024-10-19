@@ -69,17 +69,23 @@ impl NaclSharedMemory {
     /// in the non-confidential memory.
     pub fn set(&mut self, base_address: NonConfidentialMemoryAddress) -> Result<(), Error> {
         let nacl_shared_memory_size = Self::SCRATCH_SPACE_SIZE + Self::CSR_SPACE_SIZE;
-        let end_address = MemoryLayout::read().non_confidential_address_at_offset(&base_address, nacl_shared_memory_size)?;
+        let end_address = MemoryLayout::read()
+            .non_confidential_address_at_offset(&base_address, nacl_shared_memory_size)?;
         self.region = Some((base_address, end_address));
         Ok(())
     }
 
     pub fn csr(&self, csr_code: usize) -> usize {
-        self.read_at_offset(Self::SCRATCH_SPACE_SIZE + Self::csr_index(csr_code) * core::mem::size_of::<usize>())
+        self.read_at_offset(
+            Self::SCRATCH_SPACE_SIZE + Self::csr_index(csr_code) * core::mem::size_of::<usize>(),
+        )
     }
 
     pub fn write_csr(&self, csr_code: usize, value: usize) {
-        self.write_at_offset(Self::SCRATCH_SPACE_SIZE + Self::csr_index(csr_code) * core::mem::size_of::<usize>(), value);
+        self.write_at_offset(
+            Self::SCRATCH_SPACE_SIZE + Self::csr_index(csr_code) * core::mem::size_of::<usize>(),
+            value,
+        );
     }
 
     pub fn gpr(&self, register: GeneralPurposeRegister) -> usize {
@@ -87,7 +93,10 @@ impl NaclSharedMemory {
     }
 
     pub fn write_gpr(&self, register: GeneralPurposeRegister, value: usize) {
-        self.write_at_offset(core::mem::size_of::<usize>() * Into::<usize>::into(register), value);
+        self.write_at_offset(
+            core::mem::size_of::<usize>() * Into::<usize>::into(register),
+            value,
+        );
     }
 
     pub fn gprs(&self) -> GeneralPurposeRegisters {
@@ -114,7 +123,9 @@ impl NaclSharedMemory {
             Some((base_address, end_address)) => {
                 // Below unwrap is ok, because the constructor ensures that the entire nacl shared memory is in the non-confidential memory
                 unsafe {
-                    let pointer = base_address.add(offset_in_bytes, end_address.as_ptr()).unwrap();
+                    let pointer = base_address
+                        .add(offset_in_bytes, end_address.as_ptr())
+                        .unwrap();
                     pointer.read()
                 }
             }
@@ -132,7 +143,9 @@ impl NaclSharedMemory {
             // Below unwrap is ok, because we make ensure in constructor that the entire nacl shared memory is in the non-confidential
             // memory
             unsafe {
-                let pointer = base_address.add(offset_in_bytes, end_address.as_ptr()).unwrap();
+                let pointer = base_address
+                    .add(offset_in_bytes, end_address.as_ptr())
+                    .unwrap();
                 pointer.write(value)
             };
         }

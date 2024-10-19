@@ -15,7 +15,8 @@ impl SbiGetMvendorid {
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
         let mvendorid = CSR.mvendorid.read();
-        let transformation = ApplyToConfidentialHart::SbiResponse(SbiResponse::success_with_code(mvendorid));
+        let transformation =
+            ApplyToConfidentialHart::SbiResponse(SbiResponse::success_with_code(mvendorid));
         confidential_flow.apply_and_exit_to_confidential_hart(transformation)
     }
 }

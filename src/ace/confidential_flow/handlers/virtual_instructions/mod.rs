@@ -16,7 +16,10 @@ impl VirtualInstruction {
         // According to the RISC-V privilege spec, mtval should store virtual instruction
         let instruction = confidential_hart.csrs().mtval.read();
         let instruction_length = riscv_decode::instruction_length(instruction as u16);
-        Self { instruction, instruction_length }
+        Self {
+            instruction,
+            instruction_length,
+        }
     }
 
     pub fn handle(self, confidential_flow: ConfidentialFlow) -> ! {
@@ -31,6 +34,9 @@ impl VirtualInstruction {
     }
 
     pub fn apply_to_confidential_hart(&self, confidential_hart: &mut ConfidentialHart) {
-        confidential_hart.csrs_mut().mepc.add(self.instruction_length);
+        confidential_hart
+            .csrs_mut()
+            .mepc
+            .add(self.instruction_length);
     }
 }
