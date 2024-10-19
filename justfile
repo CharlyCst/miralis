@@ -27,9 +27,6 @@ help:
 fmt:
 	cargo fmt
 
-wtf:
-    cargo run -- run --config {{qemu_virt_u_boot_ace_policy}} --firmware opensbi-jump
-
 # Run all the tests
 test:
 	# Running unit tests...
