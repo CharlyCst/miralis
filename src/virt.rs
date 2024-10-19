@@ -514,7 +514,6 @@ impl VirtContext {
         self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
-
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
@@ -728,13 +727,6 @@ impl VirtContext {
             mstatus::MPP_FILTER,
             self.mode.to_bits(),
         );
-        Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
-        Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
-        Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
-        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren);
-
-        Arch::write_csr(Csr::Mie, self.csr.mie);
-        Arch::write_csr(Csr::Mip, self.csr.mip);
 
         if mctx.hw.available_reg.senvcfg {
             Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
@@ -743,6 +735,14 @@ impl VirtContext {
         if mctx.hw.available_reg.menvcfg {
             Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
         }
+
+        Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
+        Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
+        Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
+        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren);
+
+        Arch::write_csr(Csr::Mie, self.csr.mie);
+        Arch::write_csr(Csr::Mip, self.csr.mip);
 
         // If S extension is present - save the registers
         if mctx.hw.extensions.has_s_extension {

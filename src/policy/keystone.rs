@@ -19,7 +19,7 @@ const KEYSTONE_FID: usize = 0x08424b45;
 pub struct KeystonePolicy {}
 
 impl PolicyModule for KeystonePolicy {
-    fn init() -> Self {
+    fn init(_device_tree_blob_addr: usize) -> Self {
         KeystonePolicy {}
     }
 

@@ -7,16 +7,30 @@
 // We need both std and main to be able to run tests in user-space on the host architecture.
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+#![feature(
+    pointer_is_aligned_to,
+    register_tool,
+    custom_inner_attributes,
+    stmt_expr_attributes,
+    asm_const,
+    const_mut_refs,
+    raw_ref_op
+)]
 
+extern crate alloc;
+
+mod ace;
 mod arch;
 mod benchmark;
 mod config;
 mod debug;
 mod decoder;
 mod device;
+mod device_tree;
 mod driver;
 mod host;
 mod logger;
+mod monitor_switch;
 mod platform;
 mod policy;
 mod utils;
@@ -27,11 +41,6 @@ use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
-
-use crate::arch::{misa, Csr, Register};
-use crate::host::MiralisContext;
-use crate::virt::traits::*;
-use crate::virt::{ExecutionMode, VirtContext};
 
 // Defined in the linker script
 #[cfg(not(feature = "userspace"))]
@@ -58,6 +67,13 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 
+use crate::arch::{misa, Csr, Register};
+use crate::host::MiralisContext;
+use crate::virt::{
+    ExecutionMode, HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter,
+    VirtContext,
+};
+
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
@@ -74,13 +90,13 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Arch::read_csr(Csr::Misa) & !misa::DISABLED
     );
     log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
-    log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
+    log::info!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     log::info!("Preparing jump into firmware");
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
-    let mut policy: Policy = Policy::init();
+    let mut policy: Policy = Policy::init(device_tree_blob_addr);
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
@@ -141,6 +157,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         log_ctx(ctx);
     }
 
+    // log::error!("{:?}", ctx.trap_info);
+
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {
             log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
@@ -175,12 +193,10 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
-            log::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            log::debug!("Execution mode: Payload -> Firmware");
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
         }
@@ -327,7 +343,7 @@ mod tests {
     fn handle_trap_state() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw);
-        let mut policy = Policy::init();
+        let mut policy = Policy::init(0x0);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         // Firmware is running

@@ -1,0 +1,43 @@
+# A test configuration to run on QEMU virt platform
+
+[log]
+level = "info"
+color = true
+
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 1
+
+[benchmark]
+enable = false
+
+[target.miralis]
+# Build profile for Miralis (dev profile is set by default)
+profile = "dev"
+
+# Miralis binary will be compiled with this value as a start address
+# Default to "0x80000000"
+start_address = 0x80000000
+
+# Size of the Miralis' stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000
+
+[target.firmware]
+# Build profile for the firmware (dev profile is set by default)
+profile = "dev"
+
+# Firmware binary will be compiled with this value as a start address
+# Default to "0x80200000"
+start_address = 0x80200000
+
+# Size of the firmware stack for each hart (i.e. core)
+# Default to 0x8000
+stack_size = 0x8000
+
+
+[policy]
+name = "ace"
