@@ -12,7 +12,6 @@ max_pmp = 8
 
 [platform]
 nb_harts = 1
-name = "spike"
 
 [benchmark]
 enable = false
@@ -43,7 +42,7 @@ stack_size = 0x8000
 
 [target.payload]
 # Name or path to the payload binary
-name = "hello_world"
+name = "u-boot-exit"
 
 # Build profile for the payload (dev profile is set by default)
 profile = "dev"
@@ -55,3 +54,6 @@ start_address = 0x80400000
 # Size of the payload stack for each hart (i.e. core)
 # Default to 0x8000
 stack_size = 0x8000
+
+[policy]
+name="ace"

@@ -10,7 +10,9 @@ spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
 qemu_virt_test_protect_paylod := "./config/test/qemu-virt-test-protect-payload.toml"
-qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
+qemu_virt_hello_world_payload_ace_policy:= "./config/test/qemu-virt-hello-world-ace-policy.toml"
+qemu_virt_hello_u_boot_ace_policy:= "./config/test/qemu-virt-u-boot-ace-policy.toml"
+qemu_virt_ace_policy:= "./config/test/qemu-virt-ace-policy.toml"
 qemu_virt_u_boot_payload := "./config/test/qemu-virt-u-boot-payload.toml"
 qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
 qemu_virt_sifive_u54_spike := "./config/test/qemu-virt-sifive-u54-spike.toml"
@@ -78,9 +80,14 @@ test:
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
 
-	# Test with different policies
+	# Protect payload policy
 	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
 	# cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
+
+	# Ace policy
+    cargo run -- run --config {{qemu_virt_hello_world_payload_ace_policy}} --firmware opensbi-jump
+    cargo run -- run --config {{qemu_virt_hello_u_boot_ace_policy}} --firmware opensbi-jump
+    cargo run -- run --config {{qemu_virt_ace_policy}} --firmware linux
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}

@@ -22,10 +22,11 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext, hw: &mut Hard
         ctx.regs[i] = hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i]
     }
 
-    // Save CSR registers
+    // TODO: What should we do here?
+    // Restore CSR Register
 
     // M mode registers
-    ctx.csr.mepc = hw.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
+    /*ctx.csr.mepc = hw.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
     ctx.csr.mcause = hw.hypervisor_hart.hypervisor_hart_state.csrs.mcause.read();
     ctx.csr.medeleg = hw.hypervisor_hart.hypervisor_hart_state.csrs.medeleg.read();
     ctx.csr.mideleg = hw.hypervisor_hart.hypervisor_hart_state.csrs.mideleg.read();
@@ -64,7 +65,7 @@ pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext, hw: &mut Hard
     ctx.csr.scause = hw.hypervisor_hart.hypervisor_hart_state.csrs.scause.read();
     ctx.csr.stval = hw.hypervisor_hart.hypervisor_hart_state.csrs.stval.read();
     // ctx.csr.sip= hw.hypervisor_hart.hypervisor_hart_state.csrs.sip.read();
-    ctx.csr.satp = hw.hypervisor_hart.hypervisor_hart_state.csrs.satp.read();
+    ctx.csr.satp = hw.hypervisor_hart.hypervisor_hart_state.csrs.satp.read();*/
 
     // HS mode registers
     /*ctx.csr.hstatus = hw.hypervisor_hart.hypervisor_hart_state.csrs.hstatus.read();

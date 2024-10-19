@@ -8,14 +8,7 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 #![feature(
-    // used for meaningful panic code
-    panic_info_message,
-    // used for calculating offsets for assembly
-    asm_const,
-    // const_mut_ref for LinkedList implementation used in the heap allocator
-    const_mut_refs,
     pointer_is_aligned_to,
-    // used for formal verification framework (RefinedRust annotations)
     register_tool,
     custom_inner_attributes,
     stmt_expr_attributes,
@@ -47,14 +40,6 @@ use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
-use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
-use crate::ace::core::architecture::CSR;
-use crate::ace::core::control_data::HardwareHart;
-use crate::ace::core::initialization::HARTS_STATES;
-use crate::arch::{misa, mstatus, parse_mpp_return_mode, Csr, Register};
-use crate::host::MiralisContext;
-use crate::virt::traits::*;
-use crate::virt::{ExecutionMode, VirtContext};
 
 // Defined in the linker script
 #[cfg(not(feature = "userspace"))]
@@ -80,11 +65,14 @@ mod userspace_linker_definitions {
 
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
+use crate::arch::{misa, Csr, Register};
 use crate::device_tree::divide_memory_region_size;
+use crate::host::MiralisContext;
 use crate::monitor_switch::{
     address_to_miralis_context, address_to_policy, address_to_virt_context,
     overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart,
 };
+use crate::virt::{ExecutionMode, HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter, VirtContext};
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
@@ -168,6 +156,8 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     if log::log_enabled!(log::Level::Trace) {
         log_ctx(ctx);
     }
+
+    // log::error!("{:?}", ctx.trap_info);
 
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {

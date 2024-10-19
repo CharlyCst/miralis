@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 extern crate bindgen;
 
-static INSTALL_DIR: &str = "INSTALL_DIR";
+// static INSTALL_DIR: &str = "INSTALL_DIR";
 
 fn main() {
     /*let install_dir = match env::var(INSTALL_DIR) {

@@ -29,7 +29,7 @@ macro_rules! ensure_not {
     };
 }
 
-#[cfg(feature = "verbose")]
+/*#[cfg(feature = "verbose")]
 pub fn __printout_metadata(svm_id: usize) {}
 
 #[cfg(feature = "verbose")]
@@ -53,13 +53,13 @@ pub fn __print_pmp_configuration() {
         pmp1 << PMP_ADDRESS_SHIFT
     );
     debug!("pmp1 cfg: {:?}", pmp1cfg);
-}
+}*/
 
 #[macro_export]
-#[cfg(not(feature = "verbose"))]
+//#[cfg(not(feature = "verbose"))]
 pub fn __print_pmp_configuration() {}
 
-#[cfg(feature = "verbose")]
+/*#[cfg(feature = "verbose")]
 fn read_memory(address: usize) -> u64 {
     let ptr = (address) as *mut u64;
     unsafe { ptr.read_volatile() }
@@ -86,19 +86,19 @@ macro_rules! debug {
 	($fmt:expr, $($args:tt)+) => ({
 		_debug!(concat!("#ACE: ", $fmt, "\r\n"), $($args)+)
     });
-}
+}*/
 
 // The below code provides the debug!() macro which will be emmited in the
 // output binary only during the build with the verbose flag. For the production
 // code the compilar will ignore all debug!() statements
 #[macro_export]
-#[cfg(not(feature = "verbose"))]
+//#[cfg(not(feature = "verbose"))]
 macro_rules! _debug {
     ($( $args:expr ),*) => {};
 }
 
 #[macro_export]
-#[cfg(not(feature = "verbose"))]
+//#[cfg(not(feature = "verbose"))]
 macro_rules! debug {
     () => {{}};
     ($fmt:expr) => {{}};

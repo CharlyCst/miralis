@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 #![no_std]
 #![no_main]
-#![feature(pointer_byte_offsets)]
 // used for RefinedRust annotations
 #![feature(register_tool)]
 #![register_tool(rr)]
