@@ -12,6 +12,9 @@
     register_tool,
     custom_inner_attributes,
     stmt_expr_attributes,
+    asm_const,
+    const_mut_refs,
+    raw_ref_op,
 )]
 
 extern crate alloc;
@@ -36,7 +39,6 @@ mod virt;
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
-use fdt_rs::base::{DevTree, DevTreeNode, DevTreeProp};
 use platform::{init, Plat, Platform};
 use policy::{Policy, PolicyModule};
 
@@ -66,12 +68,7 @@ mod userspace_linker_definitions {
 #[cfg(feature = "userspace")]
 use userspace_linker_definitions::*;
 use crate::arch::{misa, Csr, Register};
-use crate::device_tree::divide_memory_region_size;
 use crate::host::MiralisContext;
-use crate::monitor_switch::{
-    address_to_miralis_context, address_to_policy, address_to_virt_context,
-    overwrite_hardware_hart_with_virtctx, overwrite_virtctx_with_hardware_hart,
-};
 use crate::virt::{ExecutionMode, HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter, VirtContext};
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {

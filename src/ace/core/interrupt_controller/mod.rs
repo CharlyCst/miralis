@@ -14,9 +14,16 @@ const NOT_INITIALIZED_INTERRUPT_CONTROLLER: &str =
 /// be initialized once.
 static INTERRUPT_CONTROLLER: Once<RwLock<InterruptController>> = Once::new();
 
-extern "C" {
+/*extern "C" {
     /// For now, we rely on the OpenSBI's functionality to send IPIs.
     fn sbi_ipi_send_smode(hmask: usize, hbase: usize) -> usize;
+}*/
+
+fn sbi_ipi_send_smode(_hmask: usize, _hbase: usize) -> usize {
+    todo!("implement this feature, we don't have opensbi delegation anymore");
+
+    #[allow(unreachable_code)]
+    0
 }
 
 /// Interrupt controller abstract the functionality needed by the security monitor to interact with hart/device
