@@ -167,7 +167,7 @@ fn exit_spike(success: bool) -> ! {
     // Requests spike exit by writing exit code to .tohost
     // The write must be volatile to ensure it is not optimized away.
     unsafe {
-        ptr::write_volatile(&mut tohost as *mut u64, code as u64);
+        ptr::write_volatile(&raw mut tohost, code as u64);
     }
 
     // Wait until spike shuts down
