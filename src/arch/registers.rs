@@ -48,8 +48,8 @@ impl Register {
 /// A RISC-V Control and Status Register (CSR).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Csr {
-    /// Machine mode CSRs
-
+    // Machine mode CSRs
+    //
     /// Machine Hart ID
     Mhartid,
     /// Machine Status
@@ -125,8 +125,8 @@ pub enum Csr {
     /// Machine bad address or instruction
     Mtval,
 
-    /// Supervisor mode CSRs
-
+    // Supervisor mode CSRs
+    //
     /// Supervisor status register
     Sstatus,
     /// Supervisor interrupt-enable register
@@ -152,8 +152,8 @@ pub enum Csr {
     /// Supervisor-mode context register
     Scontext,
 
-    /// Hypervisor and Virtual Supervisor CSRs
-
+    // Hypervisor and Virtual Supervisor CSRs
+    //
     /// Hypervisor Status Register
     Hstatus,
     /// Hypervisor Exception Delegation Register

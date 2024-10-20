@@ -120,12 +120,6 @@ pub struct ExtensionsCapability {
     pub has_h_extension: bool,
     /// Supervisor extension
     pub has_s_extension: bool,
-    /// Single precision floating point extension
-    pub has_f_extension: bool,
-    /// Double precision floating point extension
-    pub has_d_extension: bool,
-    /// Quadruple precision floating point extension
-    pub has_q_extension: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

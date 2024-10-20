@@ -358,7 +358,7 @@ pub struct PmpIterator<'a> {
     prev_addr: usize,
 }
 
-impl<'a> Iterator for PmpIterator<'a> {
+impl Iterator for PmpIterator<'_> {
     type Item = (Segment, u8);
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -70,7 +70,7 @@ pub unsafe fn log_stack_usage() {
     const WARNING_THRESHOLD: usize = 80;
 
     // Get stack usage
-    let stack_bottom = (&_stack_start) as *const u8 as usize;
+    let stack_bottom = &raw const _stack_start as usize;
     let hart_id = Arch::read_csr(Csr::Mhartid);
     let stack_bottom = stack_bottom + hart_id * TARGET_STACK_SIZE;
     let stack_top = stack_bottom + TARGET_STACK_SIZE;

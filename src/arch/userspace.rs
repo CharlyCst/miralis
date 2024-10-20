@@ -4,7 +4,7 @@
 //! architecutre, such as when running unit tests.
 
 use core::marker::PhantomData;
-use core::{ptr, usize};
+use core::ptr;
 
 use spin::Mutex;
 
@@ -21,9 +21,6 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
     ExtensionsCapability {
         has_h_extension: false,
         has_s_extension: true,
-        has_f_extension: false,
-        has_d_extension: false,
-        has_q_extension: false,
     },
 ));
 
@@ -113,9 +110,6 @@ impl Architecture for HostArch {
             extensions: ExtensionsCapability {
                 has_h_extension: false,
                 has_s_extension: true,
-                has_f_extension: false,
-                has_d_extension: false,
-                has_q_extension: false,
             },
         }
     }
