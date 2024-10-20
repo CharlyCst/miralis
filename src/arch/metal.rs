@@ -1059,7 +1059,7 @@ _start:
     // We start by setting up the stack:
     // First we find where the stack is for that hart
     ld t0, __stack_start
-    ld t1, {stack_size}  // Per-hart stack size
+    li t1, {stack_size}  // Per-hart stack size
     csrr t2, mhartid     // Our current hart ID
 
     // compute how much space we need to put before this hart's stack
@@ -1090,7 +1090,7 @@ stack_fill_done:
     // Only the boot hart set the BSS section to avoid race condition.
 
     csrr t0, mhartid         // Our current hart ID
-    ld t2, {boot_hart_id}    // Boot hart ID
+    li t2, {boot_hart_id}    // Boot hart ID
     ld t3, __boot_bss_set    // Shared boolean, set to 1 to say to other harts that the BSS is not initialized yet
     bne t0, t2, wait_bss_end // Only the boot hart initializes the bss
 
@@ -1104,12 +1104,12 @@ zero_bss_loop:
 zero_bss_done:
 
     // Say to other harts that the initialization is done.
-    // This is atomic and memory is ordered in a way that the 
+    // This is atomic and memory is ordered in a way that the
     // initialization will then be visible as soon as the
     // boolean is reset. .aqrl means that it is done sequentially.
     amoswap.w.aqrl x0, x0, (t3)
     j end_wait
-    
+
     // Wait until initialization is done
 wait_bss_end:
     lw t2, (t3)
@@ -1134,23 +1134,12 @@ __boot_bss_set:
 "#,
     main = sym main,
     stack_start = sym _stack_start,
-    stack_size = sym STACK_SIZE,
+    stack_size = const TARGET_STACK_SIZE,
     bss_start = sym _bss_start,
     bss_stop = sym _bss_stop,
-    boot_hart_id = sym BOOT_HART_ID,
+    boot_hart_id = const PLATFORM_BOOT_HART_ID,
     boot_bss_set = sym BOOT_BSS_SET,
 );
-
-// NOTE: We need to use a static here because constant in `asm!` blocks are not yet supported.
-// The workaround is to create a static (so a variable in memory) holding the value and using the
-// symbol (so the address) in assembly to load it into a register.
-//
-// This can be removed once `asm_const` gets stabilized. See:
-// https://github.com/rust-lang/rust/issues/93332
-static STACK_SIZE: usize = TARGET_STACK_SIZE;
-
-// Boot hart ID
-static BOOT_HART_ID: usize = PLATFORM_BOOT_HART_ID;
 
 // Boolean to synchronized harts
 static BOOT_BSS_SET: usize = 1;
@@ -1305,7 +1294,7 @@ _mprv_trap_handler:
     csrr t5, mepc
     addi t5, t5, 4
     csrrw t5, mepc, t5
-    csrr t1, mcause 
+    csrr t1, mcause
     csrr t2, mtval
     csrr t4, mstatus
     csrr t6, mip
