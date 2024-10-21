@@ -42,7 +42,7 @@ impl FloatingPointUnit {
         self.frm.save_in_main_memory();
         self.fcsr.save_in_main_memory();
 
-        panic!("code");
+        // panic!("code");
 
         /*unsafe {
             fasm!("fld", 0, self.registers);
@@ -90,7 +90,7 @@ impl FloatingPointUnit {
         self.frm.restore_from_main_memory();
         self.fcsr.restore_from_main_memory();
 
-        panic!("code");
+        // panic!("code");
 
         /*unsafe {
             fasm!("fsd", 0, self.registers);

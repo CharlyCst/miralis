@@ -7,6 +7,7 @@ use crate::ace::core::architecture::riscv::sbi::CovhExtension::*;
 use crate::ace::core::architecture::riscv::sbi::NaclExtension::*;
 use crate::ace::core::architecture::riscv::sbi::NaclSharedMemory;
 use crate::ace::core::architecture::riscv::sbi::SbiExtension::*;
+use crate::ace::core::architecture::sbi::{CovhExtension, NaclExtension};
 use crate::ace::core::architecture::TrapCause;
 use crate::ace::core::architecture::TrapCause::*;
 use crate::ace::core::control_data::{ConfidentialVmId, HardwareHart, HypervisorHart};
@@ -17,8 +18,9 @@ use crate::ace::non_confidential_flow::handlers::cove_hypervisor_extension::{
 use crate::ace::non_confidential_flow::handlers::nested_acceleration_extension::{
     NaclProbeFeature, NaclSetupSharedMemory,
 };
-use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::InvalidCall;
+use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::{InvalidCall, SbiResponse};
 use crate::ace::non_confidential_flow::{ApplyToHypervisorHart, DeclassifyToHypervisor};
+use crate::ace::non_confidential_flow::handlers::opensbi::ProbeSbiExtension;
 use crate::policy::ace::ace_to_miralis_ctx_switch;
 
 extern "C" {
@@ -60,21 +62,31 @@ impl<'a> NonConfidentialFlow<'a> {
         // `initialization` procedure for more details.
         let flow = unsafe { Self::create(hart_ptr.as_mut().expect(Self::CTX_SWITCH_ERROR_MSG)) };
 
+        let current_cause = TrapCause::from_hart_architectural_state(
+            flow.hypervisor_hart().hypervisor_hart_state());
+
         // End Modification for Miralis
-        match TrapCause::from_hart_architectural_state(
-            flow.hypervisor_hart().hypervisor_hart_state(),
-        ) {
+        match current_cause {
             Interrupt => ace_to_miralis_ctx_switch(flow.hardware_hart), // DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             IllegalInstruction => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             LoadAddressMisaligned => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             LoadAccessFault => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAddressMisaligned => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             StoreAccessFault => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            // HsEcall(Base(ProbeExtension)) => ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
+            HsEcall(Base(ProbeExtension)) => {
+                let extension = ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart());
+                if extension.extension_id == CovhExtension::EXTID || extension.extension_id == NaclExtension::EXTID {
+                    log::info!("Cocuocu");
+                    flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(SbiResponse::success_with_code(1)))
+                } else {
+                    ace_to_miralis_ctx_switch(flow.hardware_hart)
+                }
+            },
             HsEcall(Covh(TsmGetInfo)) => {
                 GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
             }
             HsEcall(Covh(PromoteToTvm)) => {
+                log::warn!("Promotion");
                 PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
             }
             HsEcall(Covh(TvmVcpuRun)) => {

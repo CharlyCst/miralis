@@ -653,6 +653,8 @@ impl VirtContext {
     pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
         let cause = self.trap_info.get_cause();
 
+        log::warn!("{:?}", self.trap_info);
+
         // We only care about ecalls.
         match cause {
             MCause::EcallFromSMode if policy.ecall_from_payload(mctx, self).overwrites() => {

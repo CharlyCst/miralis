@@ -9,15 +9,15 @@ use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::Sb
 use crate::ace::non_confidential_flow::{ApplyToHypervisorHart, NonConfidentialFlow};
 
 pub struct ProbeSbiExtension {
-    extension_id: usize,
-    handler: DelegateToOpensbi,
+    pub(crate) extension_id: usize,
+    //handler: DelegateToOpensbi,
 }
 
 impl ProbeSbiExtension {
     pub fn from_hypervisor_hart(hypervisor_hart: &HypervisorHart) -> Self {
         Self {
             extension_id: hypervisor_hart.gprs().read(GeneralPurposeRegister::a0),
-            handler: DelegateToOpensbi::from_hypervisor_hart(hypervisor_hart),
+            //handler: DelegateToOpensbi::from_hypervisor_hart(hypervisor_hart),
         }
     }
 
@@ -27,7 +27,9 @@ impl ProbeSbiExtension {
                 .apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(
                     SbiResponse::success_with_code(1),
                 )),
-            _ => self.handler.handle(non_confidential_flow),
+            _ => {
+                panic!("We should never reach this");
+            }
         }
     }
 }
