@@ -1,18 +1,5 @@
-# A test configuration to run on QEMU virt platform
-
-[log]
-level = "info"
-color = true
-
-
-[vcpu]
-max_pmp = 8
-
-[platform]
-nb_harts = 1
-
-[benchmark]
-enable = false
+[policy]
+name = "protect_payload"
 
 [target.miralis]
 # Build profile for Miralis (dev profile is set by default)
@@ -37,6 +24,3 @@ start_address = 0x80200000
 # Size of the firmware stack for each hart (i.e. core)
 # Default to 0x8000
 stack_size = 0x8000
-
-[policy]
-name = "protect_payload"

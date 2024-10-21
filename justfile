@@ -75,13 +75,12 @@ test:
 	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
 	cargo run -- run --config {{qemu_virt_u_boot_payload}} --firmware opensbi-jump
 
-	# Test benchmark code
+	# Testing with protect payload policy
+	cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware linux
+
+	# Testing benchmark code
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
-
-	# Test with different policies
-	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware opensbi
-	# cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
