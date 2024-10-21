@@ -151,12 +151,6 @@ pub fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
     log::debug!("Payload -> Firmware {:?}", ctx.trap_info);
     handle_trap(ctx, mctx, policy);
 
-    unsafe {
-        Arch::run_vcpu(ctx);
-    }
-
-    handle_trap(ctx, mctx, policy);
-
     main_loop(ctx, mctx, policy);
 }
 
