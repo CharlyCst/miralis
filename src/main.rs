@@ -179,6 +179,9 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         Benchmark::increment_counter(Counter::WorldSwitches);
     }
 
+    // Inject interrupts if required
+    ctx.check_and_inject_interrupts();
+
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
@@ -187,7 +190,10 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
             policy.switch_from_firmware_to_payload(ctx, mctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            log::debug!("Execution mode: Payload -> Firmware");
+            log::debug!(
+                "Execution mode: Payload -> Firmware ({:?})",
+                ctx.trap_info.get_cause()
+            );
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
         }
@@ -347,7 +353,7 @@ mod tests {
 
         // Simulating a trap
         ctx.trap_info.mepc = 0x80200042; // Dummy address
-        ctx.trap_info.mstatus = 0b1000;
+        ctx.trap_info.mstatus = 0b10000000;
         ctx.trap_info.mcause = MCause::Breakpoint as usize; // TODO : use a real int.
         ctx.trap_info.mip = 0b1;
         ctx.trap_info.mtval = 0;
@@ -368,9 +374,9 @@ mod tests {
         assert_eq!(ctx.csr.mideleg, 0, "mideleg must not change");
         assert_eq!(ctx.csr.mepc, 0x80200042);
         assert_eq!(
-            (ctx.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET,
+            (ctx.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET,
             0b1,
-            "mstatus.MIE must be set to trap_info.mstatus.MIE"
+            "mstatus.MPIE must be set to trap_info.mstatus.MPIE"
         );
     }
 }
