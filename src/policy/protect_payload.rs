@@ -3,6 +3,7 @@
 use miralis_core::abi_protect_payload;
 
 use crate::arch::pmp::pmpcfg;
+use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::{MCause, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
@@ -82,9 +83,9 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         // Lock memory
+        mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
         mctx.pmp
-            .set_from_policy(0, 0x80400000 / 4, pmpcfg::INACTIVE);
-        mctx.pmp.set_from_policy(1, usize::MAX / 4, pmpcfg::TOR);
+            .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
 
         self.last_cause = ctx.trap_info.get_cause();
     }
@@ -102,11 +103,13 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
-        // Unlock memory
-        mctx.pmp
-            .set_from_policy(0, 0x80400000 / 4, pmpcfg::INACTIVE);
-        mctx.pmp
-            .set_from_policy(1, usize::MAX / 4, pmpcfg::TOR | pmpcfg::RWX);
+        // TODO: Work on that section
+        // Step 2: Restore sensitives privileged registers
+        /*self.write_confidential_registers(ctx, true);*/
+
+        // Step 3: Unlock memory
+        mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
+        mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
     }
 
     const NUMBER_PMPS: usize = 2;
