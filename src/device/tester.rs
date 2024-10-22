@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::device::{DeviceAccess, Width};
+use crate::virt::VirtContext;
 
 // ————————————————————————————— Virtual Test Device —————————————————————————————— //
 
@@ -16,7 +17,12 @@ pub struct VirtTestDevice {
 }
 
 impl DeviceAccess for VirtTestDevice {
-    fn read_device(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
+    fn read_device(
+        &self,
+        offset: usize,
+        r_width: Width,
+        _ctx: &mut VirtContext,
+    ) -> Result<usize, &'static str> {
         self.validate_offset(offset)?;
         self.validate_width(r_width)?;
 
@@ -32,6 +38,7 @@ impl DeviceAccess for VirtTestDevice {
         offset: usize,
         w_width: Width,
         value: usize,
+        _ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
         self.validate_offset(offset)?;
         self.validate_width(w_width)?;

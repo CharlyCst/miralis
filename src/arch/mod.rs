@@ -337,6 +337,20 @@ pub mod mie {
     /// Constant to filter out writable bits of mip.
     pub const MIP_WRITE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
 
+    /// The bits in mideleg that must be read-only one.
+    ///
+    /// Some interrupts are forced to be delegated to S-mode because Miralis doesn't implement
+    /// virtualization for them (as that would incur a cost in terms of complexity and
+    /// performance).
+    pub const MIDELEG_READ_ONLY_ONE: usize =
+        SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
+
+    /// The bits in mideleg that are read-only zero
+    ///
+    /// The corresponding interrupts are virtualized by Miralis. For now Miralis only virtualizes
+    /// M-mode interrupts.
+    pub const MIDELEG_READ_ONLY_ZERO: usize = MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
+
     // Mie fields constants
     /// SSIE
     pub const SSIE_OFFSET: usize = 1;

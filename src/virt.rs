@@ -96,7 +96,7 @@ impl VirtContext {
                 satp: 0,
                 scontext: 0,
                 medeleg: 0,
-                mideleg: 0,
+                mideleg: mie::MIDELEG_READ_ONLY_ONE,
                 hstatus: 0,
                 hedeleg: 0,
                 hideleg: 0,
@@ -435,7 +435,7 @@ impl VirtContext {
                 let address = utils::calculate_addr(self.get(*rs1), *imm);
                 let offset = address - device.start_addr;
 
-                match device.device_interface.read_device(offset, *len) {
+                match device.device_interface.read_device(offset, *len, self) {
                     Ok(value) => {
                         let value = if !is_unsigned {
                             sign_extend(value, *len)
@@ -487,7 +487,7 @@ impl VirtContext {
 
                 match device
                     .device_interface
-                    .write_device(offset, *len, value & mask)
+                    .write_device(offset, *len, value & mask, self)
                 {
                     Ok(()) => {
                         // Update the program counter (pc) based on compression
@@ -508,6 +508,49 @@ impl VirtContext {
         }
     }
 
+    /// Check if an interrupt should be injected in virtual M-mode.
+    ///
+    /// If an interrupt is injected, jumps to the firmware trap handler.
+    pub fn check_and_inject_interrupts(&mut self) {
+        if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M {
+            // Interrupts are disabled while in M-mode if mstatus.MIE is 0
+            return;
+        }
+        let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
+        else {
+            // No enabled interrupt pending
+            return;
+        };
+
+        // Update Mstatus to match the semantic of a trap
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MPP_OFFSET,
+            mstatus::MPP_FILTER,
+            self.mode.to_bits(),
+        );
+        let mpie = (self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET;
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MPIE_OFFSET,
+            mstatus::MPIE_FILTER,
+            mpie,
+        );
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MIE_OFFSET,
+            mstatus::MIE_FILTER,
+            0,
+        );
+
+        let mcause = next_int | (1 << (usize::BITS - 1));
+        self.csr.mcause = mcause;
+        self.csr.mepc = self.pc;
+        self.csr.mtval = 0;
+        self.mode = Mode::M;
+        self.set_pc_to_mtvec();
+    }
+
     pub fn emulate_jump_trap_handler(&mut self) {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
@@ -519,11 +562,14 @@ impl VirtContext {
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
-        // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
+        // MSIE and MEIE could not be set by payload so it should be 0. The real value is read from hardware when
         // the firmware want to read virtual mip.
-        self.csr.mip = self.trap_info.mip
-            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
-            | self.csr.mip & mie::SEIE_FILTER;
+        //
+        // We also preserve the virtualized interrupt bits from the virtual mip, as those are pure
+        // software and might not match the physical mip.
+        let hw_mip_bits = self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        let sw_mip_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        self.csr.mip = hw_mip_bits | sw_mip_bits;
 
         match self.mode {
             Mode::M => {
@@ -542,6 +588,15 @@ impl VirtContext {
         }
 
         // Go to firmware trap handler
+        self.set_pc_to_mtvec();
+    }
+
+    /// Set the program counter (PC) to `mtvec`, amulating a jump to the trap handler.
+    ///
+    /// This function checks the `mcause` CSR to select the right entry point if `mtvec` is in
+    /// vectored more. Therefore it assumes `mcause` has been configured prior to calling this
+    /// function.
+    fn set_pc_to_mtvec(&mut self) {
         self.pc = match mtvec::get_mode(self.csr.mtvec) {
             // If Direct mode: just jump to BASE directly
             mtvec::Mode::Direct => self.csr.mtvec & mtvec::BASE_FILTER,
@@ -556,6 +611,23 @@ impl VirtContext {
                 }
             }
         }
+    }
+
+    /// Handles a machine timer interrupt
+    ///
+    /// TODO: for now we assume that all M-mode timer interrupts are issued from the
+    /// firmware (in-band interrupts), so we just set the bit in `vmip`.
+    /// In the future we might want to support timer interrupts for Miralis' own purpose
+    /// (out-of-band interrupts). Once we add such support we should disambiguate
+    /// interrupts here.
+    fn handle_machine_timer_interrupt(&mut self, mctx: &mut MiralisContext) {
+        let mut clint = Plat::get_clint().lock();
+        clint
+            .write_mtimecmp(mctx.hw.hart, usize::MAX)
+            .expect("Failed to write mtimecmp");
+        drop(clint); // Release the lock early
+
+        self.csr.mip |= mie::MTIE_FILTER;
     }
 
     /// Handle the trap coming from the firmware
@@ -622,14 +694,13 @@ impl VirtContext {
                 self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
-                // Set mtimecmp > mtime to clear mip.mtip
-                // We set a deadline as far as possible in the future for now, the firmware can
-                // re-write mtimecmp through the virtual CLINT to trigger an interrupt earlier.
-                let mut clint = Plat::get_clint().lock();
-                clint
-                    .write_mtimecmp(mctx.hw.hart, usize::MAX)
-                    .expect("Failed to write mtimecmp");
-                self.emulate_jump_trap_handler();
+                self.handle_machine_timer_interrupt(mctx);
+            }
+            MCause::MachineSoftInt => {
+                todo!("Virtualize machine software interrupt");
+            }
+            MCause::MachineExternalInt => {
+                todo!("Virtualize machine external interrupt")
             }
             _ => {
                 if cause.is_interrupt() {
@@ -653,16 +724,21 @@ impl VirtContext {
 
     /// Handle the trap coming from the payload
     pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
-        let cause = self.trap_info.get_cause();
+        // Update the current mode
+        self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
 
-        // We only care about ecalls.
-        match cause {
+        // Handle the exit.
+        // We only care about ecalls and virtualized interrupts.
+        match self.trap_info.get_cause() {
             MCause::EcallFromSMode if policy.ecall_from_payload(mctx, self).overwrites() => {
                 // Nothing to do, the Policy module handles those ecalls
                 log::trace!("Catching E-call from payload in the policy module");
             }
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
+            }
+            MCause::MachineTimerInt => {
+                self.handle_machine_timer_interrupt(mctx);
             }
             _ => self.emulate_jump_trap_handler(),
         }
@@ -821,7 +897,10 @@ impl VirtContext {
         // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
         // the firmware want to read virtual mip.
         self.csr.mip = Arch::read_csr(Csr::Mip)
-            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
+            & !(mie::SEIE_FILTER
+                | mie::MSIE_FILTER
+                | mie::MEIE_FILTER
+                | mie::MIDELEG_READ_ONLY_ZERO)
             | self.csr.mip & mie::SEIE_FILTER;
 
         let delegate_perf_counter_mask: usize = if DELEGATE_PERF_COUNTER { 1 } else { 0 };
@@ -1248,7 +1327,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         }
                     }
                 }
-                self.csr.mip = value;
+                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
             }
             Csr::Mtvec => self.csr.mtvec = value,
             Csr::Mscratch => self.csr.mscratch = value,
@@ -1289,7 +1368,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
-            Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
+            Csr::Mideleg => {
+                self.csr.mideleg = (value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO)
+                    | mie::MIDELEG_READ_ONLY_ONE;
+            }
             Csr::Mtinst => {
                 if mctx.hw.extensions.has_h_extension {
                     self.csr.mtinst = value
@@ -1513,12 +1595,25 @@ where
     }
 }
 
+/// Return the ID of the next interrupt to be delivered, if any.
+fn get_next_interrupt(mie: usize, mip: usize, mideleg: usize) -> Option<usize> {
+    let ints = mie & mip & !mideleg;
+    if ints == 0 {
+        None
+    } else {
+        // TODO: use the same priority as hardware.
+        // Currently we serve the less significant bit first.
+        Some(ints.trailing_zeros() as usize)
+    }
+}
+
 // ————————————————————————————————— Tests —————————————————————————————————— //
 
 #[cfg(test)]
 mod tests {
     use core::usize;
 
+    use super::get_next_interrupt;
     use crate::arch::{mie, mstatus, Arch, Architecture, Csr, Mode};
     use crate::host::MiralisContext;
     use crate::virt::VirtContext;
@@ -1619,5 +1714,19 @@ mod tests {
             0,
             "mip.SEIP must be 0"
         );
+    }
+
+    #[test]
+    fn next_interrupt() {
+        assert_eq!(get_next_interrupt(0b000, 0b000, 0b000), None);
+        assert_eq!(get_next_interrupt(0b010, 0b000, 0b000), None);
+        assert_eq!(get_next_interrupt(0b000, 0b010, 0b000), None);
+        assert_eq!(get_next_interrupt(0b010, 0b010, 0b010), None);
+
+        assert_eq!(get_next_interrupt(0b001, 0b001, 0b000), Some(0));
+        assert_eq!(get_next_interrupt(0b011, 0b011, 0b000), Some(0));
+        assert_eq!(get_next_interrupt(0b010, 0b010, 0b000), Some(1));
+        assert_eq!(get_next_interrupt(0b010, 0b011, 0b000), Some(1));
+        assert_eq!(get_next_interrupt(0b011, 0b011, 0b001), Some(1));
     }
 }
