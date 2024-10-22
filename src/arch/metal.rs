@@ -7,7 +7,7 @@ use super::{
     Arch, Architecture, Csr, ExtensionsCapability, MCause, Mode, RegistersCapability, TrapInfo,
 };
 use crate::arch::pmp::PmpFlush;
-use crate::arch::{mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
+use crate::arch::{mie, mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
 use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
@@ -34,6 +34,8 @@ impl Architecture for MetalArch {
         Self::install_handler(_raw_trap_handler as usize);
         // Initialize `medeleg` to ensure all exceptions trap to Miralis
         unsafe { Arch::write_csr(Csr::Medeleg, 0) };
+        // Initialize `mideleg` with read-only ones
+        unsafe { Arch::write_csr(Csr::Mideleg, mie::MIDELEG_READ_ONLY_ONE) };
         // Ensure that there are no PT set, so that firmware in U-mode
         // Wouldn't try to read physical address as virtual (with jump, for example)
         unsafe { Arch::write_csr(Csr::Satp, 0) };

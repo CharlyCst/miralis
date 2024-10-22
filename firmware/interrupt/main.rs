@@ -157,7 +157,7 @@ extern "C" fn trap_handler() {
             out(reg) mip,
         );
     }
-    assert!(mip & 0x80 != 0, "MTIP flag set");
+    assert!(mip & 0x80 != 0, "MTIP flag is not set");
 
     log::debug!("Done!");
     success();

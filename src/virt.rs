@@ -96,7 +96,7 @@ impl VirtContext {
                 satp: 0,
                 scontext: 0,
                 medeleg: 0,
-                mideleg: 0,
+                mideleg: mie::MIDELEG_READ_ONLY_ONE,
                 hstatus: 0,
                 hedeleg: 0,
                 hideleg: 0,
@@ -435,7 +435,7 @@ impl VirtContext {
                 let address = utils::calculate_addr(self.get(*rs1), *imm);
                 let offset = address - device.start_addr;
 
-                match device.device_interface.read_device(offset, *len) {
+                match device.device_interface.read_device(offset, *len, self) {
                     Ok(value) => {
                         let value = if !is_unsigned {
                             sign_extend(value, *len)
@@ -487,7 +487,7 @@ impl VirtContext {
 
                 match device
                     .device_interface
-                    .write_device(offset, *len, value & mask)
+                    .write_device(offset, *len, value & mask, self)
                 {
                     Ok(()) => {
                         // Update the program counter (pc) based on compression
@@ -519,11 +519,17 @@ impl VirtContext {
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
-        // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
+        // MSIE and MEIE could not be set by payload so it should be 0. The real value is read from hardware when
         // the firmware want to read virtual mip.
-        self.csr.mip = self.trap_info.mip
-            & !(mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
-            | self.csr.mip & mie::SEIE_FILTER;
+        //
+        // We also preserve the virtualized interrupt bits from the virtual mip, as those are pure
+        // software and might not match the physical mip.
+        let hw_mip_bits = self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        let sw_mip_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        self.csr.mip = hw_mip_bits | sw_mip_bits;
+        // log::info!("MIP HW: 0x{:x}", hw_mip_bits);
+        // log::info!("MIP SF: 0x{:x}", sw_mip_bits);
+        // log::info!("MIP   : 0x{:x}", self.csr.mip);
 
         match self.mode {
             Mode::M => {
@@ -629,7 +635,21 @@ impl VirtContext {
                 clint
                     .write_mtimecmp(mctx.hw.hart, usize::MAX)
                     .expect("Failed to write mtimecmp");
+                drop(clint); // Release the lock early
+
+                // TODO: for now we assume that all M-mode timer interrupts are issued from the
+                // firmware (in-band interrupts), so we just set the bit in `vmip`.
+                // In the future we might want to support timer interrupts for Miralis' own purpose
+                // (out-of-band interrupts). Once we add such support we should disambiguate
+                // interrupts here.
+                self.csr.mip |= mie::MTIE_FILTER;
                 self.emulate_jump_trap_handler();
+            }
+            MCause::MachineSoftInt => {
+                todo!("Virtualize machine software interrupt");
+            }
+            MCause::MachineExternalInt => {
+                todo!("Virtualize machine external interrupt")
             }
             _ => {
                 if cause.is_interrupt() {
@@ -1277,7 +1297,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
-            Csr::Mideleg => self.csr.mideleg = value & hw.interrupts,
+            Csr::Mideleg => {
+                self.csr.mideleg = (value | mie::MIDELEG_READ_ONLY_ONE)
+                    & hw.interrupts
+                    & !mie::MIDELEG_READ_ONLY_ZERO
+            }
             Csr::Mtinst => {
                 if mctx.hw.extensions.has_h_extension {
                     self.csr.mtinst = value

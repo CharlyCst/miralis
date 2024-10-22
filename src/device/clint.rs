@@ -1,10 +1,12 @@
 use spin::Mutex;
 
+use crate::arch::mie;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
     MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
 };
 use crate::driver::ClintDriver;
+use crate::virt::VirtContext;
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //
 
@@ -18,7 +20,12 @@ pub struct VirtClint {
 }
 
 impl DeviceAccess for VirtClint {
-    fn read_device(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
+    fn read_device(
+        &self,
+        offset: usize,
+        r_width: Width,
+        _ctx: &mut VirtContext,
+    ) -> Result<usize, &'static str> {
         self.read_clint(offset, r_width)
     }
 
@@ -27,8 +34,9 @@ impl DeviceAccess for VirtClint {
         offset: usize,
         w_width: Width,
         value: usize,
+        ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
-        self.write_clint(offset, w_width, value)
+        self.write_clint(offset, w_width, value, ctx)
     }
 }
 
@@ -71,6 +79,7 @@ impl VirtClint {
         offset: usize,
         w_width: Width,
         value: usize,
+        ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
         log::trace!(
             "Write to CLINT at offset 0x{:x} with a value 0x{:x}",
@@ -87,9 +96,24 @@ impl VirtClint {
             }
             (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
-                driver.write_mtimecmp(hart, value)
+                driver.write_mtimecmp(hart, value)?;
+                let mtime = driver.read_mtime();
+                drop(driver); // Release lock early
+
+                // Update the virtual `mip` according to the relative ordering of mtime and
+                // mtimecmp.
+                if mtime > value {
+                    ctx.csr.mip &= !mie::MTIE_FILTER;
+                } else {
+                    ctx.csr.mip |= mie::MTIE_FILTER;
+                }
+
+                Ok(())
             }
             (o, Width::Byte8) if o == MTIME_OFFSET => {
+                // TODO: when updating mtime we should check on which core the timer should fire.
+                // We don't do it for now so we might loose interrupts.
+                log::warn!("Write to mtime not yet fully supported (might cause interrupt loss)");
                 driver.write_mtime(value);
                 Ok(())
             }
