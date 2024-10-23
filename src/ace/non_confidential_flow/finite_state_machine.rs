@@ -185,6 +185,7 @@ impl<'a> NonConfidentialFlow<'a> {
 
     /// Swaps the mscratch register value with the original mascratch value used by OpenSBI. This function must be
     /// called before executing any OpenSBI function. We can remove this once we get rid of the OpenSBI firmware.
+    #[allow(dead_code)]
     pub fn swap_mscratch(&mut self) {
         self.hardware_hart.swap_mscratch()
     }

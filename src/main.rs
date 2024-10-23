@@ -12,9 +12,6 @@
     register_tool,
     custom_inner_attributes,
     stmt_expr_attributes,
-    asm_const,
-    const_mut_refs,
-    raw_ref_op
 )]
 
 extern crate alloc;

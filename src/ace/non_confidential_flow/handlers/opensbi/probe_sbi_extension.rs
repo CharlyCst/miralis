@@ -4,7 +4,6 @@
 use crate::ace::core::architecture::riscv::sbi::{CovhExtension, NaclExtension};
 use crate::ace::core::architecture::GeneralPurposeRegister;
 use crate::ace::core::control_data::HypervisorHart;
-use crate::ace::non_confidential_flow::handlers::opensbi::DelegateToOpensbi;
 use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::SbiResponse;
 use crate::ace::non_confidential_flow::{ApplyToHypervisorHart, NonConfidentialFlow};
 
@@ -21,6 +20,7 @@ impl ProbeSbiExtension {
         }
     }
 
+    #[allow(dead_code)]
     pub fn handle(self, non_confidential_flow: NonConfidentialFlow) -> ! {
         match self.extension_id {
             CovhExtension::EXTID | NaclExtension::EXTID => non_confidential_flow

@@ -9,11 +9,13 @@ use crate::ace::non_confidential_flow::NonConfidentialFlow;
 }*/
 
 /// Handles call from the hypervisor to OpenSBI firmware by delegating it to the OpenSBI trap handler.
+#[allow(dead_code)]
 pub struct DelegateToOpensbi {
     //trap_regs: opensbi_sys::sbi_trap_regs,
 }
 
 impl DelegateToOpensbi {
+    #[allow(dead_code)]
     pub fn from_hypervisor_hart(_hypervisor_hart: &HypervisorHart) -> Self {
         panic!("implement");
         /*Self {
@@ -57,7 +59,7 @@ impl DelegateToOpensbi {
             }
         }*/
     }
-
+    #[allow(dead_code)]
     pub fn handle(
         /*mut*/ self,
         /*mut*/ _non_confidential_flow: NonConfidentialFlow,
@@ -72,7 +74,7 @@ impl DelegateToOpensbi {
         non_confidential_flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::OpenSbiResponse(self))*/
         panic!("implement");
     }
-
+    #[allow(dead_code)]
     pub fn apply_to_hypervisor_hart(&self, _hypervisor_hart: &mut HypervisorHart) {
         /*hypervisor_hart.gprs_mut().write(GeneralPurposeRegister::a0, self.trap_regs.a0.try_into().unwrap());
         hypervisor_hart.gprs_mut().write(GeneralPurposeRegister::a1, self.trap_regs.a1.try_into().unwrap());
