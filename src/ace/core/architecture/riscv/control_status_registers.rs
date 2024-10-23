@@ -299,9 +299,9 @@ pub struct ControlStatusRegister {
     pub mimpid: ReadWriteRiscvCsr<CSR_MIMPID>,
     pub mscratch: ReadWriteRiscvCsr<CSR_MSCRATCH>,
     pub hgatp: ReadWriteRiscvCsr<CSR_HGATP>,
-    pub pmpcfg0: ReadWriteRiscvCsr<CSR_PMPCFG0>,
-    pub pmpaddr0: ReadWriteRiscvCsr<CSR_PMPADDR0>,
-    pub pmpaddr1: ReadWriteRiscvCsr<CSR_PMPADDR1>,
+    pub pmpcfg0: ReadWriteRiscvCsr<CSR_PMPCFG1>, // Changed for Miralis
+    pub pmpaddr0: ReadWriteRiscvCsr<CSR_PMPADDR4>, // Changed for Miralis
+    pub pmpaddr1: ReadWriteRiscvCsr<CSR_PMPADDR5>, // Changed for Miralis
 }
 
 pub const CSR: &ControlStatusRegister = &ControlStatusRegister {
