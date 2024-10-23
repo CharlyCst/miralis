@@ -26,7 +26,7 @@ const QEMU_ARGS: &[&str] = &[
 ];
 
 /// Address at which the firmware is loaded in memory.
-const FIRMWARE_ADDR: u64 = 0x80200000;
+const _FIRMWARE_ADDR: u64 = 0x80200000;
 
 /// Address at which the payload is loaded in memory.
 const PAYLOAD_ADDR: u64 = 0x80400000;
@@ -95,25 +95,21 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("virt")
         .arg("-cpu")
         .arg("rv64")
-        /*.arg("-device")
-        .arg(format!(
-            "loader,file={},addr=0x{:x},force-raw=on",
-            firmware.to_str().unwrap(),
-            FIRMWARE_ADDR
-        ));*/
-    .arg("-kernel")
+        .arg("-kernel") // Loaded at 0x80200000
+        .arg(firmware.to_str().unwrap());
+    /*.arg("-kernel")
     .arg("./artifacts/opensbi_cove")
-    .arg("-append")
-    .arg("console=ttyS0 ro root=/dev/vda")
-    .arg("-drive").arg("if=none,format=raw,file=/home/francois/Documents/ACE-RISCV/ace-build/hypervisor/buildroot/images/rootfs.ext4,id=hd0")
-    .arg("-device")
-    .arg("virtio-blk-device,scsi=off,drive=hd0")
-    .arg("-netdev")
-    .arg("user,id=net0,net=192.168.100.1/24,dhcpstart=192.168.100.128,hostfwd=tcp::3024-:22")
-    .arg("-device")
-    .arg("virtio-net-device,netdev=net0")
-    .arg("-device")
-    .arg("virtio-rng-pci");
+        .arg("-append")
+        .arg("console=ttyS0 ro root=/dev/vda")
+        .arg("-drive").arg("if=none,format=raw,file=/home/francois/Documents/ACE-RISCV/ace-build/hypervisor/buildroot/images/rootfs.ext4,id=hd0")
+        .arg("-device")
+        .arg("virtio-blk-device,scsi=off,drive=hd0")
+        .arg("-netdev")
+        .arg("user,id=net0,net=192.168.100.1/24,dhcpstart=192.168.100.128,hostfwd=tcp::3024-:22")
+        .arg("-device")
+        .arg("virtio-net-device,netdev=net0")
+        .arg("-device")
+        .arg("virtio-rng-pci");*/
 
     // If a payload is defined in the config, try to load it at the specified address.
     if let Some(payload) = &cfg.target.payload {
