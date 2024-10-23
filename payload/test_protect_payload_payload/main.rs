@@ -60,22 +60,6 @@ macro_rules! save_registers {
 
     };
 }
-
-macro_rules! test_same_registers_after {
-    ($asm_code:expr) => {{
-        let mut regs_before = Regs::new();
-        let mut regs_after = Regs::new();
-
-        unsafe {
-            save_registers!(regs_before);
-            asm!($asm_code);
-            save_registers!(regs_after);
-        }
-
-        regs_before == regs_after
-    }};
-}
-
 // ———————————————————————————————— Guest OS ———————————————————————————————— //
 
 use core::arch::asm;
@@ -115,7 +99,16 @@ fn main() -> ! {
 }
 
 fn test_same_register_after_illegal_instruction() -> bool {
-    test_same_registers_after!("csrw mscratch, zero")
+    let mut regs_before = Regs::new();
+    let mut regs_after = Regs::new();
+
+    unsafe {
+        save_registers!(regs_before);
+        asm!("csrw mscratch, zero");
+        save_registers!(regs_after);
+    }
+
+    regs_before == regs_after
 }
 
 fn test_same_region_after_trap() -> bool {
