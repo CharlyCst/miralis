@@ -3,15 +3,14 @@ config           := "config.toml"
 benchmark        := "ecall_benchmark"
 spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
-qemu_virt_protect_payload        := "./config/test/qemu-virt-test-payload-lock.toml"
 qemu_virt_2harts := "./config/test/qemu-virt-2harts.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 spike_latency_benchmark := "./config/test/spike-latency-benchmark.toml"
 qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
-qemu_virt_payload_lock := "./config/test/qemu-virt-payload-lock.toml"
-qemu_virt_test_protect_paylod := "./config/test/qemu-virt-test-protect-payload.toml"
+qemu_virt_protect_payload      := "./config/test/qemu-virt-protect-payload.toml"
+qemu_virt_test_protect_payload := "./config/test/qemu-virt-test-protect-payload.toml"
 qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
 qemu_virt_u_boot_payload := "./config/test/qemu-virt-u-boot-payload.toml"
 qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
@@ -80,8 +79,8 @@ test:
 	cargo run -- run --config {{qemu_virt_u_boot_payload}} --firmware opensbi-jump
 
 	# Testing with protect payload policy
-	cargo run -- run --config {{qemu_virt_payload_lock}} --firmware linux
-	cargo run -- run --config {{qemu_virt_test_protect_paylod}} --firmware test_protect_payload_firmware
+	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware linux-lock
+	cargo run -- run --config {{qemu_virt_test_protect_payload}} --firmware test_protect_payload_firmware
 
 	# Testing benchmark code
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
