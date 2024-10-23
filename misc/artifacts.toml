@@ -49,3 +49,8 @@ repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 description = "A U-boot bootloader that exits just before jumping to the OS"
 url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.4/u-boot-exit.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
+
+[bin.linux-lock]
+description = "An OpenSBI image with a Linux kernel payload that locks itself in the protect payload policy"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.5/opensbi-linux-kernel-lock.bin"
+repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
