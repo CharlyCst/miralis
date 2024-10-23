@@ -883,17 +883,6 @@ impl VirtContext {
 
 // ———————————————————————— Register Setters/Getters ———————————————————————— //
 
-/// A module exposing the traits to manipulate registers of a virtual context.
-///
-/// To get and set registers from a virtual context, first import all the traits:
-///
-/// ```
-/// use crate::virt::traits::*;
-/// ```
-pub mod traits {
-    pub use super::{HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter};
-}
-
 /// A trait implemented by virtual contexts to read registers.
 pub trait RegisterContextGetter<R> {
     fn get(&self, register: R) -> usize;

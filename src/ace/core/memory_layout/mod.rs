@@ -152,6 +152,8 @@ impl MemoryLayout {
     /// Caller must guarantee that there is no other thread that can write to confidential memory during execution of
     /// this function.
     // TODO(verification): we need to come up with a mechanism to acquire ownership of all memory
+    // TODO: Add this in the panic handler of Miralis
+    #[allow(dead_code)]
     pub unsafe fn clear_confidential_memory(&self) {
         // We can safely cast the below offset to usize because the constructor guarantees that the confidential memory
         // range is valid, and so the memory size must be a valid usize
