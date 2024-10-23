@@ -18,9 +18,11 @@ use crate::ace::non_confidential_flow::handlers::cove_hypervisor_extension::{
 use crate::ace::non_confidential_flow::handlers::nested_acceleration_extension::{
     NaclProbeFeature, NaclSetupSharedMemory,
 };
-use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::{InvalidCall, SbiResponse};
-use crate::ace::non_confidential_flow::{ApplyToHypervisorHart, DeclassifyToHypervisor};
 use crate::ace::non_confidential_flow::handlers::opensbi::ProbeSbiExtension;
+use crate::ace::non_confidential_flow::handlers::supervisor_binary_interface::{
+    InvalidCall, SbiResponse,
+};
+use crate::ace::non_confidential_flow::{ApplyToHypervisorHart, DeclassifyToHypervisor};
 use crate::policy::ace::ace_to_miralis_ctx_switch;
 
 extern "C" {
@@ -63,7 +65,8 @@ impl<'a> NonConfidentialFlow<'a> {
         let flow = unsafe { Self::create(hart_ptr.as_mut().expect(Self::CTX_SWITCH_ERROR_MSG)) };
 
         let current_cause = TrapCause::from_hart_architectural_state(
-            flow.hypervisor_hart().hypervisor_hart_state());
+            flow.hypervisor_hart().hypervisor_hart_state(),
+        );
 
         // End Modification for Miralis
         match current_cause {
@@ -75,13 +78,17 @@ impl<'a> NonConfidentialFlow<'a> {
             StoreAccessFault => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             HsEcall(Base(ProbeExtension)) => {
                 let extension = ProbeSbiExtension::from_hypervisor_hart(flow.hypervisor_hart());
-                if extension.extension_id == CovhExtension::EXTID || extension.extension_id == NaclExtension::EXTID {
+                if extension.extension_id == CovhExtension::EXTID
+                    || extension.extension_id == NaclExtension::EXTID
+                {
                     log::info!("Cocuocu");
-                    flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(SbiResponse::success_with_code(1)))
+                    flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(
+                        SbiResponse::success_with_code(1),
+                    ))
                 } else {
                     ace_to_miralis_ctx_switch(flow.hardware_hart)
                 }
-            },
+            }
             HsEcall(Covh(TsmGetInfo)) => {
                 GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
             }

@@ -11,7 +11,7 @@
     pointer_is_aligned_to,
     register_tool,
     custom_inner_attributes,
-    stmt_expr_attributes,
+    stmt_expr_attributes
 )]
 
 extern crate alloc;
