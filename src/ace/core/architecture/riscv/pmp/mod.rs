@@ -28,24 +28,32 @@ pub fn split_memory_into_confidential_and_non_confidential(
 
     // TODO: simplify use of PMP by using a single PMP entry to isolate the confidential memory.
     // We assume here that the first two PMPs are not used by anyone else, e.g., OpenSBI firmware
-    CSR.pmpaddr0.write(confidential_memory_start >> PMP_ADDRESS_SHIFT); // In reality pmpcfg0 points to pmpcf4 to make it compabile with Miralis - look at the CSR struct
-    CSR.pmpaddr1.write(confidential_memory_end >> PMP_ADDRESS_SHIFT); // In reality pmpcfg1 points to pmpcf5 to make it compabile with Miralis - look at the CSR struct
+    //CSR.pmpaddr0.write(confidential_memory_start >> PMP_ADDRESS_SHIFT);
+    //CSR.pmpaddr1.write(confidential_memory_end >> PMP_ADDRESS_SHIFT);
+    // MODIFIED CODE FOR MIRALIS
 
+    // END MODIFIED CODE
     close_access_to_confidential_memory();
     crate::ace::debug::__print_pmp_configuration();
     Ok(())
 }
 
 pub fn open_access_to_confidential_memory() {
-    let mask = (PMP_OFF_MASK | PMP_PERMISSION_RWX_MASK) | (PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << (1 * PMP_CONFIG_SHIFT);
-    CSR.pmpcfg0.read_and_set_bits(mask); // In reality pmpcfg0 points to pmpcf4 to make it compabile with Miralis - look at the CSR struct
-    clear_caches();
+    // MODIFIED CODE FOR MIRALIS
+
+    // END MODIFIED CODE
+    /*let mask = (PMP_OFF_MASK | PMP_PERMISSION_RWX_MASK) | (PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << (1 * PMP_CONFIG_SHIFT);
+    CSR.pmpcfg0.read_and_set_bits(mask);
+    clear_caches();*/
 }
 
 pub fn close_access_to_confidential_memory() {
-    let mask = PMP_PERMISSION_RWX_MASK | (PMP_PERMISSION_RWX_MASK << (1 * PMP_CONFIG_SHIFT));
-    CSR.pmpcfg0.read_and_clear_bits(mask); // In reality pmpcfg0 points to pmpcf4 to make it compabile with Miralis - look at the CSR struct
-    clear_caches();
+    // MODIFIED CODE FOR MIRALIS
+
+    // END MODIFIED CODE
+    /*let mask = PMP_PERMISSION_RWX_MASK | (PMP_PERMISSION_RWX_MASK << (1 * PMP_CONFIG_SHIFT));
+    CSR.pmpcfg0.read_and_clear_bits(mask);
+    clear_caches();*/
 }
 
 fn clear_caches() {
