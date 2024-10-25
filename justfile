@@ -11,6 +11,7 @@ qemu_virt_release := "./config/test/qemu-virt-release.toml"
 qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
 qemu_virt_protect_payload      := "./config/test/qemu-virt-protect-payload.toml"
 qemu_virt_test_protect_payload := "./config/test/qemu-virt-test-protect-payload.toml"
+qemu_virt_test_keystone_payload := "./config/test/qemu-virt-test-keystone.toml"
 qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
 qemu_virt_u_boot_payload := "./config/test/qemu-virt-u-boot-payload.toml"
 qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
@@ -78,9 +79,10 @@ test:
 	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
 	cargo run -- run --config {{qemu_virt_u_boot_payload}} --firmware opensbi-jump
 
-	# Testing with protect payload policy
+	# Testing policies
 	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware linux-lock
 	cargo run -- run --config {{qemu_virt_test_protect_payload}} --firmware test_protect_payload_firmware
+	cargo run -- run --config {{qemu_virt_test_keystone_payload}} --firmware opensbi-jump
 
 	# Testing benchmark code
 	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
