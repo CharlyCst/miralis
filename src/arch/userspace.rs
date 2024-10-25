@@ -8,7 +8,9 @@ use core::ptr;
 
 use spin::Mutex;
 
-use super::{mie, mstatus, Architecture, Csr, ExtensionsCapability, MCause, Mode};
+use super::{
+    mie, mstatus, parse_mpp_return_mode, Architecture, Csr, ExtensionsCapability, MCause, Mode,
+};
 use crate::arch::pmp::PmpFlush;
 use crate::arch::{HardwareCapability, PmpGroup};
 use crate::decoder::Instr;
@@ -39,10 +41,11 @@ impl Architecture for HostArch {
         log::debug!("Userspace wfi");
     }
 
-    unsafe fn set_mpp(mode: Mode) {
+    unsafe fn set_mpp(mode: Mode) -> Mode {
         let value = mode.to_bits() << mstatus::MPP_OFFSET;
-        let mstatus = Self::read_csr(Csr::Mstatus);
-        Self::write_csr(Csr::Mstatus, (mstatus & !mstatus::MPP_FILTER) | value);
+        let prev_mstatus = Self::read_csr(Csr::Mstatus);
+        Self::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value);
+        parse_mpp_return_mode(prev_mstatus)
     }
 
     unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
@@ -286,6 +289,14 @@ impl Architecture for HostArch {
     }
 
     unsafe fn handle_virtual_load_store(_instr: Instr, _ctx: &mut VirtContext) {
+        todo!();
+    }
+
+    unsafe fn copy_bytes_from_mode(
+        _src: *const u8,
+        _dest: &mut [u8],
+        _mode: Mode,
+    ) -> Result<(), ()> {
         todo!();
     }
 }

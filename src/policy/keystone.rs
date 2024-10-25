@@ -6,7 +6,7 @@
 
 use core::ptr;
 
-use crate::arch::Register;
+use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::RegisterContextSetter;
@@ -45,6 +45,7 @@ mod sbi {
 /// See https://github.com/keystone-enclave/keystone/blob/master/sdk/include/shared/sm_err.h
 enum ReturnCode {
     Success = 0,
+    IllegalArgument = 100008,
     NoFreeResources = 100013,
     NotImplemented = 100100,
 }
@@ -116,43 +117,32 @@ impl KeystonePolicy {
     }
 
     fn create_enclave(&mut self, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Create enclave");
-
-        // Read the arguments passed to create_enclave
-        #[repr(C)]
-        struct KeystoneRegion {
-            paddr: usize,
-            size: usize,
-        }
-
         #[repr(C)]
         struct CreateArgs {
-            epm_region: KeystoneRegion, // Enclave region
-            upm_region: KeystoneRegion, // Untrusted region
-
+            epm_paddr: usize, // Enclave region
+            epm_size: usize,
+            utm_paddr: usize, // Untrusted region
+            utm_size: usize,
             runtime_paddr: usize,
             user_paddr: usize,
             free_paddr: usize,
             free_requested: usize,
         }
 
-        // TODO: We should validate that the memory pointed by a0 is valid, and well aligned
+        // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
+        const ARGS_SIZE: usize = size_of::<CreateArgs>();
+        let src = ctx.get(Register::X10) as *const u8;
+        let mut dest: [u8; ARGS_SIZE] = [0; ARGS_SIZE];
+        let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
+        let res = unsafe { Arch::copy_bytes_from_mode(src, &mut dest, mode) };
+        if res.is_err() {
+            return ReturnCode::IllegalArgument;
+        }
+
         // TODO: Check if args is valid (see enclave.c line 351)
-        let args = unsafe { ptr::read(ctx.get(Register::X10) as *const CreateArgs) };
+        let args = unsafe { ptr::read(dest.as_ptr() as *const CreateArgs) };
 
-        // Create params
-        let params = RuntimeParams {
-            dram_base: args.epm_region.paddr,
-            dram_size: args.epm_region.size,
-            runtime_base: args.runtime_paddr,
-            user_base: args.user_paddr,
-            free_base: args.free_paddr,
-            untrusted_base: args.upm_region.paddr,
-            untrusted_size: args.upm_region.size,
-            free_requested: args.free_requested,
-        };
-
-        // Find a free enclave slot
+        // Find a free enclave slot and initialize it
         let eid = match Self::allocate_enclave(self) {
             Ok(index) => index,
             Err(code) => return code,
@@ -160,7 +150,16 @@ impl KeystonePolicy {
 
         self.enclaves[eid].eid = eid;
         self.enclaves[eid].state = EnclaveState::Allocated;
-        self.enclaves[eid].params = params;
+        self.enclaves[eid].params = RuntimeParams {
+            dram_base: args.epm_paddr,
+            dram_size: args.epm_size,
+            runtime_base: args.runtime_paddr,
+            user_base: args.user_paddr,
+            free_base: args.free_paddr,
+            untrusted_base: args.utm_paddr,
+            untrusted_size: args.utm_size,
+            free_requested: args.free_requested,
+        };
 
         ReturnCode::Success
     }

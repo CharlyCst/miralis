@@ -334,10 +334,11 @@ impl Architecture for MetalArch {
         }
     }
 
-    unsafe fn set_mpp(mode: Mode) {
+    unsafe fn set_mpp(mode: Mode) -> Mode {
         let value = mode.to_bits() << mstatus::MPP_OFFSET;
-        let mstatus = Self::read_csr(Csr::Mstatus);
-        Self::write_csr(Csr::Mstatus, (mstatus & !mstatus::MPP_FILTER) | value);
+        let prev_mstatus = Self::read_csr(Csr::Mstatus);
+        Self::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value);
+        parse_mpp_return_mode(prev_mstatus)
     }
 
     unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
@@ -698,14 +699,11 @@ impl Architecture for MetalArch {
         // Zero out mcause to check if a trap occured during emulation
         Self::write_csr(Csr::Mcause, 0);
 
-        let saved_satp = Self::read_csr(Csr::Satp);
-        let saved_mpp = parse_mpp_return_mode(Self::read_csr(Csr::Mstatus));
-
         // Set the MPP mode to match the vMPP
-        Self::set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+        let prev_mpp = Self::set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+        let prev_satp = Self::write_csr(Csr::Satp, ctx.csr.satp);
 
         // Changes to SATP require an sfence instruction to take effect
-        Self::write_csr(Csr::Satp, ctx.csr.satp);
         Self::sfencevma(None, None);
 
         let mut rd_value: usize;
@@ -818,11 +816,73 @@ impl Architecture for MetalArch {
         }
 
         // Restore the original values
-        Self::write_csr(Csr::Satp, saved_satp);
-        Self::set_mpp(saved_mpp);
+        Self::write_csr(Csr::Satp, prev_satp);
+        Self::set_mpp(prev_mpp);
 
         // Ensure memory consistency
         Self::sfencevma(None, None);
+    }
+
+    unsafe fn copy_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()> {
+        let mut src = src as usize;
+        let mut success: usize = 1;
+
+        // Save the state of exception-related CSRs, as we might overwrite them if an error occurs
+        let prev_mepc = Self::read_csr(Csr::Mepc);
+        let prev_mcause = Self::read_csr(Csr::Mcause);
+        let prev_mstatus = Self::read_csr(Csr::Mstatus);
+
+        // Set mstatus.MPP to mode
+        let prev_mode = Self::set_mpp(mode);
+        for i in 0..dest.len() {
+            let mut byte_read: u8 = 0;
+            unsafe {
+                asm!(
+                // Try
+                "la {r_mtvec}, 0f",
+                "csrrw {r_mtvec}, mtvec, {r_mtvec}",  // Trap to catch-block if an exception occurs
+
+                // Set the mstatus.MPRV bit to 1
+                "csrs mstatus, {mprv_filter}",
+                // Read byte at src
+                "lb {byte}, 0x00({src})",
+                // Set the mstatus.MPRV bit to 0
+                "csrc mstatus, {mprv_filter}",
+                "j 1f", // Jump to finally if the read was successful
+
+                // Catch
+                ".align 4",
+                "0:",
+                "li {success}, 0",
+                "la {byte}, 1f",
+                "csrw mepc, {byte}",
+                "mret",  // Jump to finally and set mstatus.MPRV to 0
+
+                // Finally
+                ".align 4",
+                "1:",
+                "csrw mtvec, {r_mtvec}", // Restore mtvec
+                src = in(reg) src,
+                mprv_filter = in(reg) mstatus::MPRV_FILTER,
+                byte = inout(reg) byte_read,
+                success = inout(reg) success,
+                r_mtvec = out(reg) _,
+                )
+            }
+
+            if success == 0 {
+                Self::write_csr(Csr::Mepc, prev_mepc);
+                Self::write_csr(Csr::Mcause, prev_mcause);
+                Self::write_csr(Csr::Mstatus, prev_mstatus);
+                return Err(());
+            }
+
+            dest[i] = byte_read;
+            src += 1;
+        }
+
+        Self::set_mpp(prev_mode);
+        Ok(())
     }
 }
 
