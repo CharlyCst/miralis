@@ -47,7 +47,9 @@ pub trait Architecture {
 
     /// Set csr_bits with mask
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
-    unsafe fn set_mpp(mode: Mode);
+
+    /// Change mstatus.MPP and return the previous mstatus.MPP
+    unsafe fn set_mpp(mode: Mode) -> Mode;
     unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush;
     unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
@@ -80,6 +82,14 @@ pub trait Architecture {
     /// SAFETY:
     /// None so far, TODO
     unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext);
+
+    /// Copies dest.len() bytes from src to dest, using the provided mode to read from src.
+    /// This function can be useful to copy bytes from the virtual address space of a lower
+    /// privileged mode, to a buffer in M-mode.
+    ///
+    /// Returns whether the copy succeeded or not (for example, the copy might not succeed if we try
+    /// to read an address not accessible from the given mode).
+    unsafe fn copy_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()>;
 }
 
 // ——————————————————————————— Hardware Detection ——————————————————————————— //

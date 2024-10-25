@@ -31,6 +31,7 @@ members = [
     # Payload
     "payload/hello_world",
     "payload/test_protect_payload_payload",
+    "payload/test_keystone_payload",
 
     # Crates
     "crates/abi",

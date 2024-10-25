@@ -1,0 +1,34 @@
+[log]
+level = "info"
+color = true
+
+[debug]
+max_firmware_exits = 2000
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 1
+
+[benchmark]
+enable = false
+
+[target.miralis]
+profile = "dev"
+start_address = 0x80000000
+stack_size = 0x8000
+
+[target.firmware]
+profile = "dev"
+start_address = 0x80200000
+stack_size = 0x8000
+
+[target.payload]
+name = "test_keystone_payload"
+profile = "dev"
+start_address = 0x80400000
+stack_size = 0x8000
+
+[policy]
+name = "keystone"
