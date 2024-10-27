@@ -2,8 +2,6 @@
 
 use core::ptr;
 
-use crate::config::{self, PLATFORM_NB_HARTS};
-
 pub mod clint {
     use crate::arch::Width;
 
@@ -61,14 +59,6 @@ impl ClintDriver {
 
     ///  Read the value of the machine timer compare (mtimecmp) for a specific hart
     pub fn read_mtimecmp(&self, hart: usize) -> Result<usize, &'static str> {
-        if hart >= config::PLATFORM_NB_HARTS {
-            log::warn!(
-                "Tried to read MTIMECMP for hart {}, but only {} hart(s) are available",
-                hart,
-                config::PLATFORM_NB_HARTS
-            );
-            return Err("Out of bounds MTIMECMP read attempt");
-        }
         let pointer =
             self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH.to_bytes());
 
@@ -81,14 +71,6 @@ impl ClintDriver {
 
     /// Write a new value to the machine timer compare (mtimecmp) for a specific hart
     pub fn write_mtimecmp(&mut self, hart: usize, deadline: usize) -> Result<(), &'static str> {
-        if hart >= config::PLATFORM_NB_HARTS {
-            log::warn!(
-                "Tried to write MTIMECMP for hart {}, but only {} hart(s) are available",
-                hart,
-                config::PLATFORM_NB_HARTS
-            );
-            return Err("Out of bounds MTIMECMP write attempt");
-        }
         let pointer =
             self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH.to_bytes());
 
@@ -102,14 +84,6 @@ impl ClintDriver {
 
     /// Read the value of the machine software interrupt (msip) for a specific hart.
     pub fn read_msip(&self, hart: usize) -> Result<usize, &'static str> {
-        if hart >= config::PLATFORM_NB_HARTS {
-            log::warn!(
-                "Tried to read MSIP for hart {}, but only {} hart(s) are available",
-                hart,
-                config::PLATFORM_NB_HARTS
-            );
-            return Err("Out of bounds MSIP read attempt");
-        }
         let pointer =
             self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH.to_bytes());
 
@@ -125,14 +99,6 @@ impl ClintDriver {
 
     /// Write a new value to the machine software interrupt (msip) for a specific hart.
     pub fn write_msip(&mut self, hart: usize, msip: u32) -> Result<(), &'static str> {
-        if hart >= PLATFORM_NB_HARTS {
-            log::warn!(
-                "Tried to write MSIP for hart {}, but only {} hart(s) are available",
-                hart,
-                config::PLATFORM_NB_HARTS
-            );
-            return Err("Out of bounds MSIP write attempt");
-        }
         let msip_value = msip & 0x1;
         let pointer =
             self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH.to_bytes());
