@@ -939,10 +939,22 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
             Csr::Mip => {
+                // NOTE: here we return only the software writeable bits from the virtual context,
+                // but reads the hardware normally OR the result with a special read-only bit
+                // (SEIE) that comes from the hardware controller. That bit is separate from the
+                // software SEIE, but it is only over possible to read the OR of those two bits.
+                //
+                // The issue is that the hardware bit is ignored by `csrrs` and `csrrc`, see from
+                // the manual:
+                //
+                // > Only the software-writable SEIP bit participates in the read-modify-write
+                // > sequence of a CSRRS or CSRRC instruction.
+                //
+                // To properly emulate this we should treat `csrrs(i)` and `csrrc(i)` differently
+                // when accessing `mip`. For now we simply choose the easy solution and hide the
+                // hardware bit from the virtualized firmware.
                 self.csr.mip
-                    | Arch::read_csr(Csr::Mip)
-                        & (mie::SEIE_FILTER | mie::MSIE_FILTER | mie::MEIE_FILTER)
-            } // Allows to read the interrupt signal from interrupt controller.
+            }
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
             Csr::Mvendorid => self.csr.mvendorid,
