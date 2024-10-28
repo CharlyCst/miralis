@@ -4,7 +4,7 @@ benchmark        := "ecall_benchmark"
 spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
 qemu_virt_protect_payload        := "./config/test/qemu-virt-test-payload-lock.toml"
-qemu_virt_2harts := "./config/test/qemu-virt.toml"
+qemu_virt_2harts := "./config/test/qemu-virt-2harts.toml"
 qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 spike_latency_benchmark := "./config/test/spike-latency-benchmark.toml"
@@ -60,6 +60,9 @@ test:
 	cargo run -- run --config {{qemu_virt}} --firmware vectored_mtvec
 	cargo run -- run --config {{qemu_virt}} --firmware device
 	cargo run -- run --config {{qemu_virt}} --firmware hypervisor
+	cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt_priority
+	cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt
+	cargo run -- run --config {{qemu_virt_2harts}} --firmware clint_interrupt_multihart
 	cargo run -- run --config {{qemu_virt_release}} --firmware default
 
 	# Testing with Miralis as firmware
