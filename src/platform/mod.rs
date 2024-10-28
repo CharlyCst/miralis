@@ -10,6 +10,7 @@ use spin::Mutex;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
+use crate::device::clint::VirtClint;
 use crate::driver::ClintDriver;
 use crate::{device, logger};
 
@@ -32,6 +33,7 @@ pub trait Platform {
     fn exit_failure() -> !;
     fn create_virtual_devices() -> [device::VirtDevice; 2];
     fn get_clint() -> &'static Mutex<ClintDriver>;
+    fn get_vclint() -> &'static VirtClint;
 
     /// Load the firmware (virtual M-mode software) and return its address.
     fn load_firmware() -> usize;

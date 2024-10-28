@@ -630,6 +630,29 @@ impl VirtContext {
         self.csr.mip |= mie::MTIE_FILTER;
     }
 
+    /// Handles a machine software interrupt trap
+    ///
+    /// TODO: for now we assume that all M-mode software interrupts are issued from the firmware
+    /// (in-band interrupts). In the future we might want to support out-of-band interrupts for
+    /// Miralis' own purpose (e.g. updating PMP on all cores on policy change). For that purpose we
+    /// will have to distinguish between firmware-trigerred and Miralis-trigerred interrupts.
+    fn handle_machine_software_interrupt(&mut self, mctx: &mut MiralisContext) {
+        // Clear the interrupt
+        let mut clint = Plat::get_clint().lock();
+        clint
+            .write_msip(mctx.hw.hart, 0)
+            .expect("Failed to write msip");
+        drop(clint); // Release the lock early
+
+        // Check if a virtual MSI is pending
+        let vclint = Plat::get_vclint();
+        if vclint.get_vmsi(self.hart_id) {
+            self.csr.mip |= mie::MSIE_FILTER;
+        } else {
+            self.csr.mip &= !mie::MSIE_FILTER;
+        }
+    }
+
     /// Handle the trap coming from the firmware
     pub fn handle_firmware_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
         let cause = self.trap_info.get_cause();
@@ -697,7 +720,8 @@ impl VirtContext {
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {
-                todo!("Virtualize machine software interrupt");
+                log::info!("Machine soft int");
+                self.handle_machine_software_interrupt(mctx);
             }
             MCause::MachineExternalInt => {
                 todo!("Virtualize machine external interrupt")
@@ -739,6 +763,9 @@ impl VirtContext {
             }
             MCause::MachineTimerInt => {
                 self.handle_machine_timer_interrupt(mctx);
+            }
+            MCause::MachineSoftInt => {
+                self.handle_machine_software_interrupt(mctx);
             }
             _ => self.emulate_jump_trap_handler(),
         }
@@ -896,12 +923,10 @@ impl VirtContext {
         // controller. (refer to documentation for further detail).
         // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
         // the firmware want to read virtual mip.
-        self.csr.mip = Arch::read_csr(Csr::Mip)
-            & !(mie::SEIE_FILTER
-                | mie::MSIE_FILTER
-                | mie::MEIE_FILTER
-                | mie::MIDELEG_READ_ONLY_ZERO)
-            | self.csr.mip & mie::SEIE_FILTER;
+        let mip_hw_bits =
+            Arch::read_csr(Csr::Mip) & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        let mip_sw_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        self.csr.mip = mip_hw_bits | mip_sw_bits;
 
         let delegate_perf_counter_mask: usize = if DELEGATE_PERF_COUNTER { 1 } else { 0 };
 

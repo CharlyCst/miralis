@@ -105,4 +105,8 @@ impl Platform for MiralisPlatform {
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
     }
+
+    fn get_vclint() -> &'static VirtClint {
+        &VIRT_CLINT
+    }
 }
