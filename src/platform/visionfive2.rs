@@ -122,6 +122,10 @@ impl Platform for VisionFive2Platform {
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
     }
+
+    fn get_vclint() -> &'static VirtClint {
+        &VIRT_CLINT
+    }
 }
 
 pub struct Writer {

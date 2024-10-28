@@ -143,6 +143,10 @@ impl Platform for VirtPlatform {
     fn get_clint() -> &'static Mutex<ClintDriver> {
         &CLINT_MUTEX
     }
+
+    fn get_vclint() -> &'static VirtClint {
+        &VIRT_CLINT
+    }
 }
 
 /// Exit the QEMU emulator.

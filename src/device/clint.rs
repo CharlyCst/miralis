@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicBool, Ordering};
+
 use spin::Mutex;
 
 use crate::arch::mie;
@@ -19,6 +21,8 @@ pub const CLINT_SIZE: usize = 0x10000;
 pub struct VirtClint {
     /// A driver for the physical CLINT
     driver: &'static Mutex<ClintDriver>,
+    /// Virtual Machine Software Interrupt (MSI) map
+    vmsi: [AtomicBool; PLATFORM_NB_HARTS],
 }
 
 impl DeviceAccess for VirtClint {
@@ -45,7 +49,10 @@ impl DeviceAccess for VirtClint {
 impl VirtClint {
     /// Creates a new virtual CLINT device backed by a physical CLINT.
     pub const fn new(driver: &'static Mutex<ClintDriver>) -> Self {
-        Self { driver }
+        Self {
+            driver,
+            vmsi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
+        }
     }
 
     fn validate_offset(&self, offset: usize) -> Result<(), &'static str> {
@@ -94,7 +101,36 @@ impl VirtClint {
         match (offset, w_width) {
             (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
                 let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
-                driver.write_msip(hart, value as u32)
+                if hart >= PLATFORM_NB_HARTS {
+                    return Err("Invalid hart when writting MSIP");
+                }
+                match value & 0b1 {
+                    0 => {
+                        // Clear pending MSI
+                        self.vmsi[hart].store(false, Ordering::SeqCst);
+                        if hart == ctx.hart_id {
+                            // On the current hart clear mip.MSIE
+                            ctx.csr.mip &= !mie::MSIE_FILTER;
+                            Ok(())
+                        } else {
+                            // On remote hart send a physical MSI
+                            driver.write_msip(hart, 1)
+                        }
+                    }
+                    1 => {
+                        // Set pending MSI
+                        self.vmsi[hart].store(true, Ordering::SeqCst);
+                        if hart == ctx.hart_id {
+                            // On the current hart set mip.MSIE
+                            ctx.csr.mip |= mie::MSIE_FILTER;
+                            Ok(())
+                        } else {
+                            // On remote hart send a physical MSI
+                            driver.write_msip(hart, 1)
+                        }
+                    }
+                    _ => unreachable!(),
+                }
             }
             (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let mtime = driver.read_mtime();
@@ -108,7 +144,7 @@ impl VirtClint {
 
                 // Update the virtual `mip` according to the relative ordering of mtime and
                 // mtimecmp.
-                if mtime > value {
+                if mtime >= value {
                     ctx.csr.mip |= mie::MTIE_FILTER;
                 } else {
                     // Register a timer to trigger the virtual interrupt once appropriate
@@ -129,5 +165,14 @@ impl VirtClint {
             }
             _ => Err("Invalid CLINT address"),
         }
+    }
+
+    /// Return true if a vMSI is pending for the given hart
+    pub fn get_vmsi(&self, hart: usize) -> bool {
+        assert!(
+            hart < PLATFORM_NB_HARTS,
+            "Invalid hart ID when clearing vMSI"
+        );
+        self.vmsi[hart].load(Ordering::SeqCst)
     }
 }
