@@ -11,4 +11,5 @@ path = "main.rs"
 
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
+test_helpers = { path = "../../crates/test_helpers" }
 log = { workspace = true }

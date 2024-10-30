@@ -4,7 +4,8 @@
 use core::arch::{asm, global_asm};
 use core::usize;
 
-use miralis_abi::{failure, setup_binary, success};
+use miralis_abi::{setup_binary, success};
+use test_helpers::clint;
 
 setup_binary!(main);
 
@@ -42,32 +43,19 @@ fn main() -> ! {
                     msie = in(reg) 0x8,
                 );
             }
-            success()
+            panic!("Expected an MSI interrupt");
         }
         1 => {
-            set_msip(0, 1);
+            clint::send_msi(0);
             loop {
-                unsafe { asm!("nop") };
+                core::hint::spin_loop();
             }
         }
-        _ => failure(),
+        _ => panic!("Invalid hart ID"),
     }
 }
 
-// ———————————————————————————— Timer Interrupt ————————————————————————————— //
-
-const CLINT_BASE: usize = 0x2000000;
-const MSIP_WIDTH: usize = 0x4;
-
-// Set msip bit pending for other hart
-fn set_msip(hart: usize, value: u32) {
-    log::debug!("Set interrupt for hart {:}", hart);
-
-    let msip_ptr = (CLINT_BASE + MSIP_WIDTH * hart) as *mut u32;
-    unsafe {
-        msip_ptr.write_volatile(value);
-    }
-}
+// —————————————————————————————— Trap Handler —————————————————————————————— //
 
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
@@ -80,16 +68,12 @@ extern "C" fn trap_handler() {
     }
 
     if mcause == 0x8000000000000003 {
-        set_msip(0, 0);
-        unsafe {
-            asm!("mret",);
-        }
+        clint::clear_msi(0);
+        success();
     } else {
-        failure();
+        panic!("Unexpected mcause: 0x{:x}", mcause);
     }
 }
-
-// —————————————————————————————— Trap Handler —————————————————————————————— //
 
 global_asm!(
     r#"

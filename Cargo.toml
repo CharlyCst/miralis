@@ -31,11 +31,13 @@ members = [
     # Payload
     "payload/hello_world",
     "payload/test_protect_payload_payload",
+
     # Crates
     "crates/abi",
     "crates/core",
     "crates/config_helpers",
     "crates/config_select",
+    "crates/test_helpers",
 
     # Tooling
     "runner",
