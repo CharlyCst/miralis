@@ -5,6 +5,7 @@ use core::arch::{asm, global_asm};
 use core::usize;
 
 use miralis_abi::{failure, setup_binary, success};
+use test_helpers::clint;
 
 setup_binary!(main);
 
@@ -14,8 +15,8 @@ setup_binary!(main);
 /// memory-mapped registers.
 fn main() -> ! {
     // Set up two interrupts simultaniously
-    set_msip(0, 1);
-    set_mtimecmp_future_value(0);
+    clint::send_msi(0);
+    clint::set_mtimecmp_deadline(0, 0);
 
     // MTIP is not guaranteed to be reflected instantly, so wait for a bit
     for _ in 1..10000 {
@@ -59,39 +60,6 @@ fn main() -> ! {
 
 // ———————————————————————————— Timer Interrupt ————————————————————————————— //
 
-const CLINT_BASE: usize = 0x2000000;
-const MTIME_OFFSET: usize = 0xBFF8;
-const MTIMECMP_OFFSET: usize = 0x4000;
-const MSIP_WIDTH: usize = 0x4;
-
-// Get the current mtime value
-fn get_current_mtime() -> usize {
-    let mtime_ptr = (CLINT_BASE + MTIME_OFFSET) as *const usize;
-    unsafe { mtime_ptr.read_volatile() }
-}
-
-// Set mtimecmp value in the future
-fn set_mtimecmp_future_value(value: usize) {
-    log::trace!("Updated timer");
-    let current_mtime = get_current_mtime();
-    let future_time = current_mtime.saturating_add(value);
-
-    let mtimecmp_ptr = (CLINT_BASE + MTIMECMP_OFFSET) as *mut usize;
-    unsafe {
-        mtimecmp_ptr.write_volatile(future_time);
-    }
-}
-
-// Set msip bit pending for other hart
-fn set_msip(hart: usize, value: u32) {
-    log::trace!("Set interrupt for hart {:}", hart);
-
-    let msip_ptr = (CLINT_BASE + MSIP_WIDTH * hart) as *mut u32;
-    unsafe {
-        msip_ptr.write_volatile(value);
-    }
-}
-
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
     let mip: usize;
@@ -116,10 +84,10 @@ extern "C" fn trap_handler() {
 
     if mcause == 0x8000000000000003 {
         log::trace!("Cleared MSIP");
-        set_msip(0, 0);
+        clint::clear_msi(0);
     } else if mcause == 0x8000000000000007 {
         log::trace!("Cleared MTIP");
-        set_mtimecmp_future_value(usize::MAX);
+        clint::set_mtimecmp_deadline(usize::MAX, 0);
     } else {
         log::warn!("Received non-interrupt trap, {:x}", mcause);
         failure();

@@ -6,6 +6,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use core::usize;
 
 use miralis_abi::{setup_binary, success};
+use test_helpers::clint::{self, set_mtimecmp_deadline};
 
 setup_binary!(main);
 
@@ -16,7 +17,7 @@ setup_binary!(main);
 /// 4. If the virtual interrupt is not cleared, the firmware will trap on each execution cycle.
 fn main() -> ! {
     // Setup a timer deadline
-    set_mtimecmp_future_value(0);
+    clint::set_mtimecmp_deadline(0, 0);
 
     // Configure trap handler and enable interrupts
     unsafe {
@@ -44,30 +45,8 @@ unsafe fn enable_interrupts() {
 
 // ———————————————————————————— Timer Interrupt ————————————————————————————— //
 
-// Clint
-const CLINT_BASE: usize = 0x2000000;
-const MTIME_OFFSET: usize = 0xBFF8;
-const MTIMECMP_OFFSET: usize = 0x4000;
-
 static INTERRUPT_COUNTER: AtomicUsize = AtomicUsize::new(0);
 const REPETITIONS: usize = 10;
-
-// Get the current mtime value
-fn get_current_mtime() -> usize {
-    let mtime_ptr = (CLINT_BASE + MTIME_OFFSET) as *const usize;
-    unsafe { mtime_ptr.read_volatile() }
-}
-
-// Set mtimecmp value in the future
-fn set_mtimecmp_future_value(value: usize) {
-    let current_mtime = get_current_mtime();
-    let future_time = current_mtime.saturating_add(value);
-
-    let mtimecmp_ptr = (CLINT_BASE + MTIMECMP_OFFSET) as *mut usize;
-    unsafe {
-        mtimecmp_ptr.write_volatile(future_time);
-    }
-}
 
 /// This function should be called from the raw trap handler
 extern "C" fn trap_handler() {
@@ -120,7 +99,7 @@ fn handle_timer_interrupt() {
         panic!("Expected another timer interrupt, but got nothing");
     } else {
         // We got all the timers we expected!
-        set_mtimecmp_future_value(usize::MAX);
+        set_mtimecmp_deadline(usize::MAX, 0);
         log::trace!("Now timer should clear, re-enabling interrupts");
         unsafe { enable_interrupts() };
 

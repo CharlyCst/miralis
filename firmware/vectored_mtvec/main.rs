@@ -5,6 +5,7 @@ use core::arch::{asm, global_asm};
 use core::hint::spin_loop;
 
 use miralis_abi::{failure, setup_binary, success};
+use test_helpers::clint;
 
 setup_binary!(main);
 
@@ -27,7 +28,7 @@ fn main() -> ! {
     }
 
     // Setup a timer deadline in the past to trap directly
-    set_mtimecmp_future_value();
+    clint::set_mtimecmp_deadline(0, 0);
 
     for _ in 0..10_000 {
         spin_loop()
@@ -36,21 +37,6 @@ fn main() -> ! {
     // The trap handler should exit, if we reach that point the handler did not do its job
     log::error!("Firmware didn't trapped!");
     failure()
-}
-
-// ———————————————————————————— Timer Interrupt ————————————————————————————— //
-
-const CLINT_BASE: usize = 0x2000000;
-const MTIMECMP_OFFSET: usize = 0x4000;
-
-// Set mtimecmp value in the future
-fn set_mtimecmp_future_value() {
-    let future_time = 0;
-
-    let mtimecmp_ptr = (CLINT_BASE + MTIMECMP_OFFSET) as *mut usize; // TODO: add support for different harts
-    unsafe {
-        mtimecmp_ptr.write_volatile(future_time);
-    }
 }
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //

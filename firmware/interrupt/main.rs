@@ -4,6 +4,7 @@
 use core::arch::{asm, global_asm};
 
 use miralis_abi::{failure, setup_binary, success};
+use test_helpers::clint;
 
 setup_binary!(main);
 
@@ -83,31 +84,6 @@ fn test_sie_by_mie() {
 
 // ———————————————————————————— Timer Interrupt ————————————————————————————— //
 
-const CLINT_BASE: usize = 0x2000000;
-const MTIME_OFFSET: usize = 0xBFF8;
-const MTIMECMP_OFFSET: usize = 0x4000;
-
-// Get the current mtime value
-fn get_current_mtime() -> usize {
-    let mtime_ptr = (CLINT_BASE + MTIME_OFFSET) as *const usize;
-    unsafe { mtime_ptr.read_volatile() }
-}
-
-// Set mtimecmp value in the future
-fn set_mtimecmp_future_value() {
-    let current_mtime = get_current_mtime();
-    let future_time = current_mtime + 10000;
-
-    let mtimecmp_ptr = (CLINT_BASE + MTIMECMP_OFFSET) as *mut usize; // TODO: add support for different harts
-    unsafe {
-        mtimecmp_ptr.write_volatile(future_time);
-    }
-
-    // Read back the value to verify
-    let read_back = unsafe { mtimecmp_ptr.read_volatile() };
-    assert_eq!(read_back, future_time, "mtimecmp set correctly");
-}
-
 #[allow(unreachable_code)]
 fn test_timer_interrupts() -> ! {
     // Configure trap handler and enable interrupts
@@ -123,7 +99,7 @@ fn test_timer_interrupts() -> ! {
     }
 
     // Setup a timer deadline
-    set_mtimecmp_future_value();
+    clint::set_mtimecmp_deadline(10_000, 0);
 
     // Wait for an interrupt
     loop {
