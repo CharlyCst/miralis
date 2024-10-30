@@ -2,18 +2,15 @@
 
 use std::process::ExitCode;
 
-use crate::artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
+use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
 use crate::config::read_config;
 use crate::BuildArgs;
 
 pub fn build(args: &BuildArgs) -> ExitCode {
     let cfg = read_config(&args.config);
     if let Some(firmware) = &args.firmware {
-        let firmware = match locate_artifact(firmware) {
-            Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
-            Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-            Some(Artifact::Binary { path }) => path,
-            None => return ExitCode::FAILURE,
+        let Some(firmware) = prepare_firmware_artifact(firmware, &cfg) else {
+            return ExitCode::FAILURE;
         };
         log::info!("Built firmware, binary available at:");
         log::info!("{}", firmware.display());

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 use std::str::FromStr;
 
-use crate::artifacts::{build_target, download_artifact, locate_artifact, Artifact, Target};
+use crate::artifacts::{build_target, prepare_firmware_artifact, prepare_payload_artifact, Target};
 use crate::config::{read_config, Config, Platforms};
 use crate::RunArgs;
 
@@ -32,27 +32,45 @@ const PAYLOAD_ADDR: u64 = 0x80400000;
 
 // —————————————————————————————————— Run ——————————————————————————————————— //
 
-/// Run Miralis on QEMU
+/// The run command, runs Miralis with the provided arguments.
 pub fn run(args: &RunArgs) -> ExitCode {
     log::info!("Running Miralis with '{}' firmware", &args.firmware);
     let cfg = get_config(args);
 
     // Build or retrieve the artifacts to run
     let miralis = build_target(Target::Miralis, &cfg);
-    let firmware = match locate_artifact(&args.firmware) {
-        Some(Artifact::Source { name }) => build_target(Target::Firmware(name), &cfg),
-        Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-        Some(Artifact::Binary { path }) => path,
-        None => return ExitCode::FAILURE,
+    let Some(firmware) = prepare_firmware_artifact(&args.firmware, &cfg) else {
+        return ExitCode::FAILURE;
     };
 
-    match cfg.platform.name.unwrap_or(Platforms::QemuVirt) {
-        Platforms::QemuVirt => launch_qemu(args, miralis, firmware),
-        Platforms::Spike => launch_spike(args, miralis, firmware),
+    let cmd = match cfg.platform.name.unwrap_or(Platforms::QemuVirt) {
+        Platforms::QemuVirt => get_qemu_cmd(&cfg, miralis, firmware, None, args.debug, args.stop),
+        Platforms::Spike => get_spike_cmd(&cfg, miralis, firmware),
         Platforms::VisionFive2 => {
             log::error!("We can't run VisionFive2 on simulator.");
-            ExitCode::FAILURE
+            return ExitCode::FAILURE;
         }
+    };
+    let Ok(mut cmd) = cmd else {
+        log::error!("Failed to build command");
+        return ExitCode::FAILURE;
+    };
+
+    log::debug!(
+        "{} {}",
+        cmd.get_program().to_str().unwrap(),
+        cmd.get_args()
+            .map(|arg| arg.to_str().unwrap())
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+
+    let exit_status = cmd.status().expect("Failed to run");
+
+    if !exit_status.success() {
+        ExitCode::from(exit_status.code().unwrap_or(1) as u8)
+    } else {
+        ExitCode::SUCCESS
     }
 }
 
@@ -68,15 +86,18 @@ fn get_config(args: &RunArgs) -> Config {
         cfg.platform.nb_harts = Some(nb_harts);
     }
 
-    if cfg.qemu.cpu == Some(String::from("none")) {
-        cfg.qemu.cpu = None;
-    }
-
     cfg
 }
 
-fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode {
-    let cfg = get_config(args);
+/// Return the command to run Miralis on QEMU.
+pub fn get_qemu_cmd(
+    cfg: &Config,
+    miralis: PathBuf,
+    firmware: PathBuf,
+    payload: Option<&String>,
+    debug: bool,
+    stop: bool,
+) -> Result<Command, ()> {
     let mut qemu_cmd = Command::new(QEMU);
     qemu_cmd.args(QEMU_ARGS);
     if let Some(machine) = &cfg.qemu.machine {
@@ -98,64 +119,49 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         ));
 
     // If a payload is defined in the config, try to load it at the specified address.
-    if let Some(payload) = &cfg.target.payload {
-        if let Some(payload_name) = &payload.name {
-            let payload = match locate_artifact(payload_name) {
-                Some(Artifact::Source { name }) => build_target(Target::Payload(name), &cfg),
-                Some(Artifact::Downloaded { name, url }) => download_artifact(&name, &url),
-                Some(Artifact::Binary { path }) => path,
-                None => {
-                    let payload_path =
-                        PathBuf::from_str(payload_name).expect("Invalid payload name");
-                    if payload_path.is_file() {
-                        payload_path
-                    } else {
-                        log::error!("Invalid payload '{}'", payload_name);
-                        return ExitCode::FAILURE;
-                    }
+    let payload = payload.or_else(|| {
+        cfg.target
+            .payload
+            .as_ref()
+            .and_then(|payload| payload.name.as_ref())
+    });
+    if let Some(payload_name) = payload {
+        let payload = match prepare_payload_artifact(payload_name, cfg) {
+            Some(payload_path) => payload_path,
+            None => {
+                let payload_path = PathBuf::from_str(payload_name).expect("Invalid payload name");
+                if payload_path.is_file() {
+                    payload_path
+                } else {
+                    log::error!("Invalid payload '{}'", payload_name);
+                    return Err(());
                 }
-            };
+            }
+        };
 
-            qemu_cmd.arg("-device").arg(format!(
-                "loader,file={},addr=0x{:x},force-raw=on",
-                payload.to_str().unwrap(),
-                PAYLOAD_ADDR
-            ));
-        }
+        qemu_cmd.arg("-device").arg(format!(
+            "loader,file={},addr=0x{:x},force-raw=on",
+            payload.to_str().unwrap(),
+            PAYLOAD_ADDR
+        ));
     }
 
     if let Some(nb_harts) = cfg.platform.nb_harts {
         assert!(nb_harts > 0, "Must use at least one core");
         qemu_cmd.arg("-smp").arg(format!("{}", nb_harts));
     }
-    if args.debug {
+    if debug {
         qemu_cmd.arg("-s");
     }
-    if args.stop {
+    if stop {
         qemu_cmd.arg("-S");
     }
 
-    log::debug!(
-        "{} {}",
-        QEMU,
-        qemu_cmd
-            .get_args()
-            .map(|arg| arg.to_str().unwrap())
-            .collect::<Vec<_>>()
-            .join(" ")
-    );
-
-    let exit_status = qemu_cmd.status().expect("Failed to run QEMU");
-
-    if !exit_status.success() {
-        ExitCode::from(exit_status.code().unwrap_or(1) as u8)
-    } else {
-        ExitCode::SUCCESS
-    }
+    Ok(qemu_cmd)
 }
 
-fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode {
-    let cfg = get_config(args);
+/// Return the command to run Miralis on Spike.
+pub fn get_spike_cmd(cfg: &Config, miralis: PathBuf, firmware: PathBuf) -> Result<Command, ()> {
     let mut spike_cmd = Command::new(SPIKE);
 
     spike_cmd.arg("--kernel");
@@ -168,13 +174,7 @@ fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode
         spike_cmd.arg("-p").arg(format!("{}", nb_harts));
     }
 
-    let exit_status = spike_cmd.status().expect("Failed to run SPIKE");
-
-    if !exit_status.success() {
-        ExitCode::from(exit_status.code().unwrap_or(1) as u8)
-    } else {
-        ExitCode::SUCCESS
-    }
+    Ok(spike_cmd)
 }
 
 fn raw_to_elf(raw_path: &str) -> &str {

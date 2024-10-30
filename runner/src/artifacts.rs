@@ -115,11 +115,37 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
 
 // ———————————————————————————— Locate Artifacts ———————————————————————————— //
 
+/// Prepare a firmware artifact to be used.
+///
+/// Artifacts can be provided as sources, binaries, or URL to download. This functions takes care
+/// of preparing the final binaries that can be imported in an emulator or run on hardware.
+pub fn prepare_firmware_artifact(name: &str, cfg: &Config) -> Option<PathBuf> {
+    match locate_artifact(name) {
+        Some(Artifact::Source { name }) => Some(build_target(Target::Firmware(name), cfg)),
+        Some(Artifact::Downloaded { name, url }) => Some(download_artifact(&name, &url)),
+        Some(Artifact::Binary { path }) => Some(path),
+        None => None,
+    }
+}
+
+/// Prepare a payload artifact to be used.
+///
+/// Artifacts can be provided as sources, binaries, or URL to download. This functions takes care
+/// of preparing the final binaries that can be imported in an emulator or run on hardware.
+pub fn prepare_payload_artifact(name: &str, cfg: &Config) -> Option<PathBuf> {
+    match locate_artifact(name) {
+        Some(Artifact::Source { name }) => Some(build_target(Target::Payload(name), cfg)),
+        Some(Artifact::Downloaded { name, url }) => Some(download_artifact(&name, &url)),
+        Some(Artifact::Binary { path }) => Some(path),
+        None => None,
+    }
+}
+
 /// Try to locate the desired artifact.
 ///
 /// Artifacts can be either available as sources, as external binaries that can be downloaded, or
 /// as path on the local filesystem.
-pub fn locate_artifact(name: &str) -> Option<Artifact> {
+fn locate_artifact(name: &str) -> Option<Artifact> {
     // Miralis as firmware?
     if name == "miralis" {
         return Some(Artifact::Source {
@@ -222,7 +248,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             if let Some(payload) = &cfg.target.payload {
                 payload.profile.unwrap_or(Profiles::Debug)
             } else {
-                panic!("No payload in config.")
+                Profiles::Debug
             }
         }
     };
@@ -270,13 +296,17 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         }
 
         Target::Payload(ref payload_name) => {
-            if let Some(payload) = &cfg.target.payload {
-                let payload_address: usize = payload.start_address.unwrap_or(0x80400000);
-                let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={payload_address}");
-                build_cmd.env("RUSTFLAGS", linker_args);
-                build_cmd.env("IS_TARGET_FIRMWARE", "false");
-                build_cmd.arg("--package").arg(payload_name);
-            }
+            let payload_address = cfg
+                .target
+                .payload
+                .as_ref()
+                .and_then(|payload| payload.start_address)
+                .unwrap_or(0x80400000);
+            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={payload_address}");
+            build_cmd.env("RUSTFLAGS", linker_args);
+            build_cmd.env("IS_TARGET_FIRMWARE", "false");
+            build_cmd.envs(cfg.benchmark.build_envs());
+            build_cmd.arg("--package").arg(payload_name);
         }
     }
 
