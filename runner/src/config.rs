@@ -4,7 +4,7 @@
 //! appropriate environment variables during Miralis's build.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 use std::{fmt, fs};
 
@@ -315,7 +315,7 @@ impl Policy {
 
 // ————————————————————————————— Config Loader —————————————————————————————— //
 
-pub fn read_config(path: &Option<PathBuf>) -> Config {
+pub fn read_config<P: AsRef<Path>>(path: &Option<P>) -> Config {
     // Try to read config
     let config = if let Some(path) = path {
         fs::read_to_string(path)
@@ -334,10 +334,16 @@ pub fn read_config(path: &Option<PathBuf>) -> Config {
     };
 
     // Parse the config and returns it
-    match toml::from_str::<Config>(&config) {
+    let mut cfg = match toml::from_str::<Config>(&config) {
         Ok(config) => config,
         Err(err) => panic!("Failed to parse configuration:\n{:#?}", err),
+    };
+
+    if cfg.qemu.cpu == Some(String::from("none")) {
+        cfg.qemu.cpu = None;
     }
+
+    cfg
 }
 
 // —————————————————————————————— Check Config —————————————————————————————— //

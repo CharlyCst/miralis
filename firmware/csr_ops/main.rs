@@ -13,6 +13,8 @@ setup_binary!(main);
 fn main() -> ! {
     log::debug!("Testing mscratch register");
     test_mscratch();
+    log::debug!("Testing mepc register");
+    test_mepc();
     log::debug!("Testing CSR operations");
     test_csr_op();
     log::debug!("Testing CSR ID registers");
@@ -45,6 +47,24 @@ fn test_mscratch() {
     }
 
     assert_eq!(res, 0x42);
+}
+
+// ————————————————————————————— Write to MEPC —————————————————————————————— //
+
+fn test_mepc() {
+    let secret: usize = 0x42;
+    let res: usize;
+    unsafe {
+        asm!(
+            "li {0}, 0x42",
+            "csrw mepc, {0}",
+            "csrr {1}, mepc",
+            in(reg) secret,
+            out(reg) res,
+        );
+    }
+
+    assert_eq!(res, secret);
 }
 
 // ————————————————————————————— CSR Operations ————————————————————————————— //

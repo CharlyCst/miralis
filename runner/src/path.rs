@@ -15,6 +15,13 @@ pub fn get_workspace_path() -> PathBuf {
     path.parent().unwrap().to_owned()
 }
 
+/// Return the path to the projects config file
+pub fn get_project_config_path() -> PathBuf {
+    let mut path = get_workspace_path();
+    path.push("miralis.toml");
+    path
+}
+
 /// Return the target directory.
 pub fn get_target_dir_path(target: &Target, mode: Profiles) -> PathBuf {
     let mut path = get_workspace_path();

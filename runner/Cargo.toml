@@ -8,7 +8,8 @@ license = "MIT"
 [dependencies]
 clap = { version = "4.4.11", features = ["derive"] }
 serde = { version = "1.0.196", features = ["derive"] }
-toml = "0.8.10"
+toml = { version = "0.8.10", features = ["default", "preserve_order"] }
+indexmap = { version = "2.6.0", features = ["serde"] }
 benchmark_analyzer = { path = "../benchmark_analyzer" }
 config_helpers = { path = "../crates/config_helpers" }
 walkdir = "2"

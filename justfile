@@ -3,21 +3,8 @@ config           := "config.toml"
 benchmark        := "ecall_benchmark"
 spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
-qemu_virt_2harts := "./config/test/qemu-virt-2harts.toml"
-qemu_virt_benchmark := "./config/test/qemu-virt-benchmark.toml"
 spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
 spike_latency_benchmark := "./config/test/spike-latency-benchmark.toml"
-qemu_virt_release := "./config/test/qemu-virt-release.toml"
-qemu_virt_hello_world_payload := "./config/test/qemu-virt-hello-world-payload.toml"
-qemu_virt_protect_payload      := "./config/test/qemu-virt-protect-payload.toml"
-qemu_virt_test_protect_payload := "./config/test/qemu-virt-test-protect-payload.toml"
-qemu_virt_test_keystone_payload := "./config/test/qemu-virt-test-keystone.toml"
-qemu_virt_hello_world_payload_spike := "./config/test/qemu-virt-hello-world-payload-spike.toml"
-qemu_virt_u_boot_payload := "./config/test/qemu-virt-u-boot-payload.toml"
-qemu_virt_sifive_u54 := "./config/test/qemu-virt-sifive-u54.toml"
-qemu_virt_sifive_u54_spike := "./config/test/qemu-virt-sifive-u54-spike.toml"
-qemu_virt_rustsbi_test_kernel := "./config/test/qemu-rustsbi-test-kernel.toml"
-qemu_virt_rustsbi_test_kernel_spike := "./config/test/qemu-rustsbi-test-kernel-spike.toml"
 benchmark_folder := "./benchmark-out"
 default_iterations := "1"
 
@@ -41,52 +28,13 @@ test:
 	# Checking configs...
 	cargo run -q -- check-config ./config
 
-	# Run linter....
+	# Run linter...
 	cargo clippy --features userspace -p miralis
 	cargo clippy -p runner
 	cargo clippy -p benchmark_analyzer
 
-	# Running integration tests...
-	cargo run -- run --config {{qemu_virt}} --firmware ecall
-	cargo run -- run --config {{qemu_virt}} --firmware csr_ops
-	cargo run -- run --config {{qemu_virt}} --firmware pmp
-	cargo run -- run --config {{qemu_virt}} --firmware breakpoint
-	cargo run -- run --config {{qemu_virt}} --firmware mepc
-	cargo run -- run --config {{qemu_virt}} --firmware mcause
-	cargo run -- run --config {{qemu_virt}} --firmware mret
-	cargo run -- run --config {{qemu_virt}} --firmware os_ctx_switch
-	cargo run -- run --config {{qemu_virt}} --firmware sandbox
-	cargo run -- run --config {{qemu_virt}} --firmware interrupt
-	cargo run -- run --config {{qemu_virt}} --firmware os_ecall
-	cargo run -- run --config {{qemu_virt}} --firmware vectored_mtvec
-	cargo run -- run --config {{qemu_virt}} --firmware device
-	cargo run -- run --config {{qemu_virt}} --firmware hypervisor
-	cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt_priority
-	cargo run -- run --config {{qemu_virt}} --firmware clint_interrupt
-	cargo run -- run --config {{qemu_virt_2harts}} --firmware clint_interrupt_multihart
-	cargo run -- run --config {{qemu_virt_release}} --firmware default
-
-	# Testing with Miralis as firmware
-	cargo run -- run --config {{qemu_virt}} --firmware miralis
-
-	# Testing with external projects
-	cargo run -- run --config {{qemu_virt}} --firmware opensbi
-	cargo run -- run --config {{qemu_virt}} --firmware zephyr --max-exits 1000000
-	cargo run -- run --config {{qemu_virt_sifive_u54}} --firmware linux
-	cargo run -- run --config {{qemu_virt_rustsbi_test_kernel}} --firmware rustsbi-qemu
-
-	# Testing with S-mode payloads
-	cargo run -- run --config {{qemu_virt_hello_world_payload}} --firmware opensbi-jump
-	cargo run -- run --config {{qemu_virt_u_boot_payload}} --firmware opensbi-jump
-
-	# Testing policies
-	cargo run -- run --config {{qemu_virt_protect_payload}} --firmware linux-lock
-	cargo run -- run --config {{qemu_virt_test_protect_payload}} --firmware test_protect_payload_firmware
-	cargo run -- run --config {{qemu_virt_test_keystone_payload}} --firmware opensbi-jump
-
-	# Testing benchmark code
-	cargo run -- run --config {{qemu_virt_benchmark}} --firmware csr_write
-	cargo run -- run --config {{qemu_virt_benchmark}} --firmware ecall_benchmark
+	# Run integration tests...
+	cargo run -- test
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}

@@ -1,0 +1,191 @@
+# Miralis project configuration
+
+## ————————————————————————————— Configurations ————————————————————————————— ##
+
+[config.qemu-virt]
+path = "config/test/qemu-virt.toml"
+
+[config.qemu-virt-2harts]
+path = "config/test/qemu-virt-2harts.toml"
+
+[config.qemu-virt-release]
+path = "config/test/qemu-virt-release.toml"
+
+[config.qemu-virt-sifive-u54]
+path = "config/test/qemu-virt-sifive-u54.toml"
+
+[config.qemu-virt-protect-payload]
+path = "config/test/qemu-virt-protect-payload.toml"
+
+[config.qemu-virt-keystone]
+path = "config/test/qemu-virt-keystone.toml"
+
+[config.qemu-virt-benchmark]
+path = "config/test/qemu-virt-benchmark.toml"
+
+## ——————————————————————————— Integration Tests ———————————————————————————— ##
+
+[test.ecall]
+firmware = "ecall"
+config = "qemu-virt"
+description = "The most basic test, which directly exit with an ecall to Miralis"
+
+[test.csr-ops]
+firmware = "csr_ops"
+config = "qemu-virt"
+description = "Exercise CSR privileged instructions, for various CSRs"
+
+[test.default]
+firmware = "default"
+config = "qemu-virt"
+description = "Test the default firmware"
+
+[test.pmp]
+firmware = "pmp"
+config = "qemu-virt"
+description = "Test PMP configuration"
+
+[test.breakpoint]
+firmware = "breakpoint"
+config = "qemu-virt"
+description = "A simple trap handling test to ensure the firmware can catch a breakpoint"
+
+[test.mcause]
+firmware = "mcause"
+config = "qemu-virt"
+description = "Check the values in the mcause CSR"
+
+[test.mret]
+firmware = "mret"
+config = "qemu-virt"
+description = "Execute an mret and check the values in mstatus"
+
+[test.os-ctx-switch]
+firmware = "os_ctx_switch"
+config = "qemu-virt"
+description = "Simple context switch to an S-mode payload"
+
+[test.sandbox]
+firmware = "sandbox"
+config = "qemu-virt"
+description = "Check that Miralis is protected from the firmware"
+
+[test.interrupt]
+firmware = "interrupt"
+config = "qemu-virt"
+description = "Ensure that the firmware can receive"
+
+[test.os-ecall]
+firmware = "os_ecall"
+config = "qemu-virt"
+description = "Test ecall from OS payload to the virtualized firmware"
+
+[test.vectored-mtvec]
+firmware = "vectored_mtvec"
+config = "qemu-virt"
+description = "Test vectored trap handler"
+
+[test.device]
+firmware = "device"
+config = "qemu-virt"
+description = "Test device virtualization with a dummy device"
+
+[test.hypervisor]
+firmware = "hypervisor"
+config = "qemu-virt"
+description = "Test support for H extension (if available)"
+
+[test.clint-interrupt]
+firmware = "clint_interrupt"
+config = "qemu-virt"
+description = "Check that the CLINT is properly virtualized"
+
+[test.clint-interrupt-priority]
+firmware = "clint_interrupt_priority"
+config = "qemu-virt"
+description = "Check that interrupts are received with the expected priority"
+
+[test.clint-interrupt-multihart]
+firmware = "clint_interrupt_multihart"
+config = "qemu-virt-2harts"
+description = "A test for cross-hart Machine Software Interrupts (MSI)"
+
+[test.release-build]
+firmware = "default"
+config = "qemu-virt-release"
+description = "Build and run a simply firmware in release mode"
+
+[test.nested-virtualization]
+firmware = "miralis"
+config = "qemu-virt"
+description = "Run Miralis on top of Miralis (nested virtualization)"
+
+[test.benchmark-csr]
+firmware = "csr_write"
+config = "qemu-virt-benchmark"
+description = "Benchmark virtual CSR write operations"
+
+[test.benchmark-ecall]
+firmware = "ecall_benchmark"
+config = "qemu-virt-benchmark"
+description = "Benchmark virtual ecall operations"
+
+## ——————————————————————— Testing external projects ———————————————————————— ##
+
+[test.opensbi]
+firmware = "opensbi"
+config = "qemu-virt"
+description = "Run an OpenSBI with a dummy payload"
+
+[test.opensbi-jump]
+firmware = "opensbi-jump"
+payload = "hello_world"
+config = "qemu-virt"
+description = "Run an OpenSBI in jump mode with a dummy kernel"
+
+[test.opensbi-u-boot]
+firmware = "opensbi-jump"
+payload = "u-boot-exit"
+config = "qemu-virt"
+description = "Run an OpenSBI in jump mode with u-boot as a payload"
+
+[test.rustsbi]
+firmware = "rustsbi-qemu"
+payload = "rustsbi-test-kernel"
+config = "qemu-virt"
+description = "Run an RustSBI with its test kernel"
+
+[test.zephyr]
+firmware = "zephyr"
+config = "qemu-virt"
+description = "Run Zephyr with a test workload"
+
+[test.linux]
+firmware = "linux"
+config = "qemu-virt"
+description = "Run Linux and exit as soon as it reaches userspace"
+
+[test.linux-sifive-u54]
+firmware = "linux"
+config = "qemu-virt-sifive-u54"
+description = "Run Linux and exit as soon as it reaches userspace on a sifive u54 CPU"
+
+## ———————————————————————————— Testing Policies ———————————————————————————— ##
+
+[test.protect-payload]
+firmware = "test_protect_payload_firmware"
+payload = "test_protect_payload_payload"
+config = "qemu-virt-protect-payload"
+description = "Integration test for the protect payload policy, with a custom firmware and payload"
+
+[test.protect-payload-linux]
+firmware = "linux-lock"
+config = "qemu-virt-protect-payload"
+description = "Integration test for the protect payload policy, running Linux with OpenSBI"
+
+[test.keystone]
+firmware = "opensbi-jump"
+payload = "test_keystone_payload"
+config = "qemu-virt-keystone"
+description = "Integration test for the protect payload policy, with a custom firmware and payload"
+

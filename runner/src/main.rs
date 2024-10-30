@@ -12,7 +12,10 @@ mod config;
 mod gdb;
 mod logger;
 mod path;
+mod project;
 mod run;
+mod test;
+
 // —————————————————————————————— CLI Parsing ——————————————————————————————— //
 
 #[derive(Parser)]
@@ -31,6 +34,8 @@ enum Subcommands {
     Run(RunArgs),
     /// Build Miralis
     Build(BuildArgs),
+    /// Run the tests
+    Test(TestArgs),
     /// Exit with an error if the config is not valid
     CheckConfig(CheckConfigArgs),
     /// Start GDB and connect to a running instance
@@ -66,6 +71,9 @@ struct BuildArgs {
     #[arg(short, long)]
     firmware: Option<String>,
 }
+
+#[derive(Args)]
+struct TestArgs {}
 
 #[derive(Args)]
 struct CheckConfigArgs {
@@ -104,6 +112,7 @@ fn main() -> ExitCode {
     match args.command {
         Subcommands::Run(args) => run::run(&args),
         Subcommands::Build(args) => build::build(&args),
+        Subcommands::Test(args) => test::run_tests(&args),
         Subcommands::Gdb(args) => gdb::gdb(&args),
         Subcommands::CheckConfig(args) => config::check_config(&args),
         Subcommands::Artifact(args) => artifacts::list_artifacts(&args),
