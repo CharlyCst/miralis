@@ -122,10 +122,15 @@ To sum up, in riscv, in order to trap to M-Mode, we need:
 
 In order to properly virtualize interrupts and correctly handle them, we need to follow many rules. The goal is to ensure that all interrupts destined to the firmware are correctly virtualized, so that the firmware get exactly its destined interrupts.
 
+Virtualizing interrupts requires virtualizing the interrupt source.
+Miralis is designed to be minimal, and therefore explicitely avoid virtualizing devices such as disks and network cards, which are usually managed by the OS rather than the firmware.
+The current implementation of Miralis focuses on virtualizing the M-mode interrupts only: M-mode timer, software, and external interrupts.
+For that purpose Miralis forces the delegation of all other interrupts to the payload.
 
 We virtualize registers inside the virtual context of the firmware. Registers `mie`, `mip`, `mideleg`, `mstatus` will have their virtual counterparts `vmie`, `vmie`, `vmideleg` and `vmstatus`. In this section, we will also say that the firmware is running in **vM-mode** (M-mode virtualized by Miralis inside U-mode). Let's now separate the cases into the three execution states that could occur:
 
 #### Firmware
+
 When the firmware is running, we want Miralis to receive **all** interrupts the firmware expects to receive: no interrupt is delegated to firmware. We then set `mideleg` to 0 when executing the firmware. We also want to receive **only** interrupts the firmware expects to receive. We then must filter `mie` register to not trap on delegated interrupts or disabled interrupts. If an interrupt occurs, we need to reflect `mip` into `vmip` to let the firmware know which one.  
 
 > **(MIDELEG-VM-MODE)**  
@@ -138,6 +143,7 @@ When the firmware is running, we want Miralis to receive **all** interrupts the 
 > vmip = mip, if mode = vM
 
 #### Payload
+
 When switching to S-mode, we want to install `vmideleg` into `mideleg` and `vmie` to `mie`, because the states of `mideleg` and `mie` may influence S-mode interrupts handling. 
 
 > **(MIDELEG-S-MODE)**  
@@ -147,6 +153,7 @@ When switching to S-mode, we want to install `vmideleg` into `mideleg` and `vmie
 > mie ≡ vmie, if mode = S
 
 #### Miralis
+
 When Miralis is running, we don't want to receive interrupts: we want to handle them one by one. A simple way to ensure that is to make sure that `mstatus.MIE` is always 0. As interrupts are globally enabled for M-mode when a less-privileged mode is running, Miralis will still get the interrupts of S-mode (e.g. payload) and U-mode (e.g. firmware). 
 
 > **(MSTATUS-MIE)**  
@@ -158,57 +165,57 @@ Now we show that if Miralis get an interrupt from firmware or the payload, it's 
 When running in **vM-mode**, we have the following properties:
 
 ```
-             ┌──────────┐      
-         ┌──>│ Firmware │───┐       (1) An interrupt occurs when the firmware is     
-         │   └──────────┘   |           running. Switch to Miralis. 
-      (2)│                  |(1)    (2) Miralis virtualizes interrupt and       
-         │                  |           transmit handling to firmware's interrupt     
-         │   ┌──────────┐   |           handler.   
+             ┌──────────┐
+         ┌──>│ Firmware │───┐       (1) An interrupt occurs when the firmware is
+         │   └──────────┘   |           running. Switch to Miralis.
+      (2)│                  |(1)    (2) Miralis virtualizes interrupt and
+         │                  |           transmit handling to firmware's interrupt
+         │   ┌──────────┐   |           handler.
          └───│ Miralis  │<──┘                  
-             └──────────┘       
-                   
-Miralis receives interrupt i when executing firmware: 
+             └──────────┘
+
+Miralis receives interrupt i when executing firmware:
   (RISCV-SPEC)
-  ⟹ mstatus.MIE = -, mie[i] = 1, mip[i] = 1, mideleg[i] = 0 
+  ⟹ mstatus.MIE = -, mie[i] = 1, mip[i] = 1, mideleg[i] = 0
 
   (MIE-VM-MODE)
   ⟹ vmstatus.MIE = 1, vmie[i] = 1, vmideleg[i] = 0
-	
+
   (MIP-VM-MODE)
   ⟹ vmip[i] = mip [i] = 1
-  
-  Then, vmstatus.MIE = 1 ∧ vmip[i] = 1 ∧ vmie[i] = 1 ∧ vmideleg[i] = 0  
+
+  Then, vmstatus.MIE = 1 ∧ vmip[i] = 1 ∧ vmie[i] = 1 ∧ vmideleg[i] = 0
   (RISCV-SPEC)
   ⟹ virtual context is set as a tap occured in the firmware,
-     we can forward interrupt handling to firmware. 
+     we can forward interrupt handling to firmware.
 ```
 
 When running in **S-mode**, we have the following properties:
 
 ```
-  ┌─────────┐           ┌─────────┐ (1) An interrupt occurs when the payload is      
-  │ Payload │<──┐   ┌──>│Firmware │     running. Switch to Miralis. 
-  └─────────┘   │   │   └─────────┘ (2) Miralis virtualizes interrupt and transmit     
+  ┌─────────┐           ┌─────────┐ (1) An interrupt occurs when the payload is
+  │ Payload │<──┐   ┌──>│Firmware │     running. Switch to Miralis if not delegated.
+  └─────────┘   │   │   └─────────┘ (2) Miralis virtualizes interrupt and transmit
         │    (4)│   │(2)    │           handling to firmware's interrupt handler. 
-     (1)│       │   │       │(3)    (3) Firmware's handler handle interrupt then        
-        │    ┌─────────┐    │           mret to payload.      
+     (1)│       │   │       │(3)    (3) Firmware's handler handle interrupt then
+        │    ┌─────────┐    │           mret to payload. 
         └───>│ Miralis │<───┘       (4) Miralis installs registers and emulate
-             └─────────┘                mret to payload.                                       
+             └─────────┘                mret to payload.
 
-Miralis receives interrupt i when executing payload: 
-  (RISCV-SPEC) 
-  ⟹ mstatus.MIE = -, mie[i] = 1, mip[i] = 1, mideleg[i] = 0  
+Miralis receives interrupt i when executing payload:
+  (RISCV-SPEC)
+  ⟹ mstatus.MIE = -, mie[i] = 1, mip[i] = 1, mideleg[i] = 0
 
   (MIE-S-MODE, MIDELEG-S-MODE)
-  ⟹ vmie[i] = 1, vmideleg[i] = 0 
-  
+  ⟹ vmie[i] = 1, vmideleg[i] = 0
+
   (MIP-VM-MODE)
   ⟹ vmip[i] = mip [i] = 1
-  
-  Then, vmstatus.MIE = - ∧ vmip[i] = 1 ∧ vmie[i] = 1 ∧ vmideleg[i] = 0  
+
+  Then, vmstatus.MIE = - ∧ vmip[i] = 1 ∧ vmie[i] = 1 ∧ vmideleg[i] = 0
   (RISCV-SPEC)
   ⟹ virtual context is set as a tap occured to the firmware,
-     we can forward interrupt handling to firmware. 
+     we can forward interrupt handling to firmware.
 ```
 
 ### Software external interrupt virtualization
