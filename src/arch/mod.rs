@@ -159,9 +159,10 @@ pub struct ExtensionsCapability {
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
 
 /// Privilege modes
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Mode {
     /// User
+    #[default]
     U,
     /// Supervisor
     S,
