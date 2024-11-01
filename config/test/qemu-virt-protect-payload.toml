@@ -11,7 +11,7 @@ color = true
 max_pmp = 8
 
 [platform]
-nb_harts = 1
+nb_harts = 8
 boot_hart_id = 0
 
 [benchmark]
