@@ -632,12 +632,11 @@ impl VirtContext {
     }
 
     /// Handles a machine software interrupt trap
-    ///
-    /// TODO: for now we assume that all M-mode software interrupts are issued from the firmware
-    /// (in-band interrupts). In the future we might want to support out-of-band interrupts for
-    /// Miralis' own purpose (e.g. updating PMP on all cores on policy change). For that purpose we
-    /// will have to distinguish between firmware-trigerred and Miralis-trigerred interrupts.
-    fn handle_machine_software_interrupt(&mut self, mctx: &mut MiralisContext) {
+    fn handle_machine_software_interrupt(
+        &mut self,
+        mctx: &mut MiralisContext,
+        policy: &mut Policy,
+    ) {
         // Clear the interrupt
         let mut clint = Plat::get_clint().lock();
         clint
@@ -651,6 +650,12 @@ impl VirtContext {
             self.csr.mip |= mie::MSIE_FILTER;
         } else {
             self.csr.mip &= !mie::MSIE_FILTER;
+        }
+
+        // Check if a policy MSI is pending
+        if vclint.get_policy_msi(self.hart_id) {
+            vclint.clear_policy_msi(self.hart_id);
+            policy.on_interrupt(self, mctx);
         }
     }
 
@@ -722,7 +727,7 @@ impl VirtContext {
             }
             MCause::MachineSoftInt => {
                 log::info!("Machine soft int");
-                self.handle_machine_software_interrupt(mctx);
+                self.handle_machine_software_interrupt(mctx, policy);
             }
             MCause::MachineExternalInt => {
                 todo!("Virtualize machine external interrupt")
@@ -766,7 +771,7 @@ impl VirtContext {
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {
-                self.handle_machine_software_interrupt(mctx);
+                self.handle_machine_software_interrupt(mctx, policy);
             }
             _ => self.emulate_jump_trap_handler(),
         }
