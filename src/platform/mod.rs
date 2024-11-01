@@ -35,6 +35,17 @@ pub trait Platform {
     fn get_clint() -> &'static Mutex<ClintDriver>;
     fn get_vclint() -> &'static VirtClint;
 
+    /// Signal a pending policy interrupt on all cores and trigger an MSI.
+    ///
+    /// As a result the policy interrupt callback will be called into on each cores.
+    fn broadcast_policy_interrupt() {
+        // Mark values in virtual clint
+        Self::get_vclint().set_all_policy_msi();
+
+        // Fire physical clint
+        Self::get_clint().lock().trigger_msi_on_all_harts();
+    }
+
     /// Load the firmware (virtual M-mode software) and return its address.
     fn load_firmware() -> usize;
 

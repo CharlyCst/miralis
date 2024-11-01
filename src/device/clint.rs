@@ -23,6 +23,8 @@ pub struct VirtClint {
     driver: &'static Mutex<ClintDriver>,
     /// Virtual Machine Software Interrupt (MSI) map
     vmsi: [AtomicBool; PLATFORM_NB_HARTS],
+    /// Policy Machine Software Interrupt (MSI) map
+    policy_msi: [AtomicBool; PLATFORM_NB_HARTS],
 }
 
 impl DeviceAccess for VirtClint {
@@ -52,6 +54,7 @@ impl VirtClint {
         Self {
             driver,
             vmsi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
+            policy_msi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
         }
     }
 
@@ -174,5 +177,30 @@ impl VirtClint {
             "Invalid hart ID when clearing vMSI"
         );
         self.vmsi[hart].load(Ordering::SeqCst)
+    }
+
+    /// Mark the policy MSI as pending for each harts.
+    pub fn set_all_policy_msi(&self) {
+        for hart_idx in 0..PLATFORM_NB_HARTS {
+            self.policy_msi[hart_idx].store(true, Ordering::SeqCst);
+        }
+    }
+
+    /// Get the policy MSI pending status for the given hart.
+    pub fn get_policy_msi(&self, hart: usize) -> bool {
+        assert!(
+            hart < PLATFORM_NB_HARTS,
+            "Invalid hart ID when clearing vMSI"
+        );
+        self.policy_msi[hart].load(Ordering::SeqCst)
+    }
+
+    /// Clear the policy MSI pending status for the given hart.
+    pub fn clear_policy_msi(&self, hart: usize) {
+        assert!(
+            hart < PLATFORM_NB_HARTS,
+            "Invalid hart ID when clearing vMSI"
+        );
+        self.policy_msi[hart].store(false, Ordering::SeqCst)
     }
 }

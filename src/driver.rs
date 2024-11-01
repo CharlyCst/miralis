@@ -144,4 +144,11 @@ impl ClintDriver {
         log::trace!("MSIP value written: 0x{:x} for hart {hart}", msip_value);
         Ok(())
     }
+
+    /// Create a pending MSI interrupts for each harts of the platform, including the current one.
+    pub fn trigger_msi_on_all_harts(&mut self) {
+        for i in 0..PLATFORM_NB_HARTS {
+            self.write_msip(i, 1).unwrap();
+        }
+    }
 }

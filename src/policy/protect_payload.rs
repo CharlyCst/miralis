@@ -7,6 +7,7 @@ use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::MCause::EcallFromSMode;
 use crate::arch::{MCause, Register};
 use crate::host::MiralisContext;
+use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::{RegisterContextGetter, VirtContext};
 
@@ -16,6 +17,7 @@ pub struct ProtectPayloadPolicy {
     general_register: [usize; 32],
     rules: [ForwardingRule; ForwardingRule::NB_RULES],
     last_cause: MCause,
+    first_jump: bool,
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
@@ -27,6 +29,7 @@ impl PolicyModule for ProtectPayloadPolicy {
             // It is important to let the first mode be EcallFromSMode as the firmware passes some information to the OS.
             // Setting this last_cause allows to pass the arguments during the first call.
             last_cause: MCause::EcallFromSMode,
+            first_jump: true,
         }
     }
     fn name() -> &'static str {
@@ -110,13 +113,25 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
-        // TODO: Work on that section
-        // Step 2: Restore sensitives privileged registers
-        /*self.write_confidential_registers(ctx, true);*/
+        // TODO: add a proper barrier to ensure synchronization
+        if self.first_jump {
+            // Lock memory from all cores
+            Plat::broadcast_policy_interrupt();
+        }
 
-        // Step 3: Unlock memory
+        // Unlock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
         mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
+    }
+
+    // In this policy module, if we receive an interrupt from Miralis, it implies we need to lock the memory
+    fn on_interrupt(&mut self, _ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+        // Lock memory
+        mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
+        mctx.pmp
+            .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
+
+        self.first_jump = false
     }
 
     const NUMBER_PMPS: usize = 2;

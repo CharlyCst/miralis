@@ -37,5 +37,7 @@ impl PolicyModule for DefaultPolicy {
 
     fn switch_from_firmware_to_payload(&mut self, _: &mut VirtContext, _: &mut MiralisContext) {}
 
+    fn on_interrupt(&mut self, _ctx: &mut VirtContext, _mctx: &mut MiralisContext) {}
+
     const NUMBER_PMPS: usize = 0;
 }

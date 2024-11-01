@@ -230,5 +230,7 @@ impl PolicyModule for KeystonePolicy {
         // TODO: Implement
     }
 
+    fn on_interrupt(&mut self, _ctx: &mut VirtContext, _mctx: &mut MiralisContext) {}
+
     const NUMBER_PMPS: usize = 0;
 }
