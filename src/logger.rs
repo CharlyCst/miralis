@@ -1,8 +1,7 @@
 //! Structured logging implementation
 
-use core::sync::atomic::{AtomicBool, Ordering};
-
 use log::{Level, LevelFilter, Metadata, Record};
+use spin::Once;
 
 use crate::config;
 use crate::platform::{Plat, Platform};
@@ -86,18 +85,16 @@ impl log::Log for Logger {
 
     fn flush(&self) {}
 }
-pub fn init() {
-    static IS_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-    match IS_INITIALIZED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
-        Ok(_) => {
-            log::set_logger(&Logger {}).unwrap();
-            log::set_max_level(LevelFilter::Trace);
+static LOGGER_INIT: Once = Once::new();
+
+pub fn init() {
+    LOGGER_INIT.call_once(|| {
+        if let Err(err) = log::set_logger(&Logger {}) {
+            panic!("Failed to set logger: {}", err);
         }
-        Err(_) => {
-            log::warn!("Logger is already initialized, skipping init");
-        }
-    };
+        log::set_max_level(LevelFilter::Trace);
+    });
 }
 
 // ————————————————————————————————— Utils —————————————————————————————————— //

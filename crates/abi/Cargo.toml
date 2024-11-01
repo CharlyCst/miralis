@@ -9,3 +9,4 @@ license = "MIT"
 miralis_core = { path = "../core" }
 log = { workspace = true }
 config_helpers = { path = "../config_helpers"}
+spin = "0.9.8"

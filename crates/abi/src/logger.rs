@@ -5,6 +5,7 @@
 use core::fmt::Write;
 
 use log::{LevelFilter, Metadata, Record};
+use spin::Once;
 
 use crate::miralis_log;
 
@@ -34,14 +35,18 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
+static LOGGER_INIT: Once = Once::new();
+
 /// Initialize the firmware logger
 ///
 /// This function is called automatically by `setup_binary!`.
 pub fn init() {
-    static LOGGER: Logger = Logger {};
-
-    log::set_logger(&LOGGER).unwrap();
-    log::set_max_level(LevelFilter::Trace);
+    LOGGER_INIT.call_once(|| {
+        if let Err(err) = log::set_logger(&Logger {}) {
+            panic!("Failed to set logger: {}", err);
+        }
+        log::set_max_level(LevelFilter::Trace);
+    });
 }
 
 // —————————————————————————————— Stack Buffer —————————————————————————————— //
