@@ -118,7 +118,6 @@ pub const fn build_tor(until: usize) -> usize {
 pub struct PmpGroup {
     pmpaddr: [usize; 64],
     pmpcfg: [usize; 8],
-    modified: bool,
     /// Number of supported PMP registers
     pub nb_pmp: u8,
     /// Number of virtual PMP available
@@ -159,7 +158,6 @@ impl PmpGroup {
         PmpGroup {
             pmpaddr: [0; 64],
             pmpcfg: [0; 8],
-            modified: false,
             nb_pmp: nb_pmp as u8,
             nb_virt_pmp: 0,
             virt_pmp_offset: 0,
@@ -281,9 +279,6 @@ impl PmpGroup {
     }
 
     pub fn set_pmpcfg(&mut self, index: usize, cfg: u8) {
-        // Mark configuration as modified
-        self.modified = true;
-
         let reg_idx = index / 8;
         let inner_idx = index % 8;
         let shift = inner_idx * 8;
@@ -533,13 +528,6 @@ impl PmpFlush {
     /// Flush the caches, which is required for PMP changes to take effect.
     pub fn flush(self) {
         unsafe { Arch::sfencevma(None, None) }
-    }
-
-    pub fn flush_if_required(self, group: &mut PmpGroup) {
-        if group.modified {
-            self.flush();
-            group.modified = false;
-        }
     }
 
     /// Do not flush the caches, PMP changes will not take effect predictably which can lead to
