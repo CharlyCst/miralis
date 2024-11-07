@@ -315,6 +315,13 @@ name = "miralis_core"
 version = "0.1.0"
 
 [[package]]
+name = "misaligned_op"
+version = "0.1.0"
+dependencies = [
+ "miralis_abi",
+]
+
+[[package]]
 name = "mret"
 version = "0.1.0"
 dependencies = [

@@ -15,6 +15,7 @@ members = [
     "firmware/pmp",
     "firmware/breakpoint",
     "firmware/mepc",
+    "firmware/misaligned_op",
     "firmware/mcause",
     "firmware/mret",
     "firmware/os_ctx_switch",

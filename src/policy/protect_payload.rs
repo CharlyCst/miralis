@@ -4,8 +4,8 @@ use miralis_core::abi_protect_payload;
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
-use crate::arch::MCause::EcallFromSMode;
-use crate::arch::{MCause, Register};
+use crate::arch::{Arch, Architecture, MCause, Register};
+use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::{RegisterContextGetter, VirtContext};
@@ -38,18 +38,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
     ) -> PolicyHookResult {
-        if !self.is_policy_call(ctx) {
-            return PolicyHookResult::Ignore;
-        }
-
-        if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
-            log::info!("Locking payload from firmware");
-            self.lock(mctx, ctx);
-            ctx.pc += 4;
-            PolicyHookResult::Overwrite
-        } else {
-            PolicyHookResult::Ignore
-        }
+        self.check_interrupt(ctx, mctx)
     }
 
     fn ecall_from_payload(
@@ -57,18 +46,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
     ) -> PolicyHookResult {
-        if !self.is_policy_call(ctx) {
-            return PolicyHookResult::Ignore;
-        }
-
-        if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
-            log::info!("Locking payload from payload");
-            self.lock(mctx, ctx);
-            ctx.pc += 4;
-            PolicyHookResult::Overwrite
-        } else {
-            PolicyHookResult::Ignore
-        }
+        self.check_interrupt(ctx, mctx)
     }
 
     fn switch_from_payload_to_firmware(
@@ -76,7 +54,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
-        // Step 1: Restore general purpose registers
+        // Clear general purpose registers
         let trap_cause = MCause::try_from(ctx.trap_info.mcause).unwrap();
         let filter_rule = ForwardingRule::match_rule(trap_cause, &mut self.rules);
 
@@ -110,11 +88,7 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
-        // TODO: Work on that section
-        // Step 2: Restore sensitives privileged registers
-        /*self.write_confidential_registers(ctx, true);*/
-
-        // Step 3: Unlock memory
+        // Unlock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
         mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
     }
@@ -123,12 +97,124 @@ impl PolicyModule for ProtectPayloadPolicy {
 }
 
 impl ProtectPayloadPolicy {
+    fn check_interrupt(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) -> PolicyHookResult {
+        let cause = ctx.trap_info.get_cause();
+        match cause {
+            MCause::LoadAddrMisaligned | MCause::StoreAddrMisaligned => {
+                self.handle_misaligned_op(ctx, mctx)
+            }
+            MCause::EcallFromSMode => {
+                if !self.is_policy_call(ctx) {
+                    return PolicyHookResult::Ignore;
+                }
+
+                log::info!("Locking payload from payload");
+                self.lock(mctx, ctx);
+                ctx.pc += 4;
+                PolicyHookResult::Overwrite
+            }
+            _ => PolicyHookResult::Ignore,
+        }
+    }
+
     fn lock(&mut self, _mctx: &mut MiralisContext, _ctx: &mut VirtContext) {
         self.protected = true;
     }
 
     fn is_policy_call(&mut self, ctx: &VirtContext) -> bool {
-        ctx.get(Register::X17) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID
+        let policy_eid: bool =
+            ctx.get(Register::X17) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID;
+        let lock_fid: bool =
+            ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID;
+
+        policy_eid && lock_fid
+    }
+
+    fn handle_misaligned_op(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) -> PolicyHookResult {
+        let instr = unsafe { Arch::get_raw_faulting_instr(&ctx.trap_info) };
+        let instr = mctx.decode(instr);
+        match instr {
+            Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len,
+                is_compressed,
+                is_unsigned,
+            } => {
+                assert!(
+                    !is_compressed,
+                    "Implement support for compressed instructions"
+                );
+                assert!(!is_unsigned, "Implement support for unsigned instructions");
+                assert!(
+                    len.to_bytes() == 8,
+                    "Implement support for other than 8 bytes misalinged accesses"
+                );
+
+                // Build the value
+                let start_addr: *const u8 =
+                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
+
+                let emulated_value: u64 = 0x0;
+                let addr_emulated_value = &emulated_value as *const u64 as *mut u8;
+
+                for idx in 0..len.to_bytes() {
+                    unsafe {
+                        *(addr_emulated_value.add(idx)) = *(start_addr.add(idx));
+                    }
+                }
+
+                // Return the value
+                ctx.regs[rd as usize] = emulated_value as usize;
+            }
+            Instr::Store {
+                rs2,
+                rs1,
+                imm,
+                len,
+                is_compressed,
+            } => {
+                assert!(
+                    !is_compressed,
+                    "Implement support for compressed instructions"
+                );
+                assert!(
+                    len.to_bytes() == 8,
+                    "Implement support for other than 8 bytes misalinged accesses"
+                );
+
+                // Build the value
+                let start_addr: *mut u8 =
+                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *mut u8;
+
+                let emulated_value: u64 = 0x0;
+                let addr_emulated_value = &emulated_value as *const u64 as *mut u8;
+
+                for idx in 0..len.to_bytes() {
+                    unsafe {
+                        *(addr_emulated_value.add(idx)) = *(start_addr.add(idx));
+                    }
+                }
+
+                // Return the value
+                ctx.regs[rs2 as usize] = emulated_value as usize;
+            }
+            _ => {
+                panic!("Must be a load instruction here")
+            }
+        }
+
+        ctx.pc += 4;
+        PolicyHookResult::Overwrite
     }
 }
 
@@ -155,7 +241,7 @@ impl ForwardingRule {
     }
 
     fn build_forwarding_rules() -> [ForwardingRule; Self::NB_RULES] {
-        let mut rules = [Self::new_allow_nothing(EcallFromSMode); 1];
+        let mut rules = [Self::new_allow_nothing(MCause::EcallFromSMode); 1];
 
         // Build Ecall rule
         rules[0]
