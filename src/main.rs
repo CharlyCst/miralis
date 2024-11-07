@@ -22,8 +22,7 @@ mod policy;
 mod utils;
 mod virt;
 
-use arch::pmp::pmpcfg;
-use arch::{pmp, Arch, Architecture};
+use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
 use platform::{init, Plat, Platform};
@@ -81,8 +80,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
-    let nb_virt_pmp;
-    let virtual_devices = Plat::create_virtual_devices();
     let mut policy: Policy = Policy::init();
 
     // Detect hardware capabilities
@@ -91,56 +88,8 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // Initialize Miralis's own context
     let mut mctx = MiralisContext::new(hw);
 
-    // Configure PMP registers, if available
-    if mctx.pmp.nb_pmp >= 8 {
-        // By activating this entry it's possible to catch all memory accesses
-        mctx.pmp.set(0, usize::MAX, pmpcfg::INACTIVE);
-
-        // List of devices to protect (the first one is Miralis itself)
-        let devices = [
-            Plat::get_miralis_memory_start_and_size(),
-            (virtual_devices[0].start_addr, virtual_devices[0].size),
-            (virtual_devices[1].start_addr, virtual_devices[1].size),
-            // Add more here as needed
-        ];
-        // Protect memory to trap firmware read/writes
-        for (i, &(start, size)) in devices.iter().enumerate() {
-            mctx.pmp
-                .set(i + 1, pmp::build_napot(start, size).unwrap(), pmpcfg::NAPOT);
-        }
-        // This PMP entry is used by the policy module to protect the memory
-        let policy_index = devices.len() + 2;
-        mctx.pmp.set(policy_index, 0, pmpcfg::INACTIVE);
-        // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-        let inactive_index = devices.len() + 3;
-        mctx.pmp.set(inactive_index, 0, pmpcfg::INACTIVE);
-
-        // Finally, set the last PMP to grant access to the whole memory
-        mctx.pmp.set(
-            (mctx.pmp.nb_pmp - 1) as usize,
-            usize::MAX,
-            pmpcfg::RWX | pmpcfg::NAPOT,
-        );
-
-        // Set the offset of virtual PMPs (right after the inactive 0 entry)
-        mctx.virt_pmp_offset = (inactive_index + 1) as u8;
-
-        // Compute the number of virtual PMPs available
-        // It's whatever is left after setting pmp's for devices, pmp for address translation,
-        // inactive entry and the last pmp to allow all the access
-        let remaining_pmp_entries = mctx.pmp.nb_pmp as usize - devices.len() - 4;
-
-        if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
-            nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
-        } else {
-            nb_virt_pmp = remaining_pmp_entries;
-        }
-    } else {
-        nb_virt_pmp = 0;
-    }
-
     // Initialize the virtual context and configure architecture
-    let mut ctx = VirtContext::new(hart_id, nb_virt_pmp, mctx.hw.extensions.clone());
+    let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions.clone());
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(arch::Mode::U);
@@ -228,14 +177,19 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             log::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
-            policy.switch_from_firmware_to_payload(ctx);
+            policy.switch_from_firmware_to_payload(ctx, mctx);
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!("Execution mode: Payload -> Firmware");
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
-            policy.switch_from_payload_to_firmware(ctx);
+            policy.switch_from_payload_to_firmware(ctx, mctx);
         }
         _ => {} // No execution mode transition
+    }
+
+    unsafe {
+        // Commit the PMP to hardware
+        Arch::write_pmp(&mctx.pmp).flush_if_required(&mut mctx.pmp);
     }
 }
 

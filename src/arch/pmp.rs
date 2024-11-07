@@ -3,10 +3,48 @@
 //! This module handles exposes structure to store and manipulate PMPs, including checking for
 //! addresses matching PMP ranges.
 
+use core::fmt;
+use core::fmt::Formatter;
+
 use super::Architecture;
+use crate::arch::pmp::pmplayout::{
+    ALL_CATCH_OFFSET, DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP,
+    POLICY_OFFSET, POLICY_SIZE, VIRTUAL_PMP_OFFSET,
+};
 use crate::arch::Arch;
+use crate::config;
+use crate::platform::{Plat, Platform};
 
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
+
+pub mod pmplayout {
+    use crate::policy::{Policy, PolicyModule};
+
+    /// First entry used to catch all pmp entries
+    pub const ALL_CATCH_SIZE: usize = 1;
+    pub const ALL_CATCH_OFFSET: usize = 0;
+
+    // PMP entry used to protect Miralis
+    pub const MIRALIS_SIZE: usize = 1;
+    pub const MIRALIS_OFFSET: usize = ALL_CATCH_SIZE;
+
+    /// PMP entries used to protect the devices
+    pub const DEVICES_SIZE: usize = 2;
+    pub const DEVICES_OFFSET: usize = MIRALIS_OFFSET + MIRALIS_SIZE;
+
+    /// PMP entries used by the policy
+    pub const POLICY_SIZE: usize = Policy::NUMBER_PMPS;
+    pub const POLICY_OFFSET: usize = DEVICES_OFFSET + DEVICES_SIZE;
+
+    /// Last PMP entry used in to emulate TOR correctly in the firmware
+    pub const INACTIVE_ENTRY_SIZE: usize = 1;
+    pub const INACTIVE_ENTRY_OFFSET: usize = POLICY_OFFSET + POLICY_SIZE;
+
+    /// Offset at which the virtual PMPs can start
+    pub const VIRTUAL_PMP_OFFSET: usize = INACTIVE_ENTRY_OFFSET + INACTIVE_ENTRY_SIZE;
+    /// At the very end, there is a last PMP entry
+    pub const MIRALIS_TOTAL_PMP: usize = VIRTUAL_PMP_OFFSET + 1;
+}
 
 /// PMP Configuration
 ///
@@ -70,6 +108,10 @@ pub struct PmpGroup {
     pmpcfg: [usize; 8],
     /// Number of supported PMP registers
     pub nb_pmp: u8,
+    /// Number of virtual PMP available
+    pub nb_virt_pmp: usize,
+    /// The offset of the virtual PMP registers, compared to physical PMP.
+    pub virt_pmp_offset: usize,
 }
 
 /// A struct that can be consumed to flush the caches, making the latest PMP configuration
@@ -80,13 +122,99 @@ pub struct PmpGroup {
 #[must_use = "caches must be flushed before PMP change can take effect"]
 pub struct PmpFlush();
 
+impl fmt::Display for PmpGroup {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "\n===============================")?;
+        writeln!(f, "\n           PMP Entries       \n")?;
+
+        for i in 0..self.nb_pmp {
+            writeln!(f, "===============================")?;
+            writeln!(
+                f,
+                "{:16x} | {}",
+                self.pmpaddr[i as usize],
+                self.get_cfg(i as usize)
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
 impl PmpGroup {
-    pub const fn new(nb_pmp: usize) -> Self {
+    const fn new(nb_pmp: usize) -> Self {
         PmpGroup {
             pmpaddr: [0; 64],
             pmpcfg: [0; 8],
             nb_pmp: nb_pmp as u8,
+            nb_virt_pmp: 0,
+            virt_pmp_offset: 0,
         }
+    }
+
+    pub fn init_pmp_group(nb_pmp: usize) -> PmpGroup {
+        let mut pmp = Self::new(nb_pmp);
+        let virtual_devices = Plat::create_virtual_devices();
+
+        // Configure PMP registers, if available
+        if pmp.nb_pmp >= 8 {
+            // By activating this entry it's possible to catch all memory accesses
+            pmp.set(ALL_CATCH_OFFSET, usize::MAX, pmpcfg::INACTIVE);
+
+            // Protect Miralis
+            /*let (start, size) = Plat::get_miralis_memory_start_and_size();
+            pmp.set(
+                MIRALIS_OFFSET,
+                build_napot(start, size).unwrap(),
+                pmpcfg::NAPOT,
+            );*/
+
+            // Protect virtual devices
+            /*pmp.set(
+                DEVICES_OFFSET,
+                build_napot(virtual_devices[0].start_addr, virtual_devices[0].size).unwrap(),
+                pmpcfg::NAPOT,
+            );
+
+            pmp.set(
+                DEVICES_OFFSET + 1,
+                build_napot(virtual_devices[1].start_addr, virtual_devices[1].size).unwrap(),
+                pmpcfg::NAPOT,
+            );*/
+
+            // This PMP entry is used by the policy module for its own purpose
+            /*#[allow(clippy::reversed_empty_ranges)]
+            for idx in 0..POLICY_SIZE {
+                pmp.set(POLICY_OFFSET + idx, 0, pmpcfg::INACTIVE);
+            }*/
+
+            // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
+            pmp.set(INACTIVE_ENTRY_OFFSET, 0, pmpcfg::INACTIVE);
+
+            // Finally, set the last PMP to grant access to the whole memory
+            pmp.set(
+                (pmp.nb_pmp - 1) as usize,
+                usize::MAX,
+                pmpcfg::RWX | pmpcfg::NAPOT,
+            );
+
+            // Compute the number of virtual PMPs available
+            // It's whatever is left after setting pmp's for devices, pmp for address translation,
+            // inactive entry and the last pmp to allow all the access
+            let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
+            if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
+                pmp.nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
+            } else {
+                pmp.nb_virt_pmp = remaining_pmp_entries;
+            }
+        } else {
+            pmp.nb_virt_pmp = 0;
+        }
+
+        // Finally we can set the PMP offset
+        pmp.virt_pmp_offset = VIRTUAL_PMP_OFFSET;
+
+        pmp
     }
 
     /// Set a pmpaddr and its corresponding pmpcfg.
@@ -97,6 +225,18 @@ impl PmpGroup {
 
         self.pmpaddr[idx] = addr;
         self.set_pmpcfg(idx, cfg);
+    }
+
+    pub fn set_from_policy(&mut self, idx: usize, addr: usize, cfg: u8) {
+        #[allow(clippy::absurd_extreme_comparisons)]
+        if idx >= POLICY_SIZE {
+            panic!(
+                "Policy isn't writing to its pmp entries index: {} number of registers: {} ",
+                idx, POLICY_SIZE
+            );
+        }
+
+        self.set(POLICY_OFFSET + idx, addr, cfg);
     }
 
     /// Returns the array of pmpaddr registers.
@@ -110,6 +250,8 @@ impl PmpGroup {
     }
 
     pub fn set_pmpcfg(&mut self, index: usize, cfg: u8) {
+        // Mark configuration as modified
+
         let reg_idx = index / 8;
         let inner_idx = index % 8;
         let shift = inner_idx * 8;
@@ -359,6 +501,10 @@ impl PmpFlush {
     /// Flush the caches, which is required for PMP changes to take effect.
     pub fn flush(self) {
         unsafe { Arch::sfencevma(None, None) }
+    }
+
+    pub fn flush_if_required(self, group: &mut PmpGroup) {
+        self.flush()
     }
 
     /// Do not flush the caches, PMP changes will not take effect predictably which can lead to
