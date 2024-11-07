@@ -188,6 +188,11 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
             log::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
+
+            unsafe {
+                // Commit the PMP to hardware
+                Arch::write_pmp(&mctx.pmp).flush();
+            }
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
             log::debug!(
@@ -196,13 +201,13 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
             );
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
             policy.switch_from_payload_to_firmware(ctx, mctx);
+
+            unsafe {
+                // Commit the PMP to hardware
+                Arch::write_pmp(&mctx.pmp).flush();
+            }
         }
         _ => {} // No execution mode transition
-    }
-
-    unsafe {
-        // Commit the PMP to hardware
-        Arch::write_pmp(&mctx.pmp).flush_if_required(&mut mctx.pmp);
     }
 }
 
