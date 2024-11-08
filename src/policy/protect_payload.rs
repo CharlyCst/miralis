@@ -4,8 +4,8 @@ use miralis_core::abi_protect_payload;
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
-use crate::arch::MCause::EcallFromSMode;
-use crate::arch::{MCause, Register};
+use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register};
+use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::{RegisterContextGetter, VirtContext};
@@ -38,18 +38,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
     ) -> PolicyHookResult {
-        if !self.is_policy_call(ctx) {
-            return PolicyHookResult::Ignore;
-        }
-
-        if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
-            log::info!("Locking payload from firmware");
-            self.lock(mctx, ctx);
-            ctx.pc += 4;
-            PolicyHookResult::Overwrite
-        } else {
-            PolicyHookResult::Ignore
-        }
+        self.check_trap(ctx, mctx)
     }
 
     fn ecall_from_payload(
@@ -57,18 +46,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
     ) -> PolicyHookResult {
-        if !self.is_policy_call(ctx) {
-            return PolicyHookResult::Ignore;
-        }
-
-        if ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID {
-            log::info!("Locking payload from payload");
-            self.lock(mctx, ctx);
-            ctx.pc += 4;
-            PolicyHookResult::Overwrite
-        } else {
-            PolicyHookResult::Ignore
-        }
+        self.check_trap(ctx, mctx)
     }
 
     fn switch_from_payload_to_firmware(
@@ -76,7 +54,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
-        // Step 1: Restore general purpose registers
+        // Clear general purpose registers
         let trap_cause = MCause::try_from(ctx.trap_info.mcause).unwrap();
         let filter_rule = ForwardingRule::match_rule(trap_cause, &mut self.rules);
 
@@ -110,11 +88,7 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
-        // TODO: Work on that section
-        // Step 2: Restore sensitives privileged registers
-        /*self.write_confidential_registers(ctx, true);*/
-
-        // Step 3: Unlock memory
+        // Unlock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
         mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
     }
@@ -123,12 +97,120 @@ impl PolicyModule for ProtectPayloadPolicy {
 }
 
 impl ProtectPayloadPolicy {
-    fn lock(&mut self, _mctx: &mut MiralisContext, _ctx: &mut VirtContext) {
-        self.protected = true;
+    fn check_trap(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) -> PolicyHookResult {
+        let cause = ctx.trap_info.get_cause();
+        match cause {
+            MCause::LoadAddrMisaligned | MCause::StoreAddrMisaligned => {
+                self.handle_misaligned_op(ctx, mctx)
+            }
+            MCause::EcallFromSMode => self.handle_ecall(ctx, mctx),
+            _ => PolicyHookResult::Ignore,
+        }
+    }
+
+    fn handle_misaligned_op(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) -> PolicyHookResult {
+        let instr_ptr = ctx.trap_info.mepc as *const u8;
+
+        // With compressed instruction extention ("C") instructions can be misaligned.
+        // TODO: add support for 16 bits instructions
+        let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+        unsafe {
+            self.copy_from_previous_mode(instr_ptr, &mut instr);
+        }
+
+        let instr = mctx.decode(u64::from_le_bytes(instr) as usize);
+
+        match instr {
+            Instr::Load {
+                rd, rs1, imm, len, ..
+            } => {
+                assert!(
+                    len.to_bytes() == 8,
+                    "Implement support for other than 8 bytes misalinged accesses"
+                );
+
+                // Build the value
+                let start_addr: *const u8 =
+                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
+
+                let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+                unsafe {
+                    self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                }
+
+                // Return the value
+                ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
+            }
+            Instr::Store {
+                rs2, rs1, imm, len, ..
+            } => {
+                assert!(
+                    len.to_bytes() == 8,
+                    "Implement support for other than 8 bytes misalinged accesses"
+                );
+
+                // Build the value
+                let start_addr: *mut u8 =
+                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *mut u8;
+
+                let val = ctx.regs[rs2 as usize];
+                let mut value_to_store: [u8; 8] = val.to_le_bytes();
+
+                unsafe {
+                    self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                }
+            }
+            _ => {
+                panic!("Must be a load instruction here")
+            }
+        }
+
+        ctx.pc += 4;
+        PolicyHookResult::Overwrite
+    }
+
+    unsafe fn copy_from_previous_mode(&mut self, src: *const u8, dest: &mut [u8]) {
+        // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
+        let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
+        unsafe { Arch::read_bytes_from_mode(src, dest, mode).unwrap() }
+    }
+
+    unsafe fn copy_from_previous_mode_store(&mut self, src: &mut [u8; 8], dest: *mut u8) {
+        // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
+        let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
+        unsafe { Arch::store_bytes_from_mode(src, dest, mode).unwrap() }
+    }
+
+    fn handle_ecall(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) -> PolicyHookResult {
+        if !self.is_policy_call(ctx) {
+            return PolicyHookResult::Ignore;
+        }
+
+        log::info!("Locking payload from payload");
+        self.lock(mctx, ctx);
+        ctx.pc += 4;
+        PolicyHookResult::Overwrite
     }
 
     fn is_policy_call(&mut self, ctx: &VirtContext) -> bool {
-        ctx.get(Register::X17) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID
+        let policy_eid: bool =
+            ctx.get(Register::X17) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID;
+        let lock_fid: bool =
+            ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID;
+
+        policy_eid && lock_fid
+    }
+
+    fn lock(&mut self, _mctx: &mut MiralisContext, _ctx: &mut VirtContext) {
+        self.protected = true;
     }
 }
 
@@ -155,7 +237,7 @@ impl ForwardingRule {
     }
 
     fn build_forwarding_rules() -> [ForwardingRule; Self::NB_RULES] {
-        let mut rules = [Self::new_allow_nothing(EcallFromSMode); 1];
+        let mut rules = [Self::new_allow_nothing(MCause::EcallFromSMode); 1];
 
         // Build Ecall rule
         rules[0]

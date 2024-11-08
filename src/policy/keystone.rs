@@ -134,7 +134,7 @@ impl KeystonePolicy {
         let src = ctx.get(Register::X10) as *const u8;
         let mut dest: [u8; ARGS_SIZE] = [0; ARGS_SIZE];
         let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
-        let res = unsafe { Arch::copy_bytes_from_mode(src, &mut dest, mode) };
+        let res = unsafe { Arch::read_bytes_from_mode(src, &mut dest, mode) };
         if res.is_err() {
             return ReturnCode::IllegalArgument;
         }

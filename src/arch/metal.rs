@@ -823,7 +823,7 @@ impl Architecture for MetalArch {
         Self::sfencevma(None, None);
     }
 
-    unsafe fn copy_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()> {
+    unsafe fn read_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()> {
         let mut src = src as usize;
         let mut success: usize = 1;
 
@@ -879,6 +879,65 @@ impl Architecture for MetalArch {
 
             dest[i] = byte_read;
             src += 1;
+        }
+
+        Self::set_mpp(prev_mode);
+        Ok(())
+    }
+
+    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()> {
+        let mut dest = dest as usize;
+        let mut success: usize = 1;
+
+        // Save the state of exception-related CSRs, as we might overwrite them if an error occurs
+        let prev_mepc = Self::read_csr(Csr::Mepc);
+        let prev_mcause = Self::read_csr(Csr::Mcause);
+        let prev_mstatus = Self::read_csr(Csr::Mstatus);
+
+        // Set mstatus.MPP to mode
+        let prev_mode = Self::set_mpp(mode);
+        for i in 0..src.len() {
+            let byte_value: u8 = src[i];
+            unsafe {
+                asm!(
+                // Try
+                "la {r_mtvec}, 0f",
+                "csrrw {r_mtvec}, mtvec, {r_mtvec}",  // Trap to catch-block if an exception occurs
+
+                // Set the mstatus.MPRV bit to 1
+                "csrs mstatus, {mprv_filter}",
+                // Store byte at src
+                "sb {byte}, 0x00({dest})",
+                // Set the mstatus.MPRV bit to 0
+                "csrc mstatus, {mprv_filter}",
+                "j 1f", // Jump to finally if the read was successful
+
+                // Catch
+                ".align 4",
+                "0:",
+                "li {success}, 0",
+                "la {byte}, 1f",
+                "csrw mepc, {byte}",
+                "mret",  // Jump to finally and set mstatus.MPRV to 0
+
+                // Finally
+                ".align 4",
+                "1:",
+                "csrw mtvec, {r_mtvec}", // Restore mtvec
+                dest = in(reg) dest,
+                mprv_filter = in(reg) mstatus::MPRV_FILTER,
+                byte = in(reg) byte_value,
+                success = inout(reg) success,
+                r_mtvec = out(reg) _,
+                )
+            }
+            if success == 0 {
+                Self::write_csr(Csr::Mepc, prev_mepc);
+                Self::write_csr(Csr::Mcause, prev_mcause);
+                Self::write_csr(Csr::Mstatus, prev_mstatus);
+                return Err(());
+            }
+            dest += 1;
         }
 
         Self::set_mpp(prev_mode);

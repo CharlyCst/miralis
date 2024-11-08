@@ -157,7 +157,6 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
 fn launch_spike(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode {
     let cfg = get_config(args);
     let mut spike_cmd = Command::new(SPIKE);
-
     spike_cmd.arg("--kernel");
 
     spike_cmd.arg(firmware.to_str().unwrap());

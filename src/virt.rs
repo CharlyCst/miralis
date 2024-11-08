@@ -656,12 +656,13 @@ impl VirtContext {
 
     /// Handle the trap coming from the firmware
     pub fn handle_firmware_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
+        if policy.ecall_from_firmware(mctx, self).overwrites() {
+            log::trace!("Catching interrupts in the policy module");
+            return;
+        }
+
         let cause = self.trap_info.get_cause();
         match cause {
-            MCause::EcallFromUMode if policy.ecall_from_firmware(mctx, self).overwrites() => {
-                // Nothing to do, the policy module handles those ecalls
-                log::trace!("Catching E-call from firmware in the policy module");
-            }
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
             }
@@ -727,6 +728,9 @@ impl VirtContext {
             MCause::MachineExternalInt => {
                 todo!("Virtualize machine external interrupt")
             }
+            MCause::LoadAddrMisaligned
+            | MCause::StoreAddrMisaligned
+            | MCause::InstrAddrMisaligned => self.emulate_jump_trap_handler(),
             _ => {
                 if cause.is_interrupt() {
                     // TODO : For now, only care for MTIP bit
@@ -752,13 +756,14 @@ impl VirtContext {
         // Update the current mode
         self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
 
+        if policy.ecall_from_payload(mctx, self).overwrites() {
+            log::trace!("Catching interrupts in the policy module");
+            return;
+        }
+
         // Handle the exit.
         // We only care about ecalls and virtualized interrupts.
         match self.trap_info.get_cause() {
-            MCause::EcallFromSMode if policy.ecall_from_payload(mctx, self).overwrites() => {
-                // Nothing to do, the Policy module handles those ecalls
-                log::trace!("Catching E-call from payload in the policy module");
-            }
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 self.handle_ecall()
             }

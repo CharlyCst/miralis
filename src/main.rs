@@ -7,6 +7,7 @@
 // We need both std and main to be able to run tests in user-space on the host architecture.
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
+#![feature(ptr_metadata)]
 
 mod arch;
 mod benchmark;
