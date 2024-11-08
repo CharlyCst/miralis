@@ -292,11 +292,19 @@ impl Architecture for HostArch {
         todo!();
     }
 
-    unsafe fn copy_bytes_from_mode(
+    unsafe fn read_bytes_from_mode(
         _src: *const u8,
         _dest: &mut [u8],
         _mode: Mode,
     ) -> Result<(), ()> {
         todo!();
+    }
+
+    unsafe fn store_bytes_from_mode(
+        _src: &mut [u8],
+        _dest: *const u8,
+        _mode: Mode,
+    ) -> Result<(), ()> {
+        todo!()
     }
 }

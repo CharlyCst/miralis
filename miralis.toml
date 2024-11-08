@@ -26,6 +26,9 @@ path = "config/test/qemu-virt-benchmark.toml"
 [config.spike]
 path = "config/test/spike.toml"
 
+[config.spike-protect-payload]
+path = "config/test/spike-protect-payload.toml"
+
 ## ——————————————————————————— Integration Tests ———————————————————————————— ##
 
 [test.ecall]
@@ -185,6 +188,11 @@ description = "Integration test for the protect payload policy, with a custom fi
 firmware = "linux-lock"
 config = "qemu-virt-protect-payload"
 description = "Integration test for the protect payload policy, running Linux with OpenSBI"
+
+[test.protect-payload-misaligned]
+firmware = "misaligned_op"
+config = "spike-protect-payload"
+description = "Test the protect payload policy emulation of misaligned loads (on Spike)."
 
 [test.keystone]
 firmware = "opensbi-jump"

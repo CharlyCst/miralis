@@ -89,7 +89,10 @@ pub trait Architecture {
     ///
     /// Returns whether the copy succeeded or not (for example, the copy might not succeed if we try
     /// to read an address not accessible from the given mode).
-    unsafe fn copy_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()>;
+    unsafe fn read_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()>;
+
+    /// This function is similar to the function above except it is used to store bytes in virtual memory from a chphysical address.
+    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()>;
 }
 
 // ——————————————————————————— Hardware Detection ——————————————————————————— //
