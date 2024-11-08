@@ -661,6 +661,11 @@ impl VirtContext {
 
     /// Handle the trap coming from the firmware
     pub fn handle_firmware_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
+        if policy.trap_from_firmware(mctx, self).overwrites() {
+            log::trace!("Catching trap in the policy module");
+            return;
+        }
+
         let cause = self.trap_info.get_cause();
         match cause {
             MCause::EcallFromUMode if policy.ecall_from_firmware(mctx, self).overwrites() => {
@@ -732,6 +737,9 @@ impl VirtContext {
             MCause::MachineExternalInt => {
                 todo!("Virtualize machine external interrupt")
             }
+            MCause::LoadAddrMisaligned
+            | MCause::StoreAddrMisaligned
+            | MCause::InstrAddrMisaligned => self.emulate_jump_trap_handler(),
             _ => {
                 if cause.is_interrupt() {
                     // TODO : For now, only care for MTIP bit
@@ -756,6 +764,11 @@ impl VirtContext {
     pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
         // Update the current mode
         self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
+
+        if policy.trap_from_payload(mctx, self).overwrites() {
+            log::trace!("Catching trap in the policy module");
+            return;
+        }
 
         // Handle the exit.
         // We only care about ecalls and virtualized interrupts.

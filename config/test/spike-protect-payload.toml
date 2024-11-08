@@ -1,0 +1,18 @@
+# A configuration to run on Spike platform with the protect payload policy
+
+[log]
+level = "info"
+color = true
+
+[debug]
+max_firmware_exits = 2000
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 1
+name = "spike"
+
+[policy]
+name = "protect_payload"

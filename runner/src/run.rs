@@ -206,7 +206,6 @@ pub fn get_qemu_cmd(
 /// Return the command to run Miralis on Spike.
 pub fn get_spike_cmd(cfg: &Config, miralis: PathBuf, firmware: PathBuf) -> Result<Command, ()> {
     let mut spike_cmd = Command::new(SPIKE);
-
     spike_cmd.arg("--kernel");
 
     spike_cmd.arg(firmware.to_str().unwrap());

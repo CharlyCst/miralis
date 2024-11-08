@@ -51,16 +51,55 @@ impl PolicyHookResult {
 pub trait PolicyModule {
     fn init() -> Self;
     fn name() -> &'static str;
+
+    /// Handle an ecall from the virtualized firmware.
+    ///
+    /// Note that ecalls are a subset of traps.
     fn ecall_from_firmware(
         &mut self,
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
-    ) -> PolicyHookResult;
+    ) -> PolicyHookResult {
+        let _ = mctx;
+        let _ = ctx;
+        PolicyHookResult::Ignore
+    }
+
+    /// Handle an ecall from the payload.
+    ///
+    /// Note that ecalls are a subset of traps.
     fn ecall_from_payload(
         &mut self,
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
-    ) -> PolicyHookResult;
+    ) -> PolicyHookResult {
+        let _ = mctx;
+        let _ = ctx;
+        PolicyHookResult::Ignore
+    }
+
+    /// Handle a trap from the virtualized firmware.
+    fn trap_from_firmware(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        let _ = mctx;
+        let _ = ctx;
+        PolicyHookResult::Ignore
+    }
+
+    /// Handle a trap from the payload.
+    fn trap_from_payload(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        let _ = mctx;
+        let _ = ctx;
+        PolicyHookResult::Ignore
+    }
+
     fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
 
     fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
