@@ -6,6 +6,11 @@ use std::str::FromStr;
 use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET, PAYLOAD_TARGET};
 use crate::config::Profiles;
 
+pub const XZ_COMPRESSION: &str = "xz";
+pub const ZST_COMPRESSION: &str = "zst";
+pub const GZ_COMPRESSION: &str = "gz";
+pub const IMG_EXTENSION: &str = "img";
+
 /// Return the root of the workspace.
 pub fn get_workspace_path() -> PathBuf {
     let Ok(runner_manifest) = std::env::var("CARGO_MANIFEST_DIR") else {
@@ -101,4 +106,31 @@ pub fn is_older(a: &Path, b: &Path) -> bool {
         (Ok(a), Ok(b)) => a <= b,
         _ => false,
     }
+}
+
+pub fn is_file_present(image_path: &str) -> bool {
+    Path::new(image_path).exists()
+}
+
+pub fn extract_file_extension(image_path: &str) -> &str {
+    Path::new(image_path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap()
+}
+
+pub fn extract_file_name(image_path: &str) -> &str {
+    Path::new(image_path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap()
+}
+
+pub fn remove_file_extention(path: &str) -> String {
+    if let Some(stem) = Path::new(path).file_stem() {
+        if let Some(parent) = Path::new(path).parent() {
+            return parent.join(stem).to_string_lossy().into_owned();
+        }
+    }
+    path.to_string()
 }

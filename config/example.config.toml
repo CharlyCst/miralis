@@ -60,6 +60,12 @@ machine = "virt"
 # Default to "none"
 cpu = "none"
 
+# Amount of memory 
+memory = "2048M"
+
+# The name of a disk artifact
+disk = "ubuntu"
+
 # Enable benchmark code and logs. Logs can then be collected to 
 # analyze a run of the program.
 [benchmark]

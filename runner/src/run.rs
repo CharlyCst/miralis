@@ -8,7 +8,10 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 use std::str::FromStr;
 
-use crate::artifacts::{build_target, prepare_firmware_artifact, prepare_payload_artifact, Target};
+use crate::artifacts::{
+    build_target, download_disk_image, get_external_artifacts, prepare_firmware_artifact,
+    prepare_payload_artifact, DiskArtifact, Target,
+};
 use crate::config::{read_config, Config, Platforms};
 use crate::RunArgs;
 
@@ -23,7 +26,6 @@ const QEMU_ARGS: &[&str] = &[
     "-nographic",
     "-machine", "virt",
 ];
-
 /// Address at which the firmware is loaded in memory.
 const FIRMWARE_ADDR: u64 = 0x80200000;
 
@@ -34,12 +36,19 @@ const PAYLOAD_ADDR: u64 = 0x80400000;
 
 /// The run command, runs Miralis with the provided arguments.
 pub fn run(args: &RunArgs) -> ExitCode {
-    log::info!("Running Miralis with '{}' firmware", &args.firmware);
     let cfg = get_config(args);
 
     // Build or retrieve the artifacts to run
     let miralis = build_target(Target::Miralis, &cfg);
-    let Some(firmware) = prepare_firmware_artifact(&args.firmware, &cfg) else {
+    let firmware = if let Some(fw) = &args.firmware {
+        fw
+    } else if let Some(fw) = &cfg.target.firmware.name {
+        fw
+    } else {
+        "default"
+    };
+    log::info!("Running Miralis with '{}' firmware", firmware);
+    let Some(firmware) = prepare_firmware_artifact(firmware, &cfg) else {
         return ExitCode::FAILURE;
     };
 
@@ -85,6 +94,9 @@ fn get_config(args: &RunArgs) -> Config {
     if let Some(nb_harts) = args.smp {
         cfg.platform.nb_harts = Some(nb_harts);
     }
+    if let Some(disk) = &args.disk {
+        cfg.qemu.disk = Some(disk.to_owned());
+    }
 
     cfg
 }
@@ -106,11 +118,17 @@ pub fn get_qemu_cmd(
     if let Some(cpu) = &cfg.qemu.cpu {
         qemu_cmd.arg("-cpu").arg(cpu);
     }
+
+    qemu_cmd.arg("-m");
+    if let Some(memory) = &cfg.qemu.memory {
+        qemu_cmd.arg(memory);
+    } else {
+        qemu_cmd.arg("2048");
+    }
+
     qemu_cmd
         .arg("-bios")
         .arg(miralis)
-        .arg("-m")
-        .arg("2048")
         .arg("-device")
         .arg(format!(
             "loader,file={},addr=0x{:x},force-raw=on",
@@ -144,6 +162,28 @@ pub fn get_qemu_cmd(
             payload.to_str().unwrap(),
             PAYLOAD_ADDR
         ));
+    }
+
+    // If a disk is present add the appropriate device
+    if let Some(disk) = &cfg.qemu.disk {
+        if let Some(DiskArtifact::Downloaded { name, url }) =
+            get_external_artifacts().disk.get(disk)
+        {
+            download_disk_image(name, url);
+
+            qemu_cmd
+                .arg("-device")
+                .arg("virtio-net-device,netdev=eth0")
+                .arg("-netdev")
+                .arg("user,id=eth0")
+                .arg("-device")
+                .arg("virtio-rng-pci")
+                .arg("-drive")
+                .arg(format!(
+                    "file=artifacts/{}-miralis.img,format=raw,if=virtio",
+                    name
+                ));
+        }
     }
 
     if let Some(nb_harts) = cfg.platform.nb_harts {
