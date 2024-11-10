@@ -13,8 +13,9 @@ use serde::Deserialize;
 
 use crate::config::{Config, Profiles};
 use crate::path::{
-    get_artifact_manifest_path, get_artifacts_path, get_target_config_path, get_target_dir_path,
-    get_workspace_path, is_older,
+    extract_file_extension, extract_file_name, get_artifact_manifest_path, get_artifacts_path,
+    get_target_config_path, get_target_dir_path, get_workspace_path, is_file_present, is_older,
+    remove_file_extention, GZ_COMPRESSION, IMG_EXTENSION, XZ_COMPRESSION, ZST_COMPRESSION,
 };
 use crate::ArtifactArgs;
 
@@ -42,14 +43,55 @@ pub enum Target {
     Payload(String),
 }
 
+// —————————————————————————— Artifact Definitions —————————————————————————— //
+
+trait Artifact {
+    /// Creates an artifact that can be downloaded.
+    fn from_url(name: &str, url: &str) -> Self;
+}
+
+/// A binary artifact, typically a firmware or payload.
 #[derive(Clone, Debug)]
-pub enum Artifact {
+pub enum BinArtifact {
     /// Artifacts that are built from sources.
     Source { name: String },
     /// Artifacts that are downloaded.
     Downloaded { name: String, url: String },
     /// Artifact available as binaries on the local file system.
     Binary { path: PathBuf },
+}
+
+/// A disk artifact
+#[derive(Clone, Debug)]
+pub enum DiskArtifact {
+    /// A disk image that can be downloaded.
+    Downloaded { name: String, url: String },
+}
+
+/// A collection of artifacts
+pub struct AllArtifacts {
+    /// Binary artifacts
+    pub bin: HashMap<String, BinArtifact>,
+    /// Disk artifacts
+    pub disk: HashMap<String, DiskArtifact>,
+}
+
+impl Artifact for BinArtifact {
+    fn from_url(name: &str, url: &str) -> Self {
+        Self::Downloaded {
+            name: name.to_owned(),
+            url: url.to_owned(),
+        }
+    }
+}
+
+impl Artifact for DiskArtifact {
+    fn from_url(name: &str, url: &str) -> Self {
+        Self::Downloaded {
+            name: name.to_owned(),
+            url: url.to_owned(),
+        }
+    }
 }
 
 // ——————————————————————————— Artifact Manifest ———————————————————————————— //
@@ -60,12 +102,21 @@ pub enum Artifact {
 struct ArtifactManifest {
     #[serde(default)]
     bin: HashMap<String, Bin>,
+    disk: HashMap<String, Disk>,
 }
 
 /// Binaries artifacts.
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 struct Bin {
+    description: Option<String>,
+    url: Option<String>,
+    repo: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+struct Disk {
     description: Option<String>,
     url: Option<String>,
     repo: Option<String>,
@@ -90,30 +141,36 @@ fn read_artifact_manifest() -> ArtifactManifest {
     toml::from_str::<ArtifactManifest>(&manifest).expect("Failed to parse configuration")
 }
 
-fn append_artifact(name: &str, url: &Option<String>, map: &mut HashMap<String, Artifact>) {
+fn append_artifact_url<A: Artifact>(
+    name: &str,
+    url: &Option<String>,
+    map: &mut HashMap<String, A>,
+) {
     let Some(url) = url else { return };
 
     if url.starts_with("https://") || url.starts_with("http://") {
-        map.insert(
-            name.to_string(),
-            Artifact::Downloaded {
-                name: name.to_string(),
-                url: url.clone(),
-            },
-        );
+        map.insert(name.to_string(), A::from_url(name, url));
     } else {
-        eprintln!("Warning: invalid artifact url '{}'", url);
+        log::warn!("Invalid artifact url '{}'", url);
     }
 }
 
-pub fn get_external_artifacts() -> HashMap<String, Artifact> {
+pub fn get_external_artifacts() -> AllArtifacts {
     let manifest = read_artifact_manifest();
-    let mut map = HashMap::new();
+    let mut bins = HashMap::new();
+    let mut disks = HashMap::new();
 
     for (key, bin) in manifest.bin {
-        append_artifact(key.as_str(), &bin.url, &mut map)
+        append_artifact_url(key.as_str(), &bin.url, &mut bins)
     }
-    map
+    for (key, disk) in manifest.disk {
+        append_artifact_url(key.as_str(), &disk.url, &mut disks)
+    }
+
+    AllArtifacts {
+        bin: bins,
+        disk: disks,
+    }
 }
 
 // ———————————————————————————— Locate Artifacts ———————————————————————————— //
@@ -123,10 +180,10 @@ pub fn get_external_artifacts() -> HashMap<String, Artifact> {
 /// Artifacts can be provided as sources, binaries, or URL to download. This functions takes care
 /// of preparing the final binaries that can be imported in an emulator or run on hardware.
 pub fn prepare_firmware_artifact(name: &str, cfg: &Config) -> Option<PathBuf> {
-    match locate_artifact(name) {
-        Some(Artifact::Source { name }) => Some(build_target(Target::Firmware(name), cfg)),
-        Some(Artifact::Downloaded { name, url }) => Some(download_artifact(&name, &url)),
-        Some(Artifact::Binary { path }) => Some(path),
+    match locate_bin_artifact(name) {
+        Some(BinArtifact::Source { name }) => Some(build_target(Target::Firmware(name), cfg)),
+        Some(BinArtifact::Downloaded { name, url }) => Some(download_artifact(&name, &url)),
+        Some(BinArtifact::Binary { path }) => Some(path),
         None => None,
     }
 }
@@ -136,22 +193,22 @@ pub fn prepare_firmware_artifact(name: &str, cfg: &Config) -> Option<PathBuf> {
 /// Artifacts can be provided as sources, binaries, or URL to download. This functions takes care
 /// of preparing the final binaries that can be imported in an emulator or run on hardware.
 pub fn prepare_payload_artifact(name: &str, cfg: &Config) -> Option<PathBuf> {
-    match locate_artifact(name) {
-        Some(Artifact::Source { name }) => Some(build_target(Target::Payload(name), cfg)),
-        Some(Artifact::Downloaded { name, url }) => Some(download_artifact(&name, &url)),
-        Some(Artifact::Binary { path }) => Some(path),
+    match locate_bin_artifact(name) {
+        Some(BinArtifact::Source { name }) => Some(build_target(Target::Payload(name), cfg)),
+        Some(BinArtifact::Downloaded { name, url }) => Some(download_artifact(&name, &url)),
+        Some(BinArtifact::Binary { path }) => Some(path),
         None => None,
     }
 }
 
-/// Try to locate the desired artifact.
+/// Try to locate the desired binary artifact.
 ///
 /// Artifacts can be either available as sources, as external binaries that can be downloaded, or
 /// as path on the local filesystem.
-fn locate_artifact(name: &str) -> Option<Artifact> {
+fn locate_bin_artifact(name: &str) -> Option<BinArtifact> {
     // Miralis as firmware?
     if name == "miralis" {
-        return Some(Artifact::Source {
+        return Some(BinArtifact::Source {
             name: String::from(name),
         });
     }
@@ -197,22 +254,22 @@ fn locate_artifact(name: &str) -> Option<Artifact> {
             continue;
         };
         if file_name == name {
-            return Some(Artifact::Source {
+            return Some(BinArtifact::Source {
                 name: name.to_string(),
             });
         }
     }
 
     // Else check if the artifact is defined in the manifest
-    let external = get_external_artifacts();
-    if let Some(artifact) = external.get(name) {
+    let external_binary = &get_external_artifacts().bin;
+    if let Some(artifact) = external_binary.get(name) {
         return Some(artifact.clone());
     }
 
     // Finally look for a local file as a last resort
     let path = PathBuf::from(name);
     if path.is_file() {
-        return Some(Artifact::Binary { path });
+        return Some(BinArtifact::Binary { path });
     }
 
     // Could not find artifact - exit process
@@ -221,7 +278,7 @@ fn locate_artifact(name: &str) -> Option<Artifact> {
 }
 
 /// Check if one entry match the name
-fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
+fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<BinArtifact> {
     for entry in fs::read_dir(firmware_path).unwrap() {
         let Ok(file_path) = entry.map(|e| e.path()) else {
             continue;
@@ -230,7 +287,7 @@ fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<Artifact> {
             continue;
         };
         if file_name == name {
-            return Some(Artifact::Source {
+            return Some(BinArtifact::Source {
                 name: name.to_string(),
             });
         };
@@ -395,14 +452,43 @@ pub fn download_artifact(name: &str, url: &str) -> PathBuf {
 pub fn list_artifacts(args: &ArtifactArgs) -> ExitCode {
     // Collect and sort the artifacts
     let manifest = read_artifact_manifest();
-    let mut artifacts: Vec<(&String, &Bin)> = manifest.bin.iter().collect();
-    artifacts.sort_by_key(|(name, _)| *name);
+    let mut binary_artifacts: Vec<(&String, &Bin)> = manifest.bin.iter().collect();
+    binary_artifacts.sort_by_key(|(name, _)| *name);
 
     // Display the list
-    for (name, metadata) in artifacts {
+    if args.markdown {
+        println!("## Binary artifacts\n\n");
+    }
+    for (name, metadata) in binary_artifacts {
         if args.markdown {
             // Print as markdown
-            println!("## {}\n", name);
+            println!("### {}\n", name);
+            if let Some(ref desc) = metadata.description {
+                println!("{}", desc);
+            }
+            if let Some(ref url) = metadata.url {
+                println!("- [Download link]({})", url);
+            }
+            if let Some(ref repo) = metadata.repo {
+                println!("- [Source repository]({})", repo)
+            }
+            println!();
+        } else {
+            // Otherwise simply print the name
+            log::info!("{}", name)
+        }
+    }
+
+    let mut disk_artifacts: Vec<(&String, &Disk)> = manifest.disk.iter().collect();
+    disk_artifacts.sort_by_key(|(name, _)| *name);
+
+    if args.markdown {
+        println!("## Disk artifacts\n\n");
+    }
+    for (name, metadata) in disk_artifacts {
+        if args.markdown {
+            // Print as markdown
+            println!("### {}\n", name);
             if let Some(ref desc) = metadata.description {
                 println!("{}", desc);
             }
@@ -420,4 +506,72 @@ pub fn list_artifacts(args: &ArtifactArgs) -> ExitCode {
     }
 
     ExitCode::SUCCESS
+}
+
+// ————————————————————————————— Process disk image ————————————————————————————— //
+
+/// Download a disk image if not already downloaded.
+pub fn download_disk_image(name: &str, url_path: &str) {
+    let file_name: &str = extract_file_name(url_path);
+
+    if !is_file_present(&format!("artifacts/{}-miralis.img", name)) {
+        // Download image
+        log::info!("Disk image not found. Fetching the image...");
+        let mut image_downloader = Command::new("wget");
+        image_downloader.arg(url_path);
+        image_downloader
+            .status()
+            .expect("Failed to download disk image");
+
+        // Extract image
+        log::info!("Extracting the disk image");
+
+        // Handle case where it is .tar.smth
+        let mut filename_without_extension = remove_file_extention(file_name);
+        if filename_without_extension.contains(".tar") {
+            todo!("Implement support for extracting files of type .tar.something");
+        }
+
+        let mut image_extractor;
+        let compression_type = extract_file_extension(file_name);
+
+        match compression_type {
+            XZ_COMPRESSION => {
+                image_extractor = Command::new("xz");
+                image_extractor.arg("-dk").arg(file_name);
+            }
+            ZST_COMPRESSION => {
+                image_extractor = Command::new("zstd");
+                image_extractor.arg("-d").arg(file_name);
+            }
+            GZ_COMPRESSION => {
+                image_extractor = Command::new("gunzip");
+                image_extractor.arg("-d").arg(file_name);
+            }
+            IMG_EXTENSION => {
+                image_extractor = Command::new("echo");
+                image_extractor.arg("provided image is uncompressed, no extraction is required");
+                filename_without_extension = file_name.parse().unwrap();
+            }
+            _ => todo!("Implement extraction for the compression type"),
+        }
+
+        image_extractor
+            .status()
+            .expect("Failed to downlaod Disk image");
+
+        // Move and clean
+        log::info!("Moving and cleaning the download");
+
+        fs::rename(
+            filename_without_extension,
+            format!("artifacts/{}-miralis.img", name),
+        )
+        .unwrap();
+        fs::remove_file(file_name).unwrap();
+
+        log::info!("Disk image ready to use");
+    } else {
+        log::debug!("Disk image already exists.");
+    }
 }

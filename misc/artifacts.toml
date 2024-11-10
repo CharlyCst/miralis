@@ -54,3 +54,43 @@ repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 description = "An OpenSBI image with a Linux kernel payload that locks itself in the protect payload policy"
 url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.5/opensbi-linux-kernel-lock.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
+
+[disk.ubuntu]
+description = "A RISC-V Ubuntu image that can be used with Miralis"
+url = "https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.1-preinstalled-server-riscv64.img.xz"
+repo = "https://cdimage.ubuntu.com/"
+
+[disk.opensuse]
+description = "A RISC-V Opensuse image that can be used with Miralis"
+url = "https://download.opensuse.org/ports/riscv/tumbleweed/images/openSUSE-Tumbleweed-RISC-V-JeOS-starfivevisionfive2.riscv64.raw.xz"
+repo = "https://download.opensuse.org/"
+
+[disk.fedora]
+description = "A RISC-V Fedora image that can be used with Miralis"
+url = "https://dl.fedoraproject.org/pub/alt/risc-v/disk_images/Fedora-40/VisionFive2/20240903.n.0/Fedora.riscv64-Rawhide_server_20240903.n.0.raw.zst"
+repo = "https://dl.fedoraproject.org/"
+
+[disk.archlinux]
+description = "A RISC-V archlinux image that can be used with Miralis"
+url = "https://archriscv.felixc.at/images/archriscv-2024-09-22.tar.zst"
+repo = "https://archriscv.felixc.at/"
+
+[disk.gentoo]
+description = "A RISC-V gentoo image that can be used with Miralis"
+url = "https://distfiles.gentoo.org/releases/riscv/autobuilds/20241108T170320Z/stage3-rv64_lp64d-openrc-20241108T170320Z.tar.xz"
+repo = "https://distfiles.gentoo.org/"
+
+[disk.freebsd]
+description = "A RISC-V freebsd image that can be used with Miralis"
+url = "https://download.freebsd.org/snapshots/VM-IMAGES/15.0-CURRENT/riscv64/20241024/FreeBSD-15.0-CURRENT-riscv-riscv64-zfs-20241024-8b2e7da70855-273174.raw.xz"
+repo = "https://download.freebsd.org/"
+
+[disk.netbsd]
+description = "A RISC-V netbsd image that can be used with Miralis"
+url = "https://nycdn.netbsd.org/pub/NetBSD-daily/HEAD/latest/riscv-riscv64/binary/gzimg/riscv64.img.gz"
+repo = "https://nycdn.netbsd.org/"
+
+[disk.openbsd]
+description = "A RISC-V openBSD image that can be used with Miralis"
+url = "https://cdn.openbsd.org/pub/OpenBSD/7.6/riscv64/install76.img"
+repo = "https://cdn.openbsd.org/"

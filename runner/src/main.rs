@@ -52,14 +52,17 @@ struct RunArgs {
     debug: bool,
     #[arg(long, action)]
     stop: bool,
-    #[arg(short, long, default_value = "default")]
-    firmware: String,
+    #[arg(short, long)]
+    firmware: Option<String>,
     #[arg(long)]
     /// Maximum number of firmware exits
     max_exits: Option<usize>,
     #[arg(long)]
     /// Path to the configuration file to use
     config: Option<PathBuf>,
+    /// An optional disk we can bind to qemu
+    #[arg(long)]
+    disk: Option<String>,
 }
 
 #[derive(Args)]

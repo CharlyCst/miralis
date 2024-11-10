@@ -1,0 +1,24 @@
+# A configuration file to run Ubuntu on top of miralis
+[log]
+level = "info"
+color = true
+
+[qemu]
+memory = "8G"
+disk = "ubuntu"
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 1
+
+[target.miralis]
+profile = "dev"
+
+[target.firmware]
+name = "opensbi-jump"
+
+[target.payload]
+name = "u-boot"
+

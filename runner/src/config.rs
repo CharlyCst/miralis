@@ -75,6 +75,8 @@ pub struct Platform {
 pub struct Qemu {
     pub machine: Option<String>,
     pub cpu: Option<String>,
+    pub memory: Option<String>,
+    pub disk: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
