@@ -300,8 +300,8 @@ pub struct ControlStatusRegister {
     pub mscratch: ReadWriteRiscvCsr<CSR_MSCRATCH>,
     pub hgatp: ReadWriteRiscvCsr<CSR_HGATP>,
     pub pmpcfg0: ReadWriteRiscvCsr<CSR_PMPCFG0>,
-    pub pmpaddr0: ReadWriteRiscvCsr<CSR_PMPADDR0>,
-    pub pmpaddr1: ReadWriteRiscvCsr<CSR_PMPADDR1>,
+    pub pmpaddr4: ReadWriteRiscvCsr<CSR_PMPADDR4>,
+    pub pmpaddr5: ReadWriteRiscvCsr<CSR_PMPADDR5>,
 }
 
 pub const CSR: &ControlStatusRegister = &ControlStatusRegister {
@@ -312,8 +312,8 @@ pub const CSR: &ControlStatusRegister = &ControlStatusRegister {
     mscratch: ReadWriteRiscvCsr::new(),
     hgatp: ReadWriteRiscvCsr::new(),
     pmpcfg0: ReadWriteRiscvCsr::new(),
-    pmpaddr0: ReadWriteRiscvCsr::new(),
-    pmpaddr1: ReadWriteRiscvCsr::new(),
+    pmpaddr4: ReadWriteRiscvCsr::new(),
+    pmpaddr5: ReadWriteRiscvCsr::new(),
 };
 
 #[derive(Copy, Clone)]
