@@ -28,10 +28,9 @@ pub fn split_memory_into_confidential_and_non_confidential(
 
     // TODO: simplify use of PMP by using a single PMP entry to isolate the confidential memory.
     // We assume here that the first two PMPs are not used by anyone else, e.g., OpenSBI firmware
+    // MODIFIED CODE FOR MIRALIS
     CSR.pmpaddr4.write(confidential_memory_start >> PMP_ADDRESS_SHIFT);
     CSR.pmpaddr5.write(confidential_memory_end >> PMP_ADDRESS_SHIFT);
-    // MODIFIED CODE FOR MIRALIS
-
     // END MODIFIED CODE
     close_access_to_confidential_memory();
     crate::ace::debug::__print_pmp_configuration();
@@ -40,20 +39,18 @@ pub fn split_memory_into_confidential_and_non_confidential(
 
 pub fn open_access_to_confidential_memory() {
     // MODIFIED CODE FOR MIRALIS
-
-    // END MODIFIED CODE
     let mask = ((PMP_OFF_MASK | PMP_PERMISSION_RWX_MASK) << 32) | (PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << (1 * (PMP_CONFIG_SHIFT + 32));
     CSR.pmpcfg0.read_and_set_bits(mask);
     clear_caches();
+    // END MODIFIED CODE
 }
 
 pub fn close_access_to_confidential_memory() {
     // MODIFIED CODE FOR MIRALIS
-
-    // END MODIFIED CODE
     let mask = (PMP_PERMISSION_RWX_MASK << 32) | (PMP_PERMISSION_RWX_MASK << (1 * PMP_CONFIG_SHIFT + 32));
     CSR.pmpcfg0.read_and_clear_bits(mask);
     clear_caches();
+    // END MODIFIED CODE
 }
 
 fn clear_caches() {
