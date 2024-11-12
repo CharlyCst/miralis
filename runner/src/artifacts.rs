@@ -24,7 +24,10 @@ use crate::ArtifactArgs;
 pub const MIRALIS_TARGET: &str = "riscv-unknown-miralis";
 
 /// Target triple used to build the firmware or the payload.
-pub const UNPRIVILEGED_TARGET: &str = "riscv-unknown-unprivileged";
+pub const FIRMWARE_TARGET: &str = "riscv-unknown-firmware";
+
+/// Target triple used to build the payload.
+pub const PAYLOAD_TARGET: &str = "riscv-unknown-payload";
 
 /// Extra cargo arguments.
 const CARGO_ARGS: &[&str] = &[
