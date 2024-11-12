@@ -1,0 +1,18 @@
+{
+    "llvm-target": "riscv64",
+    "data-layout": "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128",
+    "cpu": "generic-rv64",
+    "arch": "riscv64",
+    "target-endian": "little",
+    "relocation-model": "pic",
+    "target-pointer-width": "64",
+    "target-c-int-width": "32",
+    "os": "none",
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
+    "panic-strategy": "abort",
+    "disable-redzone": true,
+    "eh-frame-header": false,
+    "features": "+m,+a,+h",
+    "executables": true
+}
