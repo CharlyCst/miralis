@@ -26,7 +26,7 @@ struct TestStats {
 }
 
 /// The test command, run all the tests.
-pub fn run_tests(_args: &TestArgs) -> ExitCode {
+pub fn run_tests(args: &TestArgs) -> ExitCode {
     let mut stats = TestStats::default();
     let path = get_project_config_path();
     let config = match fs::read_to_string(&path) {
@@ -76,6 +76,13 @@ pub fn run_tests(_args: &TestArgs) -> ExitCode {
         let test_group = &test_groups[cfg_name];
         let cfg = read_config(&Some(&test_group.config_path));
         for (test_name, test) in &test_group.tests {
+            // Filter tests if a pattern is provided
+            if let Some(pattern) = &args.pattern {
+                if !test_name.starts_with(pattern) {
+                    continue;
+                }
+            }
+
             if let Err(cmd) = run_one_test(test, test_name, &cfg) {
                 log::error!("Failed to run test '{}'", test_name);
                 if let Some(cmd) = cmd {

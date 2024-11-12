@@ -73,7 +73,10 @@ struct BuildArgs {
 }
 
 #[derive(Args)]
-struct TestArgs {}
+struct TestArgs {
+    /// Prefix of the tests to run, all if none
+    pattern: Option<String>,
+}
 
 #[derive(Args)]
 struct CheckConfigArgs {
