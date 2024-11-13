@@ -15,8 +15,8 @@ mod protect_payload;
 pub type Policy = select_env!["MIRALIS_POLICY_NAME":
     "keystone" => keystone::KeystonePolicy
     "protect_payload" => protect_payload::ProtectPayloadPolicy
-    "ace" => ace::AcePolicy
-    _          => default::DefaultPolicy
+    _ => ace::AcePolicy
+    // _          => default::DefaultPolicy
 ];
 
 /// The result of a call into a policy hook function
