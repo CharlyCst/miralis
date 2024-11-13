@@ -95,9 +95,9 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("virt")
         .arg("-cpu")
         .arg("rv64")
-        .arg("-kernel") // Loaded at 0x80200000
-        .arg(firmware.to_str().unwrap());
-    /*.arg("-kernel")
+        //.arg("-kernel") // Loaded at 0x80200000
+        //.arg(firmware.to_str().unwrap());
+    .arg("-kernel")
     .arg("./artifacts/opensbi_cove")
         .arg("-append")
         .arg("console=ttyS0 ro root=/dev/vda")
@@ -109,7 +109,7 @@ fn launch_qemu(args: &RunArgs, miralis: PathBuf, firmware: PathBuf) -> ExitCode 
         .arg("-device")
         .arg("virtio-net-device,netdev=net0")
         .arg("-device")
-        .arg("virtio-rng-pci");*/
+        .arg("virtio-rng-pci");
 
     // If a payload is defined in the config, try to load it at the specified address.
     if let Some(payload) = &cfg.target.payload {
