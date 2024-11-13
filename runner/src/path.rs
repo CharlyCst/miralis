@@ -22,6 +22,19 @@ pub fn get_project_config_path() -> PathBuf {
     path
 }
 
+/// Make a path relative to the workspace root (turning it absolute).
+///
+/// Absolute path are keept absolute.
+pub fn make_path_relative_to_root(path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_owned()
+    } else {
+        let mut absolute = get_workspace_path();
+        absolute.push(path);
+        absolute
+    }
+}
+
 /// Return the target directory.
 pub fn get_target_dir_path(target: &Target, mode: Profiles) -> PathBuf {
     let mut path = get_workspace_path();

@@ -7,7 +7,7 @@ use std::process::ExitCode;
 
 use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
 use crate::config::{read_config, Config, Platforms};
-use crate::path::get_project_config_path;
+use crate::path::{get_project_config_path, make_path_relative_to_root};
 use crate::project::{ProjectConfig, Test};
 use crate::run::{get_qemu_cmd, get_spike_cmd};
 use crate::TestArgs;
@@ -52,7 +52,7 @@ pub fn run_tests(args: &TestArgs) -> ExitCode {
         test_groups.insert(
             cfg_name.clone(),
             TestGroup {
-                config_path: cfg.path.clone(),
+                config_path: make_path_relative_to_root(&cfg.path),
                 config_name: cfg_name.clone(),
                 tests: Vec::new(),
             },
