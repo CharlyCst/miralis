@@ -203,5 +203,5 @@ impl PolicyModule for AcePolicy {
         miralis_to_ace_ctx_switch(ctx, mctx, self)
     }
 
-    const NUMBER_PMPS: usize = 0;
+    const NUMBER_PMPS: usize = 2;
 }
