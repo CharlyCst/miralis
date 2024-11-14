@@ -17,8 +17,11 @@ use crate::RunArgs;
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
-const QEMU: &str = "qemu-system-riscv64";
-const SPIKE: &str = "spike";
+/// The QEMU executable
+pub const QEMU: &str = "qemu-system-riscv64";
+
+/// The Spike executable
+pub const SPIKE: &str = "spike";
 
 #[rustfmt::skip]
 const QEMU_ARGS: &[&str] = &[
@@ -219,4 +222,26 @@ pub fn get_spike_cmd(cfg: &Config, miralis: PathBuf, firmware: PathBuf) -> Resul
 
 fn raw_to_elf(raw_path: &str) -> &str {
     &raw_path[..raw_path.len() - 4]
+}
+
+/// Returns true if QEMU is available.
+pub fn qemu_is_available() -> bool {
+    let mut qemu_cmd = Command::new(QEMU);
+    qemu_cmd.arg("--version");
+    qemu_cmd
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    qemu_cmd.status().is_ok()
+}
+
+/// Returns true if Spike is available.
+pub fn spike_is_available() -> bool {
+    let mut spike_cmd = Command::new(SPIKE);
+    spike_cmd.arg("--help");
+    spike_cmd
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    spike_cmd.status().is_ok()
 }

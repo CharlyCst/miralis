@@ -23,6 +23,9 @@ path = "config/test/qemu-virt-keystone.toml"
 [config.qemu-virt-benchmark]
 path = "config/test/qemu-virt-benchmark.toml"
 
+[config.spike]
+path = "config/test/spike.toml"
+
 ## ——————————————————————————— Integration Tests ———————————————————————————— ##
 
 [test.ecall]
@@ -188,4 +191,11 @@ firmware = "opensbi-jump"
 payload = "test_keystone_payload"
 config = "qemu-virt-keystone"
 description = "Integration test for the protect payload policy, with a custom firmware and payload"
+
+## —————————————————————————————— Spike Tests ——————————————————————————————— ##
+
+[test.spike-ecall]
+firmware = "ecall"
+config = "spike"
+description = "The most basic test, which directly exit with an ecall to Miralis"
 

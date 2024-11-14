@@ -9,7 +9,7 @@ use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
 use crate::config::{read_config, Config, Platforms};
 use crate::path::{get_project_config_path, make_path_relative_to_root};
 use crate::project::{ProjectConfig, Test};
-use crate::run::{get_qemu_cmd, get_spike_cmd};
+use crate::run::{get_qemu_cmd, get_spike_cmd, qemu_is_available, spike_is_available, QEMU, SPIKE};
 use crate::TestArgs;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -23,6 +23,16 @@ struct TestGroup {
 struct TestStats {
     total: usize,
     success: usize,
+    skipped: SkippedTests,
+}
+
+/// The count of skipped tests
+#[derive(Default)]
+struct SkippedTests {
+    /// Skipped because QEMU is not available
+    qemu: usize,
+    /// Skipped because Spike is not available
+    spike: usize,
 }
 
 /// The test command, run all the tests.
@@ -71,6 +81,10 @@ pub fn run_tests(args: &TestArgs) -> ExitCode {
         }
     }
 
+    // Check which emulators are available
+    let qemu_available = qemu_is_available();
+    let spike_available = spike_is_available();
+
     // Run tests, grouped by config (to minimize the need to re-compile)
     for (cfg_name, _) in &config.config {
         let test_group = &test_groups[cfg_name];
@@ -81,6 +95,19 @@ pub fn run_tests(args: &TestArgs) -> ExitCode {
                 if !test_name.starts_with(pattern) {
                     continue;
                 }
+            }
+
+            // Skip tests if emulator not available
+            match cfg.platform.name {
+                None | Some(Platforms::QemuVirt) if !qemu_available => {
+                    stats.skipped.qemu += 1;
+                    continue;
+                }
+                Some(Platforms::Spike) if !spike_available => {
+                    stats.skipped.spike += 1;
+                    continue;
+                }
+                _ => (),
             }
 
             if let Err(cmd) = run_one_test(test, test_name, &cfg) {
@@ -95,7 +122,24 @@ pub fn run_tests(args: &TestArgs) -> ExitCode {
         }
     }
 
+    // Display stats
     log::info!("\nTest done: {}/{}", stats.success, stats.total);
+    if !qemu_available && stats.skipped.qemu > 0 {
+        log::warn!(
+            "{} is not available, skipped {} test{}",
+            QEMU,
+            stats.skipped.qemu,
+            if stats.skipped.qemu > 1 { "s" } else { "" }
+        );
+    }
+    if !spike_available && stats.skipped.spike > 0 {
+        log::warn!(
+            "{} is not available, skipped {} test{}",
+            SPIKE,
+            stats.skipped.spike,
+            if stats.skipped.spike > 1 { "s" } else { "" }
+        );
+    }
 
     ExitCode::SUCCESS
 }
