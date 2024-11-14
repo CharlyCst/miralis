@@ -1,0 +1,16 @@
+# A simple configuration to run on the Spike platform
+
+[log]
+level = "info"
+color = true
+
+[debug]
+max_firmware_exits = 1000000
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 1
+name = "spike"
+
