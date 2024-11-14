@@ -9,7 +9,7 @@ use tiny_keccak::{Hasher, Sha3};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register};
-use crate::config::PAYLOAD_HASH_SIZE;
+use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
@@ -85,7 +85,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         // Lock memory
-        mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
+        mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp
             .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
 
@@ -107,7 +107,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         // Unlock memory
-        mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
+        mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
 
         // Attempt to set `flag` to false only if it is currently true
@@ -327,8 +327,8 @@ impl ForwardingRule {
 // ———————————————————————————————— Hash primitive ———————————————————————————————— //
 
 fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
-    let payload_start: usize = 0x80400000;
-    let payload_end: usize = 0x80400000 + size_to_hash;
+    let payload_start: usize = TARGET_PAYLOAD_ADDRESS;
+    let payload_end: usize = TARGET_PAYLOAD_ADDRESS + size_to_hash;
 
     assert!(
         payload_start <= payload_end,
