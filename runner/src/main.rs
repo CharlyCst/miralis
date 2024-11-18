@@ -79,6 +79,9 @@ struct BuildArgs {
 struct TestArgs {
     /// Prefix of the tests to run, all if none
     pattern: Option<String>,
+    /// The command will succeed only if all tests can be run successfully
+    #[arg(long, action)]
+    strict: bool,
 }
 
 #[derive(Args)]
