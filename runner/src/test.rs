@@ -141,7 +141,18 @@ pub fn run_tests(args: &TestArgs) -> ExitCode {
         );
     }
 
-    ExitCode::SUCCESS
+    if args.strict {
+        // Strict runs are successful only if all tests run successfully. They fail if some tests
+        // are skipped.
+        if stats.success == stats.total {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::FAILURE
+        }
+    } else {
+        // Otherwise we consider it a success, even if we skipped some tests
+        ExitCode::SUCCESS
+    }
 }
 
 /// Run one test, building the required artifacts as needed.

@@ -28,6 +28,12 @@ jobs:
         echo ""
         echo "QEMU version:"
         qemu-system-riscv64 --version
+    - name: Download Spike
+      run: |
+        wget --no-verbose https://github.com/epfl-dcsl/spike-ci-artifact/releases/download/v0.1.3/spike
+        chmod +x spike
+        echo "$PWD" >> $GITHUB_PATH
+        sudo apt install device-tree-compiler
     - name: Test
       # Specify shell to enforce fail fast behavior, see:
       # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#exit-codes-and-error-action-preference
