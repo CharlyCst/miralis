@@ -6,6 +6,7 @@ use spin::{Once, RwLock, RwLockReadGuard};
 use crate::ace::core::architecture::CSR;
 use crate::ace::error::Error;
 use crate::ensure_not;
+use crate::platform::{Plat, Platform};
 
 const NOT_INITIALIZED_INTERRUPT_CONTROLLER: &str =
     "Bug. Could not access interrupt controller because it has not been initialized";
@@ -20,9 +21,11 @@ static INTERRUPT_CONTROLLER: Once<RwLock<InterruptController>> = Once::new();
 }*/
 
 fn sbi_ipi_send_smode(_hmask: usize, _hbase: usize) -> usize {
-    todo!("implement this feature, we don't have opensbi delegation anymore");
+    let mut clint = Plat::get_clint().lock();
 
-    #[allow(unreachable_code)]
+    // TODO: Implement error handling here
+    clint.write_msip(_hbase, _hmask as u32).unwrap();
+
     0
 }
 

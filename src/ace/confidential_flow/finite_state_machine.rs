@@ -333,11 +333,16 @@ impl<'a> ConfidentialFlow<'a> {
                 // Hack: For the time-being, we rely on the OpenSBI's implementation of physical IPIs. To use OpenSBI functions we
                 // must set the mscratch register to the value expected by OpenSBI. We do it here, because we have access to the `HardwareHart`
                 // that knows the original value of the mscratch expected by OpenSBI.
-                self.hardware_hart.swap_mscratch();
+
+                // In MIRALIS, we don't need the OPENSBI MSCRATCH
+
+                // self.hardware_hart.swap_mscratch();
                 let result =
                     confidential_vm.broadcast_remote_command(confidential_hart_remote_command);
                 // We must revert the content of mscratch back to the value expected by our context switched.
-                self.hardware_hart.swap_mscratch();
+                // self.hardware_hart.swap_mscratch();
+
+
                 result
             },
         )
