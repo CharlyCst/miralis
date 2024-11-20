@@ -1,5 +1,7 @@
+use core::panic;
+use std::env;
 use std::path::PathBuf;
-use std::process::ExitCode;
+use std::process::{exit, Command, ExitCode};
 
 use clap::{Args, Parser, Subcommand};
 use log::LevelFilter;
@@ -107,6 +109,18 @@ struct ArtifactArgs {
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
 fn main() -> ExitCode {
+    let Some(root) = path::find_project_root() else {
+        eprintln!(
+            "Could not find the miralis project root, missing '{}'",
+            path::PROJECT_CONFIG_FILE
+        );
+        return ExitCode::FAILURE;
+    };
+
+    if !is_running_through_cargo() {
+        exec_cargo(root);
+    }
+
     let args = CliArgs::parse();
 
     // Set the log level based on the --verbose flag
@@ -125,5 +139,39 @@ fn main() -> ExitCode {
         Subcommands::Gdb(args) => gdb::gdb(&args),
         Subcommands::CheckConfig(args) => config::check_config(&args),
         Subcommands::Artifact(args) => artifacts::list_artifacts(&args),
+    }
+}
+
+/// Return true if invoked by Cargo.
+fn is_running_through_cargo() -> bool {
+    env::var("CARGO_MANIFEST_DIR").is_ok()
+}
+
+/// Transfers the control to cargo.
+///
+/// When running in-tree this function makes it possible to use the latest version of the runner
+/// transparently.
+fn exec_cargo(path: PathBuf) -> ! {
+    let mut cargo_cmd = Command::new("cargo");
+    cargo_cmd
+        .arg("run")
+        .arg("--")
+        .args(env::args().skip(1))
+        .current_dir(path);
+
+    // On Unix systems we symply exit
+    #[cfg(target_family = "unix")]
+    {
+        use std::os::unix::process::CommandExt;
+        let err = cargo_cmd.exec();
+        panic!("Failed to start cargo: {}", err);
+    }
+    // On other systems we start a new process
+    #[allow(unreachable_code)]
+    {
+        match cargo_cmd.status() {
+            Ok(exit_status) => exit(exit_status.code().unwrap_or(1)),
+            Err(err) => panic!("Failed to start cargo: {}", err),
+        }
     }
 }
