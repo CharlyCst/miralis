@@ -1,15 +1,43 @@
 //! Path helper functions
 
+use std::env;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET, PAYLOAD_TARGET};
 use crate::config::Profiles;
 
+pub const PROJECT_CONFIG_FILE: &str = "miralis.toml";
+
 pub const XZ_COMPRESSION: &str = "xz";
 pub const ZST_COMPRESSION: &str = "zst";
 pub const GZ_COMPRESSION: &str = "gz";
 pub const IMG_EXTENSION: &str = "img";
+
+/// Find the root of the project, indicated by the presence of the root config file.
+///
+/// Return None if no config file is found.
+pub fn find_project_root() -> Option<PathBuf> {
+    let mut dir = env::current_dir().ok()?;
+
+    loop {
+        // Check if the config file is in this directory
+        let mut root_config_file = dir.clone();
+        root_config_file.push(PROJECT_CONFIG_FILE);
+        if let Ok(metadata) = root_config_file.metadata() {
+            if metadata.is_file() {
+                return Some(dir);
+            }
+        }
+
+        match dir.parent() {
+            // Try again in the parent directory
+            Some(parent) => dir = parent.to_owned(),
+            // No root config found
+            None => return None,
+        }
+    }
+}
 
 /// Return the root of the workspace.
 pub fn get_workspace_path() -> PathBuf {
@@ -23,7 +51,7 @@ pub fn get_workspace_path() -> PathBuf {
 /// Return the path to the projects config file
 pub fn get_project_config_path() -> PathBuf {
     let mut path = get_workspace_path();
-    path.push("miralis.toml");
+    path.push(PROJECT_CONFIG_FILE);
     path
 }
 
