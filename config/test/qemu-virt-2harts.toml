@@ -5,7 +5,7 @@ level = "info"
 color = true
 
 [debug]
-max_firmware_exits = 2000
+max_firmware_exits = 1000000
 
 [vcpu]
 max_pmp = 8
