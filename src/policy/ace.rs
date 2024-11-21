@@ -1,5 +1,7 @@
 //! The ace security policy. This policy colocates the ACE security monitor (https://github.com/IBM/ACE-RISCV) with Miralis such that the Firmware can be untrusted..
 
+use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::Ordering::SeqCst;
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
 use crate::ace::core::architecture::CSR;
 use crate::ace::core::control_data::HardwareHart;
@@ -39,10 +41,10 @@ fn miralis_to_ace_ctx_switch(
 ) {
     // Step 0: Get ACE Context
     let hart_id = virt_ctx.hart_id;
-    assert!(
+    /*assert!(
         hart_id == 0,
         "Implement this code for multihart - don't forget the while !HARTS_STATES.is_completed"
-    );
+    );*/
 
     let mut harts = HARTS_STATES
         .get()
@@ -56,7 +58,7 @@ fn miralis_to_ace_ctx_switch(
         HARTS_STATES
             .get()
             .expect(
-                "Bug. Could not set mscratch before initializing memory region for harts states",
+                "Failure unlock",
             )
             .force_unlock();
     }
@@ -153,21 +155,31 @@ pub fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
 
     main_loop(ctx, mctx, policy);
 }
+static SETUP_READY: AtomicBool = AtomicBool::new(false);
+
 
 impl PolicyModule for AcePolicy {
     fn init(mctx: &mut MiralisContext, device_tree_blob_addr: usize) -> Self {
         // INIT ACE
-        // Step 1: Break forward tree
-        match divide_memory_region_size(device_tree_blob_addr) {
-            Ok(_) => log::debug!("Splitted the device tree with success"),
-            Err(e) => log::error!("Failed to split the device tree {:?}", e),
+        if mctx.hw.hart == 0 {
+            // Step 1: Break forward tree
+            match divide_memory_region_size(device_tree_blob_addr) {
+                Ok(_) => log::debug!("Splitted the device tree with success"),
+                Err(e) => log::error!("Failed to split the device tree {:?}", e),
+            }
+
+            // Step 2: Initialise
+            match ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8) {
+                Ok(_) => log::info!("Initialized ACE security monitor."),
+                Err(e) => log::error!("Error occurred: {:?}", e),
+            }
+            SETUP_READY.store(true, Ordering::SeqCst);
+        } else {
+            while !SETUP_READY.load(Ordering::SeqCst) {
+                core::hint::spin_loop();
+            }
         }
 
-        // Step 2: Initialise
-        match ace::core::initialization::init_security_monitor(device_tree_blob_addr as *const u8) {
-            Ok(_) => log::info!("Initialized ACE security monitor."),
-            Err(e) => log::error!("Error occurred: {:?}", e),
-        }
 
         // Step 3: Call setup this hard (Todo: Refactor for multicore)
         ace_setup_this_hart(mctx);

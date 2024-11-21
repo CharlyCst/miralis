@@ -756,8 +756,6 @@ impl VirtContext {
         // Update the current mode
         self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
 
-        log::warn!("{:?}", self.trap_info);
-
         // Handle the exit.
         // We only care about ecalls and virtualized interrupts.
         match self.trap_info.get_cause() {
