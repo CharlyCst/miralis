@@ -5,6 +5,7 @@ use crate::ace::core::architecture::riscv::{iopmp, mmu, pmp, tlb};
 use crate::ace::core::architecture::Hgatp;
 use crate::ace::core::memory_layout::MemoryLayout;
 use crate::ace::error::Error;
+use crate::host::MiralisContext;
 
 /// Exposes an interface to configure the hardware memory isolation component to set memory access protection preventing
 /// the hypervisor from accessing memory it does not own.
@@ -22,12 +23,13 @@ impl HypervisorMemoryProtector {
     /// Caller must ensure that:
     ///   * the `MemoryLayout` has been initialized,
     ///   * this function is called by all harts during their initialization.
-    pub unsafe fn setup() -> Result<(), Error> {
+    pub unsafe fn setup(mctx: &mut MiralisContext) -> Result<(), Error> {
         // We use RISC-V PMP mechanism to define that the confidential memory region is not accessible.
         // We use RISC-V IOPMP mechanism to ensure that no IO devices can access confidential memory region.
         let (confidential_memory_start, confidential_memory_end) =
             MemoryLayout::read().confidential_memory_boundary();
         pmp::split_memory_into_confidential_and_non_confidential(
+            mctx,
             confidential_memory_start,
             confidential_memory_end,
         )?;

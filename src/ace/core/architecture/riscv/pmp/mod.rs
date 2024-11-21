@@ -8,12 +8,15 @@ use crate::ace::core::architecture::CSR;
 use crate::ace::debug::__print_pmp_configuration;
 use crate::ace::error::Error;
 use crate::{debug, ensure};
+use crate::host::MiralisContext;
+use crate::virt::VirtContext;
 
 // OpenSBI set already PMPs to isolate OpenSBI firmware from the rest of the
 // system PMP0 protects OpenSBI memory region while PMP1 defines the system
 // range We will use PMP0 and PMP1 to protect the confidential memory region,
 // PMP2 to protect the OpenSBI, and PMP3 to define the system range.
 pub fn split_memory_into_confidential_and_non_confidential(
+    mctx: &mut MiralisContext,
     confidential_memory_start: usize,
     confidential_memory_end: usize,
 ) -> Result<(), Error> {
@@ -29,6 +32,9 @@ pub fn split_memory_into_confidential_and_non_confidential(
     // TODO: simplify use of PMP by using a single PMP entry to isolate the confidential memory.
     // We assume here that the first two PMPs are not used by anyone else, e.g., OpenSBI firmware
     // MODIFIED CODE FOR MIRALIS
+    mctx.pmp.set_pmpaddr(4, confidential_memory_start);
+    mctx.pmp.set_pmpaddr( 5, confidential_memory_end);
+
     // CSR.pmpaddr4.write(confidential_memory_start >> PMP_ADDRESS_SHIFT);
     // CSR.pmpaddr5.write(confidential_memory_end >> PMP_ADDRESS_SHIFT);
     // END MODIFIED CODE
@@ -37,19 +43,20 @@ pub fn split_memory_into_confidential_and_non_confidential(
     Ok(())
 }
 
+// 0x180000000 0x280000000
 pub fn open_access_to_confidential_memory() {
     // MODIFIED CODE FOR MIRALIS
-    // let mask = ((PMP_OFF_MASK | PMP_PERMISSION_RWX_MASK) << 32) | (PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << (1 * (PMP_CONFIG_SHIFT + 32));
-    // CSR.pmpcfg0.read_and_set_bits(mask);
-    // clear_caches();
+    let mask = (PMP_PERMISSION_RWX_MASK << 32) | ((PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << 40);
+    CSR.pmpcfg0.read_and_set_bits(mask);
+    clear_caches();
     // END MODIFIED CODE
 }
 
 pub fn close_access_to_confidential_memory() {
     // MODIFIED CODE FOR MIRALIS
-    // let mask = (PMP_PERMISSION_RWX_MASK << 32) | (PMP_PERMISSION_RWX_MASK << (1 * PMP_CONFIG_SHIFT + 32));
-    // CSR.pmpcfg0.read_and_clear_bits(mask);
-    //  clear_caches();
+    let mask = (PMP_PERMISSION_RWX_MASK << 32) | ((PMP_PERMISSION_RWX_MASK) << 40);
+    CSR.pmpcfg0.read_and_clear_bits(mask);
+    clear_caches();
     // END MODIFIED CODE
 }
 

@@ -11,7 +11,8 @@
     pointer_is_aligned_to,
     register_tool,
     custom_inner_attributes,
-    stmt_expr_attributes
+    stmt_expr_attributes,
+    asm
 )]
 
 extern crate alloc;
@@ -33,6 +34,9 @@ mod policy;
 mod utils;
 mod virt;
 
+use core::arch::asm;
+use log::__private_api::log;
+use log::info;
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
@@ -95,13 +99,13 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
-    let mut policy: Policy = Policy::init(device_tree_blob_addr);
-
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
     // Initialize Miralis's own context
     let mut mctx = MiralisContext::new(hw);
+
+    let mut policy: Policy = Policy::init(&mut mctx, device_tree_blob_addr);
 
     // Initialize the virtual context and configure architecture
     let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions.clone());
@@ -200,6 +204,10 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
+            log::debug!(
+                "Execution mode: Firmware -> Payload ({:?})",
+                ctx.trap_info.get_cause()
+            );
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
 

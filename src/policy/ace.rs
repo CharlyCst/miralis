@@ -3,7 +3,7 @@
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
 use crate::ace::core::architecture::CSR;
 use crate::ace::core::control_data::HardwareHart;
-use crate::ace::core::initialization::HARTS_STATES;
+use crate::ace::core::initialization::{ace_setup_this_hart, HARTS_STATES};
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture};
 use crate::device_tree::divide_memory_region_size;
 use crate::host::MiralisContext;
@@ -62,7 +62,7 @@ fn miralis_to_ace_ctx_switch(
     }
 
     // Step 1: Overwrite Hardware hart with virtcontext
-    overwrite_hardware_hart_with_virtctx(ace_ctx, virt_ctx);
+    overwrite_hardware_hart_with_virtctx(ace_ctx, mctx, virt_ctx);
     // Step 1-bis: Set mepc value to pc before jumping
     ace_ctx.hypervisor_hart.hypervisor_hart_state.csrs.mepc = ReadWriteRiscvCsr(virt_ctx.pc);
 
@@ -97,7 +97,7 @@ pub fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
     let policy: &mut Policy = address_to_policy(ace_ctx.policy_ptr);
 
     // Step 1: Fill virt context from hardware hart
-    overwrite_virtctx_with_hardware_hart(ctx, ace_ctx);
+    overwrite_virtctx_with_hardware_hart(ctx, mctx, ace_ctx);
     // Todo: restore the stack pointer register here
     ctx.pc = ace_ctx
         .hypervisor_hart
@@ -155,7 +155,7 @@ pub fn ace_to_miralis_ctx_switch(ace_ctx: &mut HardwareHart) -> ! {
 }
 
 impl PolicyModule for AcePolicy {
-    fn init(device_tree_blob_addr: usize) -> Self {
+    fn init(mctx: &mut MiralisContext, device_tree_blob_addr: usize) -> Self {
         // INIT ACE
         // Step 1: Break forward tree
         match divide_memory_region_size(device_tree_blob_addr) {
@@ -168,6 +168,9 @@ impl PolicyModule for AcePolicy {
             Ok(_) => log::info!("Initialized ACE security monitor."),
             Err(e) => log::error!("Error occurred: {:?}", e),
         }
+
+        // Step 3: Call setup this hard (Todo: Refactor for multicore)
+        ace_setup_this_hart(mctx);
         // END INIT ACE
 
         AcePolicy {}
@@ -207,5 +210,5 @@ impl PolicyModule for AcePolicy {
         todo!("Implement on_interrupt for ace security monitor")
     }
 
-    const NUMBER_PMPS: usize = 0;
+    const NUMBER_PMPS: usize = 2;
 }

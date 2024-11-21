@@ -51,7 +51,7 @@ impl PolicyHookResult {
 /// The role of a policy module is to enforce a set of policies on the firmware, for instance
 /// restricting which memory is accessible to the firmware, how which `ecall`s are intercepted.
 pub trait PolicyModule {
-    fn init(device_tree_blob_addr: usize) -> Self;
+    fn init(mctx: &mut MiralisContext, device_tree_blob_addr: usize) -> Self;
     fn name() -> &'static str;
     fn ecall_from_firmware(
         &mut self,

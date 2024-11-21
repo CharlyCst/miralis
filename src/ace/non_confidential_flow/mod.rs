@@ -9,5 +9,5 @@ pub mod handlers;
 
 pub mod apply_to_hypervisor;
 mod declassify_to_hypervisor;
-mod finite_state_machine;
+pub(crate) mod finite_state_machine;
 mod lightweight_context_switch;

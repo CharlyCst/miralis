@@ -1,9 +1,11 @@
+use core::arch::asm;
 use crate::ace::core::control_data::HardwareHart;
+use crate::arch::Arch;
 use crate::host::MiralisContext;
 use crate::policy::Policy;
 use crate::virt::VirtContext;
 
-pub fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut VirtContext) {
+pub fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, mctx: &mut MiralisContext, ctx: &mut VirtContext) {
     // Save normal registers
     for i in 0..32 {
         hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i] = ctx.regs[i]
@@ -16,11 +18,60 @@ pub fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut Vir
         .save_in_main_memory();
 }
 
-pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext, hw: &mut HardwareHart) {
+fn read_pmpcfg(idx: usize) -> usize {
+    let value: usize;
+    unsafe {
+        match idx {
+            0 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            1 => asm!("csrr {}, pmpcfg1", out(reg) value),
+            2 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            3 => asm!("csrr {}, pmpcfg3", out(reg) value),
+            4 => asm!("csrr {}, pmpcfg4", out(reg) value),
+            5 => asm!("csrr {}, pmpcfg5", out(reg) value),
+            6 => asm!("csrr {}, pmpcfg6", out(reg) value),
+            7 => asm!("csrr {}, pmpcfg7", out(reg) value),
+            _ => panic!("Invalid pmpcfg index: {}", idx),
+        }
+    }
+    value
+}
+
+fn read_pmpaddr(idx: usize) -> usize {
+    let value: usize;
+    unsafe {
+        match idx {
+            0 => asm!("csrr {}, pmpaddr0", out(reg) value),
+            1 => asm!("csrr {}, pmpaddr1", out(reg) value),
+            2 => asm!("csrr {}, pmpaddr2", out(reg) value),
+            3 => asm!("csrr {}, pmpaddr3", out(reg) value),
+            4 => asm!("csrr {}, pmpaddr4", out(reg) value),
+            5 => asm!("csrr {}, pmpaddr5", out(reg) value),
+            6 => asm!("csrr {}, pmpaddr6", out(reg) value),
+            7 => asm!("csrr {}, pmpaddr7", out(reg) value),
+            8 => asm!("csrr {}, pmpaddr8", out(reg) value),
+            9 => asm!("csrr {}, pmpaddr9", out(reg) value),
+            10 => asm!("csrr {}, pmpaddr10", out(reg) value),
+            11 => asm!("csrr {}, pmpaddr11", out(reg) value),
+            12 => asm!("csrr {}, pmpaddr12", out(reg) value),
+            13 => asm!("csrr {}, pmpaddr13", out(reg) value),
+            14 => asm!("csrr {}, pmpaddr14", out(reg) value),
+            15 => asm!("csrr {}, pmpaddr15", out(reg) value),
+            _ => panic!("Invalid pmpcfg index: {}", idx),
+        }
+    }
+    value
+}
+
+
+pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext, mctx: &mut MiralisContext, hw: &mut HardwareHart) {
     // Save normal registers
     for i in 0..32 {
         ctx.regs[i] = hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i]
     }
+
+    mctx.pmp.set_pmpaddr(4, read_pmpaddr(4));
+    mctx.pmp.set_pmpaddr(5, read_pmpaddr(5));
+    mctx.pmp.set_pmpcfg_raw(0, read_pmpcfg(0));
 
     // TODO: What should we do here?
     // Restore CSR Register

@@ -278,6 +278,14 @@ impl PmpGroup {
         &self.pmpcfg
     }
 
+    pub fn set_pmpaddr(&mut self, idx: usize, value: usize) {
+        self.pmpaddr[idx] = value;
+    }
+
+    pub fn set_pmpcfg_raw(&mut self, idx: usize, value: usize) {
+        self.pmpcfg[idx]= value;
+    }
+
     pub fn set_pmpcfg(&mut self, index: usize, cfg: u8) {
         let reg_idx = index / 8;
         let inner_idx = index % 8;

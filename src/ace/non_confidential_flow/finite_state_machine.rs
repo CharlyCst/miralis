@@ -81,7 +81,6 @@ impl<'a> NonConfidentialFlow<'a> {
                 if extension.extension_id == CovhExtension::EXTID
                     || extension.extension_id == NaclExtension::EXTID
                 {
-                    log::info!("Cocuocu");
                     flow.apply_and_exit_to_hypervisor(ApplyToHypervisorHart::SbiResponse(
                         SbiResponse::success_with_code(1),
                     ))
@@ -93,7 +92,6 @@ impl<'a> NonConfidentialFlow<'a> {
                 GetSecurityMonitorInfo::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
             }
             HsEcall(Covh(PromoteToTvm)) => {
-                log::warn!("Promotion");
                 PromoteToConfidentialVm::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow)
             }
             HsEcall(Covh(TvmVcpuRun)) => {
@@ -117,10 +115,15 @@ impl<'a> NonConfidentialFlow<'a> {
             // TODO: Add handling of the other case
             HsEcall(_) => ace_to_miralis_ctx_switch(flow.hardware_hart), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
             MachineEcall => panic!("Machine ecall, is it normal (it might be)"), //DelegateToOpensbi::from_hypervisor_hart(flow.hypervisor_hart()).handle(flow),
-            trap_reason => panic!(
-                "Bug: Incorrect interrupt delegation configuration: {:?}",
-                trap_reason
-            ),
+            trap_reason => {
+                let mepc = flow.hardware_hart.hypervisor_hart.hypervisor_hart_state.csrs.mepc.read();
+                log::error!("Error : 0x{:x}", mepc);
+
+                panic!(
+                    "Bug: Incorrect interrupt delegation configuration: {:?}",
+                    trap_reason
+                );
+            }
         }
     }
 
@@ -207,5 +210,133 @@ impl<'a> NonConfidentialFlow<'a> {
 
     fn hypervisor_hart(&self) -> &HypervisorHart {
         &self.hardware_hart.hypervisor_hart()
+    }
+}
+
+
+
+use core::arch::asm;
+
+use crate::arch::pmp::pmpcfg;
+
+/// Macro to read the `pmpcfgx` register where `x` is an argument (0-3).
+/// Returns the value of the specified `pmpcfgx` register as a 64-bit unsigned integer.
+fn read_pmpcfg(idx: usize) -> usize {
+    let value: usize;
+    unsafe {
+        match idx {
+            0 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            1 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            2 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            3 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            4 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            5 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            6 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            7 => asm!("csrr {}, pmpcfg0", out(reg) value),
+            8 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            9 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            10 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            11 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            12 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            13 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            14 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            15 => asm!("csrr {}, pmpcfg2", out(reg) value),
+            _ => panic!("Invalid pmpcfg index: {}", idx),
+        }
+    }
+    value
+}
+
+pub fn read_pmpaddr(index: usize) -> u64 {
+    if index >= 16 {
+        panic!("Invalid PMP address register index: {}", index);
+    }
+
+    // The `pmpaddr` CSR indices start at 0x3B0 for `pmpaddr0`.
+    let pmpaddr_base = 0x3B0;
+
+    // Compute the CSR address for the specified `pmpaddr` register.
+    let csr_address = pmpaddr_base + index;
+
+    // Read the CSR value using inline assembly.
+    let value: u64;
+    unsafe {
+        match index {
+            0 => asm!("csrr {}, pmpaddr0", out(reg) value),
+            1 => asm!("csrr {}, pmpaddr1", out(reg) value),
+            2 => asm!("csrr {}, pmpaddr2", out(reg) value),
+            3 => asm!("csrr {}, pmpaddr3", out(reg) value),
+            4 => asm!("csrr {}, pmpaddr4", out(reg) value),
+            5 => asm!("csrr {}, pmpaddr5", out(reg) value),
+            6 => asm!("csrr {}, pmpaddr6", out(reg) value),
+            7 => asm!("csrr {}, pmpaddr7", out(reg) value),
+            8 => asm!("csrr {}, pmpaddr8", out(reg) value),
+            9 => asm!("csrr {}, pmpaddr9", out(reg) value),
+            10 => asm!("csrr {}, pmpaddr10", out(reg) value),
+            11 => asm!("csrr {}, pmpaddr11", out(reg) value),
+            12 => asm!("csrr {}, pmpaddr12", out(reg) value),
+            13 => asm!("csrr {}, pmpaddr13", out(reg) value),
+            14 => asm!("csrr {}, pmpaddr14", out(reg) value),
+            15 => asm!("csrr {}, pmpaddr15", out(reg) value),
+            _ => panic!("Invalid pmpcfg index: {}", index),
+        }
+    }
+
+    value
+}
+
+pub fn get_configuration(index: usize) -> u8 {
+    let reg_idx = index / 8;
+    let inner_idx = index % 8;
+    let reg = read_pmpcfg(reg_idx);
+    let cfg = (reg >> (inner_idx * 8)) & 0xff;
+    cfg as u8
+}
+
+pub(crate) fn print_pmp() {
+    let mut prev_addr2: u64 = 0;
+    for idx in 0..16 {
+        let cfg = get_configuration(idx);
+        let addr = read_pmpaddr(idx);
+        let prev_addr = prev_addr2;
+
+        prev_addr2 = addr;
+
+        match cfg & pmpcfg::A_MASK {
+            pmpcfg::NA4 => {
+                let addr = addr << 2;
+                log::info!("Implement A-mask ;");
+            }
+            pmpcfg::NAPOT => {
+                let trailing_ones = addr.trailing_ones();
+                let addr_mask = !((1 << trailing_ones) - 1);
+                let addr = (addr & addr_mask) << 2;
+                let shift = trailing_ones + 3;
+                log::info!(
+                    " From - To : 0x{:x} --> 0x{:x} and permissions : 0x{:x}",
+                    addr,
+                    (1 << shift),
+                    cfg & pmpcfg::RWX
+                );
+            }
+            pmpcfg::TOR => {
+                // if prev_addr is bigger then that entry does not match anything
+                if prev_addr >= addr {
+                    continue;
+                }
+                let size = addr - prev_addr;
+                log::info!(
+                    " From - To : 0x{:x} --> 0x{:x} and permissions : 0x{:x}",
+                    prev_addr,
+                    size,
+                    cfg & pmpcfg::RWX
+                );
+            }
+            _ => {
+                log::info!("Inactive pmp entry");
+                // Inactive PMP entry
+                continue;
+            }
+        }
     }
 }

@@ -19,8 +19,8 @@ use crate::RunArgs;
 
 
 /// The QEMU executable
-// pub const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
-pub const QEMU: &str = "qemu-system-riscv64";
+pub const QEMU: &str = "/home/francois/Documents/ACE-RISCV/ace-build/qemu/bin/qemu-system-riscv64";
+// pub const QEMU: &str = "qemu-system-riscv64";
 
 /// The Spike executable
 pub const SPIKE: &str = "spike";
@@ -140,10 +140,10 @@ pub fn get_qemu_cmd(
         .arg("virt")
         .arg("-cpu")
         .arg("rv64")
-        .arg("-kernel") // Loaded at 0x80200000
-        .arg(firmware.to_str().unwrap());
-    /*.arg("-kernel")
-    .arg("./artifacts/opensbi_cove")
+        //.arg("-kernel") // Loaded at 0x80200000
+        //.arg(firmware.to_str().unwrap());
+        .arg("-kernel")
+        .arg("./artifacts/opensbi_cove")
         .arg("-append")
         .arg("console=ttyS0 ro root=/dev/vda")
         .arg("-drive").arg("if=none,format=raw,file=/home/francois/Documents/ACE-RISCV/ace-build/hypervisor/buildroot/images/rootfs.ext4,id=hd0")
@@ -154,7 +154,7 @@ pub fn get_qemu_cmd(
         .arg("-device")
         .arg("virtio-net-device,netdev=net0")
         .arg("-device")
-        .arg("virtio-rng-pci");*/
+        .arg("virtio-rng-pci");
 
     // If a payload is defined in the config, try to load it at the specified address.
     let payload = payload.or_else(|| {
