@@ -143,6 +143,11 @@ firmware = "opensbi"
 config = "qemu-virt"
 description = "Run an OpenSBI with a dummy payload"
 
+[test.opensbi-multihart]
+firmware = "opensbi"
+config = "qemu-virt-2harts"
+description = "Run an OpenSBI with a dummy payload on 2 harts"
+
 [test.opensbi-jump]
 firmware = "opensbi-jump"
 payload = "hello_world"
