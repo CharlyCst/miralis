@@ -10,7 +10,7 @@ use spin::{Mutex, Once};
 
 use crate::ace::core::architecture::riscv::fence::fence_wo;
 use crate::ace::core::architecture::riscv::specification::*;
-use crate::ace::core::architecture::{HardwareExtension, PageSize, CSR};
+use crate::ace::core::architecture::{HardwareExtension, PageSize};
 use crate::ace::core::control_data::{ControlDataStorage, HardwareHart};
 use crate::ace::core::hardware_setup::HardwareSetup;
 use crate::ace::core::interrupt_controller::InterruptController;
@@ -21,11 +21,6 @@ use crate::ace::error::Error;
 use crate::{debug, ensure};
 
 const NUMBER_OF_HEAP_PAGES: usize = 80 * 1024;
-
-extern "C" {
-    // Assembly function that is an entry point to the security monitor from the hypervisor or a virtual machine.
-    fn enter_from_hypervisor_or_vm_asm() -> !;
-}
 
 /// A *private* static array of hart states stores the hypervisor's harts states. Safe Rust code cannot access this
 /// structure. We store the memory addresses of individual HardwareHart structure in the mscratch register. Thus, the
@@ -251,9 +246,9 @@ fn prepare_harts(number_of_harts: usize) -> Result<(), Error> {
 /// Enables entry points to the security monitor by taking control over some interrupts and protecting confidential
 /// memory region using hardware isolation mechanisms. This function executes on every single physical hart.
 #[no_mangle]
-extern "C" fn ace_setup_this_hart() {
+pub fn ace_setup_this_hart() {
     // wait until the boot hart initializes the security monitor's data structures
-    while !HARTS_STATES.is_completed() {
+    /*while !HARTS_STATES.is_completed() {
         fence_wo();
     }
 
@@ -268,9 +263,9 @@ extern "C" fn ace_setup_this_hart() {
         .lock();
     let hart = harts
         .get_mut(hart_id)
-        .expect("Bug. Incorrectly setup memory region for harts states");
+        .expect("Bug. Incorrectly setup memory region for harts states");*/
 
-    // The mscratch must point to the memory region when the security monitor stores the dumped states of
+    /*// The mscratch must point to the memory region when the security monitor stores the dumped states of
     // confidential harts. This is crucial for context switches because assembly code will use the mscratch
     // register to decide where to store/load registers content. Below 'swap' stores pointer to
     // opensbi_mscratch in the internal hart state. OpenSBI stored in mscratch a pointer to the
@@ -285,7 +280,7 @@ extern "C" fn ace_setup_this_hart() {
     debug!(
         "Hardware hart id={} has state area region at {:x}",
         hart_id, hart_address
-    );
+    );*/
 
     // Configure the memory isolation mechanism that can limit memory view of the hypervisor to the memory region
     // owned by the hypervisor. The setup method enables the memory isolation. It is safe to call it because
@@ -296,7 +291,7 @@ extern "C" fn ace_setup_this_hart() {
         return;
     }
 
-    // Set up the trap vector, so that the exceptions are handled by the security monitor.
+    /*// Set up the trap vector, so that the exceptions are handled by the security monitor.
     let trap_vector_address = enter_from_hypervisor_or_vm_asm as usize;
     debug!(
         "Hardware hart id={} registered trap handler at address: {:x}",
@@ -305,5 +300,5 @@ extern "C" fn ace_setup_this_hart() {
     hart.hypervisor_hart_mut()
         .csrs_mut()
         .mtvec
-        .write((trap_vector_address >> MTVEC_BASE_SHIFT) << MTVEC_BASE_SHIFT);
+        .write((trap_vector_address >> MTVEC_BASE_SHIFT) << MTVEC_BASE_SHIFT);*/
 }

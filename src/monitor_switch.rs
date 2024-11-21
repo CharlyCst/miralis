@@ -17,6 +17,9 @@ pub fn overwrite_hardware_hart_with_virtctx(hw: &mut HardwareHart, ctx: &mut Vir
 }
 
 pub fn overwrite_virtctx_with_hardware_hart(ctx: &mut VirtContext, hw: &mut HardwareHart) {
+
+    log::error!("Back in Miralis");
+
     // Save normal registers
     for i in 0..32 {
         ctx.regs[i] = hw.hypervisor_hart.hypervisor_hart_state.gprs.0[i]

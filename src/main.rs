@@ -11,7 +11,8 @@
     pointer_is_aligned_to,
     register_tool,
     custom_inner_attributes,
-    stmt_expr_attributes
+    stmt_expr_attributes,
+    asm
 )]
 
 extern crate alloc;
@@ -33,6 +34,9 @@ mod policy;
 mod utils;
 mod virt;
 
+use core::arch::asm;
+use log::__private_api::log;
+use log::info;
 use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use config::PLATFORM_NAME;
@@ -190,6 +194,12 @@ fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Po
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
+            crate::ace::non_confidential_flow::finite_state_machine::print_pmp();
+            unsafe  {Arch::write_pmp(&mctx.pmp).flush_if_required(&mut mctx.pmp); }
+            log:info!("{:?}", mctx.pmp);
+            panic!("end");
+
+
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
         }

@@ -278,6 +278,8 @@ impl Architecture for MetalArch {
         };
         let nb_pmp = find_nb_of_non_zero_pmp(nb_implemented_pmp);
 
+        assert!(nb_pmp == 16, "PMP should be 16");
+
         log::debug!("Number of PMP: {}", nb_pmp);
 
         // Save current CSRs

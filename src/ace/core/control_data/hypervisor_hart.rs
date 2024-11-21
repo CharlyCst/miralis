@@ -85,6 +85,7 @@ impl HypervisorHart {
         self.hypervisor_memory_protector.enable(&hgatp);
     }
 
+    #[allow(dead_code)]
     pub fn address(&self) -> usize {
         core::ptr::addr_of!(self.hypervisor_hart_state) as usize
     }

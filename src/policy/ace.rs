@@ -3,7 +3,7 @@
 use crate::ace::core::architecture::control_status_registers::ReadWriteRiscvCsr;
 use crate::ace::core::architecture::CSR;
 use crate::ace::core::control_data::HardwareHart;
-use crate::ace::core::initialization::HARTS_STATES;
+use crate::ace::core::initialization::{ace_setup_this_hart, HARTS_STATES};
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture};
 use crate::device_tree::divide_memory_region_size;
 use crate::host::MiralisContext;
@@ -168,6 +168,9 @@ impl PolicyModule for AcePolicy {
             Ok(_) => log::info!("Initialized ACE security monitor."),
             Err(e) => log::error!("Error occurred: {:?}", e),
         }
+
+        // Step 3: Call setup this hard (Todo: Refactor for multicore)
+        ace_setup_this_hart();
         // END INIT ACE
 
         AcePolicy {}

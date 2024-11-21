@@ -8,6 +8,8 @@ use crate::ace::core::architecture::CSR;
 use crate::ace::debug::__print_pmp_configuration;
 use crate::ace::error::Error;
 use crate::{debug, ensure};
+use crate::host::MiralisContext;
+use crate::virt::VirtContext;
 
 // OpenSBI set already PMPs to isolate OpenSBI firmware from the rest of the
 // system PMP0 protects OpenSBI memory region while PMP1 defines the system
@@ -29,27 +31,29 @@ pub fn split_memory_into_confidential_and_non_confidential(
     // TODO: simplify use of PMP by using a single PMP entry to isolate the confidential memory.
     // We assume here that the first two PMPs are not used by anyone else, e.g., OpenSBI firmware
     // MODIFIED CODE FOR MIRALIS
-    CSR.pmpaddr4.write(confidential_memory_start >> PMP_ADDRESS_SHIFT);
-    CSR.pmpaddr5.write(confidential_memory_end >> PMP_ADDRESS_SHIFT);
+    log::error!("0x{:x} 0x{:x}", confidential_memory_start, confidential_memory_end);
+    // CSR.pmpaddr4.write(confidential_memory_start >> PMP_ADDRESS_SHIFT);
+    // CSR.pmpaddr5.write(confidential_memory_end >> PMP_ADDRESS_SHIFT);
     // END MODIFIED CODE
     close_access_to_confidential_memory();
     crate::ace::debug::__print_pmp_configuration();
     Ok(())
 }
 
+// 0x180000000 0x280000000
 pub fn open_access_to_confidential_memory() {
     // MODIFIED CODE FOR MIRALIS
-    // let mask = ((PMP_OFF_MASK | PMP_PERMISSION_RWX_MASK) << 32) | (PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << (1 * (PMP_CONFIG_SHIFT + 32));
+    let mask = (PMP_PERMISSION_RWX_MASK << 32) | ((PMP_TOR_MASK | PMP_PERMISSION_RWX_MASK) << 40);
     // CSR.pmpcfg0.read_and_set_bits(mask);
-    // clear_caches();
+    clear_caches();
     // END MODIFIED CODE
 }
 
 pub fn close_access_to_confidential_memory() {
     // MODIFIED CODE FOR MIRALIS
-    // let mask = (PMP_PERMISSION_RWX_MASK << 32) | (PMP_PERMISSION_RWX_MASK << (1 * PMP_CONFIG_SHIFT + 32));
+    let mask = (PMP_PERMISSION_RWX_MASK << 32) | ((PMP_PERMISSION_RWX_MASK) << 40);
     // CSR.pmpcfg0.read_and_clear_bits(mask);
-    // clear_caches();
+    clear_caches();
     // END MODIFIED CODE
 }
 
