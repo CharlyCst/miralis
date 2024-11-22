@@ -2,8 +2,13 @@
 name = "miralis"
 version = "0.1.0"
 edition = "2021"
-
 license = "MIT"
+description = "An experimental RISC-V virtual firmawre monitor"
+homepage = "https://miralis-firmware.github.io/"
+repository = "https://github.com/CharlyCst/miralis"
+readme = "../readme.md"
+keywords = ["riscv", "virtualization"]
+categories = ["no-std", "no-std::no-alloc", "embedded", "virtualization"]
 
 [[bin]]
 name = "miralis"
@@ -13,10 +18,10 @@ path = "main.rs"
 uart_16550 = "0.3.0"
 spin = "0.5.2"
 log = { workspace = true }
-miralis_core = { path = "../crates/core" }
-miralis_abi = { path = "../crates/abi" }
-config_helpers = { path = "../crates/config_helpers" }
-config_select = { path = "../crates/config_select/" }
+miralis_core = { path = "../crates/core", version = "0.1.0" }
+miralis_abi = { path = "../crates/abi", version = "0.1.0" }
+config_helpers = { path = "../crates/config_helpers", version = "0.1.0" }
+config_select = { path = "../crates/config_select/", version = "0.1.0" }
 # This import is only used in the protect payload policy
 tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 
