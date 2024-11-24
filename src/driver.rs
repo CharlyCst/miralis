@@ -26,7 +26,9 @@ pub struct ClintDriver {
 impl ClintDriver {
     /// Creates a new CLINT driver from the base address of the CLINT device.
     ///
-    /// SAFETY: this function assumes that the base address corresponds to the base address of a
+    /// # Safety
+    ///
+    /// This function assumes that the base address corresponds to the base address of a
     /// CLINT-compatible device. In addition this function assumes that a at most one [ClintDriver]
     /// is initialized with the same base address and that no other code is accessing the CLINT
     /// device.

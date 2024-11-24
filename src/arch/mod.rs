@@ -4,6 +4,12 @@
 //! future, we could emulate RISC-V instructions to enable running the monitor in user space, which
 //! would be very helpful for testing purpose.
 
+// Now that Miralis is built as a library we need to write proper documentation for each public
+// function. In particular Clippy lints against every unsafe function without a safety comment. We
+// do have a bunch of those in this file, we should comment them appropriately and remove this lint
+// once done.
+#![allow(clippy::missing_safety_doc)]
+
 #[cfg(not(feature = "userspace"))]
 mod metal;
 pub mod pmp;
@@ -40,12 +46,27 @@ pub trait Architecture {
     fn read_csr(csr: Csr) -> usize;
 
     /// Write into csr and return previous value
+    ///
+    /// # Safety
+    ///
+    /// This function writes to the hardware CSR, use with caution as it might change the execution
+    /// environment.
     unsafe fn write_csr(csr: Csr, value: usize) -> usize;
 
     /// Clear csr_bits with mask
+    ///
+    /// # Safety
+    ///
+    /// This function writes to the hardware CSR, use with caution as it might change the execution
+    /// environment.
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize);
 
     /// Set csr_bits with mask
+    ///
+    /// # Safety
+    ///
+    /// This function writes to the hardware CSR, use with caution as it might change the execution
+    /// environment.
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
 
     /// Change mstatus.MPP and return the previous mstatus.MPP
@@ -66,7 +87,8 @@ pub trait Architecture {
     /// implement Send and Sync, meaning that it can't be shared across cores (which is enforced by
     /// the compiler and invariants in unsafe code).
     ///
-    /// SAFETY:
+    /// # Safety
+    ///
     /// This function might temporarily change the state of the hart during the detection process.
     /// For this reason it is only safe to execute as part of the core initialization, not during
     /// standard operations.
@@ -75,12 +97,11 @@ pub trait Architecture {
 
     /// Return the faulting instruction at the provided exception PC.
     ///
-    /// SAFETY:
+    /// # Safety
+    ///
     /// The trap info must correspond to a valid trap info, no further checks are performed.
     unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize;
 
-    /// SAFETY:
-    /// None so far, TODO
     unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext);
 
     /// Copies dest.len() bytes from src to dest, using the provided mode to read from src.

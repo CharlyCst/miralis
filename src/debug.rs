@@ -1,6 +1,5 @@
 //! Debug utils for Miralis
 
-use crate::_stack_start;
 use crate::arch::{Arch, Architecture, Csr};
 use crate::config::TARGET_STACK_SIZE;
 
@@ -35,7 +34,8 @@ const MEMORY_PATTERN: u32 = 0x0BADBED0;
 /// This function traverses the stack to check how much of the stack has been used. This relies on
 /// the stack being initialized with the proper pattern.
 ///
-/// # SAFETY:
+/// # Safety
+///
 /// This function requires stack_top and stack_bottom to point to the start and end of the stack,
 /// and that the stack is not mutated for the whole duration of the function.
 unsafe fn get_max_stack_usage(stack_top: usize, stack_bottom: usize) -> usize {
@@ -63,14 +63,15 @@ unsafe fn get_max_stack_usage(stack_top: usize, stack_bottom: usize) -> usize {
 
 /// Display debug information related to maximal stack usage
 ///
-/// # SAFETY:
+/// # Safety
+///
 /// This function assumes a single-core system for now.
-pub unsafe fn log_stack_usage() {
+pub unsafe fn log_stack_usage(stack_start: usize) {
     /// Percent usage threshold for emitting a warning.
     const WARNING_THRESHOLD: usize = 80;
 
     // Get stack usage
-    let stack_bottom = &raw const _stack_start as usize;
+    let stack_bottom = stack_start;
     let hart_id = Arch::read_csr(Csr::Mhartid);
     let stack_bottom = stack_bottom + hart_id * TARGET_STACK_SIZE;
     let stack_top = stack_bottom + TARGET_STACK_SIZE;

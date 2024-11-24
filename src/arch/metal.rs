@@ -7,14 +7,10 @@ use super::{
     Arch, Architecture, Csr, ExtensionsCapability, MCause, Mode, RegistersCapability, TrapInfo,
 };
 use crate::arch::pmp::PmpFlush;
-use crate::arch::{mie, mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
-use crate::config::{PLATFORM_BOOT_HART_ID, TARGET_STACK_SIZE};
+use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
-use crate::{
-    _bss_start, _bss_stop, _stack_start, main, misa, utils, RegisterContextGetter,
-    RegisterContextSetter,
-};
+use crate::{utils, RegisterContextGetter, RegisterContextSetter};
 
 /// Bare metal RISC-V runtime.
 pub struct MetalArch {}
@@ -1167,103 +1163,6 @@ unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
         _ => panic!("Invalid pmpcfg register"),
     }
 }
-
-// —————————————————————————————— Entry Point ——————————————————————————————— //
-
-global_asm!(
-r#"
-.attribute arch, "rv64imac"
-.align 4
-.text
-.global _start
-_start:
-    // We start by setting up the stack:
-    // First we find where the stack is for that hart
-    ld t0, __stack_start
-    li t1, {stack_size}  // Per-hart stack size
-    csrr t2, mhartid     // Our current hart ID
-
-    // compute how much space we need to put before this hart's stack
-    add t3, x0, x0       // Initialize offset to zero
-    add t4, x0, x0       // Initialize counter to zero
-stack_start_loop:
-    // First we exit the loop once we made enough iterations (N iterations for hart N)
-    bgeu t4, t2, stack_start_done
-    add t3, t3, t1       // Add space for one more stack
-    addi t4, t4, 1       // Increment counter
-    j stack_start_loop
-
-stack_start_done:
-    add t0, t0, t3       // The actual start of our stack
-    add t1, t0, t1       // And the end of our stack
-
-    // Then we fill the stack with a known memory pattern
-    li t2, 0x0BADBED0
-stack_fill_loop:
-    // Exit when reaching the end address
-    bgeu t0, t1, stack_fill_done
-    sw t2, 0(t0)      // Write the pattern
-    addi t0, t0, 4    // increment the cursor
-    j stack_fill_loop
-stack_fill_done:
-
-    // Now we need to zero-out the BSS section
-    // Only the boot hart set the BSS section to avoid race condition.
-
-    csrr t0, mhartid         // Our current hart ID
-    li t2, {boot_hart_id}    // Boot hart ID
-    ld t3, __boot_bss_set    // Shared boolean, set to 1 to say to other harts that the BSS is not initialized yet
-    bne t0, t2, wait_bss_end // Only the boot hart initializes the bss
-
-    ld t4, __bss_start
-    ld t5, __bss_stop
-zero_bss_loop:
-    bgeu t4, t5, zero_bss_done
-    sd x0, 0(t4)
-    addi t4, t4, 8
-    j zero_bss_loop
-zero_bss_done:
-
-    // Say to other harts that the initialization is done.
-    // This is atomic and memory is ordered in a way that the
-    // initialization will then be visible as soon as the
-    // boolean is reset. .aqrl means that it is done sequentially.
-    amoswap.w.aqrl x0, x0, (t3)
-    j end_wait
-
-    // Wait until initialization is done
-wait_bss_end:
-    lw t2, (t3)
-    bnez t2, wait_bss_end
-end_wait:
-
-    // And finally we load the stack pointer into sp and jump into main
-    mv sp, t1
-    j {main}
-
-// Store the address of the stack in memory
-// That way it can be loaded as an absolute value
-.align 8
-__stack_start:
-    .dword {stack_start}
-__bss_start:
-    .dword {bss_start}
-__bss_stop:
-    .dword {bss_stop}
-__boot_bss_set:
-    .dword {boot_bss_set}
-"#,
-    main = sym main,
-    stack_start = sym _stack_start,
-    stack_size = const TARGET_STACK_SIZE,
-    bss_start = sym _bss_start,
-    bss_stop = sym _bss_stop,
-    boot_hart_id = const PLATFORM_BOOT_HART_ID,
-    boot_bss_set = sym BOOT_BSS_SET,
-);
-
-// Boolean to synchronized harts
-static BOOT_BSS_SET: usize = 1;
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
 
