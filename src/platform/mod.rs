@@ -50,7 +50,7 @@ pub trait Platform {
     fn load_firmware() -> usize;
 
     /// Returns the start and size of Miralis's own memory.
-    fn get_miralis_memory_start_and_size() -> (usize, usize);
+    fn get_miralis_start() -> usize;
 
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;

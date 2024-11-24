@@ -1,5 +1,7 @@
 //! Firmware Virtualisation
 
+use core::panic;
+
 use miralis_core::abi;
 
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
@@ -28,6 +30,15 @@ pub enum ExecutionMode {
     Payload,
 }
 
+/// Wether to continue execution of the virtual firmware or payload, or terminate the run loop.
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum ExitResult {
+    /// Continue execution of the virtual firmware or payload.
+    Continue,
+    /// Terminate execution successfully.
+    Donne,
+}
+
 /// The context of a virtual firmware.
 #[derive(Debug)]
 #[repr(C)]
@@ -35,23 +46,23 @@ pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
     host_stack: usize,
     /// Basic registers
-    pub(crate) regs: [usize; 32],
+    pub regs: [usize; 32],
     /// Program Counter
-    pub(crate) pc: usize,
+    pub pc: usize,
     /// Information on the trap that ocurred, used to handle traps
-    pub(crate) trap_info: TrapInfo,
+    pub trap_info: TrapInfo,
     /// Virtual Control and Status Registers
-    pub(crate) csr: VirtCsr,
+    pub csr: VirtCsr,
     /// Current privilege mode
-    pub(crate) mode: Mode,
+    pub mode: Mode,
     /// Number of virtual PMPs
-    pub(crate) nb_pmp: usize,
+    pub nb_pmp: usize,
     /// Availables RISC-V extensions
-    pub(crate) extensions: ExtensionsCapability,
+    pub extensions: ExtensionsCapability,
     /// Hart ID
-    pub(crate) hart_id: usize,
+    pub hart_id: usize,
     /// Number of exists to Miralis
-    pub(crate) nb_exits: usize,
+    pub nb_exits: usize,
 }
 
 impl VirtContext {
@@ -660,10 +671,14 @@ impl VirtContext {
     }
 
     /// Handle the trap coming from the firmware
-    pub fn handle_firmware_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
+    pub fn handle_firmware_trap(
+        &mut self,
+        mctx: &mut MiralisContext,
+        policy: &mut Policy,
+    ) -> ExitResult {
         if policy.trap_from_firmware(mctx, self).overwrites() {
             log::trace!("Catching trap in the policy module");
-            return;
+            return ExitResult::Continue;
         }
 
         let cause = self.trap_info.get_cause();
@@ -673,7 +688,7 @@ impl VirtContext {
                 log::trace!("Catching E-call from firmware in the policy module");
             }
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
-                self.handle_ecall()
+                return self.handle_ecall();
             }
             MCause::EcallFromUMode => {
                 todo!("ecall is not yet supported for EID other than Miralis ABI");
@@ -758,16 +773,22 @@ impl VirtContext {
                 }
             }
         }
+
+        ExitResult::Continue
     }
 
     /// Handle the trap coming from the payload
-    pub fn handle_payload_trap(&mut self, mctx: &mut MiralisContext, policy: &mut Policy) {
+    pub fn handle_payload_trap(
+        &mut self,
+        mctx: &mut MiralisContext,
+        policy: &mut Policy,
+    ) -> ExitResult {
         // Update the current mode
         self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
 
         if policy.trap_from_payload(mctx, self).overwrites() {
             log::trace!("Catching trap in the policy module");
-            return;
+            return ExitResult::Continue;
         }
 
         // Handle the exit.
@@ -778,7 +799,7 @@ impl VirtContext {
                 log::trace!("Catching E-call from payload in the policy module");
             }
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
-                self.handle_ecall()
+                return self.handle_ecall();
             }
             MCause::MachineTimerInt => {
                 self.handle_machine_timer_interrupt(mctx);
@@ -788,24 +809,25 @@ impl VirtContext {
             }
             _ => self.emulate_jump_trap_handler(),
         }
+
+        ExitResult::Continue
     }
 
     /// Ecalls may come from firmware or payload, resulting in different handling.
-    fn handle_ecall(&mut self) {
+    fn handle_ecall(&mut self) -> ExitResult {
         let fid = self.get(Register::X16);
         match fid {
             abi::MIRALIS_FAILURE_FID => {
                 log::error!("Firmware or payload panicked!");
                 log::error!("  pc:    0x{:x}", self.pc);
                 log::error!("  exits: {}", self.nb_exits);
-                unsafe { debug::log_stack_usage() };
-                Plat::exit_failure();
+                panic!();
             }
             abi::MIRALIS_SUCCESS_FID => {
                 log::info!("Success!");
                 log::info!("Number of exits: {}", self.nb_exits);
-                unsafe { debug::log_stack_usage() };
-                Plat::exit_success();
+                // Terminate execution
+                return ExitResult::Donne;
             }
             abi::MIRALIS_LOG_FID => {
                 let log_level = self.get(Register::X10);
@@ -839,10 +861,17 @@ impl VirtContext {
             }
             _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
         }
+
+        ExitResult::Continue
     }
 
     /// Loads the S-mode CSR registers into the physical registers configures M-mode registers for
     /// payload execution.
+    ///
+    /// # Safety
+    ///
+    /// This function changes the configuration of the hardware CSR registers. It assumes the
+    /// hardware is under the full control of Miralis.
     pub unsafe fn switch_from_firmware_to_payload(&mut self, mctx: &mut MiralisContext) {
         let mut mstatus = self.csr.mstatus; // We need to set the next mode bits before mret
         VirtCsr::set_csr_field(
@@ -925,6 +954,11 @@ impl VirtContext {
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
     /// 0) for running the virtual firmware in U-mode.
+    ///
+    /// # Safety
+    ///
+    /// This function changes the configuration of the hardware CSR registers. It assumes the
+    /// hardware is under the full control of Miralis.
     pub unsafe fn switch_from_payload_to_firmware(&mut self, mctx: &mut MiralisContext) {
         // Now save M-mode registers which are (partially) exposed as S-mode registers.
         // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
@@ -1673,7 +1707,7 @@ mod tests {
     #[test]
     fn switch_context_mpp() {
         let hw = unsafe { Arch::detect_hardware() };
-        let mut mctx = MiralisContext::new(hw);
+        let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         ctx.csr.mstatus |= Mode::S.to_bits() << mstatus::MPP_OFFSET;
@@ -1717,7 +1751,7 @@ mod tests {
     #[test]
     fn switch_to_firmware_mideleg() {
         let hw = unsafe { Arch::detect_hardware() };
-        let mut mctx = MiralisContext::new(hw);
+        let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         unsafe { Arch::write_csr(Csr::Mideleg, usize::MAX) };
@@ -1737,7 +1771,7 @@ mod tests {
     #[test]
     fn csrr_external_interrupt() {
         let hw = unsafe { Arch::detect_hardware() };
-        let mut mctx = MiralisContext::new(hw);
+        let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         // This should set mip.SEIP

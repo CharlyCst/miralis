@@ -14,7 +14,6 @@ use super::{
 use crate::arch::pmp::PmpFlush;
 use crate::arch::{HardwareCapability, PmpGroup};
 use crate::decoder::Instr;
-use crate::main;
 use crate::virt::VirtContext;
 
 static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
@@ -31,9 +30,6 @@ pub struct HostArch {}
 
 impl Architecture for HostArch {
     fn init() {
-        // Use main to avoid "never used" warnings.
-        let _ = main;
-
         todo!()
     }
 

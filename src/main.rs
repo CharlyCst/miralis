@@ -2,63 +2,35 @@
 //!
 //! The main function is called directly after platform specific minimal setup (such as
 //! configuration of the stack).
+//!
+//! This file is only expected to compile to RISC-V, so it is allowed to use inline assembly.
 
 // Mark the crate as no_std and no_main, but only when not running tests.
 // We need both std and main to be able to run tests in user-space on the host architecture.
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
+#![no_std]
+#![no_main]
 
-mod arch;
-mod benchmark;
-mod config;
-mod debug;
-mod decoder;
-mod device;
-mod driver;
-mod host;
-mod logger;
-mod platform;
-mod policy;
-mod utils;
-mod virt;
+use core::arch::global_asm;
 
-use arch::{Arch, Architecture};
-use benchmark::{Benchmark, Counter, Scope};
-use config::PLATFORM_NAME;
-use platform::{init, Plat, Platform};
-use policy::{Policy, PolicyModule};
+use miralis::arch::{misa, Arch, Architecture, Csr, Mode, Register};
+use miralis::config::{
+    DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
+    TARGET_STACK_SIZE,
+};
+use miralis::host::MiralisContext;
+use miralis::platform::{init, Plat, Platform};
+use miralis::policy::{Policy, PolicyModule};
+use miralis::virt::traits::*;
+use miralis::virt::VirtContext;
 
-use crate::arch::{misa, Csr, Register};
-use crate::host::MiralisContext;
-use crate::virt::traits::*;
-use crate::virt::{ExecutionMode, VirtContext};
-
-// Defined in the linker script
-#[cfg(not(feature = "userspace"))]
+// Memory layout, defined in the linker script.
 extern "C" {
-    pub(crate) static _stack_start: u8;
-    pub(crate) static _bss_start: u8;
-    pub(crate) static _bss_stop: u8;
-    pub(crate) static _stack_top: u8;
-    pub(crate) static _start_address: u8;
+    static _stack_start: u8;
+    static _bss_start: u8;
+    static _bss_stop: u8;
+    static _stack_top: u8;
+    static _start_address: u8;
 }
-
-// When building for userspace (i.e. to run as a process on the host machine) we do not use the
-// custom linker script, so some of the variables from the linker scripts needs to be re-defined.
-//
-// We define them here with dummy values. The definitions are mutable statics to mimic the `extern
-// "C"` behavior.
-#[cfg(feature = "userspace")]
-#[allow(non_upper_case_globals)]
-mod userspace_linker_definitions {
-    pub(crate) static mut _stack_start: u8 = 0;
-    pub(crate) static mut _start_address: u8 = 0;
-}
-
-#[cfg(feature = "userspace")]
-use userspace_linker_definitions::*;
-
-use crate::config::DELEGATE_PERF_COUNTER;
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
@@ -88,13 +60,13 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // SAFETY: this must happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
     // Initialize Miralis's own context
-    let mut mctx = MiralisContext::new(hw);
+    let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), get_miralis_size());
 
     // Initialize the virtual context and configure architecture
     let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions.clone());
     unsafe {
         // Set return address, mode and PMP permissions
-        Arch::set_mpp(arch::Mode::U);
+        Arch::set_mpp(Mode::U);
         // Update the PMPs prior to first entry
         Arch::write_pmp(&mctx.pmp).flush();
 
@@ -122,266 +94,137 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Plat::exit_success();
     }
 
-    main_loop(&mut ctx, &mut mctx, &mut policy);
+    // SAFETY: At this point we initialized the hardware, loaded the firmware, and configured the
+    // initial register values.
+    unsafe {
+        miralis::main_loop(&mut ctx, &mut mctx, &mut policy);
+    }
+
+    // If we reach here it means the firmware exited successfully.
+    unsafe {
+        miralis::debug::log_stack_usage(&raw const _stack_start as usize);
+    }
+    Plat::exit_success();
 }
 
-fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) -> ! {
-    loop {
-        Benchmark::start_interval_counters(Scope::RunVCPU);
+/// Return the size of Miralis, including the stacks, rounded up the nearest power of two.
+fn get_miralis_size() -> usize {
+    let size = (&raw const _stack_start as usize)
+        .checked_sub(&raw const _start_address as usize)
+        .and_then(|diff| diff.checked_add(TARGET_STACK_SIZE * PLATFORM_NB_HARTS))
+        .unwrap();
 
-        unsafe {
-            Arch::run_vcpu(ctx);
-        }
-
-        Benchmark::stop_interval_counters(Scope::RunVCPU);
-        Benchmark::start_interval_counters(Scope::HandleTrap);
-
-        handle_trap(ctx, mctx, policy);
-
-        Benchmark::stop_interval_counters(Scope::HandleTrap);
-        Benchmark::increment_counter(Counter::TotalExits);
-    }
+    size.next_power_of_two()
 }
 
-fn handle_trap(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
-    if log::log_enabled!(log::Level::Trace) {
-        log_ctx(ctx);
-    }
-
-    if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
-        if ctx.nb_exits + 1 >= max_exit {
-            log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
-            Plat::exit_failure();
-        }
-    }
-
-    if ctx.trap_info.is_from_mmode() {
-        // Trap comes from M mode: Miralis
-        handle_miralis_trap(ctx);
-        return;
-    }
-
-    // Perform emulation
-    let exec_mode = ctx.mode.to_exec_mode();
-
-    // Keep track of the number of exit
-    ctx.nb_exits += 1;
-    match exec_mode {
-        ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx, policy),
-        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
-    }
-
-    if exec_mode == ExecutionMode::Firmware {
-        Benchmark::increment_counter(Counter::FirmwareExits);
-    }
-
-    if exec_mode != ctx.mode.to_exec_mode() {
-        Benchmark::increment_counter(Counter::WorldSwitches);
-    }
-
-    // Inject interrupts if required
-    ctx.check_and_inject_interrupts();
-
-    // Check for execution mode change
-    match (exec_mode, ctx.mode.to_exec_mode()) {
-        (ExecutionMode::Firmware, ExecutionMode::Payload) => {
-            log::debug!("Execution mode: Firmware -> Payload");
-            unsafe { ctx.switch_from_firmware_to_payload(mctx) };
-            policy.switch_from_firmware_to_payload(ctx, mctx);
-
-            unsafe {
-                // Commit the PMP to hardware
-                Arch::write_pmp(&mctx.pmp).flush();
-            }
-        }
-        (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            log::debug!(
-                "Execution mode: Payload -> Firmware ({:?})",
-                ctx.trap_info.get_cause()
-            );
-            unsafe { ctx.switch_from_payload_to_firmware(mctx) };
-            policy.switch_from_payload_to_firmware(ctx, mctx);
-
-            unsafe {
-                // Commit the PMP to hardware
-                Arch::write_pmp(&mctx.pmp).flush();
-            }
-        }
-        _ => {} // No execution mode transition
-    }
-}
-
-/// Handle the trap coming from miralis
-fn handle_miralis_trap(ctx: &mut VirtContext) {
-    let trap = &ctx.trap_info;
-    log::error!("Unexpected trap while executing Miralis");
-    log::error!("  cause:   {} ({:?})", trap.mcause, trap.get_cause());
-    log::error!("  mepc:    0x{:x}", trap.mepc);
-    log::error!("  mtval:   0x{:x}", trap.mtval);
-    log::error!("  mstatus: 0x{:x}", trap.mstatus);
-    log::error!("  mip:     0x{:x}", trap.mip);
-
-    todo!("Miralis trap handler entered");
-}
+// ————————————————————————————— Panic Handler —————————————————————————————— //
 
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     log::error!("Panicked at {:#?} ", info);
-    unsafe { debug::log_stack_usage() };
+    unsafe { miralis::debug::log_stack_usage(&raw const _stack_start as usize) };
     Plat::exit_failure();
 }
 
-// —————————————————————————————— Debug Helper —————————————————————————————— //
+// —————————————————————————————— Entry Point ——————————————————————————————— //
 
-/// Log the current context using the trace log level.
-fn log_ctx(ctx: &VirtContext) {
-    let trap_info = &ctx.trap_info;
-    log::trace!(
-        "Trapped on hart {}:  {:?}",
-        ctx.hart_id,
-        ctx.trap_info.get_cause()
-    );
-    log::trace!(
-        "  mstatus: 0x{:<16x} mepc: 0x{:x}",
-        trap_info.mstatus,
-        trap_info.mepc
-    );
-    log::trace!(
-        "  mtval:   0x{:<16x} exits: {}  {:?}-mode",
-        ctx.trap_info.mtval,
-        ctx.nb_exits,
-        ctx.mode
-    );
-    log::trace!(
-        "  x1  {:<16x}  x2  {:<16x}  x3  {:<16x}",
-        ctx.get(Register::X1),
-        ctx.get(Register::X2),
-        ctx.get(Register::X3)
-    );
-    log::trace!(
-        "  x4  {:<16x}  x5  {:<16x}  x6  {:<16x}",
-        ctx.get(Register::X4),
-        ctx.get(Register::X5),
-        ctx.get(Register::X6)
-    );
-    log::trace!(
-        "  x7  {:<16x}  x8  {:<16x}  x9  {:<16x}",
-        ctx.get(Register::X7),
-        ctx.get(Register::X8),
-        ctx.get(Register::X9)
-    );
-    log::trace!(
-        "  x10 {:<16x}  x11 {:<16x}  x12 {:<16x}",
-        ctx.get(Register::X10),
-        ctx.get(Register::X11),
-        ctx.get(Register::X12)
-    );
-    log::trace!(
-        "  x13 {:<16x}  x14 {:<16x}  x15 {:<16x}",
-        ctx.get(Register::X13),
-        ctx.get(Register::X14),
-        ctx.get(Register::X15)
-    );
-    log::trace!(
-        "  x16 {:<16x}  x17 {:<16x}  x18 {:<16x}",
-        ctx.get(Register::X16),
-        ctx.get(Register::X17),
-        ctx.get(Register::X18)
-    );
-    log::trace!(
-        "  x19 {:<16x}  x20 {:<16x}  x21 {:<16x}",
-        ctx.get(Register::X19),
-        ctx.get(Register::X20),
-        ctx.get(Register::X21)
-    );
-    log::trace!(
-        "  x22 {:<16x}  x23 {:<16x}  x24 {:<16x}",
-        ctx.get(Register::X22),
-        ctx.get(Register::X23),
-        ctx.get(Register::X24)
-    );
-    log::trace!(
-        "  x25 {:<16x}  x26 {:<16x}  x27 {:<16x}",
-        ctx.get(Register::X25),
-        ctx.get(Register::X26),
-        ctx.get(Register::X27)
-    );
-    log::trace!(
-        "  x28 {:<16x}  x29 {:<16x}  x30 {:<16x}",
-        ctx.get(Register::X28),
-        ctx.get(Register::X29),
-        ctx.get(Register::X30)
-    );
-    log::trace!(
-        "  x31 {:<16x}  mie {:<16x}  mip {:<16x}",
-        ctx.get(Register::X31),
-        ctx.get(Csr::Mie),
-        ctx.get(Csr::Mip)
-    );
-}
+// The global entry point
+//
+// This is the first assembly snippets that runs, it is responsible for setting up a suitable
+// environment for the Rust code (stack, initial register content) and to handle the initial hart
+// synchronisation.
+global_asm!(
+r#"
+.attribute arch, "rv64imac"
+.align 4
+.text
+.global _start
+_start:
+    // We start by setting up the stack:
+    // First we find where the stack is for that hart
+    ld t0, __stack_start
+    li t1, {stack_size}  // Per-hart stack size
+    csrr t2, mhartid     // Our current hart ID
 
-// ————————————————————————————————— Tests —————————————————————————————————— //
+    // compute how much space we need to put before this hart's stack
+    add t3, x0, x0       // Initialize offset to zero
+    add t4, x0, x0       // Initialize counter to zero
+stack_start_loop:
+    // First we exit the loop once we made enough iterations (N iterations for hart N)
+    bgeu t4, t2, stack_start_done
+    add t3, t3, t1       // Add space for one more stack
+    addi t4, t4, 1       // Increment counter
+    j stack_start_loop
 
-/// We test some properties after handling a trap from firmware.
-/// We simulate a trap by creating a dummy trap state for the context of the machine.
-///
-/// Mideleg must be 0: don't allow nested interrupts when running Miralis.
-/// ctx.pc must be set to the handler start address.
-/// Mie, vMie, vMideleg must not change.
-/// vMepc and vMstatus.MIE must be set to corresponding values in ctx.trap_info.
-/// vMip must be updated to the value of Mip.
-/// In case of an interrupt, Mip must be cleared: avoid Miralis to trap again.
-#[cfg(test)]
-mod tests {
+stack_start_done:
+    add t0, t0, t3       // The actual start of our stack
+    add t1, t0, t1       // And the end of our stack
 
-    use crate::arch::{mstatus, Arch, Architecture, Csr, MCause, Mode};
-    use crate::handle_trap;
-    use crate::host::MiralisContext;
-    use crate::policy::{Policy, PolicyModule};
-    use crate::virt::VirtContext;
+    // Then we fill the stack with a known memory pattern
+    li t2, 0x0BADBED0
+stack_fill_loop:
+    // Exit when reaching the end address
+    bgeu t0, t1, stack_fill_done
+    sw t2, 0(t0)      // Write the pattern
+    addi t0, t0, 4    // increment the cursor
+    j stack_fill_loop
+stack_fill_done:
 
-    #[test]
-    fn handle_trap_state() {
-        let hw = unsafe { Arch::detect_hardware() };
-        let mut mctx = MiralisContext::new(hw);
-        let mut policy = Policy::init();
-        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
+    // Now we need to zero-out the BSS section
+    // Only the boot hart set the BSS section to avoid race condition.
 
-        // Firmware is running
-        ctx.mode = Mode::M;
+    csrr t0, mhartid         // Our current hart ID
+    li t2, {boot_hart_id}    // Boot hart ID
+    ld t3, __boot_bss_set    // Shared boolean, set to 1 to say to other harts that the BSS is not initialized yet
+    bne t0, t2, wait_bss_end // Only the boot hart initializes the bss
 
-        ctx.csr.mstatus = 0;
-        ctx.csr.mie = 0b1;
-        ctx.csr.mideleg = 0;
-        ctx.csr.mtvec = 0x80200024; // Dummy mtvec
+    ld t4, __bss_start
+    ld t5, __bss_stop
+zero_bss_loop:
+    bgeu t4, t5, zero_bss_done
+    sd x0, 0(t4)
+    addi t4, t4, 8
+    j zero_bss_loop
+zero_bss_done:
 
-        // Simulating a trap
-        ctx.trap_info.mepc = 0x80200042; // Dummy address
-        ctx.trap_info.mstatus = 0b10000000;
-        ctx.trap_info.mcause = MCause::Breakpoint as usize; // TODO : use a real int.
-        ctx.trap_info.mip = 0b1;
-        ctx.trap_info.mtval = 0;
+    // Say to other harts that the initialization is done.
+    // This is atomic and memory is ordered in a way that the
+    // initialization will then be visible as soon as the
+    // boolean is reset. .aqrl means that it is done sequentially.
+    amoswap.w.aqrl x0, x0, (t3)
+    j end_wait
 
-        unsafe {
-            Arch::write_csr(Csr::Mie, 0b1);
-            Arch::write_csr(Csr::Mip, 0b1);
-            Arch::write_csr(Csr::Mideleg, 0);
-        };
-        handle_trap(&mut ctx, &mut mctx, &mut policy);
+    // Wait until initialization is done
+wait_bss_end:
+    lw t2, (t3)
+    bnez t2, wait_bss_end
+end_wait:
 
-        assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "mideleg must be 0");
-        assert_eq!(Arch::read_csr(Csr::Mie), 0b1, "mie must be 1");
-        // assert_eq!(Arch::read_csr(Csr::Mip), 0, "mip must be 0"); // TODO : uncomment if using a real int.
-        assert_eq!(ctx.pc, 0x80200024, "pc must be at handler start");
-        assert_eq!(ctx.csr.mip, 0b1, "mip must to be updated");
-        assert_eq!(ctx.csr.mie, 1, "mie must not change");
-        assert_eq!(ctx.csr.mideleg, 0, "mideleg must not change");
-        assert_eq!(ctx.csr.mepc, 0x80200042);
-        assert_eq!(
-            (ctx.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET,
-            0b1,
-            "mstatus.MPIE must be set to trap_info.mstatus.MPIE"
-        );
-    }
-}
+    // And finally we load the stack pointer into sp and jump into main
+    mv sp, t1
+    j {main}
+
+// Store the address of the stack in memory
+// That way it can be loaded as an absolute value
+.align 8
+__stack_start:
+    .dword {stack_start}
+__bss_start:
+    .dword {bss_start}
+__bss_stop:
+    .dword {bss_stop}
+__boot_bss_set:
+    .dword {boot_bss_set}
+"#,
+    main = sym main,
+    stack_start = sym _stack_start,
+    stack_size = const TARGET_STACK_SIZE,
+    bss_start = sym _bss_start,
+    bss_stop = sym _bss_stop,
+    boot_hart_id = const PLATFORM_BOOT_HART_ID,
+    boot_bss_set = sym BOOT_BSS_SET,
+);
+
+// Boolean to synchronized harts
+static BOOT_BSS_SET: usize = 1;

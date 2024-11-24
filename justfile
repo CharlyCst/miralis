@@ -20,7 +20,7 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features userspace -p miralis
+	cargo test --features userspace --lib -p miralis
 
 	# Checking formatting...
 	cargo fmt --all -- --check

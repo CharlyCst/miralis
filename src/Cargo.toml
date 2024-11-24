@@ -10,6 +10,10 @@ readme = "../readme.md"
 keywords = ["riscv", "virtualization"]
 categories = ["no-std", "no-std::no-alloc", "embedded", "virtualization"]
 
+[lib]
+name = "miralis"
+path = "lib.rs"
+
 [[bin]]
 name = "miralis"
 path = "main.rs"
@@ -30,3 +34,5 @@ tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 # running unit tests.
 userspace = []
 
+[lints.clippy]
+result_unit_err = "allow"

@@ -75,3 +75,9 @@ impl VirtTestDevice {
         }
     }
 }
+
+impl Default for VirtTestDevice {
+    fn default() -> Self {
+        Self::new()
+    }
+}

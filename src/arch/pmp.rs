@@ -164,7 +164,7 @@ impl PmpGroup {
         }
     }
 
-    pub fn init_pmp_group(nb_pmp: usize) -> PmpGroup {
+    pub fn init_pmp_group(nb_pmp: usize, start: usize, size: usize) -> PmpGroup {
         let mut pmp = Self::new(nb_pmp);
         let virtual_devices = Plat::create_virtual_devices();
 
@@ -174,7 +174,6 @@ impl PmpGroup {
             pmp.set_inactive(ALL_CATCH_OFFSET, 0);
 
             // Protect Miralis
-            let (start, size) = Plat::get_miralis_memory_start_and_size();
             pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
 
             // Protect virtual devices
