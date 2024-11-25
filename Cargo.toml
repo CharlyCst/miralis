@@ -45,7 +45,10 @@ members = [
     "benchmark_analyzer",
 
     # Formal verification
-    "formal-verification"
+    "formal-verification",
+
+    # Fuzzying
+    "fuzz"
 ]
 
 # Setting the runner as the default member makes it easier to invoke (no need

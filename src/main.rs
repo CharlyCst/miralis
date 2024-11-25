@@ -123,7 +123,7 @@ fn get_miralis_size() -> usize {
 #[cfg(not(test))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     log::error!("Panicked at {:#?} ", info);
-    unsafe { miralis::debug::log_stack_usage(&raw const _stack_start as usize) };
+    unsafe { miralis::debug::log_stack_usage(&raw const _stack_start as usize) };l
     Plat::exit_failure();
 }
 

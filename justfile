@@ -36,6 +36,9 @@ test:
 	# Run integration tests...
 	cargo run -- test --strict
 
+	# Fuzzy test
+	cargo fuzz run fuzz_target_1 -- -max_total_time=10
+
 	# Test handwritten prelude for the formal verification
 	cargo test  --lib -p sail_prelude
 
@@ -84,6 +87,8 @@ install-toolchain:
 	cargo install cargo-binutils
 	cargo install --locked kani-verifier
 	cargo kani setup
+	cargo install cargo-fuzz
+
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}
