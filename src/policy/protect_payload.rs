@@ -14,7 +14,8 @@ use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
-use crate::virt::{RegisterContextGetter, VirtContext};
+use crate::virt::traits::*;
+use crate::virt::VirtContext;
 
 const LINUX_LOCK_PAYLOAD_HASH: [u8; 32] = [
     241, 90, 158, 184, 200, 210, 145, 178, 30, 80, 200, 161, 56, 120, 75, 241, 68, 38, 21, 2, 248,

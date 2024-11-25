@@ -9,7 +9,7 @@ use core::ptr;
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
-use crate::virt::RegisterContextSetter;
+use crate::virt::traits::*;
 use crate::{RegisterContextGetter, VirtContext};
 
 /// Keystone parameters
