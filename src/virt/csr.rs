@@ -4,9 +4,11 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::MEIE_FILTER;
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, mie, misa, mstatus, satp, Arch, Architecture, Csr, MCause, Register};
+use crate::arch::{hstatus, mie, misa, mstatus, Arch, Architecture, Csr, MCause, Register};
+use crate::virt::emulator::pc_alignment_mask;
 use crate::{debug, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -79,20 +81,17 @@ impl RegisterContextGetter<Csr> for VirtContext {
             }
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
-            Csr::Mvendorid => self.csr.mvendorid,
+            Csr::Mvendorid => self.csr.mvendorid as usize,
             Csr::Marchid => self.csr.marchid,
             Csr::Mimpid => self.csr.mimpid,
             Csr::Pmpcfg(pmp_cfg_idx) => {
                 if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
-                    panic!("Illegal PMP_CFG {:?}", register)
-                }
-                if pmp_cfg_idx >= self.nb_pmp / 8 {
-                    // This PMP is not emulated
+                    // panic!("Illegal PMP_CFG {:?}", register)
+                    // But formal verification says to return 0
                     return 0;
                 }
                 self.csr.pmpcfg[pmp_cfg_idx / 2]
-                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp)
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= self.nb_pmp {
@@ -104,9 +103,9 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mcycle => self.csr.mcycle,
             Csr::Minstret => self.csr.minstret,
             Csr::Mhpmcounter(n) => self.csr.mhpmcounter[n],
-            Csr::Mcountinhibit => self.csr.mcountinhibit,
+            Csr::Mcountinhibit => self.csr.mcountinhibit as usize,
             Csr::Mhpmevent(n) => self.csr.mhpmevent[n],
-            Csr::Mcounteren => self.csr.mcounteren,
+            Csr::Mcounteren => self.csr.mcounteren as usize,
             Csr::Menvcfg => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
             Csr::Medeleg => self.csr.medeleg,
@@ -134,21 +133,21 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Dscratch0 => todo!(),              // TODO : normal read
             Csr::Dscratch1 => todo!(),              // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
-            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION : read debug-mode specification
-            Csr::Mepc => self.csr.mepc,
+            Csr::Tselect => !self.csr.tselect,
+            Csr::Mepc => self.csr.mepc & pc_alignment_mask(self), // TODO: Opensbi seems to fail with this
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
             Csr::Sstatus => self.get(Csr::Mstatus) & mstatus::SSTATUS_FILTER,
-            Csr::Sie => self.get(Csr::Mie) & mie::SIE_FILTER,
+            Csr::Sie => self.get(Csr::Mie) & mie::SIE_FILTER_WITH_U & self.get(Csr::Mideleg),
             Csr::Stvec => self.csr.stvec,
-            Csr::Scounteren => self.csr.scounteren,
+            Csr::Scounteren => self.csr.scounteren as usize,
             Csr::Senvcfg => self.csr.senvcfg,
             Csr::Sscratch => self.csr.sscratch,
-            Csr::Sepc => self.csr.sepc,
+            Csr::Sepc => self.csr.sepc & pc_alignment_mask(self), // TODO: Opensbi seems to fail with this
             Csr::Scause => self.csr.scause,
             Csr::Stval => self.csr.stval,
-            Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER,
+            Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER_WITH_U & self.get(Csr::Mideleg),
             Csr::Satp => self.csr.satp,
             Csr::Scontext => self.csr.scontext,
             Csr::Hstatus => self.csr.hstatus, // TODO : Add support for H-Mode
@@ -196,8 +195,34 @@ impl RegisterContextGetter<Csr> for VirtContext {
                 }
             }
             Csr::Vsatp => self.csr.vsatp,
+
+            // Vector extension
+            Csr::Vstart => self.csr.vstart as usize,
+            Csr::Vxsat => {
+                if self.csr.vxsat {
+                    1
+                } else {
+                    0
+                }
+            }
+            Csr::Vxrm => self.csr.vxrm as usize,
+            Csr::Vcsr => self.csr.vcsr as usize,
+            Csr::Vl => self.csr.vl,
+            Csr::Vtype => self.csr.vtype,
+            Csr::Vlenb => self.csr.vlenb,
+
+            // Crypto extension
+            Csr::Seed => 0x80000000,
+
             // Unknown
-            Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
+            Csr::Unknown => {
+                log::warn!("Tried to access unknown CSR: {:?}", register);
+                // Official specification returns 0x0 when the register is unknown
+                return 0x0;
+            }
+            Csr::Cycle => self.csr.mcycle,
+            Csr::Time => 0,
+            Csr::Instret => self.csr.minstret,
         }
     }
 }
@@ -334,22 +359,17 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
 
                 self.csr.mstatus = new_value;
             }
-            Csr::Misa => {
-                // misa shows the extensions available : we cannot have more than possible in hardware
-                let arch_misa: usize = Arch::read_csr(Csr::Misa);
-                // Update misa to a legal value
-                self.csr.misa =
-                    (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
+            Csr::Misa => {} // Read only register, we don't support deactivating extensions in Miralis
+            Csr::Mie => {
+                let filter =
+                    if self.get(Csr::Misa) & misa::U != 0 && self.get(Csr::Misa) & misa::N != 0 {
+                        mie::MIE_WRITE_FILTER_WITH_U
+                    } else {
+                        mie::MIE_WRITE_FILTER
+                    };
 
-                if (self.csr.misa & misa::S) == 0 && mctx.hw.extensions.has_s_extension {
-                    panic!("Miralis doesn't support deactivating the S mode extension, please implement the feature")
-                }
-
-                if (self.csr.misa & misa::H) == 0 && mctx.hw.extensions.has_h_extension {
-                    panic!("Miralis doesn't support deactivating the H mode extension, please implement the feature")
-                }
+                self.csr.mie = hw.interrupts & ((value & filter) | (self.csr.mie & !filter))
             }
-            Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
             Csr::Mip => {
                 let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
 
@@ -371,27 +391,42 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
             }
-            Csr::Mtvec => self.csr.mtvec = value,
+            Csr::Mtvec => {
+                match value & 0b11 {
+                    // Direct mode
+                    0b00 => self.csr.mtvec = value,
+                    // Vector mode
+                    0b01 => self.csr.mtvec = value,
+                    // Reserved mode
+                    _ => {
+                        self.csr.mtvec = (value & !0b11) | (self.csr.mtvec & 0b11);
+                    }
+                }
+            }
             Csr::Mscratch => self.csr.mscratch = value,
             Csr::Mvendorid => (), // Read-only
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
             Csr::Pmpcfg(pmp_cfg_idx) => {
                 let mut value = value;
-                if Csr::PMP_CFG_LOCK_MASK & value != 0 {
-                    debug::warn_once!("PMP lock bits are not yet supported");
-                    value &= !Csr::PMP_CFG_LOCK_MASK;
-                }
                 if pmp_cfg_idx % 2 == 1 {
                     // Illegal because we are in a RISCV64 setting
-                    panic!("Illegal PMP_CFG {:?}", register)
-                } else if pmp_cfg_idx >= self.nb_pmp / 8 {
-                    // This PMP is not emulated, ignore changes
+                    // In the specification, it simply ignores the write
                     return;
+                } /*else if pmp_cfg_idx >= self.nb_pmp / 8 { // TODO: Fix this part
+                      // This PMP is not emulated, ignore changes
+                      return;
+                  }*/
+                // W = 1 & R = 0 is reserved
+                for idx in 0..8 {
+                    if (value >> idx * 8) & 0b11 == 0b10 {
+                        value &= !(0b111 << (idx * 8));
+                    }
                 }
-                self.csr.pmpcfg[pmp_cfg_idx / 2] = Csr::PMP_CFG_LEGAL_MASK
-                    & value
-                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp);
+
+                self.csr.pmpcfg[pmp_cfg_idx / 2] = value & Csr::PMP_CFG_LEGAL_MASK;
+                // TODO: Fix the part with pmp eviction
+                /*& VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp);*/
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= mctx.hw.available_reg.nb_pmp {
@@ -400,19 +435,28 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.pmpaddr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
             }
-            Csr::Mcycle => (),                                      // Read-only 0
-            Csr::Minstret => (),                                    // Read-only 0
-            Csr::Mhpmcounter(_counter_idx) => (),                   // Read-only 0
-            Csr::Mcountinhibit => (),                               // Read-only 0
-            Csr::Mhpmevent(_event_idx) => (),                       // Read-only 0
-            Csr::Mcounteren => self.csr.mcounteren = value & 0b111, // Only show IR, TM and CY (for cycle, time and instret counters)
-            Csr::Menvcfg => self.csr.menvcfg = value,
+            Csr::Mcycle => self.csr.mcycle = value,
+            Csr::Minstret => self.csr.minstret = value,
+            Csr::Mhpmcounter(_counter_idx) => (), // Read-only 0
+            Csr::Mcountinhibit => {
+                self.csr.mcountinhibit &= !0b101;
+                self.csr.mcountinhibit |= (value & 0b101) as u32;
+            }
+            Csr::Mhpmevent(_event_idx) => (), // Read-only 0
+            Csr::Mcounteren => {
+                // Only show IR, TM and CY (for cycle, time and instret counters)
+                self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
+            }
+            Csr::Menvcfg => {
+                // We only change the value of FION here
+                self.csr.menvcfg = (value & 0b1) | (self.csr.menvcfg & !0b1)
+            }
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => (),                    // Read-only
-            Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
+            Csr::Mconfigptr => (), // Read-only
+            Csr::Medeleg => self.csr.medeleg = value & !(1 << 11),
             Csr::Mideleg => {
                 self.csr.mideleg = (value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO)
-                    | mie::MIDELEG_READ_ONLY_ONE;
+                    /*| mie::MIDELEG_READ_ONLY_ONE*/;
             }
             Csr::Mtinst => {
                 if mctx.hw.extensions.has_h_extension {
@@ -428,29 +472,24 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     panic!("Mtval2 exists only in H mode")
                 }
             } // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
-            Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented
-            Csr::Tdata1 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Tdata2 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Tdata3 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tselect => {
+                self.csr.tselect = value;
+            }
+            Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mcontext => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dcsr => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dpc => todo!(),     // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(),   // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.mepc = value
+                self.csr.mepc = value & !0b1 // First bit is always zero
             }
-            Csr::Mcause => {
-                let cause = MCause::new(value);
-                match cause {
-                    // Can only contain supported exception codes
-                    MCause::UnknownException => (),
-                    _ => self.csr.mcause = value,
-                }
-            }
+            Csr::Mcause => self.csr.mcause = value,
             Csr::Mtval => self.csr.mtval = value,
             //Supervisor-level CSRs
             Csr::Sstatus => {
@@ -469,28 +508,34 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // Set S bits to new value
                 self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), mctx);
             }
-            Csr::Stvec => self.csr.stvec = value,
-            Csr::Scounteren => (), // Read-only 0
-            Csr::Senvcfg => self.csr.senvcfg = value,
+            Csr::Stvec => {
+                match value & 0b11 {
+                    // Direct mode
+                    0b00 => self.csr.stvec = value,
+                    // Vector mode
+                    0b01 => self.csr.stvec = value,
+                    // Reserved mode
+                    _ => {
+                        self.csr.stvec = (value & !0b11) | (self.csr.stvec & 0b11);
+                    }
+                }
+            }
+            Csr::Scounteren => {
+                // Only show IR, TM and CY (for cycle, time and instret counters)
+                self.csr.scounteren = (self.csr.scounteren & !0b111) | (value & 0b111) as u32
+            }
+            Csr::Senvcfg => {
+                // We only change the value of FION here
+                self.csr.senvcfg = (value & 0b1) | (self.csr.senvcfg & !0b1)
+            }
             Csr::Sscratch => self.csr.sscratch = value,
             Csr::Sepc => {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.sepc = value
+                self.csr.sepc = value & !0b1 // First bit is always zero
             }
-            Csr::Scause => {
-                let cause = MCause::new(value);
-                if cause.is_interrupt() {
-                    // TODO : does not support interrupts
-                    return;
-                }
-                match cause {
-                    // Can only contain supported exception codes
-                    MCause::UnknownException => (),
-                    _ => self.csr.scause = value,
-                }
-            }
+            Csr::Scause => self.csr.scause = value,
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
                 // Clear S bits
@@ -499,7 +544,17 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
             }
             Csr::Satp => {
-                self.csr.satp = value & satp::SATP_CHANGE_FILTER;
+                let satp_mode = (value >> 60) & 0b1111;
+                match satp_mode {
+                    // Sbare mode
+                    0b0000 => self.csr.satp = value,
+                    // Sv39 mode
+                    0b1000 => self.csr.satp = value,
+                    // Sv48 mode
+                    0b1001 => self.csr.satp = value,
+                    // No mode
+                    _ => { /* Nothing to change */ }
+                }
             }
             Csr::Scontext => todo!("No information in the specification"),
             Csr::Hstatus => {
@@ -595,6 +650,23 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.vsip = value & write_vsip_mask
             }
             Csr::Vsatp => self.csr.vsatp = value,
+
+            // Vector extension
+            Csr::Vstart => self.csr.vstart = (value & 0xff) as u16,
+            Csr::Vxsat => self.csr.vxsat = (value & 0x1) != 0,
+            Csr::Vxrm => self.csr.vxrm = (value & 0b11) as u8,
+            Csr::Vcsr => self.csr.vcsr = (value & 0b111) as u8,
+            Csr::Vl => self.csr.vl = value,
+            Csr::Vtype => self.csr.vtype = value,
+            Csr::Vlenb => self.csr.vlenb = value,
+
+            // Crypto extension
+            Csr::Seed => (), // Read only register
+
+            Csr::Cycle => panic!("Implement cycle"),
+            Csr::Time => panic!("Implement time"),
+            Csr::Instret => panic!("Implement instret"),
+
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }

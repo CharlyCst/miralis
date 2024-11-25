@@ -3,6 +3,7 @@
 //! A world switch is a transition from the virtual firmware to the native payload, or vice-versa.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::MIDELEG_READ_ONLY_ONE;
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
 use crate::arch::{mie, mstatus, Arch, Architecture, Csr, Mode};
@@ -35,9 +36,13 @@ impl VirtContext {
         }
 
         Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
-        Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
+
+        /// Some interrupts are forced to be delegated to S-mode because Miralis doesn't implement
+        /// virtualization for them (as that would incur a cost in terms of complexity and
+        /// performance).
+        Arch::write_csr(Csr::Mideleg, self.csr.mideleg | MIDELEG_READ_ONLY_ONE);
         Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
-        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren);
+        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren as usize);
 
         // NOTE: `mip` mut be set _after_ `menvcfg`, because `menvcfg` might change which bits in
         // `mip` are writeable. For more information see the Sstc extension specification.
@@ -47,7 +52,7 @@ impl VirtContext {
         // If S extension is present - save the registers
         if mctx.hw.extensions.has_s_extension {
             Arch::write_csr(Csr::Stvec, self.csr.stvec);
-            Arch::write_csr(Csr::Scounteren, self.csr.scounteren);
+            Arch::write_csr(Csr::Scounteren, self.csr.scounteren as usize);
             Arch::write_csr(Csr::Satp, self.csr.satp);
             Arch::write_csr(Csr::Sscratch, self.csr.sscratch);
             Arch::write_csr(Csr::Sepc, self.csr.sepc);
@@ -129,7 +134,7 @@ impl VirtContext {
 
         let delegate_perf_counter_mask: usize = if DELEGATE_PERF_COUNTER { 1 } else { 0 };
 
-        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, delegate_perf_counter_mask);
+        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, delegate_perf_counter_mask) as u32;
 
         if mctx.hw.available_reg.senvcfg {
             self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
@@ -142,7 +147,8 @@ impl VirtContext {
         // If S extension is present - save the registers
         if mctx.hw.extensions.has_s_extension {
             self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
-            self.csr.scounteren = Arch::write_csr(Csr::Scounteren, delegate_perf_counter_mask);
+            self.csr.scounteren =
+                Arch::write_csr(Csr::Scounteren, delegate_perf_counter_mask) as u32;
             self.csr.satp = Arch::write_csr(Csr::Satp, 0);
 
             self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);

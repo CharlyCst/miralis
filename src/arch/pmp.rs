@@ -228,7 +228,11 @@ impl PmpGroup {
             permissions < 8,
             "Permissions should not set NAPOT or TOP bits"
         );
-        self.set(idx, build_napot(from, to).unwrap(), permissions | NAPOT);
+
+        match build_napot(from, to) {
+            Some(value) => self.set(idx, value, permissions | NAPOT),
+            None => panic!("Invalid arguments for build_napot"),
+        }
     }
 
     /// This function builds a PMP Tor entry, note that the caller must only set the permissions bits and don't have to care about the low level formatting details such as dividing the address by 4.

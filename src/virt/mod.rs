@@ -19,7 +19,7 @@ pub enum ExecutionMode {
 }
 
 /// The context of a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
@@ -71,6 +71,7 @@ impl VirtContext {
                 menvcfg: 0,
                 mseccfg: 0,
                 mcause: 0,
+                tselect: 0,
                 mepc: 0,
                 mtval: 0,
                 mtval2: 0,
@@ -117,6 +118,14 @@ impl VirtContext {
                 pmpaddr: [0; 64],
                 mhpmcounter: [0; 29],
                 mhpmevent: [0; 29],
+                vstart: 0,
+                vxsat: false,
+                vxrm: 0,
+                vcsr: 0,
+                vl: 0,
+                vtype: 0,
+                vlenb: 0,
+                seed: 0,
             },
             pc: 0,
             mode: Mode::M,
@@ -136,24 +145,25 @@ impl VirtContext {
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub struct VirtCsr {
     pub misa: usize,
     pub mie: usize,
     pub mip: usize,
     pub mtvec: usize,
-    pub mvendorid: usize,
+    pub mvendorid: u32,
     pub marchid: usize,
     pub mimpid: usize,
     pub mcycle: usize,
     pub minstret: usize,
     pub mscratch: usize,
-    pub mcountinhibit: usize,
-    pub mcounteren: usize,
+    pub mcountinhibit: u32,
+    pub mcounteren: u32,
     pub menvcfg: usize,
     pub mseccfg: usize,
     pub mcause: usize,
+    pub tselect: usize,
     pub mepc: usize,
     pub mtval: usize,
     pub mtval2: usize,
@@ -161,7 +171,7 @@ pub struct VirtCsr {
     pub mtinst: usize,
     pub mconfigptr: usize,
     pub stvec: usize,
-    pub scounteren: usize,
+    pub scounteren: u32,
     pub senvcfg: usize,
     pub sscratch: usize,
     pub sepc: usize,
@@ -200,6 +210,14 @@ pub struct VirtCsr {
     pub pmpaddr: [usize; 64],
     pub mhpmcounter: [usize; 29],
     pub mhpmevent: [usize; 29],
+    pub vstart: u16,
+    pub vxsat: bool,
+    pub vxrm: u8, // 2 bits wide
+    pub vcsr: u8, // 3 bits wide
+    pub vl: usize,
+    pub vtype: usize,
+    pub vlenb: usize,
+    pub seed: usize,
 }
 
 impl VirtCsr {

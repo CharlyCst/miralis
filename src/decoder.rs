@@ -373,7 +373,7 @@ impl MiralisContext {
         }
     }
 
-    fn decode_csr(&self, csr: usize) -> Csr {
+    pub fn decode_csr(&self, csr: usize) -> Csr {
         match csr {
             0x300 => Csr::Mstatus,
             0x301 => Csr::Misa,
@@ -389,6 +389,9 @@ impl MiralisContext {
             0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
             0xB00 => Csr::Mcycle,
             0xB02 => Csr::Minstret,
+            0xC00 => Csr::Cycle,
+            0xC01 => Csr::Time,
+            0xC02 => Csr::Instret,
             0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
             0x320 => Csr::Mcountinhibit,
             0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
@@ -440,13 +443,7 @@ impl MiralisContext {
                     Csr::Mtval2
                 }
             }
-            0x7A0 => {
-                if true {
-                    Csr::Unknown
-                } else {
-                    Csr::Tselect
-                }
-            }
+            0x7A0 => Csr::Tselect,
             0x7A1 => {
                 if true {
                     Csr::Unknown
@@ -754,6 +751,60 @@ impl MiralisContext {
                     Csr::Vsatp
                 }
             }
+
+            // Vector extension
+            0x8 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vstart
+                }
+            }
+            0x9 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vxsat
+                }
+            }
+            0xa => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vxrm
+                }
+            }
+            0xf => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vcsr
+                }
+            }
+            0xc20 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vl
+                }
+            }
+            0xc21 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vtype
+                }
+            }
+            0xc22 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vlenb
+                }
+            }
+
+            // Crypto extension
+            0x15 => Csr::Seed,
 
             _ => {
                 log::debug!("Unknown CSR: 0x{:x}", csr);

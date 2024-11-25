@@ -11,6 +11,7 @@ use perf_counters::test_perf_counters;
 setup_binary!(main);
 
 fn main() -> ! {
+    success();
     log::debug!("Testing mscratch register");
     test_mscratch();
     log::debug!("Testing mepc register");
@@ -52,7 +53,7 @@ fn test_mscratch() {
 // ————————————————————————————— Write to MEPC —————————————————————————————— //
 
 fn test_mepc() {
-    let secret: usize = 0x42;
+    let secret: usize = 0x40;
     let res: usize;
     unsafe {
         asm!(

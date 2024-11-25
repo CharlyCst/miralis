@@ -148,12 +148,14 @@ pub struct RegistersCapability {
 }
 
 /// A struct that contains information about the available extensions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExtensionsCapability {
     /// Hypervisor extension
     pub has_h_extension: bool,
     /// Supervisor extension
     pub has_s_extension: bool,
+    /// Vector extension
+    pub has_v_extension: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
@@ -221,6 +223,8 @@ pub mod misa {
     pub const I: usize = 1 << 8;
     /// Integer Multiply/Divide extension
     pub const M: usize = 1 << 12;
+    /// User-Level Interrupts extension
+    pub const N: usize = 1 << 13;
     /// Quad-precision floating-point extension
     pub const Q: usize = 1 << 16;
     /// Supervisor mode implemented
@@ -247,14 +251,6 @@ pub mod misa {
 
     /// Constant to filter out non-writable fields of the misa csr
     pub const MISA_CHANGE_FILTER: usize = 0x0000000003FFFFFF;
-}
-
-// ————————————— Supervisor Address Translation and Protection —————————————— //
-
-#[allow(unused)]
-pub mod satp {
-    /// Constant to filter out non-writable fields of the satp csr
-    pub const SATP_CHANGE_FILTER: usize = 0x00000FFFFFFFFFFF;
 }
 
 // ————————————————————————————— Machine Status ————————————————————————————— //
@@ -363,10 +359,17 @@ pub mod mstatus {
 #[allow(unused)]
 pub mod mie {
     /// Constant to filter out SIE bits of mstatus
-    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
+    pub const SIE_FILTER: usize = SEIE_FILTER | STIE_FILTER | SSIE_FILTER;
+
+    /// Constant to filter out SIE and UIE bits of mstatus
+    pub const SIE_FILTER_WITH_U: usize = SIE_FILTER | UEIE_FILTER | USIE_FILTER | UTIE_FILTER;
 
     /// Constant to filter out writable bits of mie.
-    pub const MIE_WRITE_FILTER: usize = SIE_FILTER | MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
+    pub const MIE_WRITE_FILTER: usize = MSIE_FILTER | MTIE_FILTER | MEIE_FILTER | SIE_FILTER;
+
+    /// Constant to filter out writable bits of mie with userspace interrupt delegation
+    pub const MIE_WRITE_FILTER_WITH_U: usize =
+        MIE_WRITE_FILTER | UEIE_FILTER | USIE_FILTER | UTIE_FILTER;
 
     /// Constant to filter out writable bits of mip.
     pub const MIP_WRITE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
@@ -386,18 +389,27 @@ pub mod mie {
     pub const MIDELEG_READ_ONLY_ZERO: usize = MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
 
     // Mie fields constants
+    /// UTIE
+    pub const UTIE_OFFSET: usize = 0;
+    pub const UTIE_FILTER: usize = 0b1 << UTIE_OFFSET;
     /// SSIE
     pub const SSIE_OFFSET: usize = 1;
     pub const SSIE_FILTER: usize = 0b1 << SSIE_OFFSET;
     /// MSIE
     pub const MSIE_OFFSET: usize = 3;
     pub const MSIE_FILTER: usize = 0b1 << MSIE_OFFSET;
+    /// USIE
+    pub const USIE_OFFSET: usize = 4;
+    pub const USIE_FILTER: usize = 0b1 << USIE_OFFSET;
     /// STIE
     pub const STIE_OFFSET: usize = 5;
     pub const STIE_FILTER: usize = 0b1 << STIE_OFFSET;
     /// MTIE
     pub const MTIE_OFFSET: usize = 7;
     pub const MTIE_FILTER: usize = 0b1 << MTIE_OFFSET;
+    /// UEIE
+    pub const UEIE_OFFSET: usize = 8;
+    pub const UEIE_FILTER: usize = 0b1 << UEIE_OFFSET;
     /// SEIE
     pub const SEIE_OFFSET: usize = 9;
     pub const SEIE_FILTER: usize = 0b1 << SEIE_OFFSET;

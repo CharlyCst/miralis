@@ -22,6 +22,7 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
     ExtensionsCapability {
         has_h_extension: false,
         has_s_extension: true,
+        has_v_extension: false,
     },
 ));
 
@@ -109,6 +110,7 @@ impl Architecture for HostArch {
             extensions: ExtensionsCapability {
                 has_h_extension: false,
                 has_s_extension: true,
+                has_v_extension: true,
             },
         }
     }
@@ -123,7 +125,7 @@ impl Architecture for HostArch {
             Csr::Mtvec => ctx.csr.mtvec,
             Csr::Mscratch => ctx.csr.mscratch,
             Csr::Mip => ctx.csr.mip,
-            Csr::Mvendorid => ctx.csr.mvendorid,
+            Csr::Mvendorid => ctx.csr.mvendorid as usize,
             Csr::Marchid => ctx.csr.marchid,
             Csr::Mimpid => ctx.csr.mimpid,
             Csr::Pmpcfg(index) => ctx.csr.pmpcfg[index],
@@ -131,9 +133,9 @@ impl Architecture for HostArch {
             Csr::Mcycle => ctx.csr.mcycle,
             Csr::Minstret => ctx.csr.minstret,
             Csr::Mhpmcounter(index) => ctx.csr.mhpmcounter[index],
-            Csr::Mcountinhibit => ctx.csr.mcountinhibit,
+            Csr::Mcountinhibit => ctx.csr.mcountinhibit as usize,
             Csr::Mhpmevent(index) => ctx.csr.mhpmevent[index],
-            Csr::Mcounteren => ctx.csr.mcounteren,
+            Csr::Mcounteren => ctx.csr.mcounteren as usize,
             Csr::Menvcfg => ctx.csr.menvcfg,
             Csr::Mseccfg => ctx.csr.mseccfg,
             Csr::Mconfigptr => ctx.csr.mconfigptr,
@@ -141,7 +143,7 @@ impl Architecture for HostArch {
             Csr::Mideleg => ctx.csr.mideleg,
             Csr::Mtinst => ctx.csr.mtinst,
             Csr::Mtval2 => todo!(),
-            Csr::Tselect => todo!(),
+            Csr::Tselect => ctx.csr.tselect,
             Csr::Tdata1 => todo!(),
             Csr::Tdata2 => todo!(),
             Csr::Tdata3 => todo!(),
@@ -156,7 +158,7 @@ impl Architecture for HostArch {
             Csr::Sstatus => ctx.csr.mstatus & mstatus::SSTATUS_FILTER,
             Csr::Sie => ctx.csr.mie & mie::SIE_FILTER,
             Csr::Stvec => ctx.csr.stvec,
-            Csr::Scounteren => ctx.csr.scounteren,
+            Csr::Scounteren => ctx.csr.scounteren as usize,
             Csr::Senvcfg => ctx.csr.senvcfg,
             Csr::Sscratch => ctx.csr.sscratch,
             Csr::Sepc => ctx.csr.sepc,
@@ -188,6 +190,23 @@ impl Architecture for HostArch {
             Csr::Vstval => ctx.csr.vstval,
             Csr::Vsip => ctx.csr.vsip,
             Csr::Vsatp => ctx.csr.vsatp,
+            Csr::Vstart => ctx.csr.vstart as usize,
+            Csr::Vxsat => {
+                if ctx.csr.vxsat {
+                    1
+                } else {
+                    0
+                }
+            }
+            Csr::Vxrm => ctx.csr.vxrm as usize,
+            Csr::Vcsr => ctx.csr.vcsr as usize,
+            Csr::Vl => ctx.csr.vl,
+            Csr::Vtype => ctx.csr.vtype,
+            Csr::Vlenb => ctx.csr.vlenb,
+            Csr::Seed => 0x20000,
+            Csr::Cycle => ctx.csr.mcycle,
+            Csr::Time => 0,
+            Csr::Instret => ctx.csr.minstret,
             Csr::Unknown => panic!("Unkown csr!"),
         }
     }
@@ -203,7 +222,7 @@ impl Architecture for HostArch {
             Csr::Mtvec => ctx.csr.mtvec = value,
             Csr::Mscratch => ctx.csr.mscratch = value,
             Csr::Mip => ctx.csr.mip = value, // TODO : add write filter
-            Csr::Mvendorid => ctx.csr.mvendorid = value,
+            Csr::Mvendorid => ctx.csr.mvendorid = value as u32,
             Csr::Marchid => ctx.csr.marchid = value,
             Csr::Mimpid => ctx.csr.mimpid = value,
             Csr::Pmpcfg(index) => ctx.csr.pmpcfg[index] = value,
@@ -211,9 +230,9 @@ impl Architecture for HostArch {
             Csr::Mcycle => ctx.csr.mcycle = value,
             Csr::Minstret => ctx.csr.minstret = value,
             Csr::Mhpmcounter(index) => ctx.csr.mhpmcounter[index] = value,
-            Csr::Mcountinhibit => ctx.csr.mcountinhibit = value,
+            Csr::Mcountinhibit => ctx.csr.mcountinhibit = value as u32,
             Csr::Mhpmevent(index) => ctx.csr.mhpmevent[index] = value,
-            Csr::Mcounteren => ctx.csr.mcounteren = value,
+            Csr::Mcounteren => ctx.csr.mcounteren = value as u32,
             Csr::Menvcfg => ctx.csr.menvcfg = value,
             Csr::Mseccfg => ctx.csr.mseccfg = value,
             Csr::Mconfigptr => ctx.csr.mconfigptr = value,
@@ -221,7 +240,7 @@ impl Architecture for HostArch {
             Csr::Mideleg => ctx.csr.mideleg = value,
             Csr::Mtinst => ctx.csr.mtinst = value,
             Csr::Mtval2 => todo!(),
-            Csr::Tselect => todo!(),
+            Csr::Tselect => ctx.csr.tselect = value,
             Csr::Tdata1 => todo!(),
             Csr::Tdata2 => todo!(),
             Csr::Tdata3 => todo!(),
@@ -239,7 +258,7 @@ impl Architecture for HostArch {
             }
             Csr::Sie => ctx.csr.mie = (ctx.csr.mie & !mie::SIE_FILTER) & (value & mie::SIE_FILTER),
             Csr::Stvec => ctx.csr.stvec = value,
-            Csr::Scounteren => ctx.csr.scounteren = value,
+            Csr::Scounteren => ctx.csr.scounteren = value as u32,
             Csr::Senvcfg => ctx.csr.senvcfg = value,
             Csr::Sscratch => ctx.csr.sscratch = value,
             Csr::Sepc => ctx.csr.sepc = value,
@@ -271,7 +290,18 @@ impl Architecture for HostArch {
             Csr::Vstval => ctx.csr.vstval = value,
             Csr::Vsip => ctx.csr.vsip = value,
             Csr::Vsatp => ctx.csr.vsatp = value,
+            Csr::Vstart => ctx.csr.vstart = value as u16,
+            Csr::Vxsat => ctx.csr.vxsat = (value & 0x1) != 0,
+            Csr::Vxrm => ctx.csr.vxrm = (value & 0b11) as u8,
+            Csr::Vcsr => ctx.csr.vcsr = (value & 0b111) as u8,
+            Csr::Vl => ctx.csr.vl = value,
+            Csr::Vtype => ctx.csr.vtype = value,
+            Csr::Vlenb => ctx.csr.vlenb = value,
+            Csr::Seed => (), // Read only
             Csr::Unknown => panic!("Unkown csr!"),
+            Csr::Cycle => {}
+            Csr::Time => {}
+            Csr::Instret => {}
         }
         prev_val
     }
