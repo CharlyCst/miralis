@@ -28,19 +28,7 @@ pub enum ExitResult {
 impl VirtContext {
     fn emulate_privileged_instr(&mut self, instr: &Instr, mctx: &mut MiralisContext) {
         match instr {
-            Instr::Wfi => {
-                // NOTE: for now there is no safeguard which guarantees that we will eventually get
-                // an interrupt, so the firmware might be able to put the core in perpetual sleep
-                // state.
-
-                // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
-                unsafe {
-                    Arch::write_csr(Csr::Mie, self.csr.mie);
-                }
-
-                Arch::wfi();
-                self.pc += 4;
-            }
+            Instr::Wfi => self.emulate_wfi(mctx),
             Instr::Csrrw { csr, .. }
             | Instr::Csrrs { csr, .. }
             | Instr::Csrrc { csr, .. }
@@ -51,151 +39,16 @@ impl VirtContext {
             {
                 self.emulate_jump_trap_handler();
             }
-            Instr::Csrrw { csr, rd, rs1 } => {
-                let tmp = self.get(csr);
-                self.set_csr(csr, self.get(rs1), mctx);
-                self.set(rd, tmp);
-                self.pc += 4;
-            }
-            Instr::Csrrs { csr, rd, rs1 } => {
-                let tmp = self.get(csr);
-                self.set_csr(csr, tmp | self.get(rs1), mctx);
-                self.set(rd, tmp);
-                self.pc += 4;
-            }
-            Instr::Csrrwi { csr, rd, uimm } => {
-                self.set(rd, self.get(csr));
-                self.set_csr(csr, *uimm, mctx);
-                self.pc += 4;
-            }
-            Instr::Csrrsi { csr, rd, uimm } => {
-                let tmp = self.get(csr);
-                self.set_csr(csr, tmp | uimm, mctx);
-                self.set(rd, tmp);
-                self.pc += 4;
-            }
-            Instr::Csrrc { csr, rd, rs1 } => {
-                let tmp = self.get(csr);
-                self.set_csr(csr, tmp & !self.get(rs1), mctx);
-                self.set(rd, tmp);
-                self.pc += 4;
-            }
-            Instr::Csrrci { csr, rd, uimm } => {
-                let tmp = self.get(csr);
-                self.set_csr(csr, tmp & !uimm, mctx);
-                self.set(rd, tmp);
-                self.pc += 4;
-            }
-            Instr::Mret => {
-                match parse_mpp_return_mode(self.csr.mstatus) {
-                    Mode::M => {
-                        log::trace!("mret to m-mode to {:x}", self.trap_info.mepc);
-                        // Mret is jumping back to machine mode, do nothing
-                    }
-                    Mode::S if mctx.hw.extensions.has_s_extension => {
-                        log::trace!("mret to s-mode with MPP to {:x}", self.trap_info.mepc);
-                        // Mret is jumping to supervisor mode, the runner is the guest OS
-                        self.mode = Mode::S;
-
-                        VirtCsr::set_csr_field(
-                            &mut self.csr.mstatus,
-                            mstatus::MPRV_OFFSET,
-                            mstatus::MPRV_FILTER,
-                            0,
-                        );
-                    }
-                    Mode::U => {
-                        log::trace!("mret to u-mode with MPP");
-                        // Mret is jumping to user mode, the runner is the guest OS
-                        self.mode = Mode::U;
-
-                        VirtCsr::set_csr_field(
-                            &mut self.csr.mstatus,
-                            mstatus::MPRV_OFFSET,
-                            mstatus::MPRV_FILTER,
-                            0,
-                        );
-                    }
-                    _ => {
-                        panic!(
-                            "MRET is not going to M/S/U mode: {} with MPP {:x}",
-                            self.csr.mstatus,
-                            (self.csr.mstatus & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET
-                        );
-                    }
-                }
-                // Modify mstatus
-                // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
-                if false {
-                    VirtCsr::set_csr_field(
-                        &mut self.csr.mstatus,
-                        mstatus::MPV_OFFSET,
-                        mstatus::MPV_FILTER,
-                        0,
-                    );
-                }
-
-                // MIE = MPIE, MPIE = 1, MPRV = 0
-                let mpie = (self.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET;
-
-                VirtCsr::set_csr_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MPIE_OFFSET,
-                    mstatus::MPIE_FILTER,
-                    1,
-                );
-                VirtCsr::set_csr_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MIE_OFFSET,
-                    mstatus::MIE_FILTER,
-                    mpie,
-                );
-                VirtCsr::set_csr_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MPP_OFFSET,
-                    mstatus::MPP_FILTER,
-                    0,
-                );
-
-                // Jump back to firmware
-                self.pc = self.csr.mepc;
-            }
-            Instr::Sfencevma { rs1, rs2 } => unsafe {
-                let vaddr = match rs1 {
-                    Register::X0 => None,
-                    reg => Some(self.get(reg)),
-                };
-                let asid = match rs2 {
-                    Register::X0 => None,
-                    reg => Some(self.get(reg)),
-                };
-                Arch::sfencevma(vaddr, asid);
-                self.pc += 4;
-            },
-            Instr::Hfencegvma { rs1, rs2 } => unsafe {
-                let vaddr = match rs1 {
-                    Register::X0 => None,
-                    reg => Some(self.get(reg)),
-                };
-                let asid = match rs2 {
-                    Register::X0 => None,
-                    reg => Some(self.get(reg)),
-                };
-                Arch::hfencegvma(vaddr, asid);
-                self.pc += 4;
-            },
-            Instr::Hfencevvma { rs1, rs2 } => unsafe {
-                let vaddr = match rs1 {
-                    Register::X0 => None,
-                    reg => Some(self.get(reg)),
-                };
-                let asid = match rs2 {
-                    Register::X0 => None,
-                    reg => Some(self.get(reg)),
-                };
-                Arch::hfencevvma(vaddr, asid);
-                self.pc += 4;
-            },
+            Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, csr, rd, rs1),
+            Instr::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, csr, rd, rs1),
+            Instr::Csrrc { csr, rd, rs1 } => self.emulate_csrrc(mctx, csr, rd, rs1),
+            Instr::Csrrwi { csr, rd, uimm } => self.emulate_csrrwi(mctx, csr, rd, uimm),
+            Instr::Csrrsi { csr, rd, uimm } => self.emulate_csrrsi(mctx, csr, rd, uimm),
+            Instr::Csrrci { csr, rd, uimm } => self.emulate_csrrci(mctx, csr, rd, uimm),
+            Instr::Mret => self.emulate_mret(mctx),
+            Instr::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
+            Instr::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
+            Instr::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
             _ => todo!(
                 "Instruction not yet implemented: {:?} {:x} {:x}",
                 instr,
@@ -644,6 +497,236 @@ impl VirtContext {
         }
 
         ExitResult::Continue
+    }
+}
+
+// ——————————————————— Privileged Instructions Emulation ———————————————————— //
+
+impl VirtContext {
+    pub fn emulate_wfi(&mut self, _mctx: &mut MiralisContext) {
+        // NOTE: for now there is no safeguard which guarantees that we will eventually get
+        // an interrupt, so the firmware might be able to put the core in perpetual sleep
+        // state.
+
+        // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
+        unsafe {
+            Arch::write_csr(Csr::Mie, self.csr.mie);
+        }
+
+        Arch::wfi();
+        self.pc += 4;
+    }
+
+    pub fn emulate_csrrw(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: &Csr,
+        rd: &Register,
+        rs1: &Register,
+    ) {
+        let tmp = self.get(csr);
+        self.set_csr(csr, self.get(rs1), mctx);
+        self.set(rd, tmp);
+        self.pc += 4;
+    }
+
+    pub fn emulate_csrrs(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: &Csr,
+        rd: &Register,
+        rs1: &Register,
+    ) {
+        let tmp = self.get(csr);
+        self.set_csr(csr, tmp | self.get(rs1), mctx);
+        self.set(rd, tmp);
+        self.pc += 4;
+    }
+
+    pub fn emulate_csrrwi(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: &Csr,
+        rd: &Register,
+        uimm: &usize,
+    ) {
+        self.set(rd, self.get(csr));
+        self.set_csr(csr, *uimm, mctx);
+        self.pc += 4;
+    }
+
+    pub fn emulate_csrrsi(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: &Csr,
+        rd: &Register,
+        uimm: &usize,
+    ) {
+        let tmp = self.get(csr);
+        self.set_csr(csr, tmp | uimm, mctx);
+        self.set(rd, tmp);
+        self.pc += 4;
+    }
+
+    pub fn emulate_csrrc(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: &Csr,
+        rd: &Register,
+        rs1: &Register,
+    ) {
+        let tmp = self.get(csr);
+        self.set_csr(csr, tmp & !self.get(rs1), mctx);
+        self.set(rd, tmp);
+        self.pc += 4;
+    }
+
+    pub fn emulate_csrrci(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: &Csr,
+        rd: &Register,
+        uimm: &usize,
+    ) {
+        let tmp = self.get(csr);
+        self.set_csr(csr, tmp & !uimm, mctx);
+        self.set(rd, tmp);
+        self.pc += 4;
+    }
+
+    pub fn emulate_mret(&mut self, mctx: &mut MiralisContext) {
+        match parse_mpp_return_mode(self.csr.mstatus) {
+            Mode::M => {
+                log::trace!("mret to m-mode to {:x}", self.trap_info.mepc);
+                // Mret is jumping back to machine mode, do nothing
+            }
+            Mode::S if mctx.hw.extensions.has_s_extension => {
+                log::trace!("mret to s-mode with MPP to {:x}", self.trap_info.mepc);
+                // Mret is jumping to supervisor mode, the runner is the guest OS
+                self.mode = Mode::S;
+
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::MPRV_OFFSET,
+                    mstatus::MPRV_FILTER,
+                    0,
+                );
+            }
+            Mode::U => {
+                log::trace!("mret to u-mode with MPP");
+                // Mret is jumping to user mode, the runner is the guest OS
+                self.mode = Mode::U;
+
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::MPRV_OFFSET,
+                    mstatus::MPRV_FILTER,
+                    0,
+                );
+            }
+            _ => {
+                panic!(
+                    "MRET is not going to M/S/U mode: {} with MPP {:x}",
+                    self.csr.mstatus,
+                    (self.csr.mstatus & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET
+                );
+            }
+        }
+        // Modify mstatus
+        // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
+        if false {
+            VirtCsr::set_csr_field(
+                &mut self.csr.mstatus,
+                mstatus::MPV_OFFSET,
+                mstatus::MPV_FILTER,
+                0,
+            );
+        }
+
+        // MIE = MPIE, MPIE = 1, MPRV = 0
+        let mpie = (self.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET;
+
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MPIE_OFFSET,
+            mstatus::MPIE_FILTER,
+            1,
+        );
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MIE_OFFSET,
+            mstatus::MIE_FILTER,
+            mpie,
+        );
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MPP_OFFSET,
+            mstatus::MPP_FILTER,
+            0,
+        );
+
+        // Jump back to firmware
+        self.pc = self.csr.mepc;
+    }
+
+    pub fn emulate_sfence_vma(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        rs1: &Register,
+        rs2: &Register,
+    ) {
+        unsafe {
+            let vaddr = match rs1 {
+                Register::X0 => None,
+                reg => Some(self.get(reg)),
+            };
+            let asid = match rs2 {
+                Register::X0 => None,
+                reg => Some(self.get(reg)),
+            };
+            Arch::sfencevma(vaddr, asid);
+            self.pc += 4;
+        }
+    }
+
+    pub fn emulate_hfence_gvma(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        rs1: &Register,
+        rs2: &Register,
+    ) {
+        unsafe {
+            let vaddr = match rs1 {
+                Register::X0 => None,
+                reg => Some(self.get(reg)),
+            };
+            let asid = match rs2 {
+                Register::X0 => None,
+                reg => Some(self.get(reg)),
+            };
+            Arch::hfencegvma(vaddr, asid);
+            self.pc += 4;
+        }
+    }
+
+    pub fn emulate_hfence_vvma(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        rs1: &Register,
+        rs2: &Register,
+    ) {
+        unsafe {
+            let vaddr = match rs1 {
+                Register::X0 => None,
+                reg => Some(self.get(reg)),
+            };
+            let asid = match rs2 {
+                Register::X0 => None,
+                reg => Some(self.get(reg)),
+            };
+            Arch::hfencevvma(vaddr, asid);
+            self.pc += 4;
+        }
     }
 }
 
