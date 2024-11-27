@@ -57,30 +57,6 @@ impl SailVirtCtx {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use sail::Privilege;
-
-    use super::*;
-    use crate::sail::SailVirtCtx;
-
-    /*#[test]
-    fn simple_mret() {
-        let mepc = 0x1000;
-        let mut ctx = SailVirtCtx {
-            mepc: BitVector::new(mepc),
-            sepc: BitVector::new(0x2000),
-            mstatus: BitVector::new(0x0),
-            next_pc: BitVector::new(0x4004),
-            pc: BitVector::new(0x4000),
-            cur_privilege: Privilege::Machine,
-        };
-
-        sail::execute_MRET(&mut ctx);
-        assert_eq!(ctx.next_pc.bits(), mepc);
-    }*/
-}
-
 #[cfg(kani)]
 mod verification {
     use miralis::arch::Arch;

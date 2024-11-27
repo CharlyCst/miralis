@@ -174,8 +174,8 @@ pub fn hex_bits_12_forwards(_reg: BitVector<12>) -> ! {
 }
 
 // TODO: This is enough for the risc-v transpilation, but not enought for full sail-to-rust
-pub fn subrange_bits(vec: BitVector<64>, _end: usize, _start: usize) -> BitVector<64> {
-    vec
+pub fn subrange_bits(_vec: BitVector<64>, _end: usize, _start: usize) -> BitVector<64> {
+    panic!("todo");
 }
 
 pub fn subrange_bits_8(_vec: BitVector<64>, _end: usize, _start: usize) -> BitVector<8> {
@@ -216,14 +216,17 @@ pub struct BitField<const T: usize> {
 }
 
 impl<const N: usize> BitField<N> {
+    pub const fn new(value: u64) -> Self {
+        BitField {
+            bits: BitVector::new(value),
+        }
+    }
+
     pub const fn subrange<const A: usize, const B: usize, const C: usize>(self) -> BitVector<C> {
         assert!(B - A == C, "Invalid subrange parameters");
         assert!(B <= N, "Invalid subrange");
 
-        let mut val = self.bits; // The current value
-        val.bits &= BitVector::<B>::bit_mask(); // Remove top bits
-        val.bits >>= A; // Shift all the bits
-        BitVector::new(val.bits)
+        self.bits.subrange::<A,B,C>()
     }
 
     pub const fn set_subrange<const A: usize, const B: usize, const C: usize>(
@@ -376,6 +379,8 @@ impl<const N: usize> ops::Not for BitVector<N> {
 
 #[cfg(test)]
 mod tests {
+    use rand::random;
+
     use super::*;
 
     #[test]
@@ -396,7 +401,7 @@ mod tests {
     }
 
     #[test]
-    fn subrange() {
+    fn subrange_bitvector() {
         let v = BitVector::<32>::new(0b10110111);
 
         assert_eq!(v.subrange::<0, 1, 1>().bits(), 0b1);
@@ -430,6 +435,42 @@ mod tests {
         );
     }
 
+    // TODO: In the future squash with the previous function
+    #[test]
+    fn subrange_bitfield() {
+        let bitfield = BitField::<32>::new(0b10110111);
+
+        assert_eq!(bitfield.subrange::<0, 1, 1>().bits(), 0b1);
+        assert_eq!(bitfield.subrange::<0, 2, 2>().bits(), 0b11);
+        assert_eq!(bitfield.subrange::<0, 3, 3>().bits(), 0b111);
+        assert_eq!(bitfield.subrange::<0, 4, 4>().bits(), 0b0111);
+        assert_eq!(bitfield.subrange::<0, 5, 5>().bits(), 0b10111);
+
+        assert_eq!(bitfield.subrange::<2, 3, 1>().bits(), 0b1);
+        assert_eq!(bitfield.subrange::<2, 4, 2>().bits(), 0b01);
+        assert_eq!(bitfield.subrange::<2, 5, 3>().bits(), 0b101);
+        assert_eq!(bitfield.subrange::<2, 6, 4>().bits(), 0b1101);
+        assert_eq!(bitfield.subrange::<2, 7, 5>().bits(), 0b01101);
+
+        let v = BitVector::<32>::new(0b10110111);
+        assert_eq!(
+            v.set_subrange::<0, 1, 1>(BitVector::new(0b0)).bits(),
+            0b10110110
+        );
+        assert_eq!(
+            v.set_subrange::<0, 1, 1>(BitVector::new(0b1)).bits(),
+            0b10110111
+        );
+        assert_eq!(
+            v.set_subrange::<0, 2, 2>(BitVector::new(0b00)).bits(),
+            0b10110100
+        );
+        assert_eq!(
+            v.set_subrange::<2, 5, 3>(BitVector::new(0b010)).bits(),
+            0b10101011
+        );
+    }
+
     #[test]
     fn bitwise_operators() {
         let v = BitVector::<32>::new(0b1);
@@ -442,5 +483,60 @@ mod tests {
         for i in 0..30 {
             assert_eq!(v, (v << i) >> i);
         }
+    }
+
+    #[test]
+    fn test_zero_extend() {
+        let v = BitVector::<8>::new(0b1010);
+
+        assert_eq!(v.bits, zero_extend_16(v).bits);
+        assert_eq!(v.bits, zero_extend_63(v).bits);
+        assert_eq!(v.bits, zero_extend_64(v).bits);
+    }
+
+    #[test]
+    fn test_bitvector_concat() {
+        const SIZE: usize = 20;
+
+        for i in 0..(1<<SIZE) {
+            let v = BitVector::<SIZE>::new(i);
+            assert_eq!(bitvector_concat::<SIZE, SIZE>(v, v).bits, i + (i << SIZE));
+        }
+    }
+
+    #[test]
+    fn test_bitvector_access() {
+        const SIZE: usize = 10;
+
+        for i in 0..(1<<SIZE) {
+            let v = BitVector::<SIZE>::new(i);
+            for idx in 0..SIZE {
+                assert_eq!((i & (1 << idx)) > 0, bitvector_access(v, idx))
+            } 
+        }
+    }
+
+    #[test]
+    fn test_set_vector_entry() {
+        const SIZE: usize = 60;
+
+        let mut v = BitVector::<SIZE>::new(0);
+        let mut val: u64 = 0;
+        for _ in 0..100 {
+            let idx = random::<usize>() % SIZE;
+
+            val |= (1 as u64) << idx;
+            v.set_vector_entry(idx, true);
+
+            print!("{} {}", val, v.bits);
+
+            assert_eq!(v.bits, val);
+        }
+
+        for i in 0..SIZE {
+            v.set_vector_entry(i, false);
+        }
+
+        assert_eq!(v.bits, 0);
     }
 }
