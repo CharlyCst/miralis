@@ -99,7 +99,6 @@ mod verification {
 
         ctx.emulate_mret(&mut mctx);
 
-        // assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
-        assert_eq!(ctx.csr.mstatus, sail_ctx.into_virt_context().csr.mstatus, "mret equivalence");
+        assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 }
