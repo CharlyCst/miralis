@@ -29,6 +29,8 @@ impl SailVirtCtx {
             Mode::M => Privilege::Machine,
         };
 
+        sail_ctx.marchid = BitVector::new(ctx.csr.marchid as u64);
+
         sail_ctx
     }
 
@@ -53,10 +55,31 @@ impl SailVirtCtx {
         };
 
         ctx.pc = self.nextPC.bits() as usize;
+        
+        ctx.csr.marchid = self.marchid.bits() as usize;
 
         ctx
     }
 }
+
+#[cfg(kani)]
+fn KaniVirtCtx() -> VirtContext {
+    let mut ctx = VirtContext::new(
+        0,
+        0,
+        ExtensionsCapability {
+            has_h_extension: false,
+            has_s_extension: true,
+        },
+    );
+
+    ctx.csr.marchid = kani::any();
+
+    ctx
+}
+
+
+use miralis::arch::Csr;
 
 #[cfg(kani)]
 mod verification {
@@ -105,18 +128,10 @@ mod verification {
 
     #[kani::proof]
     pub fn read_csr() {
-        // let csr_register = kani::any::<u64>() & ((1<<13) - 1);
-        // Easy to start
-        let csr_register = 0xF12;
+        
+        let csr_register = 0b111100010010; // kani::any::<u64>() & ((1<<13) - 1);
 
-        let mut ctx = VirtContext::new(
-            0,
-            0,
-            ExtensionsCapability {
-                has_h_extension: false,
-                has_s_extension: true,
-            },
-        );
+        let mut ctx = KaniVirtCtx();
 
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
         sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register));
@@ -125,10 +140,9 @@ mod verification {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
-        let csr = mctx.decode_csr(csr_register as usize);
-        
-        ctx.get(csr);
+        let decoded_csr  = mctx.decode_csr(csr_register as usize);
+        ctx.csr.marchid = ctx.get(decoded_csr);
 
-        assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
+        assert_eq!(ctx.csr, sail_ctx.into_virt_context().csr, "read csr equivalence");
     }
 }
