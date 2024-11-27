@@ -1,140 +1,121 @@
-#[derive(PartialEq, Eq, Debug)]
-pub struct VirtContext {
-    pub csr: VirtCsr,
-    pub mode: Mode,
-    pub pc: usize,
+#![allow(unused, non_snake_case)]
+
+use crate::SailVirtContext;
+use sail_prelude::*;
+
+#[derive(Eq, PartialEq, Clone, Copy, Debug)]
+pub enum Privilege {
+    User,
+    Supervisor,
+    Machine,
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct VirtCsr {
-    pub mepc: usize,
-    pub sepc: usize,
-    pub mstatus: usize,
+pub enum Execute {
+    RetireFail,
+    RetireSuccess,
 }
 
-impl VirtContext {
-    #[allow(unused)]
-    pub fn mret(&mut self) {
-        match parse_mpp_return_mode(self.csr.mstatus) {
-            Mode::M => {
-                // Mret is jumping back to machine mode, do nothing
-            }
-            Mode::S => {
-                // Mret is jumping to supervisor mode, the runner is the guest OS
-                self.mode = Mode::S;
+fn haveUsrMode() -> bool {
+    true
+}
 
-                VirtCsr::set_mstatus_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MPRV_OFFSET,
-                    mstatus::MPRV_FILTER,
-                    0,
-                );
-            }
-            Mode::U => {
-                // Mret is jumping to user mode, the runner is the guest OS
-                self.mode = Mode::U;
+fn privLevel_to_bits(p: Privilege) -> BitVector<2> {
+    match p {
+        Privilege::User => BitVector::new(0b00),
+        Privilege::Supervisor => BitVector::new(0b01),
+        Privilege::Machine => BitVector::new(0b11),
+    }
+}
 
-                VirtCsr::set_mstatus_field(
-                    &mut self.csr.mstatus,
-                    mstatus::MPRV_OFFSET,
-                    mstatus::MPRV_FILTER,
-                    0,
-                );
-            }
-            _ => {
-                panic!(
-                    "MRET is not going to M/S/U mode: {} with MPP {:x}",
-                    self.csr.mstatus,
-                    ((self.csr.mstatus >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER)
-                );
-            }
+fn privLevel_of_bits(p: BitVector<2>) -> Privilege {
+    match p.bits() {
+        0b00 => Privilege::User,
+        0b01 => Privilege::Supervisor,
+        0b11 => Privilege::Machine,
+        _ => panic!("Invalid privilege level"),
+    }
+}
+
+fn pc_alignment_mask() -> BitVector<64> {
+    !(BitVector::new(0b10))
+}
+
+fn _get_Mstatus_MPIE(ctx: &mut SailVirtContext) -> BitVector<1> {
+    ctx.mstatus.subrange::<7, 8, 1>()
+}
+
+fn _get_Mstatus_MPP(ctx: &mut SailVirtContext) -> BitVector<2> {
+    ctx.mstatus.subrange::<11, 13, 2>()
+}
+
+fn set_next_pc(ctx: &mut SailVirtContext, pc: BitVector<64>) {
+    ctx.next_pc = pc
+}
+
+fn handle_illegal(TodoArgs: ()) {
+    ()
+}
+
+fn get_xret_target(p: Privilege, ctx: &mut SailVirtContext) -> BitVector<64> {
+    match p {
+        Privilege::Machine => ctx.mepc,
+        Privilege::Supervisor => ctx.sepc,
+        Privilege::User => ctx.sepc,
+    }
+}
+
+fn prepare_xret_target(p: Privilege, ctx: &mut SailVirtContext) -> BitVector<64> {
+    get_xret_target(p, ctx)
+}
+
+fn exception_handler(
+    cur_priv: Privilege,
+    pc: BitVector<64>,
+    ctx: &mut SailVirtContext,
+) -> BitVector<64> {
+    let prev_priv = ctx.cur_privilege;
+    ctx.mstatus = ctx.mstatus.set_subrange::<3, 4, 1>(_get_Mstatus_MPIE(ctx));
+    ctx.mstatus = ctx.mstatus.set_subrange::<7, 8, 1>(BitVector::new(0b1));
+    ctx.cur_privilege = privLevel_of_bits(_get_Mstatus_MPP(ctx));
+    ctx.mstatus = ctx
+        .mstatus
+        .set_subrange::<11, 13, 2>(privLevel_to_bits(if haveUsrMode() {
+            Privilege::User
+        } else {
+            Privilege::Machine
+        }));
+    if ctx.cur_privilege != Privilege::Machine {
+        ctx.mstatus = ctx.mstatus.set_subrange::<17, 18, 1>(BitVector::new(0));
+    } else {
+        ()
+    };
+    prepare_xret_target(Privilege::Machine, ctx) & pc_alignment_mask()
+}
+
+fn ext_check_xret_priv(TodoArgs: Privilege) -> bool {
+    true
+}
+
+fn ext_fail_xret_priv(TodoArgs: ()) {
+    ()
+}
+
+pub fn execute_MRET(ctx: &mut SailVirtContext) -> Execute{
+    if ctx.cur_privilege != Privilege::Machine {
+        {
+            handle_illegal(());
+            Execute::RetireFail
         }
-        // Modify mstatus
-        // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
-        if false {
-            VirtCsr::set_mstatus_field(
-                &mut self.csr.mstatus,
-                mstatus::MPV_OFFSET,
-                mstatus::MPV_FILTER,
-                0,
-            );
+    } else if !ext_check_xret_priv(Privilege::Machine) {
+        {
+            ext_fail_xret_priv(());
+            Execute::RetireFail
         }
-
-        // MIE = MPIE, MPIE = 1, MPRV = 0
-        let mpie = mstatus::MPIE_FILTER & (self.csr.mstatus >> mstatus::MPIE_OFFSET);
-
-        VirtCsr::set_mstatus_field(
-            &mut self.csr.mstatus,
-            mstatus::MPIE_OFFSET,
-            mstatus::MPIE_FILTER,
-            1,
-        );
-        VirtCsr::set_mstatus_field(
-            &mut self.csr.mstatus,
-            mstatus::MIE_OFFSET,
-            mstatus::MIE_FILTER,
-            mpie,
-        );
-        VirtCsr::set_mstatus_field(
-            &mut self.csr.mstatus,
-            mstatus::MPP_OFFSET,
-            mstatus::MPP_FILTER,
-            0,
-        );
-
-        // Jump back to firmware
-        self.pc = self.csr.mepc;
+    } else {
+        {
+            let tmp = exception_handler(ctx.cur_privilege, ctx.pc, ctx);
+            set_next_pc(ctx, tmp);
+            Execute::RetireSuccess
+        }
     }
-}
-
-impl VirtCsr {
-    pub fn set_mstatus_field(csr: &mut usize, offset: usize, filter: usize, value: usize) {
-        // Clear field
-        *csr &= !(filter << offset);
-        // Set field
-        *csr |= value << offset;
-    }
-}
-
-// ————————————————————————————————— Utils —————————————————————————————————— //
-
-/// Privilege modes
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Mode {
-    /// User
-    U,
-    /// Supervisor
-    S,
-    /// Machine
-    M,
-}
-
-/// Returns the mode corresponding to the bit pattern
-pub fn parse_mpp_return_mode(mstatus_reg: usize) -> Mode {
-    match (mstatus_reg >> mstatus::MPP_OFFSET) & mstatus::MPP_FILTER {
-        0 => Mode::U,
-        1 => Mode::S,
-        3 => Mode::M,
-        _ => panic!("Unknown mode!"),
-    }
-}
-
-/// Constants for the Machine Status (mstatus) CSR.
-#[allow(unused)]
-pub mod mstatus {
-    /// MIE
-    pub const MIE_OFFSET: usize = 3;
-    pub const MIE_FILTER: usize = 0b1;
-    /// MPIE
-    pub const MPIE_OFFSET: usize = 7;
-    pub const MPIE_FILTER: usize = 0b1;
-    /// MPP
-    pub const MPP_OFFSET: usize = 11;
-    pub const MPP_FILTER: usize = 0b11;
-    /// MPRV
-    pub const MPRV_OFFSET: usize = 17;
-    pub const MPRV_FILTER: usize = 0b1;
-    /// MPV
-    pub const MPV_OFFSET: usize = 39;
-    pub const MPV_FILTER: usize = 0b1;
 }
