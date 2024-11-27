@@ -104,9 +104,9 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mcycle => self.csr.mcycle,
             Csr::Minstret => self.csr.minstret,
             Csr::Mhpmcounter(n) => self.csr.mhpmcounter[n],
-            Csr::Mcountinhibit => self.csr.mcountinhibit,
+            Csr::Mcountinhibit => self.csr.mcountinhibit as usize,
             Csr::Mhpmevent(n) => self.csr.mhpmevent[n],
-            Csr::Mcounteren => self.csr.mcounteren,
+            Csr::Mcounteren => self.csr.mcounteren as usize,
             Csr::Menvcfg => self.csr.menvcfg,
             Csr::Mseccfg => self.csr.mseccfg,
             Csr::Medeleg => self.csr.medeleg,
@@ -142,7 +142,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Sstatus => self.get(Csr::Mstatus) & mstatus::SSTATUS_FILTER,
             Csr::Sie => self.get(Csr::Mie) & mie::SIE_FILTER,
             Csr::Stvec => self.csr.stvec,
-            Csr::Scounteren => self.csr.scounteren,
+            Csr::Scounteren => self.csr.scounteren as usize,
             Csr::Senvcfg => self.csr.senvcfg,
             Csr::Sscratch => self.csr.sscratch,
             Csr::Sepc => self.csr.sepc,
@@ -404,12 +404,12 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.pmpaddr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
             }
-            Csr::Mcycle => (),                                      // Read-only 0
-            Csr::Minstret => (),                                    // Read-only 0
-            Csr::Mhpmcounter(_counter_idx) => (),                   // Read-only 0
-            Csr::Mcountinhibit => (),                               // Read-only 0
-            Csr::Mhpmevent(_event_idx) => (),                       // Read-only 0
-            Csr::Mcounteren => self.csr.mcounteren = value & 0b111, // Only show IR, TM and CY (for cycle, time and instret counters)
+            Csr::Mcycle => (),                    // Read-only 0
+            Csr::Minstret => (),                  // Read-only 0
+            Csr::Mhpmcounter(_counter_idx) => (), // Read-only 0
+            Csr::Mcountinhibit => (),             // Read-only 0
+            Csr::Mhpmevent(_event_idx) => (),     // Read-only 0
+            Csr::Mcounteren => self.csr.mcounteren = (value & 0b111) as u32, // Only show IR, TM and CY (for cycle, time and instret counters)
             Csr::Menvcfg => self.csr.menvcfg = value,
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
