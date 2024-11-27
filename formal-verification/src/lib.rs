@@ -62,11 +62,10 @@ impl SailVirtCtx {
         sail_ctx.medeleg = BitField::new(ctx.csr.medeleg as u64);
         sail_ctx.mideleg = BitField::new(ctx.csr.mideleg as u64);
 
-        /*ctx.csr.pmpcfg = [kani::any(); 8]; 
-        ctx.csr.pmpaddr = [kani::any(); 64];
-        ctx.csr.mhpmcounter=  [kani::any(); 29];
-        ctx.csr.mhpmevent=  [kani::any(); 29];*/
-
+        // ctx.csr.pmpcfg = [kani::any(); 8]; 
+        // ctx.csr.pmpaddr = [kani::any(); 64];
+        // ctx.csr.mhpmcounter=  [kani::any(); 29];
+        // ctx.csr.mhpmevent=  [kani::any(); 29];
 
         sail_ctx
     }
@@ -123,10 +122,10 @@ impl SailVirtCtx {
         // ctx.csr.scontext= self.scontext.bits.bits() as usize;
         ctx.csr.medeleg= self.medeleg.bits.bits() as usize;
         ctx.csr.mideleg = self.mideleg.bits.bits() as usize;
-        /*ctx.csr.pmpcfg = [kani::any(); 8]; 
-        ctx.csr.pmpaddr = [kani::any(); 64];
-        ctx.csr.mhpmcounter=  [kani::any(); 29];
-        ctx.csr.mhpmevent=  [kani::any(); 29];*/
+        // ctx.csr.pmpcfg = [kani::any(); 8]; 
+        // ctx.csr.pmpaddr = [kani::any(); 64];
+        // ctx.csr.mhpmcounter=  [kani::any(); 29];
+        // ctx.csr.mhpmevent=  [kani::any(); 29];
 
         ctx
     }
