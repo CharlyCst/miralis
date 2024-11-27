@@ -20,7 +20,7 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features userspace --lib -p miralis
+	@just unit-test
 
 	# Checking formatting...
 	cargo fmt --all -- --check
@@ -46,7 +46,8 @@ spike-benchmarks:
 
 # Run unit tests
 unit-test:
-	cargo test --features userspace -p miralis
+	cargo test --features userspace --lib \
+		-p miralis
 
 # Run Miralis
 run firmware=default config=config:
