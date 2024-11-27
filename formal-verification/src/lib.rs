@@ -26,17 +26,47 @@ impl SailVirtCtx {
         };
 
         // Transfer all csr
-
+        sail_ctx.misa = BitField::new(ctx.csr.misa as u64);
+        sail_ctx.mie = BitField::new(ctx.csr.mie as u64);
+        sail_ctx.mip = BitField::new(ctx.csr.mip as u64);
+        sail_ctx.mtvec = BitField::new(ctx.csr.mtvec as u64);
+        sail_ctx.mscratch = BitVector::new(ctx.csr.mscratch as u64);
+        sail_ctx.mvendorid = BitVector::new(ctx.csr.mscratch as u64);
+        // sail_ctx.marchid = BitVector::new(ctx.csr.marchid as u64);
+        sail_ctx.mimpid = BitVector::new(ctx.csr.mimpid as u64);
+        sail_ctx.mcycle = BitVector::new(ctx.csr.mcycle as u64);
+        sail_ctx.minstret = BitVector::new(ctx.csr.minstret as u64);
+        sail_ctx.mcountinhibit = BitField::new(ctx.csr.mcountinhibit as u64);
+        sail_ctx.mcounteren = BitField::new(ctx.csr.mcounteren as u64);
+        sail_ctx.menvcfg = BitField::new(ctx.csr.menvcfg as u64);
+        // sail_ctx.mseccfg = BitField::new(ctx.csr.mseccfg as u64);
+        sail_ctx.mcause = BitField::new(ctx.csr.mcause as u64);
 
         sail_ctx.mepc = BitVector::new(ctx.csr.mepc as u64);
+        sail_ctx.mtval = BitVector::new(ctx.csr.mtval as u64);
+        // sail_ctx.mtval2 = BitField::new(ctx.csr.mtval2 as u64);
+        sail_ctx.mstatus = BitField::new(ctx.csr.mstatus as u64);
+        // sail_ctx.mtinst = BitField::new(ctx.csr.mtinst as u64);
+
+        sail_ctx.mconfigptr = BitVector::new(ctx.csr.mconfigptr as u64);
+        sail_ctx.stvec = BitField::new(ctx.csr.stvec as u64);
+        sail_ctx.scounteren = BitField::new(ctx.csr.scounteren as u64);
+        sail_ctx.senvcfg = BitField::new(ctx.csr.senvcfg as u64);
+
+        sail_ctx.sscratch = BitVector::new(ctx.csr.sscratch as u64);
         sail_ctx.sepc = BitVector::new(ctx.csr.sepc as u64);
+        sail_ctx.scause = BitField::new(ctx.csr.scause as u64);
+        sail_ctx.stval = BitVector::new(ctx.csr.stval as u64);
+        sail_ctx.satp = BitVector::new(ctx.csr.satp as u64);
+        // sail_ctx.scontext = BitField::new(ctx.csr.scontext as u64);
+        sail_ctx.medeleg = BitField::new(ctx.csr.medeleg as u64);
+        sail_ctx.mideleg = BitField::new(ctx.csr.mideleg as u64);
 
-        sail_ctx.mstatus = BitField {
-            bits: BitVector::new(ctx.csr.mstatus as u64),
-        };
+        /*ctx.csr.pmpcfg = [kani::any(); 8]; 
+        ctx.csr.pmpaddr = [kani::any(); 64];
+        ctx.csr.mhpmcounter=  [kani::any(); 29];
+        ctx.csr.mhpmevent=  [kani::any(); 29];*/
 
-
-        sail_ctx.marchid = BitVector::new(ctx.csr.marchid as u64);
 
         sail_ctx
     }
@@ -61,13 +91,42 @@ impl SailVirtCtx {
         
 
         // Transfer all csr
-
-        ctx.csr.mepc = self.mepc.bits() as usize;
-        ctx.csr.sepc = self.sepc.bits() as usize;
-        ctx.csr.mstatus = self.mstatus.bits.bits() as usize;
-
-
-        ctx.csr.marchid = self.marchid.bits() as usize;
+        ctx.csr.misa= self.misa.bits.bits() as usize;
+        ctx.csr.mie= self.mie.bits.bits() as usize;
+        ctx.csr.mip= self.mip.bits.bits() as usize;
+        ctx.csr.mtvec=self.mtvec.bits.bits() as usize;
+        ctx.csr.mscratch=self.mscratch.bits() as usize;
+        ctx.csr.mvendorid= self.mvendorid.bits() as usize;
+        // ctx.csr.marchid= self.marchid.bits() as usize;
+        ctx.csr.mimpid= self.mimpid.bits() as usize;
+        ctx.csr.mcycle= self.mcycle.bits() as usize;
+        ctx.csr.minstret= self.minstret.bits() as usize;
+        ctx.csr.mcountinhibit= self.mcountinhibit.bits.bits() as usize;
+        ctx.csr.mcounteren= self.mcounteren.bits.bits() as usize;
+        ctx.csr.menvcfg= self.menvcfg.bits.bits() as usize;
+        // ctx.csr.mseccfg= self.mseccfg.bits.bits() as usize;
+        ctx.csr.mcause= self.mcause.bits.bits() as usize;
+        ctx.csr.mepc= self.mepc.bits() as usize;
+        ctx.csr.mtval= self.mtval.bits() as usize;
+        // ctx.csr.mtval2= self.mtval2.bits.bits() as usize;
+        ctx.csr.mstatus= self.mstatus.bits.bits() as usize;
+        // ctx.csr.mtinst= self.mtinst.bits.bits() as usize;
+        ctx.csr.mconfigptr= self.mconfigptr.bits() as usize;
+        ctx.csr.stvec= self.stvec.bits.bits() as usize;
+        ctx.csr.scounteren= self.scounteren.bits.bits() as usize;
+        ctx.csr.senvcfg= self.senvcfg.bits.bits() as usize;
+        ctx.csr.sscratch= self.sscratch.bits() as usize;
+        ctx.csr.sepc= self.sepc.bits() as usize;
+        ctx.csr.scause= self.scause.bits.bits() as usize;
+        ctx.csr.stval= self.stval.bits() as usize;
+        ctx.csr.satp= self.satp.bits() as usize;
+        // ctx.csr.scontext= self.scontext.bits.bits() as usize;
+        ctx.csr.medeleg= self.medeleg.bits.bits() as usize;
+        ctx.csr.mideleg = self.mideleg.bits.bits() as usize;
+        /*ctx.csr.pmpcfg = [kani::any(); 8]; 
+        ctx.csr.pmpaddr = [kani::any(); 64];
+        ctx.csr.mhpmcounter=  [kani::any(); 29];
+        ctx.csr.mhpmevent=  [kani::any(); 29];*/
 
         ctx
     }
@@ -88,8 +147,6 @@ fn KaniVirtCtx() -> VirtContext {
     ctx.csr.mie= kani::any();
     ctx.csr.mip= kani::any();
     ctx.csr.mtvec= kani::any();
-    ctx.csr.mscratch= kani::any();
-    ctx.csr.mvendorid= kani::any();
     ctx.csr.marchid= kani::any();
     ctx.csr.mimpid= kani::any();
     ctx.csr.mcycle= kani::any();
