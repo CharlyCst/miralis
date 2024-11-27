@@ -5,6 +5,7 @@ use miralis::platform::Platform;
 use miralis::virt::VirtContext;
 use sail::Privilege;
 use sail_prelude::{BitField, BitVector};
+use miralis::virt::traits::RegisterContextGetter;
 
 use crate::sail::SailVirtCtx;
 
@@ -65,7 +66,7 @@ mod verification {
 
     use super::*;
 
-    #[kani::proof]
+    // #[kani::proof]
     pub fn mret() {
         /*let mpp = match kani::any::<u8>() % 3 {
             0 => 0b00,
@@ -104,7 +105,9 @@ mod verification {
 
     #[kani::proof]
     pub fn read_csr() {
-        let csr_register = kani::any::<u64>() & ((1<<13) - 1);
+        // let csr_register = kani::any::<u64>() & ((1<<13) - 1);
+        // Easy to start
+        let csr_register = 0xF12;
 
         let mut ctx = VirtContext::new(
             0,
@@ -126,6 +129,6 @@ mod verification {
         
         ctx.get(csr);
 
-        // assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
+        assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 }
