@@ -341,6 +341,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.misa =
                     (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
 
+                if (self.csr.misa & misa::U) == 0 && mctx.hw.extensions.has_s_extension {
+                    panic!("Miralis doesn't support deactivating the U mode extension, please implement the feature")
+                }
+
                 if (self.csr.misa & misa::S) == 0 && mctx.hw.extensions.has_s_extension {
                     panic!("Miralis doesn't support deactivating the S mode extension, please implement the feature")
                 }

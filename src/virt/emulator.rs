@@ -5,7 +5,8 @@ use miralis_core::abi;
 use super::csr::traits::*;
 use super::{VirtContext, VirtCsr};
 use crate::arch::{
-    mie, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register,
+    mie, misa, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode,
+    Register,
 };
 use crate::benchmark::Benchmark;
 use crate::decoder::Instr;
@@ -658,11 +659,14 @@ impl VirtContext {
             mstatus::MIE_FILTER,
             mpie,
         );
+
+        let ret_mpp_val: usize = if has_user_mode(self) { 0b00 } else { 0b11 };
+
         VirtCsr::set_csr_field(
             &mut self.csr.mstatus,
             mstatus::MPP_OFFSET,
             mstatus::MPP_FILTER,
-            0,
+            ret_mpp_val,
         );
 
         // Jump back to firmware
@@ -731,6 +735,10 @@ impl VirtContext {
 }
 
 // ————————————————————————————————— Utils —————————————————————————————————— //
+
+fn has_user_mode(ctx: &VirtContext) -> bool {
+    (ctx.csr.misa & misa::U) != 0
+}
 
 /// Return the ID of the next interrupt to be delivered, if any.
 fn get_next_interrupt(mie: usize, mip: usize, mideleg: usize) -> Option<usize> {
