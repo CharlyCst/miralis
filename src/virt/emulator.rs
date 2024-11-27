@@ -22,7 +22,7 @@ pub enum ExitResult {
     /// Continue execution of the virtual firmware or payload.
     Continue,
     /// Terminate execution successfully.
-    Donne,
+    Done,
 }
 
 impl VirtContext {
@@ -461,7 +461,7 @@ impl VirtContext {
                 log::info!("Success!");
                 log::info!("Number of exits: {}", self.nb_exits);
                 // Terminate execution
-                return ExitResult::Donne;
+                return ExitResult::Done;
             }
             abi::MIRALIS_LOG_FID => {
                 let log_level = self.get(Register::X10);
@@ -484,18 +484,21 @@ impl VirtContext {
                     }
                 }
 
-                // For now we don't return error code or the lenght written
+                // For now we don't return error code or the length written
                 self.set(Register::X10, 0);
                 self.set(Register::X11, 0);
-                self.pc += 4;
             }
             abi::MIRALIS_BENCHMARK_FID => {
                 Benchmark::record_counters();
                 Plat::exit_success();
             }
+            abi::MIRALIS_CURRENT_STATUS_FID => {
+                Benchmark::read_counters(self);
+            }
             _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
         }
 
+        self.pc += 4;
         ExitResult::Continue
     }
 }
