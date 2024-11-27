@@ -123,7 +123,7 @@ impl Architecture for HostArch {
             Csr::Mtvec => ctx.csr.mtvec,
             Csr::Mscratch => ctx.csr.mscratch,
             Csr::Mip => ctx.csr.mip,
-            Csr::Mvendorid => ctx.csr.mvendorid,
+            Csr::Mvendorid => ctx.csr.mvendorid as usize,
             Csr::Marchid => ctx.csr.marchid,
             Csr::Mimpid => ctx.csr.mimpid,
             Csr::Pmpcfg(index) => ctx.csr.pmpcfg[index],
@@ -203,7 +203,7 @@ impl Architecture for HostArch {
             Csr::Mtvec => ctx.csr.mtvec = value,
             Csr::Mscratch => ctx.csr.mscratch = value,
             Csr::Mip => ctx.csr.mip = value, // TODO : add write filter
-            Csr::Mvendorid => ctx.csr.mvendorid = value,
+            Csr::Mvendorid => ctx.csr.mvendorid = value as u32,
             Csr::Marchid => ctx.csr.marchid = value,
             Csr::Mimpid => ctx.csr.mimpid = value,
             Csr::Pmpcfg(index) => ctx.csr.pmpcfg[index] = value,

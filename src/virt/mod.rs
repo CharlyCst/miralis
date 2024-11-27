@@ -143,7 +143,7 @@ pub struct VirtCsr {
     pub mie: usize,
     pub mip: usize,
     pub mtvec: usize,
-    pub mvendorid: usize,
+    pub mvendorid: u32,
     pub marchid: usize,
     pub mimpid: usize,
     pub mcycle: usize,
