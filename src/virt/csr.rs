@@ -79,7 +79,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             }
             Csr::Mtvec => self.csr.mtvec,
             Csr::Mscratch => self.csr.mscratch,
-            Csr::Mvendorid => self.csr.mvendorid,
+            Csr::Mvendorid => self.csr.mvendorid as usize,
             Csr::Marchid => self.csr.marchid,
             Csr::Mimpid => self.csr.mimpid,
             Csr::Pmpcfg(pmp_cfg_idx) => {
