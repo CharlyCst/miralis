@@ -1,5 +1,6 @@
 use crate::benchmark::default::IntervalCounter;
 use crate::benchmark::{BenchmarkModule, Counter, Scope};
+use crate::virt::VirtContext;
 
 pub struct EmptyBenchmark {}
 
@@ -25,6 +26,8 @@ impl BenchmarkModule for EmptyBenchmark {
         _value: usize,
     ) {
     }
+
+    fn read_counters(_ctx: &mut VirtContext) {}
 
     fn display_counters() {}
 

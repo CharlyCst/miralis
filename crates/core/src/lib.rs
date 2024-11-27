@@ -24,6 +24,8 @@ pub mod abi {
     pub const MIRALIS_LOG_FID: usize = 2;
     /// Benchmark prints and exit.
     pub const MIRALIS_BENCHMARK_FID: usize = 3;
+    /// Returns the performance counters managed by Miralis.
+    pub const MIRALIS_READ_COUNTERS_FID: usize = 4;
 
     /// Log level constants, with the same semantic as the `log` crate.
     pub mod log {
