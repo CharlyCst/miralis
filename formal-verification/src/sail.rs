@@ -5242,7 +5242,7 @@ enum ast {
     RFVVTYPE((rfvvfunct6, BitVector<1>, regidx, regidx, regidx)),
 }
 
-fn readCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>) -> BitVector<64> {
+pub fn readCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>) -> BitVector<64> {
     let res: xlenbits = match (csr, 64) {
         (b__0, _) if { (b__0 == BitVector::<12>::new(0b111100010001)) } => {
             zero_extend_64(sail_ctx.mvendorid)

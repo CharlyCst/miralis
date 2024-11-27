@@ -104,10 +104,19 @@ mod verification {
 
     #[kani::proof]
     pub fn read_csr() {
-        let csr_register = kani::any::<u8>() & ((1<<13) - 1);
+        let csr_register = kani::any::<u64>() & ((1<<13) - 1);
+
+        let mut ctx = VirtContext::new(
+            0,
+            0,
+            ExtensionsCapability {
+                has_h_extension: false,
+                has_s_extension: true,
+            },
+        );
 
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
-        sail::execute_MRET(&mut sail_ctx, BitVector::<12>::new(csr_register));
+        sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register));
 
         // Initialize Miralis's own context
         /*let hw = unsafe { Arch::detect_hardware() };
