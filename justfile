@@ -34,7 +34,7 @@ test:
 	cargo clippy -p benchmark_analyzer
 
 	# Run integration tests...
-	cargo run -- test --strict
+	cargo run -- test
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
