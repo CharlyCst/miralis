@@ -93,7 +93,7 @@ impl SailVirtCtx {
         ctx.csr.mip= self.mip.bits.bits() as usize;
         ctx.csr.mtvec=self.mtvec.bits.bits() as usize;
         ctx.csr.mscratch=self.mscratch.bits() as usize;
-        ctx.csr.mvendorid= self.mvendorid.bits() as usize;
+        ctx.csr.mvendorid= self.mvendorid.bits() as u32;
         ctx.csr.marchid= self.marchid.bits() as usize;
         ctx.csr.mimpid= self.mimpid.bits() as usize;
         /*ctx.csr.mcycle= self.mcycle.bits() as usize;
