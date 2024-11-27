@@ -11,9 +11,7 @@ use crate::config::{read_config, Config, Platforms};
 use crate::path::{get_project_config_path, make_path_relative_to_root};
 use crate::project::{ProjectConfig, Test};
 use crate::run::{get_qemu_cmd, get_spike_cmd, qemu_is_available, spike_is_available, QEMU, SPIKE};
-use crate::TestArgs;
-
-const RUNNER_STRICT_MODE: &str = "MIRALIS_RUNNER_STRICT";
+use crate::{TestArgs, RUNNER_STRICT_MODE};
 
 #[derive(Debug, PartialEq, Eq)]
 struct TestGroup {

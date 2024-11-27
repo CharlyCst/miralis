@@ -17,6 +17,7 @@ mod path;
 mod project;
 mod run;
 mod test;
+mod verify;
 
 // —————————————————————————————— CLI Parsing ——————————————————————————————— //
 
@@ -38,6 +39,8 @@ enum Subcommands {
     Build(BuildArgs),
     /// Run the tests
     Test(TestArgs),
+    /// Verify correctness with model checking
+    Verify(VerifyArgs),
     /// Exit with an error if the config is not valid
     CheckConfig(CheckConfigArgs),
     /// Start GDB and connect to a running instance
@@ -92,6 +95,15 @@ struct TestArgs {
 }
 
 #[derive(Args)]
+struct VerifyArgs {
+    /// The command will succeed only if all checks can be run successfully
+    ///
+    /// This flag can also be configured with the environment variable `MIRALIS_RUNNER_STRICT=1`
+    #[arg(long, action)]
+    strict: bool,
+}
+
+#[derive(Args)]
 struct CheckConfigArgs {
     /// Path to the configuration file or directory
     config: PathBuf,
@@ -110,6 +122,10 @@ struct ArtifactArgs {
     /// Print the list of artifacts in markdown format
     markdown: bool,
 }
+
+// ————————————————————————— Environment Variables —————————————————————————— //
+
+const RUNNER_STRICT_MODE: &str = "MIRALIS_RUNNER_STRICT";
 
 // —————————————————————————————— Entry Point ——————————————————————————————— //
 
@@ -141,6 +157,7 @@ fn main() -> ExitCode {
         Subcommands::Run(args) => run::run(&args),
         Subcommands::Build(args) => build::build(&args),
         Subcommands::Test(mut args) => test::run_tests(&mut args),
+        Subcommands::Verify(mut args) => verify::verify(&mut args),
         Subcommands::Gdb(args) => gdb::gdb(&args),
         Subcommands::CheckConfig(args) => config::check_config(&args),
         Subcommands::Artifact(args) => artifacts::list_artifacts(&args),
