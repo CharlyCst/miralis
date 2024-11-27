@@ -4,10 +4,12 @@
 //! the number of instruction for example.
 use spin::Mutex;
 
-use crate::arch::{Arch, Architecture, Csr};
+use crate::arch::{Arch, Architecture, Csr, Register};
 use crate::benchmark::{BenchmarkModule, Counter, Scope};
 use crate::config;
 use crate::platform::{Plat, Platform};
+use crate::virt::traits::*;
+use crate::virt::VirtContext;
 
 #[macro_export]
 macro_rules! _benchmark_print {
@@ -178,6 +180,19 @@ impl BenchmarkModule for DefaultBenchmark {
         }
 
         BENCH.lock().counters[index] += 1;
+    }
+
+    fn read_counters(ctx: &mut VirtContext) {
+        let benchmark = BENCH.lock();
+
+        ctx.set(
+            Register::X10,
+            benchmark.counters[Counter::FirmwareExits as usize],
+        );
+        ctx.set(
+            Register::X11,
+            benchmark.counters[Counter::WorldSwitches as usize],
+        );
     }
 
     /// Print formated string with value of the counters

@@ -103,7 +103,7 @@ pub const TARGET_PAYLOAD_ADDRESS: usize =
 pub const TARGET_STACK_SIZE: usize =
     parse_usize_or(option_env!("MIRALIS_TARGET_STACK_SIZE"), 0x8000);
 
-/// The choosen policy name
+/// The chosen policy name
 ///
 /// For now this variable is unused, but we keep it still to force re-compilation when the policy
 /// name changes. We can get rid of it once it becomes possible to track dependencies on
