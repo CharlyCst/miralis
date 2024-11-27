@@ -63,7 +63,6 @@ impl SailVirtCtx {
         // ctx.csr.pmpaddr = [kani::any(); 64];
         // ctx.csr.mhpmcounter=  [kani::any(); 29];
         // ctx.csr.mhpmevent=  [kani::any(); 29];*/
-
         sail_ctx
     }
 
@@ -94,32 +93,31 @@ impl SailVirtCtx {
         ctx.csr.mvendorid = self.mvendorid.bits() as u32;
         ctx.csr.marchid = self.marchid.bits() as usize;
         ctx.csr.mimpid = self.mimpid.bits() as usize;
-        ctx.csr.mcycle= self.mcycle.bits() as usize;
-        ctx.csr.minstret= self.minstret.bits() as usize;
-        ctx.csr.mcountinhibit= self.mcountinhibit.bits.bits() as usize;
-        ctx.csr.mcounteren= self.mcounteren.bits.bits() as usize;
-        ctx.csr.menvcfg= self.menvcfg.bits.bits() as usize;
+        ctx.csr.mcycle = self.mcycle.bits() as usize;
+        ctx.csr.minstret = self.minstret.bits() as usize;
+        ctx.csr.mcountinhibit = self.mcountinhibit.bits.bits() as u32;
+        ctx.csr.mcounteren = self.mcounteren.bits.bits() as u32;
+        ctx.csr.menvcfg = self.menvcfg.bits.bits() as usize;
         // ctx.csr.mseccfg= self.mseccfg.bits.bits() as usize;
-        ctx.csr.mcause= self.mcause.bits.bits() as usize;
-        ctx.csr.mepc= self.mepc.bits() as usize;
-        ctx.csr.mtval= self.mtval.bits() as usize;
-        ctx.csr.mconfigptr= self.mconfigptr.bits() as usize;
-        ctx.csr.stvec= self.stvec.bits.bits() as usize;
-        ctx.csr.scounteren= self.scounteren.bits.bits() as usize;
-        ctx.csr.senvcfg= self.senvcfg.bits.bits() as usize;
-        ctx.csr.sscratch= self.sscratch.bits() as usize;
-        ctx.csr.sepc= self.sepc.bits() as usize;
-        ctx.csr.scause= self.scause.bits.bits() as usize;
-        ctx.csr.stval= self.stval.bits() as usize;
-        ctx.csr.satp= self.satp.bits() as usize;
+        ctx.csr.mcause = self.mcause.bits.bits() as usize;
+        ctx.csr.mepc = self.mepc.bits() as usize;
+        ctx.csr.mtval = self.mtval.bits() as usize;
+        ctx.csr.mconfigptr = self.mconfigptr.bits() as usize;
+        ctx.csr.stvec = self.stvec.bits.bits() as usize;
+        ctx.csr.scounteren = self.scounteren.bits.bits() as u32;
+        ctx.csr.senvcfg = self.senvcfg.bits.bits() as usize;
+        ctx.csr.sscratch = self.sscratch.bits() as usize;
+        ctx.csr.sepc = self.sepc.bits() as usize;
+        ctx.csr.scause = self.scause.bits.bits() as usize;
+        ctx.csr.stval = self.stval.bits() as usize;
+        ctx.csr.satp = self.satp.bits() as usize;
         // ctx.csr.scontext= self.scontext.bits.bits() as usize;
-        ctx.csr.medeleg= self.medeleg.bits.bits() as usize;
+        ctx.csr.medeleg = self.medeleg.bits.bits() as usize;
         ctx.csr.mideleg = self.mideleg.bits.bits() as usize;
         // ctx.csr.pmpcfg = [kani::any(); 8];
         // ctx.csr.pmpaddr = [kani::any(); 64];
         // ctx.csr.mhpmcounter=  [kani::any(); 29];
         // ctx.csr.mhpmevent=  [kani::any(); 29];*/
-
         ctx
     }
 }
@@ -143,21 +141,21 @@ fn KaniVirtCtx() -> VirtContext {
     ctx.csr.mvendorid = kani::any();
     ctx.csr.marchid = 0;
     // ctx.csr.mimpid= kani::any();
-    ctx.csr.mcycle= kani::any();
-    ctx.csr.minstret= kani::any();
-    // ctx.csr.mcountinhibit= kani::any(); // TODO: This is a 32 bits register - fix it
-    // ctx.csr.mcounteren= kani::any(); // TODO: Same here
-    ctx.csr.menvcfg= kani::any();
+    ctx.csr.mcycle = kani::any();
+    ctx.csr.minstret = kani::any();
+    ctx.csr.mcountinhibit = kani::any();
+    ctx.csr.mcounteren = kani::any();
+    ctx.csr.menvcfg = kani::any();
     // ctx.csr.mseccfg= kani::any();
-    ctx.csr.mcause= kani::any();
-    ctx.csr.mepc= kani::any();
-    ctx.csr.mtval= kani::any();
+    ctx.csr.mcause = kani::any();
+    ctx.csr.mepc = kani::any();
+    ctx.csr.mtval = kani::any();
     // ctx.csr.mtval2= kani::any(); - TODO: What should we do with this?
     // ctx.csr.mstatus= kani::any();
     // ctx.csr.mtinst= kani::any();
-    ctx.csr.mconfigptr= kani::any();
+    ctx.csr.mconfigptr = kani::any();
     // ctx.csr.stvec= kani::any();
-    // ctx.csr.scounteren= kani::any(); // TODO: This is a 32 bits register - fix it
+    ctx.csr.scounteren = kani::any();
     /*ctx.csr.senvcfg= kani::any();
     ctx.csr.sscratch= kani::any();
     ctx.csr.sepc= kani::any();
