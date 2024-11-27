@@ -493,6 +493,9 @@ impl VirtContext {
                 Benchmark::record_counters();
                 Plat::exit_success();
             }
+            abi::MIRALIS_CURRENT_STATUS_FID => {
+                todo!("Implement this part of the code")
+            }
             _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
         }
 
