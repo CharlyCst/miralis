@@ -332,4 +332,8 @@ impl Benchmark {
             }
         }
     }
+
+    pub fn read_counters() {
+        log::info!("In the counter function, todo implement the function");
+    }
 }
