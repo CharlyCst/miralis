@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 30
     env:
       RUSTFLAGS: --deny warnings
+      MIRALIS_RUNNER_STRICT: 1
     steps:
     - uses: actions/checkout@v4
       with:
