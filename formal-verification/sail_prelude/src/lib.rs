@@ -226,7 +226,7 @@ impl<const N: usize> BitField<N> {
         assert!(B - A == C, "Invalid subrange parameters");
         assert!(B <= N, "Invalid subrange");
 
-        self.bits.subrange::<A,B,C>()
+        self.bits.subrange::<A, B, C>()
     }
 
     pub const fn set_subrange<const A: usize, const B: usize, const C: usize>(
@@ -237,7 +237,7 @@ impl<const N: usize> BitField<N> {
         assert!(A <= B && B <= N, "Invalid subrange");
 
         BitField::<N> {
-            bits: self.bits.set_subrange::<A,B,C>(bitvector),
+            bits: self.bits.set_subrange::<A, B, C>(bitvector),
         }
     }
 }
@@ -498,7 +498,7 @@ mod tests {
     fn test_bitvector_concat() {
         const SIZE: usize = 20;
 
-        for i in 0..(1<<SIZE) {
+        for i in 0..(1 << SIZE) {
             let v = BitVector::<SIZE>::new(i);
             assert_eq!(bitvector_concat::<SIZE, SIZE>(v, v).bits, i + (i << SIZE));
         }
@@ -508,11 +508,11 @@ mod tests {
     fn test_bitvector_access() {
         const SIZE: usize = 10;
 
-        for i in 0..(1<<SIZE) {
+        for i in 0..(1 << SIZE) {
             let v = BitVector::<SIZE>::new(i);
             for idx in 0..SIZE {
                 assert_eq!((i & (1 << idx)) > 0, bitvector_access(v, idx))
-            } 
+            }
         }
     }
 

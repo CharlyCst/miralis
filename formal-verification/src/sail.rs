@@ -4407,26 +4407,29 @@ fn exception_delegatee(sail_ctx: &mut SailVirtCtx, e: ExceptionType, p: Privileg
         let var_245 = bitvector_access(sail_ctx.medeleg.bits, idx);
         bit_to_bool(sail_ctx, var_245)
     };
-    let user = if {haveSupMode(sail_ctx, ())} {
-        (_super_ && (haveNExt(sail_ctx, ()) && {
-            let var_244 = bitvector_access(sail_ctx.sedeleg.bits, idx);
-            bit_to_bool(sail_ctx, var_244)
-        }))
+    let user = if { haveSupMode(sail_ctx, ()) } {
+        (_super_
+            && (haveNExt(sail_ctx, ()) && {
+                let var_244 = bitvector_access(sail_ctx.sedeleg.bits, idx);
+                bit_to_bool(sail_ctx, var_244)
+            }))
     } else {
         (_super_ && haveNExt(sail_ctx, ()))
     };
-    let deleg = if {(haveUsrMode(sail_ctx, ()) && user)} {
+    let deleg = if { (haveUsrMode(sail_ctx, ()) && user) } {
         Privilege::User
-    } else if {(haveSupMode(sail_ctx, ()) && _super_)} {
+    } else if { (haveSupMode(sail_ctx, ()) && _super_) } {
         Privilege::Supervisor
     } else {
         Privilege::Machine
     };
-    if {{
-        let var_242 = privLevel_to_bits(sail_ctx, deleg);
-        let var_243 = privLevel_to_bits(sail_ctx, p);
-        _operator_smaller_u_(sail_ctx, var_242, var_243)
-    }} {
+    if {
+        {
+            let var_242 = privLevel_to_bits(sail_ctx, deleg);
+            let var_243 = privLevel_to_bits(sail_ctx, p);
+            _operator_smaller_u_(sail_ctx, var_242, var_243)
+        }
+    } {
         p
     } else {
         deleg
@@ -4450,8 +4453,8 @@ enum ctl_result {
 
 fn tval(sail_ctx: &mut SailVirtCtx, excinfo: Option<BitVector<64>>) -> BitVector<64> {
     match excinfo {
-        Some(e) => {e}
-        None => {zero_extend_64(BitVector::<1>::new(0b0))}
+        Some(e) => e,
+        None => zero_extend_64(BitVector::<1>::new(0b0)),
     }
 }
 
@@ -4459,20 +4462,52 @@ fn rvfi_trap(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
     ()
 }
 
-fn trap_handler(sail_ctx: &mut SailVirtCtx, del_priv: Privilege, intr: bool, c: BitVector<8>, pc: BitVector<64>, info: Option<BitVector<64>>, ext: Option<()>) -> BitVector<64> {
+fn trap_handler(
+    sail_ctx: &mut SailVirtCtx,
+    del_priv: Privilege,
+    intr: bool,
+    c: BitVector<8>,
+    pc: BitVector<64>,
+    info: Option<BitVector<64>>,
+    ext: Option<()>,
+) -> BitVector<64> {
     rvfi_trap(sail_ctx, ());
-    if {get_config_print_platform(sail_ctx, ())} {
-        print_platform(format!("{}{}", String::from("handling "), format!("{}{}", if {intr} {
-            String::from("int_hashtag_")
-        } else {
-            String::from("exc_hashtag_")
-        }, format!("{}{}", bits_str(c), format!("{}{}", String::from(" at priv "), format!("{}{}", privLevel_to_str(sail_ctx, del_priv), format!("{}{}", String::from(" with tval "), bits_str(tval(sail_ctx, info)))))))))
+    if { get_config_print_platform(sail_ctx, ()) } {
+        print_platform(format!(
+            "{}{}",
+            String::from("handling "),
+            format!(
+                "{}{}",
+                if { intr } {
+                    String::from("int_hashtag_")
+                } else {
+                    String::from("exc_hashtag_")
+                },
+                format!(
+                    "{}{}",
+                    bits_str(c),
+                    format!(
+                        "{}{}",
+                        String::from(" at priv "),
+                        format!(
+                            "{}{}",
+                            privLevel_to_str(sail_ctx, del_priv),
+                            format!(
+                                "{}{}",
+                                String::from(" with tval "),
+                                bits_str(tval(sail_ctx, info))
+                            )
+                        )
+                    )
+                )
+            )
+        ))
     } else {
         ()
     };
     cancel_reservation(());
     match del_priv {
-        Privilege::Machine => {{
+        Privilege::Machine => {
             sail_ctx.mcause = {
                 let var_246 = bool_to_bits(sail_ctx, intr);
                 sail_ctx.mcause.set_subrange::<63, 64, 1>(var_246)
@@ -4485,7 +4520,9 @@ fn trap_handler(sail_ctx: &mut SailVirtCtx, del_priv: Privilege, intr: bool, c: 
                 let var_248 = _get_Mstatus_MIE(sail_ctx, sail_ctx.mstatus);
                 sail_ctx.mstatus.set_subrange::<7, 8, 1>(var_248)
             };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<3, 4, 1>(BitVector::<1>::new(0b0));
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<3, 4, 1>(BitVector::<1>::new(0b0));
             sail_ctx.mstatus = {
                 let var_249 = privLevel_to_bits(sail_ctx, sail_ctx.cur_privilege);
                 sail_ctx.mstatus.set_subrange::<11, 13, 2>(var_249)
@@ -4494,14 +4531,18 @@ fn trap_handler(sail_ctx: &mut SailVirtCtx, del_priv: Privilege, intr: bool, c: 
             sail_ctx.mepc = pc;
             sail_ctx.cur_privilege = del_priv;
             handle_trap_extension(sail_ctx, del_priv, pc, ext);
-            if {get_config_print_reg(sail_ctx, ())} {
-                print_reg(format!("{}{}", String::from("CSR mstatus <- "), bits_str(sail_ctx.mstatus.bits)))
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
             } else {
                 ()
             };
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.mcause)
-        }}
-        Privilege::Supervisor => {{
+        }
+        Privilege::Supervisor => {
             assert!(false, "todo_process_message");
             sail_ctx.scause = {
                 let var_250 = bool_to_bits(sail_ctx, intr);
@@ -4515,24 +4556,37 @@ fn trap_handler(sail_ctx: &mut SailVirtCtx, del_priv: Privilege, intr: bool, c: 
                 let var_252 = _get_Mstatus_SIE(sail_ctx, sail_ctx.mstatus);
                 sail_ctx.mstatus.set_subrange::<5, 6, 1>(var_252)
             };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<1, 2, 1>(BitVector::<1>::new(0b0));
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<8, 9, 1>(match sail_ctx.cur_privilege {
-                Privilege::User => {BitVector::<1>::new(0b0)}
-                Privilege::Supervisor => {BitVector::<1>::new(0b1)}
-                Privilege::Machine => {internal_error(String::from("../sail-riscv/model/riscv_sys_control.sail"), 359, String::from("invalid privilege for s-mode trap"))}
-            });
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<1, 2, 1>(BitVector::<1>::new(0b0));
+            sail_ctx.mstatus =
+                sail_ctx
+                    .mstatus
+                    .set_subrange::<8, 9, 1>(match sail_ctx.cur_privilege {
+                        Privilege::User => BitVector::<1>::new(0b0),
+                        Privilege::Supervisor => BitVector::<1>::new(0b1),
+                        Privilege::Machine => internal_error(
+                            String::from("../sail-riscv/model/riscv_sys_control.sail"),
+                            359,
+                            String::from("invalid privilege for s-mode trap"),
+                        ),
+                    });
             sail_ctx.stval = tval(sail_ctx, info);
             sail_ctx.sepc = pc;
             sail_ctx.cur_privilege = del_priv;
             handle_trap_extension(sail_ctx, del_priv, pc, ext);
-            if {get_config_print_reg(sail_ctx, ())} {
-                print_reg(format!("{}{}", String::from("CSR mstatus <- "), bits_str(sail_ctx.mstatus.bits)))
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
             } else {
                 ()
             };
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.scause)
-        }}
-        Privilege::User => {{
+        }
+        Privilege::User => {
             assert!(false, "todo_process_message");
             sail_ctx.ucause = {
                 let var_253 = bool_to_bits(sail_ctx, intr);
@@ -4546,34 +4600,61 @@ fn trap_handler(sail_ctx: &mut SailVirtCtx, del_priv: Privilege, intr: bool, c: 
                 let var_255 = _get_Mstatus_UIE(sail_ctx, sail_ctx.mstatus);
                 sail_ctx.mstatus.set_subrange::<4, 5, 1>(var_255)
             };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<0, 1, 1>(BitVector::<1>::new(0b0));
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<0, 1, 1>(BitVector::<1>::new(0b0));
             sail_ctx.utval = tval(sail_ctx, info);
             sail_ctx.uepc = pc;
             sail_ctx.cur_privilege = del_priv;
             handle_trap_extension(sail_ctx, del_priv, pc, ext);
-            if {get_config_print_reg(sail_ctx, ())} {
-                print_reg(format!("{}{}", String::from("CSR mstatus <- "), bits_str(sail_ctx.mstatus.bits)))
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
             } else {
                 ()
             };
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.ucause)
-        }}
+        }
     }
 }
 
-fn exception_handler(sail_ctx: &mut SailVirtCtx, cur_priv: Privilege, ctl: ctl_result, pc: BitVector<64>) -> BitVector<64> {
+fn exception_handler(
+    sail_ctx: &mut SailVirtCtx,
+    cur_priv: Privilege,
+    ctl: ctl_result,
+    pc: BitVector<64>,
+) -> BitVector<64> {
     match (cur_priv, ctl) {
-        (_, ctl_result::CTL_TRAP(e)) => {{
+        (_, ctl_result::CTL_TRAP(e)) => {
             let del_priv = {
                 let var_264 = e.trap;
                 let var_265 = cur_priv;
                 exception_delegatee(sail_ctx, var_264, var_265)
             };
-            if {get_config_print_platform(sail_ctx, ())} {
-                print_platform(format!("{}{}", String::from("trapping from "), format!("{}{}", privLevel_to_str(sail_ctx, cur_priv), format!("{}{}", String::from(" to "), format!("{}{}", privLevel_to_str(sail_ctx, del_priv), format!("{}{}", String::from(" to handle "), {
-                    let var_256 = e.trap;
-                    exceptionType_to_str(sail_ctx, var_256)
-                }))))))
+            if { get_config_print_platform(sail_ctx, ()) } {
+                print_platform(format!(
+                    "{}{}",
+                    String::from("trapping from "),
+                    format!(
+                        "{}{}",
+                        privLevel_to_str(sail_ctx, cur_priv),
+                        format!(
+                            "{}{}",
+                            String::from(" to "),
+                            format!(
+                                "{}{}",
+                                privLevel_to_str(sail_ctx, del_priv),
+                                format!("{}{}", String::from(" to handle "), {
+                                    let var_256 = e.trap;
+                                    exceptionType_to_str(sail_ctx, var_256)
+                                })
+                            )
+                        )
+                    )
+                ))
             } else {
                 ()
             };
@@ -4587,23 +4668,27 @@ fn exception_handler(sail_ctx: &mut SailVirtCtx, cur_priv: Privilege, ctl: ctl_r
                 let var_260 = pc;
                 let var_261 = e.excinfo;
                 let var_262 = e.ext;
-                trap_handler(sail_ctx, var_257, var_258, var_259, var_260, var_261, var_262)
+                trap_handler(
+                    sail_ctx, var_257, var_258, var_259, var_260, var_261, var_262,
+                )
             }
-        }}
-        (_, ctl_result::CTL_MRET(())) => {{
+        }
+        (_, ctl_result::CTL_MRET(())) => {
             let prev_priv = sail_ctx.cur_privilege;
             sail_ctx.mstatus = {
                 let var_266 = _get_Mstatus_MPIE(sail_ctx, sail_ctx.mstatus);
                 sail_ctx.mstatus.set_subrange::<3, 4, 1>(var_266)
             };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<7, 8, 1>(BitVector::<1>::new(0b1));
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<7, 8, 1>(BitVector::<1>::new(0b1));
             sail_ctx.cur_privilege = {
                 let var_267 = _get_Mstatus_MPP(sail_ctx, sail_ctx.mstatus);
                 privLevel_of_bits(sail_ctx, var_267)
             };
             sail_ctx.mstatus = {
                 let var_268 = {
-                    let var_269 = if {haveUsrMode(sail_ctx, ())} {
+                    let var_269 = if { haveUsrMode(sail_ctx, ()) } {
                         Privilege::User
                     } else {
                         Privilege::Machine
@@ -4612,76 +4697,135 @@ fn exception_handler(sail_ctx: &mut SailVirtCtx, cur_priv: Privilege, ctl: ctl_r
                 };
                 sail_ctx.mstatus.set_subrange::<11, 13, 2>(var_268)
             };
-            if {(sail_ctx.cur_privilege != Privilege::Machine)} {
-                sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<17, 18, 1>(BitVector::<1>::new(0b0))
+            if { (sail_ctx.cur_privilege != Privilege::Machine) } {
+                sail_ctx.mstatus = sail_ctx
+                    .mstatus
+                    .set_subrange::<17, 18, 1>(BitVector::<1>::new(0b0))
             } else {
                 ()
             };
-            if {get_config_print_reg(sail_ctx, ())} {
-                print_reg(format!("{}{}", String::from("CSR mstatus <- "), bits_str(sail_ctx.mstatus.bits)))
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
             } else {
                 ()
             };
-            if {get_config_print_platform(sail_ctx, ())} {
-                print_platform(format!("{}{}", String::from("ret-ing from "), format!("{}{}", privLevel_to_str(sail_ctx, prev_priv), format!("{}{}", String::from(" to "), privLevel_to_str(sail_ctx, sail_ctx.cur_privilege)))))
+            if { get_config_print_platform(sail_ctx, ()) } {
+                print_platform(format!(
+                    "{}{}",
+                    String::from("ret-ing from "),
+                    format!(
+                        "{}{}",
+                        privLevel_to_str(sail_ctx, prev_priv),
+                        format!(
+                            "{}{}",
+                            String::from(" to "),
+                            privLevel_to_str(sail_ctx, sail_ctx.cur_privilege)
+                        )
+                    )
+                ))
             } else {
                 ()
             };
             cancel_reservation(());
             (prepare_xret_target(sail_ctx, Privilege::Machine) & pc_alignment_mask(sail_ctx, ()))
-        }}
-        (_, ctl_result::CTL_SRET(())) => {{
+        }
+        (_, ctl_result::CTL_SRET(())) => {
             let prev_priv = sail_ctx.cur_privilege;
             sail_ctx.mstatus = {
                 let var_270 = _get_Mstatus_SPIE(sail_ctx, sail_ctx.mstatus);
                 sail_ctx.mstatus.set_subrange::<1, 2, 1>(var_270)
             };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<5, 6, 1>(BitVector::<1>::new(0b1));
-            sail_ctx.cur_privilege = if {(_get_Mstatus_SPP(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1))} {
-                Privilege::Supervisor
-            } else {
-                Privilege::User
-            };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<8, 9, 1>(BitVector::<1>::new(0b0));
-            if {(sail_ctx.cur_privilege != Privilege::Machine)} {
-                sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<17, 18, 1>(BitVector::<1>::new(0b0))
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<5, 6, 1>(BitVector::<1>::new(0b1));
+            sail_ctx.cur_privilege =
+                if { (_get_Mstatus_SPP(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1)) } {
+                    Privilege::Supervisor
+                } else {
+                    Privilege::User
+                };
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<8, 9, 1>(BitVector::<1>::new(0b0));
+            if { (sail_ctx.cur_privilege != Privilege::Machine) } {
+                sail_ctx.mstatus = sail_ctx
+                    .mstatus
+                    .set_subrange::<17, 18, 1>(BitVector::<1>::new(0b0))
             } else {
                 ()
             };
-            if {get_config_print_reg(sail_ctx, ())} {
-                print_reg(format!("{}{}", String::from("CSR mstatus <- "), bits_str(sail_ctx.mstatus.bits)))
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
             } else {
                 ()
             };
-            if {get_config_print_platform(sail_ctx, ())} {
-                print_platform(format!("{}{}", String::from("ret-ing from "), format!("{}{}", privLevel_to_str(sail_ctx, prev_priv), format!("{}{}", String::from(" to "), privLevel_to_str(sail_ctx, sail_ctx.cur_privilege)))))
+            if { get_config_print_platform(sail_ctx, ()) } {
+                print_platform(format!(
+                    "{}{}",
+                    String::from("ret-ing from "),
+                    format!(
+                        "{}{}",
+                        privLevel_to_str(sail_ctx, prev_priv),
+                        format!(
+                            "{}{}",
+                            String::from(" to "),
+                            privLevel_to_str(sail_ctx, sail_ctx.cur_privilege)
+                        )
+                    )
+                ))
             } else {
                 ()
             };
             cancel_reservation(());
             (prepare_xret_target(sail_ctx, Privilege::Supervisor) & pc_alignment_mask(sail_ctx, ()))
-        }}
-        (_, ctl_result::CTL_URET(())) => {{
+        }
+        (_, ctl_result::CTL_URET(())) => {
             let prev_priv = sail_ctx.cur_privilege;
             sail_ctx.mstatus = {
                 let var_271 = _get_Mstatus_UPIE(sail_ctx, sail_ctx.mstatus);
                 sail_ctx.mstatus.set_subrange::<0, 1, 1>(var_271)
             };
-            sail_ctx.mstatus = sail_ctx.mstatus.set_subrange::<4, 5, 1>(BitVector::<1>::new(0b1));
+            sail_ctx.mstatus = sail_ctx
+                .mstatus
+                .set_subrange::<4, 5, 1>(BitVector::<1>::new(0b1));
             sail_ctx.cur_privilege = Privilege::User;
-            if {get_config_print_reg(sail_ctx, ())} {
-                print_reg(format!("{}{}", String::from("CSR mstatus <- "), bits_str(sail_ctx.mstatus.bits)))
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
             } else {
                 ()
             };
-            if {get_config_print_platform(sail_ctx, ())} {
-                print_platform(format!("{}{}", String::from("ret-ing from "), format!("{}{}", privLevel_to_str(sail_ctx, prev_priv), format!("{}{}", String::from(" to "), privLevel_to_str(sail_ctx, sail_ctx.cur_privilege)))))
+            if { get_config_print_platform(sail_ctx, ()) } {
+                print_platform(format!(
+                    "{}{}",
+                    String::from("ret-ing from "),
+                    format!(
+                        "{}{}",
+                        privLevel_to_str(sail_ctx, prev_priv),
+                        format!(
+                            "{}{}",
+                            String::from(" to "),
+                            privLevel_to_str(sail_ctx, sail_ctx.cur_privilege)
+                        )
+                    )
+                ))
             } else {
                 ()
             };
             cancel_reservation(());
             (prepare_xret_target(sail_ctx, Privilege::User) & pc_alignment_mask(sail_ctx, ()))
-        }}
+        }
     }
 }
 
@@ -4692,7 +4836,7 @@ enum MemoryOpResult {
 }
 
 fn handle_illegal(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
-    let info = if {plat_mtval_has_illegal_inst_bits(())} {
+    let info = if { plat_mtval_has_illegal_inst_bits(()) } {
         Some(sail_ctx.instbits)
     } else {
         None
@@ -4700,7 +4844,7 @@ fn handle_illegal(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
     let t: sync_exception = sync_exception {
         trap: ExceptionType::E_Illegal_Instr(()),
         excinfo: info,
-        ext: None
+        ext: None,
     };
     {
         let var_272 = {
@@ -4715,7 +4859,7 @@ fn handle_illegal(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
 
 fn platform_wfi(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
     cancel_reservation(());
-    if {_operator_smaller_u_(sail_ctx, sail_ctx.mtime, sail_ctx.mtimecmp)} {
+    if { _operator_smaller_u_(sail_ctx, sail_ctx.mtime, sail_ctx.mtimecmp) } {
         sail_ctx.mtime = sail_ctx.mtimecmp;
         sail_ctx.mcycle = sail_ctx.mtimecmp
     } else {
@@ -4742,20 +4886,38 @@ enum PTW_Error {
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 enum PTW_Result {
-    PTW_Success((BitVector<64>, BitVector<64>, BitVector<64>, nat, bool, ext_ptw)),
+    PTW_Success(
+        (
+            BitVector<64>,
+            BitVector<64>,
+            BitVector<64>,
+            nat,
+            bool,
+            ext_ptw,
+        ),
+    ),
     PTW_Failure((PTW_Error, ext_ptw)),
 }
 
-fn legalize_satp(sail_ctx: &mut SailVirtCtx, a: Architecture, o: BitVector<64>, v: BitVector<64>) -> BitVector<64> {
-    if {(64 == 32)} {
+fn legalize_satp(
+    sail_ctx: &mut SailVirtCtx,
+    a: Architecture,
+    o: BitVector<64>,
+    v: BitVector<64>,
+) -> BitVector<64> {
+    if { (64 == 32) } {
         panic!("unreachable code")
-    } else if {(64 == 64)} {
+    } else if { (64 == 64) } {
         let o64: BitVector<64> = zero_extend_64(o);
         let v64: BitVector<64> = zero_extend_64(v);
         let new_satp: BitVector<64> = legalize_satp64(sail_ctx, a, o64, v64);
         truncate(new_satp, 64)
     } else {
-        internal_error(String::from("../sail-riscv/model/riscv_vmem.sail"), 205, format!("{}{}", String::from("Unsupported xlen"), dec_str(64)))
+        internal_error(
+            String::from("../sail-riscv/model/riscv_vmem.sail"),
+            205,
+            format!("{}{}", String::from("Unsupported xlen"), dec_str(64)),
+        )
     }
 }
 
@@ -4968,9 +5130,27 @@ enum ast {
     RISCV_XPERM8((regidx, regidx, regidx)),
     RISCV_XPERM4((regidx, regidx, regidx)),
     ZICOND_RTYPE((regidx, regidx, regidx, zicondop)),
-    VSETVLI((BitVector<1>, BitVector<1>, BitVector<3>, BitVector<3>, regidx, regidx)),
+    VSETVLI(
+        (
+            BitVector<1>,
+            BitVector<1>,
+            BitVector<3>,
+            BitVector<3>,
+            regidx,
+            regidx,
+        ),
+    ),
     VSETVL((regidx, regidx, regidx)),
-    VSETIVLI((BitVector<1>, BitVector<1>, BitVector<3>, BitVector<3>, regidx, regidx)),
+    VSETIVLI(
+        (
+            BitVector<1>,
+            BitVector<1>,
+            BitVector<3>,
+            BitVector<3>,
+            regidx,
+            regidx,
+        ),
+    ),
     VVTYPE((vvfunct6, BitVector<1>, regidx, regidx, regidx)),
     NVSTYPE((nvsfunct6, BitVector<1>, regidx, regidx, regidx)),
     NVTYPE((nvfunct6, BitVector<1>, regidx, regidx, regidx)),
@@ -5064,80 +5244,149 @@ enum ast {
 
 fn readCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>) -> BitVector<64> {
     let res: xlenbits = match (csr, 64) {
-        (b__0, _) if {(b__0 == BitVector::<12>::new(0b111100010001))} => {zero_extend_64(sail_ctx.mvendorid)}
-        (b__1, _) if {(b__1 == BitVector::<12>::new(0b111100010010))} => {sail_ctx.marchid}
-        (b__2, _) if {(b__2 == BitVector::<12>::new(0b111100010011))} => {sail_ctx.mimpid}
-        (b__3, _) if {(b__3 == BitVector::<12>::new(0b111100010100))} => {sail_ctx.mhartid}
-        (b__4, _) if {(b__4 == BitVector::<12>::new(0b111100010101))} => {sail_ctx.mconfigptr}
-        (b__5, _) if {(b__5 == BitVector::<12>::new(0b001100000000))} => {sail_ctx.mstatus.bits}
-        (b__6, _) if {(b__6 == BitVector::<12>::new(0b001100000001))} => {sail_ctx.misa.bits}
-        (b__7, _) if {(b__7 == BitVector::<12>::new(0b001100000010))} => {sail_ctx.medeleg.bits}
-        (b__8, _) if {(b__8 == BitVector::<12>::new(0b001100000011))} => {sail_ctx.mideleg.bits}
-        (b__9, _) if {(b__9 == BitVector::<12>::new(0b001100000100))} => {sail_ctx.mie.bits}
-        (b__10, _) if {(b__10 == BitVector::<12>::new(0b001100000101))} => {get_mtvec(sail_ctx, ())}
-        (b__11, _) if {(b__11 == BitVector::<12>::new(0b001100000110))} => {zero_extend_64(sail_ctx.mcounteren.bits)}
-        (b__12, _) if {(b__12 == BitVector::<12>::new(0b001100001010))} => {subrange_bits(sail_ctx.menvcfg.bits, (64 - 1), 0)}
-        (b__15, _) if {(b__15 == BitVector::<12>::new(0b001100100000))} => {zero_extend_64(sail_ctx.mcountinhibit.bits)}
-        (b__16, _) if {(b__16 == BitVector::<12>::new(0b001101000000))} => {sail_ctx.mscratch}
-        (b__17, _) if {(b__17 == BitVector::<12>::new(0b001101000001))} => {(get_xret_target(sail_ctx, Privilege::Machine) & pc_alignment_mask(sail_ctx, ()))}
-        (b__18, _) if {(b__18 == BitVector::<12>::new(0b001101000010))} => {sail_ctx.mcause.bits}
-        (b__19, _) if {(b__19 == BitVector::<12>::new(0b001101000011))} => {sail_ctx.mtval}
-        (b__20, _) if {(b__20 == BitVector::<12>::new(0b001101000100))} => {sail_ctx.mip.bits}
-        (v__12, _) if {{
+        (b__0, _) if { (b__0 == BitVector::<12>::new(0b111100010001)) } => {
+            zero_extend_64(sail_ctx.mvendorid)
+        }
+        (b__1, _) if { (b__1 == BitVector::<12>::new(0b111100010010)) } => sail_ctx.marchid,
+        (b__2, _) if { (b__2 == BitVector::<12>::new(0b111100010011)) } => sail_ctx.mimpid,
+        (b__3, _) if { (b__3 == BitVector::<12>::new(0b111100010100)) } => sail_ctx.mhartid,
+        (b__4, _) if { (b__4 == BitVector::<12>::new(0b111100010101)) } => sail_ctx.mconfigptr,
+        (b__5, _) if { (b__5 == BitVector::<12>::new(0b001100000000)) } => sail_ctx.mstatus.bits,
+        (b__6, _) if { (b__6 == BitVector::<12>::new(0b001100000001)) } => sail_ctx.misa.bits,
+        (b__7, _) if { (b__7 == BitVector::<12>::new(0b001100000010)) } => sail_ctx.medeleg.bits,
+        (b__8, _) if { (b__8 == BitVector::<12>::new(0b001100000011)) } => sail_ctx.mideleg.bits,
+        (b__9, _) if { (b__9 == BitVector::<12>::new(0b001100000100)) } => sail_ctx.mie.bits,
+        (b__10, _) if { (b__10 == BitVector::<12>::new(0b001100000101)) } => {
+            get_mtvec(sail_ctx, ())
+        }
+        (b__11, _) if { (b__11 == BitVector::<12>::new(0b001100000110)) } => {
+            zero_extend_64(sail_ctx.mcounteren.bits)
+        }
+        (b__12, _) if { (b__12 == BitVector::<12>::new(0b001100001010)) } => {
+            subrange_bits(sail_ctx.menvcfg.bits, (64 - 1), 0)
+        }
+        (b__15, _) if { (b__15 == BitVector::<12>::new(0b001100100000)) } => {
+            zero_extend_64(sail_ctx.mcountinhibit.bits)
+        }
+        (b__16, _) if { (b__16 == BitVector::<12>::new(0b001101000000)) } => sail_ctx.mscratch,
+        (b__17, _) if { (b__17 == BitVector::<12>::new(0b001101000001)) } => {
+            (get_xret_target(sail_ctx, Privilege::Machine) & pc_alignment_mask(sail_ctx, ()))
+        }
+        (b__18, _) if { (b__18 == BitVector::<12>::new(0b001101000010)) } => sail_ctx.mcause.bits,
+        (b__19, _) if { (b__19 == BitVector::<12>::new(0b001101000011)) } => sail_ctx.mtval,
+        (b__20, _) if { (b__20 == BitVector::<12>::new(0b001101000100)) } => sail_ctx.mip.bits,
+        (v__12, _)
+            if {
+                {
+                    let idx: BitVector<4> = v__12.subrange::<0, 4, 4>();
+                    ((bitvector_access(idx, 0) == false) || (64 == 32))
+                        && (v__12.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111010))
+                }
+            } =>
+        {
             let idx: BitVector<4> = v__12.subrange::<0, 4, 4>();
-            ((bitvector_access(idx, 0) == false) || (64 == 32)) && (v__12.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111010))
-        }} => {let idx: BitVector<4> = v__12.subrange::<0, 4, 4>();
             let var_276 = idx.as_usize();
-            pmpReadCfgReg(sail_ctx, var_276)}
-        (v__14, _) if {(v__14.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111011))} => {let idx: BitVector<4> = v__14.subrange::<0, 4, 4>();
+            pmpReadCfgReg(sail_ctx, var_276)
+        }
+        (v__14, _) if { (v__14.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111011)) } => {
+            let idx: BitVector<4> = v__14.subrange::<0, 4, 4>();
             let var_277 = bitvector_concat(BitVector::<2>::new(0b00), idx).as_usize();
-            pmpReadAddrReg(sail_ctx, var_277)}
-        (v__16, _) if {(v__16.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111100))} => {let idx: BitVector<4> = v__16.subrange::<0, 4, 4>();
+            pmpReadAddrReg(sail_ctx, var_277)
+        }
+        (v__16, _) if { (v__16.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111100)) } => {
+            let idx: BitVector<4> = v__16.subrange::<0, 4, 4>();
             let var_278 = bitvector_concat(BitVector::<2>::new(0b01), idx).as_usize();
-            pmpReadAddrReg(sail_ctx, var_278)}
-        (v__18, _) if {(v__18.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111101))} => {let idx: BitVector<4> = v__18.subrange::<0, 4, 4>();
+            pmpReadAddrReg(sail_ctx, var_278)
+        }
+        (v__18, _) if { (v__18.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111101)) } => {
+            let idx: BitVector<4> = v__18.subrange::<0, 4, 4>();
             let var_279 = bitvector_concat(BitVector::<2>::new(0b10), idx).as_usize();
-            pmpReadAddrReg(sail_ctx, var_279)}
-        (v__20, _) if {(v__20.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111110))} => {let idx: BitVector<4> = v__20.subrange::<0, 4, 4>();
+            pmpReadAddrReg(sail_ctx, var_279)
+        }
+        (v__20, _) if { (v__20.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111110)) } => {
+            let idx: BitVector<4> = v__20.subrange::<0, 4, 4>();
             let var_280 = bitvector_concat(BitVector::<2>::new(0b11), idx).as_usize();
-            pmpReadAddrReg(sail_ctx, var_280)}
-        (b__21, _) if {(b__21 == BitVector::<12>::new(0b101100000000))} => {subrange_bits(sail_ctx.mcycle, (64 - 1), 0)}
-        (b__22, _) if {(b__22 == BitVector::<12>::new(0b101100000010))} => {subrange_bits(sail_ctx.minstret, (64 - 1), 0)}
-        (b__25, _) if {(b__25 == BitVector::<12>::new(0b000000001000))} => {zero_extend_64(sail_ctx.vstart)}
-        (b__26, _) if {(b__26 == BitVector::<12>::new(0b000000001001))} => {zero_extend_64(sail_ctx.vxsat)}
-        (b__27, _) if {(b__27 == BitVector::<12>::new(0b000000001010))} => {zero_extend_64(sail_ctx.vxrm)}
-        (b__28, _) if {(b__28 == BitVector::<12>::new(0b000000001111))} => {zero_extend_64(sail_ctx.vcsr.bits)}
-        (b__29, _) if {(b__29 == BitVector::<12>::new(0b110000100000))} => {sail_ctx.vl}
-        (b__30, _) if {(b__30 == BitVector::<12>::new(0b110000100001))} => {sail_ctx.vtype.bits}
-        (b__31, _) if {(b__31 == BitVector::<12>::new(0b110000100010))} => {sail_ctx.vlenb}
-        (b__32, _) if {(b__32 == BitVector::<12>::new(0b011110100000))} => {!(sail_ctx.tselect)}
-        (b__33, _) if {(b__33 == BitVector::<12>::new(0b000100000000))} => {lower_mstatus(sail_ctx, sail_ctx.mstatus).bits}
-        (b__34, _) if {(b__34 == BitVector::<12>::new(0b000100000010))} => {sail_ctx.sedeleg.bits}
-        (b__35, _) if {(b__35 == BitVector::<12>::new(0b000100000011))} => {sail_ctx.sideleg.bits}
-        (b__36, _) if {(b__36 == BitVector::<12>::new(0b000100000100))} => {lower_mie(sail_ctx, sail_ctx.mie, sail_ctx.mideleg).bits}
-        (b__37, _) if {(b__37 == BitVector::<12>::new(0b000100000101))} => {get_stvec(sail_ctx, ())}
-        (b__38, _) if {(b__38 == BitVector::<12>::new(0b000100000110))} => {zero_extend_64(sail_ctx.scounteren.bits)}
-        (b__39, _) if {(b__39 == BitVector::<12>::new(0b000100001010))} => {subrange_bits(sail_ctx.senvcfg.bits, (64 - 1), 0)}
-        (b__40, _) if {(b__40 == BitVector::<12>::new(0b000101000000))} => {sail_ctx.sscratch}
-        (b__41, _) if {(b__41 == BitVector::<12>::new(0b000101000001))} => {(get_xret_target(sail_ctx, Privilege::Supervisor) & pc_alignment_mask(sail_ctx, ()))}
-        (b__42, _) if {(b__42 == BitVector::<12>::new(0b000101000010))} => {sail_ctx.scause.bits}
-        (b__43, _) if {(b__43 == BitVector::<12>::new(0b000101000011))} => {sail_ctx.stval}
-        (b__44, _) if {(b__44 == BitVector::<12>::new(0b000101000100))} => {lower_mip(sail_ctx, sail_ctx.mip, sail_ctx.mideleg).bits}
-        (b__45, _) if {(b__45 == BitVector::<12>::new(0b000110000000))} => {sail_ctx.satp}
-        (b__46, _) if {(b__46 == BitVector::<12>::new(0b110000000000))} => {subrange_bits(sail_ctx.mcycle, (64 - 1), 0)}
-        (b__47, _) if {(b__47 == BitVector::<12>::new(0b110000000001))} => {subrange_bits(sail_ctx.mtime, (64 - 1), 0)}
-        (b__48, _) if {(b__48 == BitVector::<12>::new(0b110000000010))} => {subrange_bits(sail_ctx.minstret, (64 - 1), 0)}
-        (b__52, _) if {(b__52 == BitVector::<12>::new(0b000000010101))} => {read_seed_csr(sail_ctx, ())}
-        _ => {match ext_read_CSR(sail_ctx, csr) {
-            Some(res) => {res}
-            None => {{
+            pmpReadAddrReg(sail_ctx, var_280)
+        }
+        (b__21, _) if { (b__21 == BitVector::<12>::new(0b101100000000)) } => {
+            subrange_bits(sail_ctx.mcycle, (64 - 1), 0)
+        }
+        (b__22, _) if { (b__22 == BitVector::<12>::new(0b101100000010)) } => {
+            subrange_bits(sail_ctx.minstret, (64 - 1), 0)
+        }
+        (b__25, _) if { (b__25 == BitVector::<12>::new(0b000000001000)) } => {
+            zero_extend_64(sail_ctx.vstart)
+        }
+        (b__26, _) if { (b__26 == BitVector::<12>::new(0b000000001001)) } => {
+            zero_extend_64(sail_ctx.vxsat)
+        }
+        (b__27, _) if { (b__27 == BitVector::<12>::new(0b000000001010)) } => {
+            zero_extend_64(sail_ctx.vxrm)
+        }
+        (b__28, _) if { (b__28 == BitVector::<12>::new(0b000000001111)) } => {
+            zero_extend_64(sail_ctx.vcsr.bits)
+        }
+        (b__29, _) if { (b__29 == BitVector::<12>::new(0b110000100000)) } => sail_ctx.vl,
+        (b__30, _) if { (b__30 == BitVector::<12>::new(0b110000100001)) } => sail_ctx.vtype.bits,
+        (b__31, _) if { (b__31 == BitVector::<12>::new(0b110000100010)) } => sail_ctx.vlenb,
+        (b__32, _) if { (b__32 == BitVector::<12>::new(0b011110100000)) } => !(sail_ctx.tselect),
+        (b__33, _) if { (b__33 == BitVector::<12>::new(0b000100000000)) } => {
+            lower_mstatus(sail_ctx, sail_ctx.mstatus).bits
+        }
+        (b__34, _) if { (b__34 == BitVector::<12>::new(0b000100000010)) } => sail_ctx.sedeleg.bits,
+        (b__35, _) if { (b__35 == BitVector::<12>::new(0b000100000011)) } => sail_ctx.sideleg.bits,
+        (b__36, _) if { (b__36 == BitVector::<12>::new(0b000100000100)) } => {
+            lower_mie(sail_ctx, sail_ctx.mie, sail_ctx.mideleg).bits
+        }
+        (b__37, _) if { (b__37 == BitVector::<12>::new(0b000100000101)) } => {
+            get_stvec(sail_ctx, ())
+        }
+        (b__38, _) if { (b__38 == BitVector::<12>::new(0b000100000110)) } => {
+            zero_extend_64(sail_ctx.scounteren.bits)
+        }
+        (b__39, _) if { (b__39 == BitVector::<12>::new(0b000100001010)) } => {
+            subrange_bits(sail_ctx.senvcfg.bits, (64 - 1), 0)
+        }
+        (b__40, _) if { (b__40 == BitVector::<12>::new(0b000101000000)) } => sail_ctx.sscratch,
+        (b__41, _) if { (b__41 == BitVector::<12>::new(0b000101000001)) } => {
+            (get_xret_target(sail_ctx, Privilege::Supervisor) & pc_alignment_mask(sail_ctx, ()))
+        }
+        (b__42, _) if { (b__42 == BitVector::<12>::new(0b000101000010)) } => sail_ctx.scause.bits,
+        (b__43, _) if { (b__43 == BitVector::<12>::new(0b000101000011)) } => sail_ctx.stval,
+        (b__44, _) if { (b__44 == BitVector::<12>::new(0b000101000100)) } => {
+            lower_mip(sail_ctx, sail_ctx.mip, sail_ctx.mideleg).bits
+        }
+        (b__45, _) if { (b__45 == BitVector::<12>::new(0b000110000000)) } => sail_ctx.satp,
+        (b__46, _) if { (b__46 == BitVector::<12>::new(0b110000000000)) } => {
+            subrange_bits(sail_ctx.mcycle, (64 - 1), 0)
+        }
+        (b__47, _) if { (b__47 == BitVector::<12>::new(0b110000000001)) } => {
+            subrange_bits(sail_ctx.mtime, (64 - 1), 0)
+        }
+        (b__48, _) if { (b__48 == BitVector::<12>::new(0b110000000010)) } => {
+            subrange_bits(sail_ctx.minstret, (64 - 1), 0)
+        }
+        (b__52, _) if { (b__52 == BitVector::<12>::new(0b000000010101)) } => {
+            read_seed_csr(sail_ctx, ())
+        }
+        _ => match ext_read_CSR(sail_ctx, csr) {
+            Some(res) => res,
+            None => {
                 print_output(String::from("unhandled read to CSR "), csr);
                 zero_extend_64(BitVector::<4>::new(0b0000))
-            }}
-        }}
+            }
+        },
     };
-    if {get_config_print_reg(sail_ctx, ())} {
-        print_reg(format!("{}{}", String::from("CSR "), format!("{}{}", csr_name(sail_ctx, csr), format!("{}{}", String::from(" -> "), bits_str(res)))))
+    if { get_config_print_reg(sail_ctx, ()) } {
+        print_reg(format!(
+            "{}{}",
+            String::from("CSR "),
+            format!(
+                "{}{}",
+                csr_name(sail_ctx, csr),
+                format!("{}{}", String::from(" -> "), bits_str(res))
+            )
+        ))
     } else {
         ()
     };
@@ -5146,147 +5395,163 @@ fn readCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>) -> BitVector<64> {
 
 fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector<64>) {
     let res: Option<xlenbits> = match (csr, 64) {
-        (b__0, _) if {(b__0 == BitVector::<12>::new(0b001100000000))} => {{
+        (b__0, _) if { (b__0 == BitVector::<12>::new(0b001100000000)) } => {
             sail_ctx.mstatus = legalize_mstatus(sail_ctx, sail_ctx.mstatus, value);
             Some(sail_ctx.mstatus.bits)
-        }}
-        (b__1, _) if {(b__1 == BitVector::<12>::new(0b001100000001))} => {{
+        }
+        (b__1, _) if { (b__1 == BitVector::<12>::new(0b001100000001)) } => {
             sail_ctx.misa = legalize_misa(sail_ctx, sail_ctx.misa, value);
             Some(sail_ctx.misa.bits)
-        }}
-        (b__2, _) if {(b__2 == BitVector::<12>::new(0b001100000010))} => {{
+        }
+        (b__2, _) if { (b__2 == BitVector::<12>::new(0b001100000010)) } => {
             sail_ctx.medeleg = legalize_medeleg(sail_ctx, sail_ctx.medeleg, value);
             Some(sail_ctx.medeleg.bits)
-        }}
-        (b__3, _) if {(b__3 == BitVector::<12>::new(0b001100000011))} => {{
+        }
+        (b__3, _) if { (b__3 == BitVector::<12>::new(0b001100000011)) } => {
             sail_ctx.mideleg = legalize_mideleg(sail_ctx, sail_ctx.mideleg, value);
             Some(sail_ctx.mideleg.bits)
-        }}
-        (b__4, _) if {(b__4 == BitVector::<12>::new(0b001100000100))} => {{
+        }
+        (b__4, _) if { (b__4 == BitVector::<12>::new(0b001100000100)) } => {
             sail_ctx.mie = legalize_mie(sail_ctx, sail_ctx.mie, value);
             Some(sail_ctx.mie.bits)
-        }}
-        (b__5, _) if {(b__5 == BitVector::<12>::new(0b001100000101))} => {{
+        }
+        (b__5, _) if { (b__5 == BitVector::<12>::new(0b001100000101)) } => {
             Some(set_mtvec(sail_ctx, value))
-        }}
-        (b__6, _) if {(b__6 == BitVector::<12>::new(0b001100000110))} => {{
+        }
+        (b__6, _) if { (b__6 == BitVector::<12>::new(0b001100000110)) } => {
             sail_ctx.mcounteren = legalize_mcounteren(sail_ctx, sail_ctx.mcounteren, value);
             Some(zero_extend_64(sail_ctx.mcounteren.bits))
-        }}
-        (b__8, 64) if {(b__8 == BitVector::<12>::new(0b001100001010))} => {{
+        }
+        (b__8, 64) if { (b__8 == BitVector::<12>::new(0b001100001010)) } => {
             sail_ctx.menvcfg = legalize_menvcfg(sail_ctx, sail_ctx.menvcfg, value);
             Some(sail_ctx.menvcfg.bits)
-        }}
-        (b__11, _) if {(b__11 == BitVector::<12>::new(0b001100100000))} => {{
-            sail_ctx.mcountinhibit = legalize_mcountinhibit(sail_ctx, sail_ctx.mcountinhibit, value);
+        }
+        (b__11, _) if { (b__11 == BitVector::<12>::new(0b001100100000)) } => {
+            sail_ctx.mcountinhibit =
+                legalize_mcountinhibit(sail_ctx, sail_ctx.mcountinhibit, value);
             Some(zero_extend_64(sail_ctx.mcountinhibit.bits))
-        }}
-        (b__12, _) if {(b__12 == BitVector::<12>::new(0b001101000000))} => {{
+        }
+        (b__12, _) if { (b__12 == BitVector::<12>::new(0b001101000000)) } => {
             sail_ctx.mscratch = value;
             Some(sail_ctx.mscratch)
-        }}
-        (b__13, _) if {(b__13 == BitVector::<12>::new(0b001101000001))} => {{
+        }
+        (b__13, _) if { (b__13 == BitVector::<12>::new(0b001101000001)) } => {
             Some(set_xret_target(sail_ctx, Privilege::Machine, value))
-        }}
-        (b__14, _) if {(b__14 == BitVector::<12>::new(0b001101000010))} => {{
+        }
+        (b__14, _) if { (b__14 == BitVector::<12>::new(0b001101000010)) } => {
             sail_ctx.mcause.bits = value;
             Some(sail_ctx.mcause.bits)
-        }}
-        (b__15, _) if {(b__15 == BitVector::<12>::new(0b001101000011))} => {{
+        }
+        (b__15, _) if { (b__15 == BitVector::<12>::new(0b001101000011)) } => {
             sail_ctx.mtval = value;
             Some(sail_ctx.mtval)
-        }}
-        (b__16, _) if {(b__16 == BitVector::<12>::new(0b001101000100))} => {{
+        }
+        (b__16, _) if { (b__16 == BitVector::<12>::new(0b001101000100)) } => {
             sail_ctx.mip = legalize_mip(sail_ctx, sail_ctx.mip, value);
             Some(sail_ctx.mip.bits)
-        }}
-        (v__22, _) if {{
+        }
+        (v__22, _)
+            if {
+                {
+                    let idx: BitVector<4> = v__22.subrange::<0, 4, 4>();
+                    ((bitvector_access(idx, 0) == false) || (64 == 32))
+                        && (v__22.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111010))
+                }
+            } =>
+        {
             let idx: BitVector<4> = v__22.subrange::<0, 4, 4>();
-            ((bitvector_access(idx, 0) == false) || (64 == 32)) && (v__22.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111010))
-        }} => {let idx: BitVector<4> = v__22.subrange::<0, 4, 4>();
             let idx = idx.as_usize();
             pmpWriteCfgReg(sail_ctx, idx, value);
-            Some(pmpReadCfgReg(sail_ctx, idx))}
-        (v__24, _) if {(v__24.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111011))} => {let idx: BitVector<4> = v__24.subrange::<0, 4, 4>();
+            Some(pmpReadCfgReg(sail_ctx, idx))
+        }
+        (v__24, _) if { (v__24.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111011)) } => {
+            let idx: BitVector<4> = v__24.subrange::<0, 4, 4>();
             let idx = bitvector_concat(BitVector::<2>::new(0b00), idx).as_usize();
             pmpWriteAddrReg(sail_ctx, idx, value);
-            Some(pmpReadAddrReg(sail_ctx, idx))}
-        (v__26, _) if {(v__26.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111100))} => {let idx: BitVector<4> = v__26.subrange::<0, 4, 4>();
+            Some(pmpReadAddrReg(sail_ctx, idx))
+        }
+        (v__26, _) if { (v__26.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111100)) } => {
+            let idx: BitVector<4> = v__26.subrange::<0, 4, 4>();
             let idx = bitvector_concat(BitVector::<2>::new(0b01), idx).as_usize();
             pmpWriteAddrReg(sail_ctx, idx, value);
-            Some(pmpReadAddrReg(sail_ctx, idx))}
-        (v__28, _) if {(v__28.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111101))} => {let idx: BitVector<4> = v__28.subrange::<0, 4, 4>();
+            Some(pmpReadAddrReg(sail_ctx, idx))
+        }
+        (v__28, _) if { (v__28.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111101)) } => {
+            let idx: BitVector<4> = v__28.subrange::<0, 4, 4>();
             let idx = bitvector_concat(BitVector::<2>::new(0b10), idx).as_usize();
             pmpWriteAddrReg(sail_ctx, idx, value);
-            Some(pmpReadAddrReg(sail_ctx, idx))}
-        (v__30, _) if {(v__30.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111110))} => {let idx: BitVector<4> = v__30.subrange::<0, 4, 4>();
+            Some(pmpReadAddrReg(sail_ctx, idx))
+        }
+        (v__30, _) if { (v__30.subrange::<4, 12, 8>() == BitVector::<8>::new(0b00111110)) } => {
+            let idx: BitVector<4> = v__30.subrange::<0, 4, 4>();
             let idx = bitvector_concat(BitVector::<2>::new(0b11), idx).as_usize();
             pmpWriteAddrReg(sail_ctx, idx, value);
-            Some(pmpReadAddrReg(sail_ctx, idx))}
-        (b__17, _) if {(b__17 == BitVector::<12>::new(0b101100000000))} => {{
+            Some(pmpReadAddrReg(sail_ctx, idx))
+        }
+        (b__17, _) if { (b__17 == BitVector::<12>::new(0b101100000000)) } => {
             sail_ctx.mcycle = value;
             Some(value)
-        }}
-        (b__18, _) if {(b__18 == BitVector::<12>::new(0b101100000010))} => {{
+        }
+        (b__18, _) if { (b__18 == BitVector::<12>::new(0b101100000010)) } => {
             sail_ctx.minstret = value;
             sail_ctx.minstret_increment = false;
             Some(value)
-        }}
-        (b__21, _) if {(b__21 == BitVector::<12>::new(0b011110100000))} => {{
+        }
+        (b__21, _) if { (b__21 == BitVector::<12>::new(0b011110100000)) } => {
             sail_ctx.tselect = value;
             Some(sail_ctx.tselect)
-        }}
-        (b__22, _) if {(b__22 == BitVector::<12>::new(0b000100000000))} => {{
+        }
+        (b__22, _) if { (b__22 == BitVector::<12>::new(0b000100000000)) } => {
             sail_ctx.mstatus = legalize_sstatus(sail_ctx, sail_ctx.mstatus, value);
             Some(sail_ctx.mstatus.bits)
-        }}
-        (b__23, _) if {(b__23 == BitVector::<12>::new(0b000100000010))} => {{
+        }
+        (b__23, _) if { (b__23 == BitVector::<12>::new(0b000100000010)) } => {
             sail_ctx.sedeleg = legalize_sedeleg(sail_ctx, sail_ctx.sedeleg, value);
             Some(sail_ctx.sedeleg.bits)
-        }}
-        (b__24, _) if {(b__24 == BitVector::<12>::new(0b000100000011))} => {{
+        }
+        (b__24, _) if { (b__24 == BitVector::<12>::new(0b000100000011)) } => {
             sail_ctx.sideleg.bits = value;
             Some(sail_ctx.sideleg.bits)
-        }}
-        (b__25, _) if {(b__25 == BitVector::<12>::new(0b000100000100))} => {{
+        }
+        (b__25, _) if { (b__25 == BitVector::<12>::new(0b000100000100)) } => {
             sail_ctx.mie = legalize_sie(sail_ctx, sail_ctx.mie, sail_ctx.mideleg, value);
             Some(sail_ctx.mie.bits)
-        }}
-        (b__26, _) if {(b__26 == BitVector::<12>::new(0b000100000101))} => {{
+        }
+        (b__26, _) if { (b__26 == BitVector::<12>::new(0b000100000101)) } => {
             Some(set_stvec(sail_ctx, value))
-        }}
-        (b__27, _) if {(b__27 == BitVector::<12>::new(0b000100000110))} => {{
+        }
+        (b__27, _) if { (b__27 == BitVector::<12>::new(0b000100000110)) } => {
             sail_ctx.scounteren = legalize_scounteren(sail_ctx, sail_ctx.scounteren, value);
             Some(zero_extend_64(sail_ctx.scounteren.bits))
-        }}
-        (b__28, _) if {(b__28 == BitVector::<12>::new(0b000100001010))} => {{
+        }
+        (b__28, _) if { (b__28 == BitVector::<12>::new(0b000100001010)) } => {
             sail_ctx.senvcfg = {
                 let var_285 = sail_ctx.senvcfg;
                 let var_286 = zero_extend_64(value);
                 legalize_senvcfg(sail_ctx, var_285, var_286)
             };
             Some(subrange_bits(sail_ctx.senvcfg.bits, (64 - 1), 0))
-        }}
-        (b__29, _) if {(b__29 == BitVector::<12>::new(0b000101000000))} => {{
+        }
+        (b__29, _) if { (b__29 == BitVector::<12>::new(0b000101000000)) } => {
             sail_ctx.sscratch = value;
             Some(sail_ctx.sscratch)
-        }}
-        (b__30, _) if {(b__30 == BitVector::<12>::new(0b000101000001))} => {{
+        }
+        (b__30, _) if { (b__30 == BitVector::<12>::new(0b000101000001)) } => {
             Some(set_xret_target(sail_ctx, Privilege::Supervisor, value))
-        }}
-        (b__31, _) if {(b__31 == BitVector::<12>::new(0b000101000010))} => {{
+        }
+        (b__31, _) if { (b__31 == BitVector::<12>::new(0b000101000010)) } => {
             sail_ctx.scause.bits = value;
             Some(sail_ctx.scause.bits)
-        }}
-        (b__32, _) if {(b__32 == BitVector::<12>::new(0b000101000011))} => {{
+        }
+        (b__32, _) if { (b__32 == BitVector::<12>::new(0b000101000011)) } => {
             sail_ctx.stval = value;
             Some(sail_ctx.stval)
-        }}
-        (b__33, _) if {(b__33 == BitVector::<12>::new(0b000101000100))} => {{
+        }
+        (b__33, _) if { (b__33 == BitVector::<12>::new(0b000101000100)) } => {
             sail_ctx.mip = legalize_sip(sail_ctx, sail_ctx.mip, sail_ctx.mideleg, value);
             Some(sail_ctx.mip.bits)
-        }}
-        (b__34, _) if {(b__34 == BitVector::<12>::new(0b000110000000))} => {{
+        }
+        (b__34, _) if { (b__34 == BitVector::<12>::new(0b000110000000)) } => {
             sail_ctx.satp = {
                 let var_287 = cur_Architecture(sail_ctx, ());
                 let var_288 = sail_ctx.satp;
@@ -5294,75 +5559,105 @@ fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector<64>
                 legalize_satp(sail_ctx, var_287, var_288, var_289)
             };
             Some(sail_ctx.satp)
-        }}
-        (b__35, _) if {(b__35 == BitVector::<12>::new(0b000000010101))} => {write_seed_csr(sail_ctx, ())}
-        (b__36, _) if {(b__36 == BitVector::<12>::new(0b000000001000))} => {{
+        }
+        (b__35, _) if { (b__35 == BitVector::<12>::new(0b000000010101)) } => {
+            write_seed_csr(sail_ctx, ())
+        }
+        (b__36, _) if { (b__36 == BitVector::<12>::new(0b000000001000)) } => {
             let vstart_length = get_vlen_pow(sail_ctx, ());
             sail_ctx.vstart = zero_extend_16(subrange_bits(value, (vstart_length - 1), 0));
             Some(zero_extend_64(sail_ctx.vstart))
-        }}
-        (b__37, _) if {(b__37 == BitVector::<12>::new(0b000000001001))} => {{
+        }
+        (b__37, _) if { (b__37 == BitVector::<12>::new(0b000000001001)) } => {
             sail_ctx.vxsat = value.subrange::<0, 1, 1>();
             Some(zero_extend_64(sail_ctx.vxsat))
-        }}
-        (b__38, _) if {(b__38 == BitVector::<12>::new(0b000000001010))} => {{
+        }
+        (b__38, _) if { (b__38 == BitVector::<12>::new(0b000000001010)) } => {
             sail_ctx.vxrm = value.subrange::<0, 2, 2>();
             Some(zero_extend_64(sail_ctx.vxrm))
-        }}
-        (b__39, _) if {(b__39 == BitVector::<12>::new(0b000000001111))} => {{
+        }
+        (b__39, _) if { (b__39 == BitVector::<12>::new(0b000000001111)) } => {
             sail_ctx.vcsr.bits = value.subrange::<0, 3, 3>();
             Some(zero_extend_64(sail_ctx.vcsr.bits))
-        }}
-        (b__40, _) if {(b__40 == BitVector::<12>::new(0b110000100000))} => {{
+        }
+        (b__40, _) if { (b__40 == BitVector::<12>::new(0b110000100000)) } => {
             sail_ctx.vl = value;
             Some(sail_ctx.vl)
-        }}
-        (b__41, _) if {(b__41 == BitVector::<12>::new(0b110000100001))} => {{
+        }
+        (b__41, _) if { (b__41 == BitVector::<12>::new(0b110000100001)) } => {
             sail_ctx.vtype.bits = value;
             Some(sail_ctx.vtype.bits)
-        }}
-        (b__42, _) if {(b__42 == BitVector::<12>::new(0b110000100010))} => {{
+        }
+        (b__42, _) if { (b__42 == BitVector::<12>::new(0b110000100010)) } => {
             sail_ctx.vlenb = value;
             Some(sail_ctx.vlenb)
-        }}
-        _ => {ext_write_CSR(sail_ctx, csr, value)}
+        }
+        _ => ext_write_CSR(sail_ctx, csr, value),
     };
     match res {
-        Some(v) => {if {get_config_print_reg(sail_ctx, ())} {
-            print_reg(format!("{}{}", String::from("CSR "), format!("{}{}", csr_name(sail_ctx, csr), format!("{}{}", String::from(" <- "), format!("{}{}", bits_str(v), format!("{}{}", String::from(" (input: "), format!("{}{}", bits_str(value), String::from(")"))))))))
-        } else {
-            ()
-        }}
-        None => {print_output(String::from("unhandled write to CSR "), csr)}
+        Some(v) => {
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR "),
+                    format!(
+                        "{}{}",
+                        csr_name(sail_ctx, csr),
+                        format!(
+                            "{}{}",
+                            String::from(" <- "),
+                            format!(
+                                "{}{}",
+                                bits_str(v),
+                                format!(
+                                    "{}{}",
+                                    String::from(" (input: "),
+                                    format!("{}{}", bits_str(value), String::from(")"))
+                                )
+                            )
+                        )
+                    )
+                ))
+            } else {
+                ()
+            }
+        }
+        None => print_output(String::from("unhandled write to CSR "), csr),
     }
 }
 
-fn execute_ITYPE(sail_ctx: &mut SailVirtCtx, imm: BitVector<12>, rs1: regidx, rd: regidx, op: iop) -> Retired {
+fn execute_ITYPE(
+    sail_ctx: &mut SailVirtCtx,
+    imm: BitVector<12>,
+    rs1: regidx,
+    rd: regidx,
+    op: iop,
+) -> Retired {
     let rs1_val = rX_bits(sail_ctx, rs1);
     let immext: xlenbits = sign_extend(64, imm);
     let result: xlenbits = match op {
-        iop::RISCV_ADDI => {rs1_val.wrapped_add(immext)}
-        iop::RISCV_SLTI => {zero_extend_64({
+        iop::RISCV_ADDI => rs1_val.wrapped_add(immext),
+        iop::RISCV_SLTI => zero_extend_64({
             let var_290 = _operator_smaller_s_(sail_ctx, rs1_val, immext);
             bool_to_bits(sail_ctx, var_290)
-        })}
-        iop::RISCV_SLTIU => {zero_extend_64({
+        }),
+        iop::RISCV_SLTIU => zero_extend_64({
             let var_291 = _operator_smaller_u_(sail_ctx, rs1_val, immext);
             bool_to_bits(sail_ctx, var_291)
-        })}
-        iop::RISCV_ANDI => {(rs1_val & immext)}
-        iop::RISCV_ORI => {(rs1_val | immext)}
-        iop::RISCV_XORI => {(rs1_val ^ immext)}
+        }),
+        iop::RISCV_ANDI => (rs1_val & immext),
+        iop::RISCV_ORI => (rs1_val | immext),
+        iop::RISCV_XORI => (rs1_val ^ immext),
     };
     wX_bits(sail_ctx, rd, result);
     Retired::RETIRE_SUCCESS
 }
 
 pub(crate) fn execute_MRET(sail_ctx: &mut SailVirtCtx) -> Retired {
-    if {(sail_ctx.cur_privilege != Privilege::Machine)} {
+    if { (sail_ctx.cur_privilege != Privilege::Machine) } {
         handle_illegal(sail_ctx, ());
         Retired::RETIRE_FAIL
-    } else if {!(ext_check_xret_priv(sail_ctx, Privilege::Machine))} {
+    } else if { !(ext_check_xret_priv(sail_ctx, Privilege::Machine)) } {
         ext_fail_xret_priv(sail_ctx, ());
         Retired::RETIRE_FAIL
     } else {
@@ -5381,51 +5676,62 @@ pub(crate) fn execute_MRET(sail_ctx: &mut SailVirtCtx) -> Retired {
 
 fn execute_WFI(sail_ctx: &mut SailVirtCtx) -> Retired {
     match sail_ctx.cur_privilege {
-        Privilege::Machine => {{
+        Privilege::Machine => {
             platform_wfi(sail_ctx, ());
             Retired::RETIRE_SUCCESS
-        }}
-        Privilege::Supervisor => {if {(_get_Mstatus_TW(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1))} {
+        }
+        Privilege::Supervisor => {
+            if { (_get_Mstatus_TW(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1)) } {
+                handle_illegal(sail_ctx, ());
+                Retired::RETIRE_FAIL
+            } else {
+                platform_wfi(sail_ctx, ());
+                Retired::RETIRE_SUCCESS
+            }
+        }
+        Privilege::User => {
             handle_illegal(sail_ctx, ());
             Retired::RETIRE_FAIL
-        } else {
-            platform_wfi(sail_ctx, ());
-            Retired::RETIRE_SUCCESS
-        }}
-        Privilege::User => {{
-            handle_illegal(sail_ctx, ());
-            Retired::RETIRE_FAIL
-        }}
+        }
     }
 }
 
-fn execute_CSR(sail_ctx: &mut SailVirtCtx, csr: csreg, rs1: regidx, rd: regidx, is_imm: bool, op: csrop) -> Retired {
-    let rs1_val: xlenbits = if {is_imm} {
+fn execute_CSR(
+    sail_ctx: &mut SailVirtCtx,
+    csr: csreg,
+    rs1: regidx,
+    rd: regidx,
+    is_imm: bool,
+    op: csrop,
+) -> Retired {
+    let rs1_val: xlenbits = if { is_imm } {
         zero_extend_64(rs1)
     } else {
         rX_bits(sail_ctx, rs1)
     };
     let isWrite: bool = match op {
-        csrop::CSRRW => {true}
-        _ => {if {is_imm} {
-            (rs1_val.as_usize() != 0)
-        } else {
-            (rs1.as_usize() != 0)
-        }}
+        csrop::CSRRW => true,
+        _ => {
+            if { is_imm } {
+                (rs1_val.as_usize() != 0)
+            } else {
+                (rs1.as_usize() != 0)
+            }
+        }
     };
-    if {!(check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite))} {
+    if { !(check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
         handle_illegal(sail_ctx, ());
         Retired::RETIRE_FAIL
-    } else if {!(ext_check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite))} {
+    } else if { !(ext_check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
         ext_check_CSR_fail(sail_ctx, ());
         Retired::RETIRE_FAIL
     } else {
         let csr_val = readCSR(sail_ctx, csr);
-        if {isWrite} {
+        if { isWrite } {
             let new_val: xlenbits = match op {
-                csrop::CSRRW => {rs1_val}
-                csrop::CSRRS => {(csr_val | rs1_val)}
-                csrop::CSRRC => {(csr_val & !(rs1_val))}
+                csrop::CSRRW => rs1_val,
+                csrop::CSRRS => (csr_val | rs1_val),
+                csrop::CSRRC => (csr_val & !(rs1_val)),
             };
             writeCSR(sail_ctx, csr, new_val)
         } else {

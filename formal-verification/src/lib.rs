@@ -101,4 +101,41 @@ mod verification {
 
         assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
+
+    #[kani::proof]
+    pub fn read_csr() {
+        let mpp = match kani::any::<u8>() % 3 {
+            0 => 0b00,
+            1 => 0b01,
+            2 => 0b11,
+            _ => unreachable!(),
+        };
+        let mstatus = kani::any::<usize>() & !(0b11 << mstatus::MPP_OFFSET);
+
+        let mut ctx = VirtContext::new(
+            0,
+            0,
+            ExtensionsCapability {
+                has_h_extension: false,
+                has_s_extension: false,
+            },
+        );
+
+        ctx.csr.mepc = kani::any::<usize>() & (!0b11);
+        ctx.csr.sepc = kani::any();
+        ctx.csr.mstatus = mstatus | (mpp << mstatus::MPP_OFFSET);
+        ctx.mode = Mode::M;
+        ctx.pc = kani::any();
+
+        let mut sail_ctx = SailVirtCtx::from(&mut ctx);
+        sail::execute_MRET(&mut sail_ctx);
+
+        // Initialize Miralis's own context
+        let hw = unsafe { Arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
+
+        ctx.emulate_mret(&mut mctx);
+
+        assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
+    }
 }
