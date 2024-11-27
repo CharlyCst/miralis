@@ -85,6 +85,8 @@ struct TestArgs {
     /// Prefix of the tests to run, all if none
     pattern: Option<String>,
     /// The command will succeed only if all tests can be run successfully
+    ///
+    /// This flag can also be configured with the environment variable `MIRALIS_RUNNER_STRICT=1`
     #[arg(long, action)]
     strict: bool,
 }
@@ -138,7 +140,7 @@ fn main() -> ExitCode {
     match args.command {
         Subcommands::Run(args) => run::run(&args),
         Subcommands::Build(args) => build::build(&args),
-        Subcommands::Test(args) => test::run_tests(&args),
+        Subcommands::Test(mut args) => test::run_tests(&mut args),
         Subcommands::Gdb(args) => gdb::gdb(&args),
         Subcommands::CheckConfig(args) => config::check_config(&args),
         Subcommands::Artifact(args) => artifacts::list_artifacts(&args),

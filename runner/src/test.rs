@@ -1,10 +1,10 @@
 //! Miralis test runner
 
 use std::collections::HashMap;
-use std::fs;
 use std::io::Read;
 use std::path::PathBuf;
 use std::process::{ExitCode, Stdio};
+use std::{env, fs};
 
 use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
 use crate::config::{read_config, Config, Platforms};
@@ -12,6 +12,8 @@ use crate::path::{get_project_config_path, make_path_relative_to_root};
 use crate::project::{ProjectConfig, Test};
 use crate::run::{get_qemu_cmd, get_spike_cmd, qemu_is_available, spike_is_available, QEMU, SPIKE};
 use crate::TestArgs;
+
+const RUNNER_STRICT_MODE: &str = "MIRALIS_RUNNER_STRICT";
 
 #[derive(Debug, PartialEq, Eq)]
 struct TestGroup {
@@ -37,7 +39,12 @@ struct SkippedTests {
 }
 
 /// The test command, run all the tests.
-pub fn run_tests(args: &TestArgs) -> ExitCode {
+pub fn run_tests(args: &mut TestArgs) -> ExitCode {
+    if env::var(RUNNER_STRICT_MODE).is_ok() && !args.strict {
+        log::info!("Runing tests in strict mode");
+        args.strict = true;
+    }
+
     let mut stats = TestStats::default();
     let path = get_project_config_path();
     let config = match fs::read_to_string(&path) {
