@@ -119,13 +119,13 @@ mod verification {
         sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register));
 
         // Initialize Miralis's own context
-        /*let hw = unsafe { Arch::detect_hardware() };
+        let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
-        mctx.decode_csr();
+        let csr = mctx.decode_csr(csr_register as usize);
         
-        ctx.emulate_mret(&mut mctx);
+        ctx.get(csr);
 
-        assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");*/
+        // assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 }
