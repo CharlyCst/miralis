@@ -19,7 +19,7 @@ pub enum ExecutionMode {
 }
 
 /// The context of a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
@@ -71,6 +71,7 @@ impl VirtContext {
                 menvcfg: 0,
                 mseccfg: 0,
                 mcause: 0,
+                tselect: 0,
                 mepc: 0,
                 mtval: 0,
                 mtval2: 0,
@@ -136,7 +137,7 @@ impl VirtContext {
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(C)]
 pub struct VirtCsr {
     pub misa: usize,
@@ -154,6 +155,7 @@ pub struct VirtCsr {
     pub menvcfg: usize,
     pub mseccfg: usize,
     pub mcause: usize,
+    pub tselect: usize,
     pub mepc: usize,
     pub mtval: usize,
     pub mtval2: usize,

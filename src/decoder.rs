@@ -373,7 +373,7 @@ impl MiralisContext {
         }
     }
 
-    fn decode_csr(&self, csr: usize) -> Csr {
+    pub fn decode_csr(&self, csr: usize) -> Csr {
         match csr {
             0x300 => Csr::Mstatus,
             0x301 => Csr::Misa,
@@ -440,13 +440,7 @@ impl MiralisContext {
                     Csr::Mtval2
                 }
             }
-            0x7A0 => {
-                if true {
-                    Csr::Unknown
-                } else {
-                    Csr::Tselect
-                }
-            }
+            0x7A0 => Csr::Tselect,
             0x7A1 => {
                 if true {
                     Csr::Unknown

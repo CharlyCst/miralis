@@ -4,6 +4,7 @@ use miralis_core::abi;
 
 use super::csr::traits::*;
 use super::{VirtContext, VirtCsr};
+use crate::arch::Csr::Misa;
 use crate::arch::{
     mie, misa, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode,
     Register,
@@ -38,6 +39,7 @@ impl VirtContext {
             | Instr::Csrrci { csr, .. }
                 if csr.is_unknown() =>
             {
+                panic!("coucou");
                 self.emulate_jump_trap_handler();
             }
             Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, csr, rd, rs1),

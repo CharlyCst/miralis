@@ -43,6 +43,9 @@ members = [
     # Tooling
     "runner",
     "benchmark_analyzer",
+
+    # Formal verification
+    "formal-verification"
 ]
 
 # Setting the runner as the default member makes it easier to invoke (no need
