@@ -19,7 +19,7 @@ pub enum ExecutionMode {
 }
 
 /// The context of a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct VirtContext {
     /// Stack pointer of the host, used to restore context on trap.
@@ -157,7 +157,7 @@ impl VirtContext {
 }
 
 /// Control and Status Registers (CSR) for a virtual firmware.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct VirtCsr {
     pub misa: usize,

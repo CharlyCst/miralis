@@ -47,7 +47,8 @@ spike-benchmarks:
 # Run unit tests
 unit-test:
 	cargo test --features userspace --lib \
-		-p miralis
+		-p miralis \
+		-p model_checking
 
 # Run Miralis
 run firmware=default config=config:
@@ -77,6 +78,8 @@ install-toolchain:
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	rustup component add clippy --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
+	cargo install --locked kani-verifier
+	cargo kani setup
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}
