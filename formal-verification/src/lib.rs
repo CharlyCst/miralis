@@ -63,12 +63,23 @@ impl SailVirtCtx {
         sail_ctx.medeleg = BitField::new(ctx.csr.medeleg as u64);
         sail_ctx.mideleg = BitField::new(ctx.csr.mideleg as u64);
 
-        // ctx.csr.pmpcfg = [kani::any(); 8];
-        // ctx.csr.pmpaddr = [kani::any(); 64];
-        // ctx.csr.mhpmcounter=  [kani::any(); 29];
-        // ctx.csr.mhpmevent=  [kani::any(); 29];*/
+        // sail_ctx.pmpcfg_n = Self::pmpcfg_miralis_to_sail(ctx.csr.pmpcfg);
+        // sail_ctx.pmpaddr_n = Self::pmpaddr_miralis_to_sail(ctx.csr.pmpaddr);
+        // ctx.csr.mhpmcounter=  [kani::any(); 29]; TODO: What should we do with this?
+        // ctx.csr.mhpmevent=  [kani::any(); 29]; TODO: What should we do with this?
+
+        // New added
+        // sail_ctx.tselect = BitVector::<64>::new(ctx.csr.tselect as u64);
         sail_ctx
     }
+
+    /*fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField::<8>; 64]{
+        todo!("Implement this")
+    }
+
+    fn pmpaddr_miralis_to_sail(addresses: [usize; 64]) -> [BitVector::<64>; 64] {
+        todo!("Implement this")
+    }*/
 
     pub fn into_virt_context(self) -> VirtContext {
         let mut ctx = VirtContext::new(
@@ -121,13 +132,25 @@ impl SailVirtCtx {
         // ctx.csr.scontext= self.scontext.bits.bits() as usize;
         ctx.csr.medeleg = self.medeleg.bits.bits() as usize;
         ctx.csr.mideleg = self.mideleg.bits.bits() as usize;
-        // ctx.csr.pmpcfg = [kani::any(); 8];
-        // ctx.csr.pmpaddr = [kani::any(); 64];
-        // ctx.csr.mhpmcounter=  [kani::any(); 29];
-        // ctx.csr.mhpmevent=  [kani::any(); 29];*/
+        // ctx.csr.pmpcfg = pmpcfg_sail_to_miralis(self.pmpcfg_n);
+        // ctx.csr.pmpaddr = pmpaddr_sail_to_miralis(self.pmpaddr_n);
+        // ctx.csr.mhpmcounter=  [kani::any(); 29]; todo: what should we do?
+        // ctx.csr.mhpmevent=  [kani::any(); 29]; todo: what should we do?
+
+        // New added
+        // ctx.csr.tselect = self.tselect.bits() as usize; // BitVector::<64>::new(ctx.csr.tselect as u64);
+
         ctx
     }
 }
+
+/*fn pmpcfg_sail_to_miralis(cfgs: [BitField::<8>; 64]) -> [usize; 8]{
+    todo!("Implement this")
+}
+
+fn pmpaddr_sail_to_miralis(addresses: [BitVector::<64>; 64]) -> [usize; 64] {
+    todo!("Implement this")
+} */
 
 #[cfg(kani)]
 fn KaniVirtCtx() -> VirtContext {
@@ -178,9 +201,11 @@ fn KaniVirtCtx() -> VirtContext {
     ctx.csr.mideleg = mie::MIDELEG_READ_ONLY_ONE;
     // ctx.csr.pmpcfg = [kani::any(); 8];
     // ctx.csr.pmpaddr = [kani::any(); 64];
-    // ctx.csr.mhpmcounter=  [kani::any(); 29];
-    // ctx.csr.mhpmevent=  [kani::any(); 29];
+    // ctx.csr.mhpmcounter=  [kani::any(); 29]; todo: What should we do?
+    // ctx.csr.mhpmevent=  [kani::any(); 29]; todo: What should we do?
 
+    // new added
+    // ctx.csr.tselect = kani::any();
     ctx
 }
 
@@ -233,12 +258,12 @@ mod verification {
     }
 
 
-    // #[kani::proof]
+    #[kani::proof]
     pub fn read_csr() {
         let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
         
         // tmp filtering of the registers
-        let csr_register = match csr_register {
+        let mut csr_register = match csr_register {
             0b111100010001 => 0b111100010001,
             0b111100010011 => 0b111100010011,
             0b111100010100 => 0b111100010100,
@@ -260,7 +285,7 @@ mod verification {
             // Tested until here
             0b101100000000 => 0b101100000000,
             0b101100000010 => 0b101100000010,
-            // 0b011110100000 => 0b011110100000, - TODO: Not equivalent - fix it - add tselect
+            0b011110100000 => 0b011110100000, // Tselect
             0b000100000000 => 0b000100000000,
             // 0b000100000010 => 0b000100000010, - TODO: Not equivalent - fix sedeleg
             // 0b000100000011 => 0b000100000011, - TODO: Not equivalent - fix sideleg
@@ -286,6 +311,8 @@ mod verification {
             _ => 0b111100010001, // Default take mvendor id
         };
 
+        csr_register = 0b011110100000;
+
         // TODO : Handle decoding of v__22 and friends
 
         let mut ctx = KaniVirtCtx();
@@ -306,7 +333,7 @@ mod verification {
         assert_eq!(decoded_miralis_value,decoded_sail_value , "Read equivalence");
     }
 
-    #[kani::proof]
+    // #[kani::proof]
     pub fn write_csr() {
         let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
 

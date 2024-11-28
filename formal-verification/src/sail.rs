@@ -14,7 +14,7 @@ const xlen: usize = 64;
 
 const xlen_bytes: usize = 8;
 
-type xlenbits = BitVector<xlen>;
+pub type xlenbits = BitVector<xlen>;
 
 const flen: usize = 64;
 
