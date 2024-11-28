@@ -131,6 +131,13 @@ impl Architecture for MetalArch {
             Csr::Vstval => asm_write_csr!("vstval"),
             Csr::Vsip => asm_write_csr!("vsip"),
             Csr::Vsatp => asm_write_csr!("vsatp"),
+            Csr::Vstart => todo!(),
+            Csr::Vxsat => todo!(),
+            Csr::Vxrm => todo!(),
+            Csr::Vcsr => todo!(),
+            Csr::Vl => todo!(),
+            Csr::Vtype => todo!(),
+            Csr::Vlenb => todo!(),
             Csr::Unknown => (),
         };
 
@@ -226,6 +233,13 @@ impl Architecture for MetalArch {
             Csr::Vstval => asm_read_csr!("vstval"),
             Csr::Vsip => asm_read_csr!("vsip"),
             Csr::Vsatp => asm_read_csr!("vsatp"),
+            Csr::Vstart => todo!(),
+            Csr::Vxsat => todo!(),
+            Csr::Vxrm => todo!(),
+            Csr::Vcsr => todo!(),
+            Csr::Vl => todo!(),
+            Csr::Vtype => todo!(),
+            Csr::Vlenb => todo!(),
             Csr::Unknown => value = 0,
         };
 
@@ -342,6 +356,7 @@ impl Architecture for MetalArch {
                 has_s_extension: (misa as usize & misa::S) != 0,
                 has_sstc_extension,
                 is_sstc_enabled: false, // Since the virtual menvcfg is initialized with 0
+                has_v_extension: false,
             },
         }
     }
@@ -613,6 +628,13 @@ impl Architecture for MetalArch {
             Csr::Vstval => asm_clear_csr_bits!("vstval"),
             Csr::Vsip => asm_clear_csr_bits!("vsip"),
             Csr::Vsatp => asm_clear_csr_bits!("vsatp"),
+            Csr::Vstart => todo!(),
+            Csr::Vxsat => todo!(),
+            Csr::Vxrm => todo!(),
+            Csr::Vcsr => todo!(),
+            Csr::Vl => todo!(),
+            Csr::Vtype => todo!(),
+            Csr::Vlenb => todo!(),
             Csr::Unknown => (),
         };
 
@@ -709,6 +731,13 @@ impl Architecture for MetalArch {
             Csr::Vstval => asm_set_csr_bits!("vstval"),
             Csr::Vsip => asm_set_csr_bits!("vsip"),
             Csr::Vsatp => asm_set_csr_bits!("vsatp"),
+            Csr::Vstart => todo!(),
+            Csr::Vxsat => todo!(),
+            Csr::Vxrm => todo!(),
+            Csr::Vcsr => todo!(),
+            Csr::Vl => todo!(),
+            Csr::Vtype => todo!(),
+            Csr::Vlenb => todo!(),
             Csr::Unknown => (),
         };
 

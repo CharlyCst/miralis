@@ -756,6 +756,57 @@ impl MiralisContext {
                 }
             }
 
+            // Vector extension
+            0x8 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vstart
+                }
+            }
+            0x9 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vxsat
+                }
+            }
+            0xa => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vxrm
+                }
+            }
+            0xf => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vcsr
+                }
+            }
+            0xc20 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vl
+                }
+            }
+            0xc21 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vtype
+                }
+            }
+            0xc22 => {
+                if !self.hw.extensions.has_v_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Vlenb
+                }
+            }
+
             _ => {
                 log::debug!("Unknown CSR: 0x{:x}", csr);
                 Csr::Unknown

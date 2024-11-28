@@ -119,6 +119,13 @@ impl VirtContext {
                 pmpaddr: [0; 64],
                 mhpmcounter: [0; 29],
                 mhpmevent: [0; 29],
+                vstart: 0,
+                vxsat: false,
+                vxrm: 0,
+                vcsr: 0,
+                vl: 0,
+                vtype: 0,
+                vlenb: 0,
             },
             pc: 0,
             mode: Mode::M,
@@ -204,6 +211,13 @@ pub struct VirtCsr {
     pub pmpaddr: [usize; 64],
     pub mhpmcounter: [usize; 29],
     pub mhpmevent: [usize; 29],
+    pub vstart: u16,
+    pub vxsat: bool,
+    pub vxrm: u8, // 2 bits wide
+    pub vcsr: u8, // 3 bits wide
+    pub vl: usize,
+    pub vtype: usize,
+    pub vlenb: usize,
 }
 
 impl VirtCsr {

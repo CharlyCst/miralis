@@ -154,6 +154,8 @@ pub struct ExtensionsCapability {
     pub has_h_extension: bool,
     /// Supervisor extension
     pub has_s_extension: bool,
+    /// Vector extension
+    pub has_v_extension: bool,
     /// If the sstc extension is supported
     pub has_sstc_extension: bool,
     /// If the sstc extension is enabled
