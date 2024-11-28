@@ -230,25 +230,37 @@ mod verification {
         assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 
-    fn filter_possible_instructions(value: usize) {}
 
     #[kani::proof]
     pub fn read_csr() {
-        let csr_register = 0b001100000010; // kani::any::<u64>() & ((1<<13) - 1);
+        /*let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
+        
+        // tmp filtering of the registers
+        let csr_register = match csr_register {
+            0b111100010001 => 0b111100010001,
+
+            _ => 0b111100010001, // Default take mvendor id
+        };*/
+
+        let csr_register = 0b001100000010;
 
         let mut ctx = KaniVirtCtx();
 
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
-        sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register));
+        // sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register));
 
         // Initialize Miralis's own context
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
         let decoded_csr = mctx.decode_csr(csr_register as usize);
-        ctx.csr.marchid = ctx.get(decoded_csr);
+        // ctx.csr.medeleg = ctx.get(decoded_csr);
+
+        // Verify value is the same
+        assert_eq!(ctx.get(decoded_csr), sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register)).bits as usize, "Read equivalence");
+
         
-        assert_eq!(
+        /*assert_eq!(
             ctx.csr.misa,
             sail_ctx.into_virt_context().csr.misa,
             "read csr equivalence"
@@ -266,6 +278,16 @@ mod verification {
         assert_eq!(
             ctx.csr.mtvec,
             sail_ctx.into_virt_context().csr.mtvec,
+            "read csr equivalence"
+        );
+        assert_eq!(
+            ctx.csr.mscratch,
+            sail_ctx.into_virt_context().csr.mscratch,
+            "read csr equivalence"
+        );
+        assert_eq!(
+            ctx.csr.mvendorid,
+            sail_ctx.into_virt_context().csr.mvendorid,
             "read csr equivalence"
         );
         assert_eq!(
@@ -417,6 +439,6 @@ mod verification {
             ctx.csr.mhpmevent,
             sail_ctx.into_virt_context().csr.mhpmevent,
             "read csr equivalence"
-        );
+        );*/
     }
 }
