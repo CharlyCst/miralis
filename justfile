@@ -35,6 +35,7 @@ test:
 
 	# Run integration tests...
 	cargo run -- test
+	cargo run -- verify
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
@@ -77,6 +78,8 @@ install-toolchain:
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	rustup component add clippy --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
+	cargo install --locked kani-verifier
+	cargo kani setup
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}
