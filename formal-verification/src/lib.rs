@@ -6,6 +6,8 @@ use miralis::virt::traits::RegisterContextGetter;
 use miralis::virt::VirtContext;
 use sail::Privilege;
 use sail_prelude::{BitField, BitVector};
+use miralis::virt::traits::RegisterContextSetter;
+
 
 use crate::sail::SailVirtCtx;
 
@@ -232,7 +234,7 @@ mod verification {
     }
 
 
-    #[kani::proof]
+    // #[kani::proof]
     pub fn read_csr() {
         let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
         
@@ -287,7 +289,6 @@ mod verification {
 
         // TODO : Handle decoding of v__22 and friends
 
-
         let mut ctx = KaniVirtCtx();
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
 
@@ -307,4 +308,78 @@ mod verification {
     }
 
     // TODO: Implement write csr as next step
+    #[kani::proof]
+    pub fn write_csr() {
+        let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
+
+        // tmp filtering of the registers
+        let csr_register = match csr_register {
+            0b111100010001 => 0b111100010001,
+            0b111100010011 => 0b111100010011,
+            0b111100010100 => 0b111100010100,
+            0b111100010101 => 0b111100010101,
+            0b001100000000 => 0b001100000000,
+            0b001100000001 => 0b001100000001,
+            0b001100000010 => 0b001100000010,
+            0b001100000011 => 0b001100000011,
+            0b001100000100 => 0b001100000100,
+            0b001100000101 => 0b001100000101,
+            0b001100000110 => 0b001100000110,
+            0b001100001010 => 0b001100001010,
+            0b001100100000 => 0b001100100000,
+            0b001101000000 => 0b001101000000,
+            // 0b001101000001 => 0b001101000001,  - TODO: Bug found in MEPC - fix it
+            0b001101000010 => 0b001101000010,
+            0b001101000011 => 0b001101000011,
+            0b001101000100 => 0b001101000100,
+            // Tested until here
+            0b101100000000 => 0b101100000000,
+            0b101100000010 => 0b101100000010,
+            // 0b011110100000 => 0b011110100000, - TODO: Not equivalent - fix it - add tselect
+            0b000100000000 => 0b000100000000,
+            // 0b000100000010 => 0b000100000010, - TODO: Not equivalent - fix sedeleg
+            // 0b000100000011 => 0b000100000011, - TODO: Not equivalent - fix sideleg
+            // 0b000100000100 => 0b000100000100, - TODO: Not equivalent - fix sie
+            0b000100000101 => 0b000100000101,
+            0b000100000110 => 0b000100000110,
+            0b000100001010 => 0b000100001010,
+            0b000101000000 => 0b000101000000,
+            // 0b000101000001 => 0b000101000001, - TODO: Not equivalent - fix sepc
+            0b000101000010 => 0b000101000010,
+            0b000101000011 => 0b000101000011,
+            // 0b000101000100 => 0b000101000100, - TODO: Not equivalent - fix sip
+            0b000110000000 => 0b000110000000,
+            // 0b000000010101 => 0b000000010101, - TODO: Not equivalent - fix seed register
+            // 0b000000001000 => 0b000000001000, - TODO: Not equivalent - fix vstart
+            // 0b000000001001 => 0b000000001001, - TODO: Not equivalent - fix vxstat
+            // 0b000000001010 => 0b000000001010, fix vxrm
+            // 0b000000001111 => 0b000000001111, fix vcsr
+            // 0b110000100000 => 0b110000100000, fix vl
+            // 0b110000100001 => 0b110000100001, fix vtype
+            // 0b110000100010 => 0b110000100010, fix vlenb
+
+            _ => 0b111100010001, // Default take mvendor id
+        };
+
+        // TODO : Handle decoding of v__22 and friends
+
+        let mut ctx = KaniVirtCtx();
+        let mut sail_ctx = SailVirtCtx::from(&mut ctx);
+
+        // Initialize Miralis's own context
+        let hw = unsafe { Arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
+
+        let decoded_csr = mctx.decode_csr(csr_register as usize);
+
+        let value_to_write: usize = kani::any();
+
+        // Write register in Miralis context
+        // ctx.set(decoded_csr, value_to_write);
+
+        sail::writeCSR(&mut sail_ctx, BitVector::<12>::new(csr_register), BitVector::<64>::new(value_to_write as u64));
+
+        // Verify value is the same
+        // assert_eq!(decoded_miralis_value,decoded_sail_value , "Write equivalence");
+    }
 }

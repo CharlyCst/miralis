@@ -5393,7 +5393,7 @@ pub fn readCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>) -> BitVector<64> 
     res
 }
 
-fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector<64>) {
+pub fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector<64>) {
     let res: Option<xlenbits> = match (csr, 64) {
         (b__0, _) if { (b__0 == BitVector::<12>::new(0b001100000000)) } => {
             sail_ctx.mstatus = legalize_mstatus(sail_ctx, sail_ctx.mstatus, value);
