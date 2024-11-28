@@ -20,7 +20,7 @@ fn test_simple_regs() {
             out(reg) res,
         );
     }
-    assert_eq!(res, 0);
+    assert_eq!(res, 0x42);
 
     // Test minstret
     unsafe {
@@ -32,7 +32,7 @@ fn test_simple_regs() {
             out(reg) res,
         );
     }
-    assert_eq!(res, 0);
+    assert_eq!(res, 0x42);
 
     // Test mcountinhibit
     unsafe {
