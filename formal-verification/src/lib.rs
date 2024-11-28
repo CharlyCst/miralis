@@ -233,212 +233,48 @@ mod verification {
 
     #[kani::proof]
     pub fn read_csr() {
-        /*let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
+        let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
         
         // tmp filtering of the registers
         let csr_register = match csr_register {
             0b111100010001 => 0b111100010001,
-
+            0b111100010011 => 0b111100010011,
+            0b111100010100 => 0b111100010100,
+            0b111100010101 => 0b111100010101, 
+            0b001100000000 => 0b001100000000,
+            0b001100000001 => 0b001100000001,
+            0b001100000010 => 0b001100000010,
+            0b001100000011 => 0b001100000011,
+            0b001100000100 => 0b001100000100,
+            0b001100000101 => 0b001100000101,
+            0b001100000110 => 0b001100000110,
+            0b001100001010 => 0b001100001010,
+            0b001100100000 => 0b001100100000,
+            0b001101000000 => 0b001101000000,
+            0b001101000001 => 0b001101000001,
+            0b001101000010 => 0b001101000010,
+            0b001101000011 => 0b001101000011,
+            0b001101000100 => 0b001101000100,
             _ => 0b111100010001, // Default take mvendor id
-        };*/
-
-        let csr_register = 0b001100000010;
+        };
 
         let mut ctx = KaniVirtCtx();
-
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
-        // sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register));
 
         // Initialize Miralis's own context
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
         let decoded_csr = mctx.decode_csr(csr_register as usize);
-        // ctx.csr.medeleg = ctx.get(decoded_csr);
+
+        // Decoded miralis value
+        let decoded_miralis_value = ctx.get(decoded_csr); 
+        // Decoded sail value
+        let decoded_sail_value = sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register)).bits as usize;
 
         // Verify value is the same
-        assert_eq!(ctx.get(decoded_csr), sail::readCSR(&mut sail_ctx, BitVector::<12>::new(csr_register)).bits as usize, "Read equivalence");
-
-        
-        /*assert_eq!(
-            ctx.csr.misa,
-            sail_ctx.into_virt_context().csr.misa,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mie,
-            sail_ctx.into_virt_context().csr.mie,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mip,
-            sail_ctx.into_virt_context().csr.mip,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mtvec,
-            sail_ctx.into_virt_context().csr.mtvec,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mscratch,
-            sail_ctx.into_virt_context().csr.mscratch,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mvendorid,
-            sail_ctx.into_virt_context().csr.mvendorid,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.marchid,
-            sail_ctx.into_virt_context().csr.marchid,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mimpid,
-            sail_ctx.into_virt_context().csr.mimpid,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mcycle,
-            sail_ctx.into_virt_context().csr.mcycle,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.minstret,
-            sail_ctx.into_virt_context().csr.minstret,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mcountinhibit,
-            sail_ctx.into_virt_context().csr.mcountinhibit,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mcounteren,
-            sail_ctx.into_virt_context().csr.mcounteren,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.menvcfg,
-            sail_ctx.into_virt_context().csr.menvcfg,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mseccfg,
-            sail_ctx.into_virt_context().csr.mseccfg,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mcause,
-            sail_ctx.into_virt_context().csr.mcause,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mepc,
-            sail_ctx.into_virt_context().csr.mepc,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mtval,
-            sail_ctx.into_virt_context().csr.mtval,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mtval2,
-            sail_ctx.into_virt_context().csr.mtval2,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mstatus,
-            sail_ctx.into_virt_context().csr.mstatus,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mtinst,
-            sail_ctx.into_virt_context().csr.mtinst,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mconfigptr,
-            sail_ctx.into_virt_context().csr.mconfigptr,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.stvec,
-            sail_ctx.into_virt_context().csr.stvec,
-            "read csr equivalence"
-        );
-       assert_eq!(
-            ctx.csr.scounteren,
-            sail_ctx.into_virt_context().csr.scounteren,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.senvcfg,
-            sail_ctx.into_virt_context().csr.senvcfg,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.sscratch,
-            sail_ctx.into_virt_context().csr.sscratch,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.sepc,
-            sail_ctx.into_virt_context().csr.sepc,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.scause,
-            sail_ctx.into_virt_context().csr.scause,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.stval,
-            sail_ctx.into_virt_context().csr.stval,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.satp,
-            sail_ctx.into_virt_context().csr.satp,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.scontext,
-            sail_ctx.into_virt_context().csr.scontext,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.medeleg,
-            sail_ctx.into_virt_context().csr.medeleg,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mideleg,
-            sail_ctx.into_virt_context().csr.mideleg,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.pmpcfg,
-            sail_ctx.into_virt_context().csr.pmpcfg,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.pmpaddr,
-            sail_ctx.into_virt_context().csr.pmpaddr,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mhpmcounter,
-            sail_ctx.into_virt_context().csr.mhpmcounter,
-            "read csr equivalence"
-        );
-        assert_eq!(
-            ctx.csr.mhpmevent,
-            sail_ctx.into_virt_context().csr.mhpmevent,
-            "read csr equivalence"
-        );*/
+        assert_eq!(decoded_miralis_value,decoded_sail_value , "Read equivalence");
     }
+
+    // TODO: Implement write csr as next step
 }

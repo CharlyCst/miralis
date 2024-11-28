@@ -174,8 +174,9 @@ pub fn hex_bits_12_forwards(_reg: BitVector<12>) -> ! {
 }
 
 // TODO: This is enough for the risc-v transpilation, but not enought for full sail-to-rust
-pub fn subrange_bits(_vec: BitVector<64>, _end: usize, _start: usize) -> BitVector<64> {
-    panic!("todo");
+pub fn subrange_bits(vec: BitVector<64>, end: usize, start: usize) -> BitVector<64> {
+    assert!(end - start + 1 == 64); // todo: In the future, we should improve the subrange bits function
+    vec
 }
 
 pub fn subrange_bits_8(_vec: BitVector<64>, _end: usize, _start: usize) -> BitVector<8> {
