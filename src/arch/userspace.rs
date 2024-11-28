@@ -1,7 +1,7 @@
 //! A mock of architecture specific features when running in user space.
 //!
 //! This implementation is useful for running Miralis on the host (potentially non-riscv)
-//! architecutre, such as when running unit tests.
+//! architecture, such as when running unit tests.
 
 use core::marker::PhantomData;
 use core::ptr;
@@ -22,6 +22,8 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
     ExtensionsCapability {
         has_h_extension: false,
         has_s_extension: true,
+        has_sstc_extension: false,
+        is_sstc_enabled: false,
     },
 ));
 
@@ -109,6 +111,8 @@ impl Architecture for HostArch {
             extensions: ExtensionsCapability {
                 has_h_extension: false,
                 has_s_extension: true,
+                has_sstc_extension: false,
+                is_sstc_enabled: false,
             },
         }
     }
@@ -165,6 +169,7 @@ impl Architecture for HostArch {
             Csr::Sip => ctx.csr.mip & mie::SIE_FILTER,
             Csr::Satp => ctx.csr.satp,
             Csr::Scontext => ctx.csr.scontext,
+            Csr::Stimecmp => ctx.csr.stimecmp,
             Csr::Hstatus => ctx.csr.hstatus,
             Csr::Hedeleg => ctx.csr.hedeleg,
             Csr::Hideleg => ctx.csr.hideleg,
@@ -248,6 +253,7 @@ impl Architecture for HostArch {
             Csr::Sip => ctx.csr.mip = ctx.csr.mip & !mie::SIE_FILTER | value & mie::SIE_FILTER,
             Csr::Satp => ctx.csr.satp = value,
             Csr::Scontext => ctx.csr.scontext = value,
+            Csr::Stimecmp => ctx.csr.stimecmp = value,
             Csr::Hstatus => ctx.csr.hstatus = value,
             Csr::Hedeleg => ctx.csr.hedeleg = value,
             Csr::Hideleg => ctx.csr.hideleg = value,
@@ -276,12 +282,12 @@ impl Architecture for HostArch {
         prev_val
     }
 
-    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {
-        Self::write_csr(csr, Self::read_csr(csr) & !bits_mask);
+    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
+        Self::write_csr(csr, Self::read_csr(csr) & !bits_mask)
     }
 
-    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) {
-        Self::write_csr(csr, Self::read_csr(csr) | bits_mask);
+    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
+        Self::write_csr(csr, Self::read_csr(csr) | bits_mask)
     }
 
     unsafe fn handle_virtual_load_store(_instr: Instr, _ctx: &mut VirtContext) {

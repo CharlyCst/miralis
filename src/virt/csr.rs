@@ -6,7 +6,9 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, mie, misa, mstatus, satp, Arch, Architecture, Csr, MCause, Register};
+use crate::arch::{
+    hstatus, menvcfg, mie, misa, mstatus, satp, Arch, Architecture, Csr, MCause, Register,
+};
 use crate::{debug, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -151,6 +153,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER,
             Csr::Satp => self.csr.satp,
             Csr::Scontext => self.csr.scontext,
+            Csr::Stimecmp => self.csr.stimecmp,
             Csr::Hstatus => self.csr.hstatus, // TODO : Add support for H-Mode
             Csr::Hedeleg => self.csr.hedeleg,
             Csr::Hideleg => self.csr.hideleg,
@@ -410,7 +413,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mcountinhibit => (),             // Read-only 0
             Csr::Mhpmevent(_event_idx) => (),     // Read-only 0
             Csr::Mcounteren => self.csr.mcounteren = (value & 0b111) as u32, // Only show IR, TM and CY (for cycle, time and instret counters)
-            Csr::Menvcfg => self.csr.menvcfg = value,
+            Csr::Menvcfg => {
+                let mut mask: usize = usize::MAX;
+                if !mctx.hw.extensions.has_sstc_extension {
+                    mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
+                }
+
+                self.csr.menvcfg = value & mask;
+                mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
+            }
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
@@ -508,6 +519,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.satp = value & satp::SATP_CHANGE_FILTER;
             }
             Csr::Scontext => todo!("No information in the specification"),
+            Csr::Stimecmp => self.csr.stimecmp = value,
             Csr::Hstatus => {
                 let mut value = value;
 

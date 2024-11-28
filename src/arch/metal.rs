@@ -4,7 +4,8 @@ use core::marker::PhantomData;
 use core::{ptr, usize};
 
 use super::{
-    Arch, Architecture, Csr, ExtensionsCapability, MCause, Mode, RegistersCapability, TrapInfo,
+    menvcfg, Arch, Architecture, Csr, ExtensionsCapability, MCause, Mode, RegistersCapability,
+    TrapInfo,
 };
 use crate::arch::pmp::PmpFlush;
 use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
@@ -106,6 +107,7 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_write_csr!("sip"),
             Csr::Satp => asm_write_csr!("satp"),
             Csr::Scontext => asm_write_csr!("scontext"),
+            Csr::Stimecmp => asm_write_csr!("stimecmp"),
             Csr::Hstatus => asm_write_csr!("hstatus"),
             Csr::Hedeleg => asm_write_csr!("hedeleg"),
             Csr::Hideleg => asm_write_csr!("hideleg"),
@@ -200,6 +202,7 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_read_csr!("sip"),
             Csr::Satp => asm_read_csr!("satp"),
             Csr::Scontext => asm_read_csr!("scontext"),
+            Csr::Stimecmp => asm_read_csr!("stimecmp"),
             Csr::Hstatus => asm_read_csr!("hstatus"),
             Csr::Hedeleg => asm_read_csr!("hedeleg"),
             Csr::Hideleg => asm_read_csr!("hideleg"),
@@ -267,6 +270,17 @@ impl Architecture for MetalArch {
             is_senvcfg_present,
         );
 
+        // Check if the Sstc extension is supported by checking if menvcfg.STCE is hardwired to 0.
+        let has_sstc_extension = match is_menvcfg_present {
+            false => false,
+            true => {
+                let prev_menvcfg = Self::set_csr_bits(Csr::Menvcfg, menvcfg::STCE_FILTER);
+                let new_menvcfg = Self::read_csr(Csr::Menvcfg);
+                Self::write_csr(Csr::Menvcfg, prev_menvcfg);
+                (new_menvcfg & menvcfg::STCE_FILTER) > 0
+            }
+        };
+
         // Detect available PMP registers:
         // - On RV64 platforms only even-numbered pmpcfg registers are present
         // - The spec mandates that there is either 0, 16 or 64 PMP registers implemented
@@ -326,6 +340,8 @@ impl Architecture for MetalArch {
             extensions: ExtensionsCapability {
                 has_h_extension: (misa as usize & misa::H) != 0,
                 has_s_extension: (misa as usize & misa::S) != 0,
+                has_sstc_extension,
+                is_sstc_enabled: false, // Since the virtual menvcfg is initialized with 0
             },
         }
     }
@@ -510,12 +526,14 @@ impl Architecture for MetalArch {
         }
     }
 
-    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) {
+    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
+        let mut prev_value: usize = 0;
         macro_rules! asm_clear_csr_bits {
             ($reg:literal) => {
                 asm!(
-                    concat!("csrc ", $reg, ", {x}"),
+                    concat!("csrrc {prev}, ", $reg, ", {x}"),
                     x = in(reg) bits_mask,
+                    prev = out(reg) prev_value,
                     options(nomem)
                 )
             };
@@ -571,6 +589,7 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_clear_csr_bits!("sip"),
             Csr::Satp => asm_clear_csr_bits!("satp"),
             Csr::Scontext => asm_clear_csr_bits!("scontext"),
+            Csr::Stimecmp => asm_clear_csr_bits!("stimecmp"),
             Csr::Hstatus => asm_clear_csr_bits!("hstatus"),
             Csr::Hedeleg => asm_clear_csr_bits!("hedeleg"),
             Csr::Hideleg => asm_clear_csr_bits!("hideleg"),
@@ -596,15 +615,20 @@ impl Architecture for MetalArch {
             Csr::Vsatp => asm_clear_csr_bits!("vsatp"),
             Csr::Unknown => (),
         };
+
+        prev_value
     }
 
-    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) {
+    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
+        let mut prev_value: usize = 0;
+
         macro_rules! asm_set_csr_bits {
             ($reg:literal) => {
                 unsafe {
                     asm!(
-                        concat!("csrs ", $reg, ", {x}"),
+                        concat!("csrrs {prev}, ", $reg, ", {x}"),
                         x = in(reg) bits_mask,
+                        prev = out(reg) prev_value,
                         options(nomem)
                     )
                 }
@@ -661,6 +685,7 @@ impl Architecture for MetalArch {
             Csr::Sip => asm_set_csr_bits!("sip"),
             Csr::Satp => asm_set_csr_bits!("satp"),
             Csr::Scontext => asm_set_csr_bits!("scontext"),
+            Csr::Stimecmp => asm_set_csr_bits!("stimecmp"),
             Csr::Hstatus => asm_set_csr_bits!("hstatus"),
             Csr::Hedeleg => asm_set_csr_bits!("hedeleg"),
             Csr::Hideleg => asm_set_csr_bits!("hideleg"),
@@ -686,6 +711,8 @@ impl Architecture for MetalArch {
             Csr::Vsatp => asm_set_csr_bits!("vsatp"),
             Csr::Unknown => (),
         };
+
+        prev_value
     }
 
     unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext) {
