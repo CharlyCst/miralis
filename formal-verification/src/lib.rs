@@ -22,6 +22,9 @@ impl SailVirtCtx {
             Mode::M => Privilege::Machine,
         };
 
+        // Transfer hart id
+        sail_ctx.mhartid = BitVector::new(ctx.hart_id as u64);
+
         // Transfer all csr
         sail_ctx.misa = BitField::new(ctx.csr.misa as u64);
         sail_ctx.mie = BitField::new(ctx.csr.mie as u64);
@@ -84,6 +87,9 @@ impl SailVirtCtx {
 
         ctx.pc = self.nextPC.bits() as usize;
 
+        // Transfer hart id
+        ctx.hart_id = self.mhartid.bits() as usize;
+
         // Transfer all csr
         ctx.csr.misa = self.misa.bits.bits() as usize;
         ctx.csr.mie = self.mie.bits.bits() as usize;
@@ -133,13 +139,17 @@ fn KaniVirtCtx() -> VirtContext {
         },
     );
 
+    // Add hart id
+    ctx.hart_id = kani::any();
+
+    // Add other csr
     ctx.csr.misa = kani::any();
     ctx.csr.mie = kani::any();
     ctx.csr.mip = kani::any();
     ctx.csr.mtvec = kani::any();
     ctx.csr.mscratch = kani::any();
     ctx.csr.mvendorid = kani::any();
-    ctx.csr.marchid = 0;
+    ctx.csr.marchid = kani::any();
     // ctx.csr.mimpid= kani::any();
     ctx.csr.mcycle = kani::any();
     ctx.csr.minstret = kani::any();
@@ -258,11 +268,11 @@ mod verification {
             sail_ctx.into_virt_context().csr.mtvec,
             "read csr equivalence"
         );
-        /*assert_eq!(
+        assert_eq!(
             ctx.csr.marchid,
             sail_ctx.into_virt_context().csr.marchid,
             "read csr equivalence"
-        );*/
+        );
         assert_eq!(
             ctx.csr.mimpid,
             sail_ctx.into_virt_context().csr.mimpid,
