@@ -24,6 +24,7 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
         has_s_extension: true,
         has_sstc_extension: false,
         is_sstc_enabled: false,
+        has_v_extension: false,
     },
 ));
 
@@ -111,6 +112,7 @@ impl Architecture for HostArch {
             extensions: ExtensionsCapability {
                 has_h_extension: false,
                 has_s_extension: true,
+                has_v_extension: true,
                 has_sstc_extension: false,
                 is_sstc_enabled: false,
             },
@@ -193,6 +195,19 @@ impl Architecture for HostArch {
             Csr::Vstval => ctx.csr.vstval,
             Csr::Vsip => ctx.csr.vsip,
             Csr::Vsatp => ctx.csr.vsatp,
+            Csr::Vstart => ctx.csr.vstart as usize,
+            Csr::Vxsat => {
+                if ctx.csr.vxsat {
+                    1
+                } else {
+                    0
+                }
+            }
+            Csr::Vxrm => ctx.csr.vxrm as usize,
+            Csr::Vcsr => ctx.csr.vcsr as usize,
+            Csr::Vl => ctx.csr.vl,
+            Csr::Vtype => ctx.csr.vtype,
+            Csr::Vlenb => ctx.csr.vlenb,
             Csr::Unknown => panic!("Unkown csr!"),
         }
     }
@@ -277,6 +292,13 @@ impl Architecture for HostArch {
             Csr::Vstval => ctx.csr.vstval = value,
             Csr::Vsip => ctx.csr.vsip = value,
             Csr::Vsatp => ctx.csr.vsatp = value,
+            Csr::Vstart => ctx.csr.vstart = value as u16,
+            Csr::Vxsat => ctx.csr.vxsat = (value & 0x1) != 0,
+            Csr::Vxrm => ctx.csr.vxrm = (value & 0b11) as u8,
+            Csr::Vcsr => ctx.csr.vcsr = (value & 0b111) as u8,
+            Csr::Vl => ctx.csr.vl = value,
+            Csr::Vtype => ctx.csr.vtype = value,
+            Csr::Vlenb => ctx.csr.vlenb = value,
             Csr::Unknown => panic!("Unkown csr!"),
         }
         prev_val

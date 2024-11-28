@@ -204,6 +204,23 @@ pub enum Csr {
     /// Virtual Supervisor Address Translation and Protection
     Vsatp,
 
+    /// Vector extension
+    ///
+    /// Vector Start Index CSR
+    Vstart,
+    /// Vector Fixed-Point Saturation Flag
+    Vxsat,
+    /// Vector Fixed-Point Rounding Mode Register
+    Vxrm,
+    /// Vector Control and Status Register
+    Vcsr,
+    /// Vector Length Register
+    Vl,
+    /// Vector Type Register
+    Vtype,
+    /// Vector Byte Length
+    Vlenb,
+
     /// An unknown CSR
     Unknown,
 }

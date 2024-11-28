@@ -199,6 +199,22 @@ impl RegisterContextGetter<Csr> for VirtContext {
                 }
             }
             Csr::Vsatp => self.csr.vsatp,
+
+            // Vector extension
+            Csr::Vstart => self.csr.vstart as usize,
+            Csr::Vxsat => {
+                if self.csr.vxsat {
+                    1
+                } else {
+                    0
+                }
+            }
+            Csr::Vxrm => self.csr.vxrm as usize,
+            Csr::Vcsr => self.csr.vcsr as usize,
+            Csr::Vl => self.csr.vl,
+            Csr::Vtype => self.csr.vtype,
+            Csr::Vlenb => self.csr.vlenb,
+
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
@@ -613,6 +629,19 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.vsip = value & write_vsip_mask
             }
             Csr::Vsatp => self.csr.vsatp = value,
+
+            // Vector extension
+            Csr::Vstart => {
+                let vstart_length = 8; // This assumes vlen is equal 3
+                self.csr.vstart = (value & ((1 << (vstart_length + 1)) - 1)) as u16
+            }
+            Csr::Vxsat => self.csr.vxsat = (value & 0x1) != 0,
+            Csr::Vxrm => self.csr.vxrm = (value & 0b11) as u8,
+            Csr::Vcsr => self.csr.vcsr = (value & 0b111) as u8,
+            Csr::Vl => self.csr.vl = value,
+            Csr::Vtype => self.csr.vtype = value,
+            Csr::Vlenb => self.csr.vlenb = value,
+
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
         }
