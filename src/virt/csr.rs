@@ -447,7 +447,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.mepc = value
+                self.csr.mepc = value & !0b1 // First bit is always zero
             }
             Csr::Mcause => {
                 let cause = MCause::new(value);
@@ -483,7 +483,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.sepc = value
+                self.csr.sepc = value & !0b1 // First bit is always zero
             }
             Csr::Scause => {
                 let cause = MCause::new(value);
