@@ -53,6 +53,9 @@ impl VirtContext {
             Arch::write_csr(Csr::Sepc, self.csr.sepc);
             Arch::write_csr(Csr::Scause, self.csr.scause);
             Arch::write_csr(Csr::Stval, self.csr.stval);
+            if mctx.hw.extensions.is_sstc_enabled {
+                Arch::write_csr(Csr::Stimecmp, self.csr.stimecmp);
+            }
         }
 
         // If H extension is present - save the registers
@@ -145,12 +148,13 @@ impl VirtContext {
             self.csr.scounteren =
                 Arch::write_csr(Csr::Scounteren, delegate_perf_counter_mask) as u32;
             self.csr.satp = Arch::write_csr(Csr::Satp, 0);
-
             self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
             self.csr.sepc = Arch::write_csr(Csr::Sepc, 0);
             self.csr.scause = Arch::write_csr(Csr::Scause, 0);
-
             self.csr.stval = Arch::write_csr(Csr::Stval, 0);
+            if mctx.hw.extensions.is_sstc_enabled {
+                self.csr.stimecmp = Arch::write_csr(Csr::Stimecmp, 0);
+            }
         }
 
         // If H extension is present - save the registers

@@ -571,6 +571,13 @@ impl MiralisContext {
                     Csr::Sip
                 }
             }
+            0x14d => {
+                if !self.hw.extensions.is_sstc_enabled {
+                    Csr::Unknown
+                } else {
+                    Csr::Stimecmp
+                }
+            }
             0x180 => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown

@@ -151,6 +151,8 @@ pub enum Csr {
     Satp,
     /// Supervisor-mode context register
     Scontext,
+    /// Supervisor timer compare
+    Stimecmp,
 
     // Hypervisor and Virtual Supervisor CSRs
     //

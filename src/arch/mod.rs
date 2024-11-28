@@ -53,21 +53,21 @@ pub trait Architecture {
     /// environment.
     unsafe fn write_csr(csr: Csr, value: usize) -> usize;
 
-    /// Clear csr_bits with mask
+    /// Clear csr_bits with mask and return previous Csr value
     ///
     /// # Safety
     ///
     /// This function writes to the hardware CSR, use with caution as it might change the execution
     /// environment.
-    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize);
+    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize;
 
-    /// Set csr_bits with mask
+    /// Set csr_bits with mask and return previous Csr value
     ///
     /// # Safety
     ///
     /// This function writes to the hardware CSR, use with caution as it might change the execution
     /// environment.
-    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize);
+    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize;
 
     /// Change mstatus.MPP and return the previous mstatus.MPP
     unsafe fn set_mpp(mode: Mode) -> Mode;
@@ -154,6 +154,10 @@ pub struct ExtensionsCapability {
     pub has_h_extension: bool,
     /// Supervisor extension
     pub has_s_extension: bool,
+    /// If the sstc extension is supported
+    pub has_sstc_extension: bool,
+    /// If the sstc extension is enabled
+    pub is_sstc_enabled: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
@@ -436,6 +440,11 @@ pub mod mtvec {
             _ => panic!("Invalid trap-vector mode."),
         }
     }
+}
+
+pub mod menvcfg {
+    pub const STCE_OFFSET: usize = 63;
+    pub const STCE_FILTER: usize = 0b1 << STCE_OFFSET;
 }
 
 // ————————————————————————————— Hypervisor Status ————————————————————————————— //
