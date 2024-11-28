@@ -11,6 +11,17 @@ use perf_counters::test_perf_counters;
 setup_binary!(main);
 
 fn main() -> ! {
+    let res: usize;
+    unsafe {
+        asm!(
+        "csrr {0}, mscratch",
+        out(reg) res,
+        );
+    }
+
+    success();
+
+
     log::debug!("Testing mscratch register");
     test_mscratch();
     log::debug!("Testing mepc register");

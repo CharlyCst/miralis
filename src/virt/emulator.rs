@@ -39,6 +39,7 @@ impl VirtContext {
             | Instr::Csrrci { csr, .. }
                 if csr.is_unknown() =>
             {
+                panic!("coucou");
                 self.emulate_jump_trap_handler();
             }
             Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, csr, rd, rs1),

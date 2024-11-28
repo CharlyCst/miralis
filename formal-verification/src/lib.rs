@@ -190,6 +190,7 @@ mod verification {
     use miralis::arch::Arch;
     use miralis::host::MiralisContext;
     use miralis::platform::Plat;
+    use sail_prelude::{bitvector_access, bitvector_concat, subrange_bits, zero_extend_16, zero_extend_64};
 
     use super::*;
 
@@ -255,8 +256,37 @@ mod verification {
             0b001101000010 => 0b001101000010,
             0b001101000011 => 0b001101000011,
             0b001101000100 => 0b001101000100,
+            // Tested until here
+            0b101100000000 => 0b101100000000,
+            0b101100000010 => 0b101100000010,
+            // 0b011110100000 => 0b011110100000, - TODO: Not equivalent - fix it - add tselect
+            0b000100000000 => 0b000100000000,
+            // 0b000100000010 => 0b000100000010, - TODO: Not equivalent - fix sedeleg
+            // 0b000100000011 => 0b000100000011, - TODO: Not equivalent - fix sideleg
+            // 0b000100000100 => 0b000100000100, - TODO: Not equivalent - fix sie
+            0b000100000101 => 0b000100000101,
+            0b000100000110 => 0b000100000110,
+            0b000100001010 => 0b000100001010,
+            0b000101000000 => 0b000101000000,
+            // 0b000101000001 => 0b000101000001, - TODO: Not equivalent - fix sepc
+            0b000101000010 => 0b000101000010,
+            0b000101000011 => 0b000101000011,
+            // 0b000101000100 => 0b000101000100, - TODO: Not equivalent - fix sip
+            0b000110000000 => 0b000110000000,
+            // 0b000000010101 => 0b000000010101, - TODO: Not equivalent - fix seed register
+            // 0b000000001000 => 0b000000001000, - TODO: Not equivalent - fix vstart
+            // 0b000000001001 => 0b000000001001, - TODO: Not equivalent - fix vxstat
+            // 0b000000001010 => 0b000000001010, fix vxrm
+            // 0b000000001111 => 0b000000001111, fix vcsr
+            // 0b110000100000 => 0b110000100000, fix vl
+            // 0b110000100001 => 0b110000100001, fix vtype
+            // 0b110000100010 => 0b110000100010, fix vlenb
+
             _ => 0b111100010001, // Default take mvendor id
         };
+
+        // TODO : Handle decoding of v__22 and friends
+
 
         let mut ctx = KaniVirtCtx();
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
