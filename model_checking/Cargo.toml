@@ -1,0 +1,12 @@
+[package]
+name = "model_checking"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+miralis = { path = "../src", features = ["userspace"] }
+sail_prelude = { path = "sail_prelude"}
+sail_model = { path = "sail_model"}
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

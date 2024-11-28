@@ -316,6 +316,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "model_checking"
+version = "0.1.0"
+dependencies = [
+ "miralis",
+ "sail_model",
+ "sail_prelude",
+]
+
+[[package]]
 name = "mret"
 version = "0.1.0"
 dependencies = [
@@ -389,6 +398,17 @@ name = "rustversion"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
+
+[[package]]
+name = "sail_model"
+version = "0.1.0"
+dependencies = [
+ "sail_prelude",
+]
+
+[[package]]
+name = "sail_prelude"
+version = "0.1.0"
 
 [[package]]
 name = "same-file"

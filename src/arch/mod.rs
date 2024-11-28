@@ -148,7 +148,7 @@ pub struct RegistersCapability {
 }
 
 /// A struct that contains information about the available extensions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExtensionsCapability {
     /// Hypervisor extension
     pub has_h_extension: bool,
@@ -230,6 +230,8 @@ pub mod misa {
     pub const I: usize = 1 << 8;
     /// Integer Multiply/Divide extension
     pub const M: usize = 1 << 12;
+    /// Userspace interrupt delegations
+    pub const N: usize = 1 << 13;
     /// Quad-precision floating-point extension
     pub const Q: usize = 1 << 16;
     /// Supervisor mode implemented

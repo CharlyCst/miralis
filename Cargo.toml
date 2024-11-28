@@ -42,6 +42,11 @@ members = [
     # Tooling
     "runner",
     "benchmark_analyzer",
+
+    # Testing and verification
+    "model_checking",
+    "model_checking/sail_prelude",
+    "model_checking/sail_model",
 ]
 
 # Setting the runner as the default member makes it easier to invoke (no need
