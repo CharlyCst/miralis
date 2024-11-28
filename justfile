@@ -20,7 +20,7 @@ fmt:
 # Run all the tests
 test:
 	# Running unit tests...
-	cargo test --features userspace --lib -p miralis
+	@just unit-test
 
 	# Checking formatting...
 	cargo fmt --all -- --check
@@ -34,7 +34,8 @@ test:
 	cargo clippy -p benchmark_analyzer
 
 	# Run integration tests...
-	cargo run -- test --strict
+	cargo run -- test
+	cargo run -- verify
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
@@ -46,7 +47,8 @@ spike-benchmarks:
 
 # Run unit tests
 unit-test:
-	cargo test --features userspace -p miralis
+	cargo test --features userspace --lib \
+		-p miralis
 
 # Run Miralis
 run firmware=default config=config:
@@ -76,6 +78,8 @@ install-toolchain:
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	rustup component add clippy --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
+	cargo install --locked kani-verifier
+	cargo kani setup
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}
