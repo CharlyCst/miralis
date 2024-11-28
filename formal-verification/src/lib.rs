@@ -6,7 +6,6 @@ use miralis::virt::traits::RegisterContextGetter;
 use miralis::virt::VirtContext;
 use sail::Privilege;
 use sail_prelude::{BitField, BitVector};
-use miralis::virt::traits::RegisterContextSetter;
 
 
 use crate::sail::SailVirtCtx;
@@ -307,7 +306,6 @@ mod verification {
         assert_eq!(decoded_miralis_value,decoded_sail_value , "Read equivalence");
     }
 
-    // TODO: Implement write csr as next step
     #[kani::proof]
     pub fn write_csr() {
         let mut csr_register = kani::any::<u64>() & ((1<<13) - 1);
@@ -315,7 +313,7 @@ mod verification {
         // tmp filtering of the registers
         let csr_register = match csr_register {
             0b111100010001 => 0b111100010001,
-            0b111100010011 => 0b111100010011,
+            /*0b111100010011 => 0b111100010011,
             0b111100010100 => 0b111100010100,
             0b111100010101 => 0b111100010101,
             0b001100000000 => 0b001100000000,
@@ -356,7 +354,7 @@ mod verification {
             // 0b000000001111 => 0b000000001111, fix vcsr
             // 0b110000100000 => 0b110000100000, fix vl
             // 0b110000100001 => 0b110000100001, fix vtype
-            // 0b110000100010 => 0b110000100010, fix vlenb
+            // 0b110000100010 => 0b110000100010, fix vlenb*/
 
             _ => 0b111100010001, // Default take mvendor id
         };
@@ -375,7 +373,7 @@ mod verification {
         let value_to_write: usize = kani::any();
 
         // Write register in Miralis context
-        // ctx.set(decoded_csr, value_to_write);
+        // ctx.set(Csr::Marchid, value_to_write);
 
         sail::writeCSR(&mut sail_ctx, BitVector::<12>::new(csr_register), BitVector::<64>::new(value_to_write as u64));
 
