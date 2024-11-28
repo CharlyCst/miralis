@@ -134,7 +134,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Dscratch0 => todo!(),              // TODO : normal read
             Csr::Dscratch1 => todo!(),              // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
-            Csr::Tselect => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION : read debug-mode specification
+            Csr::Tselect => !self.csr.tselect,
             Csr::Mepc => self.csr.mepc,
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
@@ -432,13 +432,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     panic!("Mtval2 exists only in H mode")
                 }
             } // TODO : Must be able to hold 0 and may hold an arbitrary number of 2-bit-shifted guest physical addresses, written alongside mtval, this register should not exist in a system without hypervisor extension
-            Csr::Tselect => todo!(), // Read-only 0 when no triggers are implemented
-            Csr::Tdata1 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Tdata2 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Tdata3 => todo!(),  // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tselect => {
+                self.csr.tselect = value;
+            }
+            Csr::Tdata1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata2 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Tdata3 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mcontext => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dcsr => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
-            Csr::Dpc => todo!(),     // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dcsr => todo!(),   // TODO : NO INFORMATION IN THE SPECIFICATION
+            Csr::Dpc => todo!(),    // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch0 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Dscratch1 => todo!(), // TODO : NO INFORMATION IN THE SPECIFICATION
             Csr::Mepc => {
