@@ -394,7 +394,18 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
             }
-            Csr::Mtvec => self.csr.mtvec = value,
+            Csr::Mtvec => {
+                match value & 0b11 {
+                    // Direct mode
+                    0b00 => self.csr.mtvec = value,
+                    // Vector mode
+                    0b01 => self.csr.mtvec = value,
+                    // Reserved mode
+                    _ => {
+                        self.csr.mtvec = (value & !0b11) | (self.csr.mtvec & 0b11);
+                    }
+                }
+            }
             Csr::Mscratch => self.csr.mscratch = value,
             Csr::Mvendorid => (), // Read-only
             Csr::Marchid => (),   // Read-only
