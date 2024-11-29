@@ -19,6 +19,8 @@ fn main() -> ! {
     test_csr_op();
     log::debug!("Testing CSR ID registers");
     test_csr_id();
+    log::debug!("Testing mcause register");
+    test_mcause();
     log::debug!("Testing misa register");
     test_misa();
     log::debug!("Testing mconfigptr register");
@@ -276,6 +278,28 @@ fn test_csr_id() {
         );
     };
     assert_eq!(res, 0, "Invalid mhartid");
+}
+
+// ———————————————————————————— Mcause register ————————————————————————————— //
+
+/// NOTE:
+///
+/// mcause is WLRL, but the Sail model assumes all bits can be written. We test for the same
+/// behavior as the Sail model for now, but hardware might expose fewer bits.
+fn test_mcause() {
+    let target = u64::MAX; // All bits to 1
+    let res: u64;
+
+    unsafe {
+        asm!(
+            "csrw mcause, {target}",
+            "csrr {res}, mcause",
+            target = in(reg) target,
+            res = out(reg) res,
+        );
+    }
+
+    assert_eq!(target, res, "mcause can not hold all bits");
 }
 
 // —————————————————————————— Machine ISA register —————————————————————————— //

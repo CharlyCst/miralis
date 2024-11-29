@@ -56,11 +56,6 @@ firmware = "breakpoint"
 config = "qemu-virt"
 description = "A simple trap handling test to ensure the firmware can catch a breakpoint"
 
-[test.mcause]
-firmware = "mcause"
-config = "qemu-virt"
-description = "Check the values in the mcause CSR"
-
 [test.mret]
 firmware = "mret"
 config = "qemu-virt"

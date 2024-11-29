@@ -6,9 +6,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{
-    hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, MCause, Register,
-};
+use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -491,14 +489,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.mepc = value & !0b1 // First bit is always zero
             }
-            Csr::Mcause => {
-                let cause = MCause::new(value);
-                match cause {
-                    // Can only contain supported exception codes
-                    MCause::UnknownException => (),
-                    _ => self.csr.mcause = value,
-                }
-            }
+            Csr::Mcause => self.csr.mcause = value,
             Csr::Mtval => self.csr.mtval = value,
             //Supervisor-level CSRs
             Csr::Sstatus => {
