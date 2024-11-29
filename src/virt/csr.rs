@@ -527,7 +527,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // Only show IR, TM and CY (for cycle, time and instret counters)
                 self.csr.scounteren = (self.csr.scounteren & !0b111) | (value & 0b111) as u32
             }
-            Csr::Senvcfg => self.csr.senvcfg = value,
+            Csr::Senvcfg => {
+                // We only change the value of FIOM here
+                self.csr.senvcfg = (value & 0b1) | (self.csr.senvcfg & !0b1)
+            }
             Csr::Sscratch => self.csr.sscratch = value,
             Csr::Sepc => {
                 if value > Plat::get_max_valid_address() {
