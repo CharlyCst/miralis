@@ -141,6 +141,7 @@ impl Architecture for MetalArch {
             Csr::Vl => todo!(),
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
+            Csr::Seed => todo!(),
             Csr::Unknown => (),
         };
 
@@ -246,6 +247,7 @@ impl Architecture for MetalArch {
             Csr::Vl => todo!(),
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
+            Csr::Seed => todo!(),
             Csr::Unknown => value = 0,
         };
 
@@ -363,6 +365,7 @@ impl Architecture for MetalArch {
                 has_sstc_extension,
                 is_sstc_enabled: false, // Since the virtual menvcfg is initialized with 0
                 has_v_extension: false,
+                has_crypto_extension: false,
             },
         }
     }
@@ -644,6 +647,7 @@ impl Architecture for MetalArch {
             Csr::Vl => todo!(),
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
+            Csr::Seed => todo!(),
             Csr::Unknown => (),
         };
 
@@ -750,6 +754,7 @@ impl Architecture for MetalArch {
             Csr::Vl => todo!(),
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
+            Csr::Seed => todo!(),
             Csr::Unknown => (),
         };
 

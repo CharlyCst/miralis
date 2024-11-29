@@ -156,6 +156,8 @@ pub struct ExtensionsCapability {
     pub has_s_extension: bool,
     /// Vector extension
     pub has_v_extension: bool,
+    /// Crypto extension
+    pub has_crypto_extension: bool,
     /// If the sstc extension is supported
     pub has_sstc_extension: bool,
     /// If the sstc extension is enabled

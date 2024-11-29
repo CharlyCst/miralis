@@ -809,6 +809,14 @@ impl MiralisContext {
                     Csr::Vlenb
                 }
             }
+            0x15 => {
+                // Crypto extension
+                if !self.hw.extensions.has_crypto_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Seed
+                }
+            }
 
             _ => {
                 log::debug!("Unknown CSR: 0x{:x}", csr);
