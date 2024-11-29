@@ -667,10 +667,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Vsatp => self.csr.vsatp = value,
 
             // Vector extension
-            Csr::Vstart => {
-                let vstart_length = 8; // This assumes vlen is equal 3
-                self.csr.vstart = (value & ((1 << (vstart_length + 1)) - 1)) as u16
-            }
+            Csr::Vstart => self.csr.vstart = (value & 0xff) as u16,
             Csr::Vxsat => self.csr.vxsat = (value & 0x1) != 0,
             Csr::Vxrm => self.csr.vxrm = (value & 0b11) as u8,
             Csr::Vcsr => self.csr.vcsr = (value & 0b111) as u8,
