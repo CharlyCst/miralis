@@ -227,6 +227,11 @@ pub enum Csr {
     /// Vector Byte Length
     Vlenb,
 
+    /// Crypto extension
+    ///
+    /// Seed register
+    Seed,
+
     /// An unknown CSR
     Unknown,
 }

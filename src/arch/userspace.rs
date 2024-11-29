@@ -25,6 +25,7 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
         has_sstc_extension: false,
         is_sstc_enabled: false,
         has_v_extension: false,
+        has_crypto_extension: false,
     },
 ));
 
@@ -113,6 +114,7 @@ impl Architecture for HostArch {
                 has_h_extension: false,
                 has_s_extension: true,
                 has_v_extension: true,
+                has_crypto_extension: false,
                 has_sstc_extension: false,
                 is_sstc_enabled: false,
             },
@@ -211,6 +213,7 @@ impl Architecture for HostArch {
             Csr::Cycle => ctx.csr.mcycle,
             Csr::Time => 0,
             Csr::Instret => ctx.csr.minstret,
+            Csr::Seed => 0x80000000, // Magic value, used for model checking
             Csr::Unknown => panic!("Unkown csr!"),
         }
     }
@@ -305,6 +308,7 @@ impl Architecture for HostArch {
             Csr::Cycle => {}
             Csr::Time => {}
             Csr::Instret => {}
+            Csr::Seed => (), // Read only
             Csr::Unknown => panic!("Unkown csr!"),
         }
         prev_val

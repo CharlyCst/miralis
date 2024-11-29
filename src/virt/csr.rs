@@ -216,6 +216,11 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Cycle => self.csr.mcycle,
             Csr::Time => Arch::read_csr(Csr::Time),
             Csr::Instret => self.csr.minstret,
+
+            // Crypto extension
+            // To get a true random value we defer to the hardware.
+            Csr::Seed => Arch::read_csr(Csr::Seed),
+
             // Unknown
             Csr::Unknown => {
                 log::warn!("Tried to access unknown CSR: {:?}", register);
@@ -655,6 +660,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Cycle => todo!("Write cycle"),
             Csr::Time => todo!("Write time"),
             Csr::Instret => todo!("Write instret"),
+
+            // Crypto extension
+            Csr::Seed => (), // Read only register
 
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
