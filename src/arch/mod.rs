@@ -256,14 +256,6 @@ pub mod misa {
     pub const MISA_CHANGE_FILTER: usize = 0x0000000003FFFFFF;
 }
 
-// ————————————— Supervisor Address Translation and Protection —————————————— //
-
-#[allow(unused)]
-pub mod satp {
-    /// Constant to filter out non-writable fields of the satp csr
-    pub const SATP_CHANGE_FILTER: usize = 0x00000FFFFFFFFFFF;
-}
-
 // ————————————————————————————— Machine Status ————————————————————————————— //
 
 /// Constants for the Machine Status (mstatus) CSR.
