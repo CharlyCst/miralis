@@ -84,15 +84,17 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mimpid => self.csr.mimpid,
             Csr::Pmpcfg(pmp_cfg_idx) => {
                 if pmp_cfg_idx % 2 == 1 {
-                    // Illegal because we are in a RISCV64 setting
-                    panic!("Illegal PMP_CFG {:?}", register)
+                    // This should not happen, as we check in the decoder for the pmp index.
+                    // We return zero nontheless, because it is what the Sail implementation does,
+                    // so that way we pass the model checking step.
+                    log::warn!("Invalid pmpcfg {}", pmp_cfg_idx);
+                    return 0;
                 }
                 if pmp_cfg_idx >= self.nb_pmp / 8 {
                     // This PMP is not emulated
                     return 0;
                 }
                 self.csr.pmpcfg[pmp_cfg_idx / 2]
-                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp)
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
                 if pmp_addr_idx >= self.nb_pmp {

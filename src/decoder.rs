@@ -385,7 +385,14 @@ impl MiralisContext {
             0xF11 => Csr::Mvendorid,
             0xF12 => Csr::Marchid,
             0xF13 => Csr::Mimpid,
-            0x3A0..=0x3AF => Csr::Pmpcfg(csr - 0x3A0),
+            0x3A0..=0x3AF => {
+                let id = csr - 0x3A0;
+                if id % 2 == 0 {
+                    Csr::Pmpcfg(id)
+                } else {
+                    Csr::Unknown // Invalid on rv64
+                }
+            }
             0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
             0xB00 => Csr::Mcycle,
             0xB02 => Csr::Minstret,
