@@ -7,7 +7,7 @@ use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{
-    hstatus, menvcfg, mie, misa, mstatus, satp, Arch, Architecture, Csr, MCause, Register,
+    hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, MCause, Register,
 };
 use crate::{debug, MiralisContext, Plat, Platform};
 
@@ -554,7 +554,17 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
             }
             Csr::Satp => {
-                self.csr.satp = value & satp::SATP_CHANGE_FILTER;
+                let satp_mode = (value >> 60) & 0b1111;
+                match satp_mode {
+                    // Sbare mode
+                    0b0000 => self.csr.satp = value,
+                    // Sv39 mode
+                    0b1000 => self.csr.satp = value,
+                    // Sv48 mode
+                    0b1001 => self.csr.satp = value,
+                    // No mode
+                    _ => { /* Nothing to change */ }
+                }
             }
             Csr::Scontext => todo!("No information in the specification"),
             Csr::Stimecmp => self.csr.stimecmp = value,
