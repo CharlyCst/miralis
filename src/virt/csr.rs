@@ -538,18 +538,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
                 self.csr.sepc = value & !0b1 // First bit is always zero
             }
-            Csr::Scause => {
-                let cause = MCause::new(value);
-                if cause.is_interrupt() {
-                    // TODO : does not support interrupts
-                    return;
-                }
-                match cause {
-                    // Can only contain supported exception codes
-                    MCause::UnknownException => (),
-                    _ => self.csr.scause = value,
-                }
-            }
+            Csr::Scause => self.csr.scause = value,
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
                 // Clear S bits
