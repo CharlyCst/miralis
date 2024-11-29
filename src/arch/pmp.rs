@@ -314,7 +314,7 @@ impl PmpGroup {
             let reg_idx = idx / 8;
             let inner_idx = idx % 8;
             let shift = inner_idx * 8; // 8 bits per config
-            let cfg = (pmpcfg[reg_idx] >> shift) & 0xff;
+            let cfg = (pmpcfg[reg_idx] >> shift) & 0x7f; // Remove the lock bit
             self.set_pmpcfg(idx + offset, cfg as u8);
         }
     }

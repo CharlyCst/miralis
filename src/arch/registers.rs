@@ -246,14 +246,14 @@ impl Csr {
         | (0b1 << 7) << 48
         | (0b1 << 7) << 56;
 
-    pub const PMP_CFG_LEGAL_MASK: usize = !(0b11 << 5)
+    pub const PMP_CFG_LEGAL_MASK: usize = !((0b11 << 5)
         | (0b11 << 5) << 8
         | (0b11 << 5) << 16
         | (0b11 << 5) << 24
         | (0b11 << 5) << 32
         | (0b11 << 5) << 40
         | (0b11 << 5) << 48
-        | (0b11 << 5) << 56;
+        | (0b11 << 5) << 56);
 
     pub const PMP_ADDR_LEGAL_MASK: usize = !(0b1111111111 << 54);
 
