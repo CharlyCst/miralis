@@ -408,17 +408,26 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 let mut value = value;
                 if Csr::PMP_CFG_LOCK_MASK & value != 0 {
                     debug::warn_once!("PMP lock bits are not yet supported");
-                    value &= !Csr::PMP_CFG_LOCK_MASK;
                 }
                 if pmp_cfg_idx % 2 == 1 {
-                    // Illegal because we are in a RISCV64 setting
-                    panic!("Illegal PMP_CFG {:?}", register)
+                    // Should not happen because we are in a RISCV64 setting (the decoder emmits
+                    // invalid CSR instead).
+                    log::warn!("Invalid pmpcfg write {}", pmp_cfg_idx);
+                    return;
                 } else if pmp_cfg_idx >= self.nb_pmp / 8 {
                     // This PMP is not emulated, ignore changes
                     return;
                 }
-                self.csr.pmpcfg[pmp_cfg_idx / 2] = Csr::PMP_CFG_LEGAL_MASK
-                    & value
+
+                // W = 1 & R = 0 is reserved
+                for idx in 0..8 {
+                    if (value >> (idx * 8)) & 0b11 == 0b10 {
+                        value &= !(0b111 << (idx * 8));
+                    }
+                }
+
+                self.csr.pmpcfg[pmp_cfg_idx / 2] = value
+                    & Csr::PMP_CFG_LEGAL_MASK
                     & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp);
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
