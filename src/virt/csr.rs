@@ -513,7 +513,18 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // Set S bits to new value
                 self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), mctx);
             }
-            Csr::Stvec => self.csr.stvec = value,
+            Csr::Stvec => {
+                match value & 0b11 {
+                    // Direct mode
+                    0b00 => self.csr.stvec = value,
+                    // Vector mode
+                    0b01 => self.csr.stvec = value,
+                    // Reserved mode
+                    _ => {
+                        self.csr.stvec = (value & !0b11) | (self.csr.stvec & 0b11);
+                    }
+                }
+            }
             Csr::Scounteren => (), // Read-only 0
             Csr::Senvcfg => self.csr.senvcfg = value,
             Csr::Sscratch => self.csr.sscratch = value,
