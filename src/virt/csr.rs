@@ -8,6 +8,7 @@ use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, MiralisContext, Plat, Platform};
+use crate::arch::mie::MEIE_FILTER;
 
 /// A module exposing the traits to manipulate registers of a virtual context.
 ///
@@ -374,7 +375,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     panic!("Miralis doesn't support deactivating the H mode extension, please implement the feature")
                 }
             }
-            Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
+            Csr::Mie => {
+               let filter = if self.get(Csr::Misa) & misa::U != 0 && self.get(Csr::Misa) & misa::N != 0 {
+                    mie::MIE_WRITE_FILTER_WITH_U
+                } else {
+                    mie::MIE_WRITE_FILTER
+                };
+
+                self.csr.mie = hw.interrupts & ((value & filter) | (self.csr.mie & !filter))
+            },
             Csr::Mip => {
                 let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
 
