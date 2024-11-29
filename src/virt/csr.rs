@@ -450,8 +450,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
             }
             Csr::Mseccfg => self.csr.mseccfg = value,
-            Csr::Mconfigptr => (),                    // Read-only
-            Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
+            Csr::Mconfigptr => (), // Read-only
+            Csr::Medeleg => self.csr.medeleg = value & !(1 << 11),
             Csr::Mideleg => {
                 self.csr.mideleg = (value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO)
                     | mie::MIDELEG_READ_ONLY_ONE;
