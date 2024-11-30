@@ -371,7 +371,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mie = hw.interrupts & ((value & filter) | (self.csr.mie & !filter))
             }
             Csr::Mip => {
-                let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
+                if self.get(Csr::Misa) & misa::U != 0 {
+                    self.csr.mip = (self.csr.mip & !0b111111) | (value & 0b111111);
+                } else {
+                    self.csr.mip = (self.csr.mip & !0b111) | (value & 0b111);
+                }
+
+                // TODO: Charly, please check what to do with this, I need your expertise there :)
+                /*let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
 
                 // If the firmware wants to read the mip register after cleaning vmip.SEIP, and we don't sync
                 // vmip.SEIP with mip.SEIP, it can't know if there is an interrupt signal from the interrupt
@@ -389,7 +396,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         }
                     }
                 }
-                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
+                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);*/
             }
             Csr::Mtvec => {
                 match value & 0b11 {
