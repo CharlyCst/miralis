@@ -216,7 +216,11 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Vlenb => self.csr.vlenb,
 
             // Unknown
-            Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
+            Csr::Unknown => {
+                log::warn!("Tried to access unknown CSR: {:?}", register);
+                // Official specification returns 0x0 when the register is unknown
+                0x0
+            }
         }
     }
 }
