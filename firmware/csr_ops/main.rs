@@ -54,11 +54,11 @@ fn test_mscratch() {
 // ————————————————————————————— Write to MEPC —————————————————————————————— //
 
 fn test_mepc() {
-    let secret: usize = 0x42;
+    let secret: usize = 0x40;
     let res: usize;
     unsafe {
         asm!(
-            "li {0}, 0x42",
+            "li {0}, 0x40",
             "csrw mepc, {0}",
             "csrr {1}, mepc",
             in(reg) secret,

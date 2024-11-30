@@ -137,7 +137,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Dscratch1 => todo!(),              // TODO : normal read
             Csr::Mconfigptr => self.csr.mconfigptr, // Read-only
             Csr::Tselect => !self.csr.tselect,
-            Csr::Mepc => self.csr.mepc,
+            Csr::Mepc => self.csr.mepc & self.pc_alignment_mask(),
             Csr::Mcause => self.csr.mcause,
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
