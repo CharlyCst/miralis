@@ -452,10 +452,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (),                    // Read-only
             Csr::Medeleg => self.csr.medeleg = value, //TODO : some values need to be read-only 0
-            Csr::Mideleg => {
-                self.csr.mideleg = (value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO)
-                    | mie::MIDELEG_READ_ONLY_ONE;
-            }
+            Csr::Mideleg => self.csr.mideleg = value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO,
             Csr::Mtinst => {
                 if mctx.hw.extensions.has_h_extension {
                     self.csr.mtinst = value

@@ -3,6 +3,7 @@
 //! A world switch is a transition from the virtual firmware to the native payload, or vice-versa.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::MIDELEG_READ_ONLY_ONE;
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
 use crate::arch::{mie, mstatus, Arch, Architecture, Csr, Mode};
@@ -35,7 +36,11 @@ impl VirtContext {
         }
 
         Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
-        Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
+
+        // Some interrupts are forced to be delegated to S-mode because Miralis doesn't implement
+        // virtualization for them (as that would incur a cost in terms of complexity and
+        // performance).
+        Arch::write_csr(Csr::Mideleg, self.csr.mideleg | MIDELEG_READ_ONLY_ONE);
         Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
         Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren as usize);
 
