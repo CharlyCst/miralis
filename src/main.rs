@@ -73,11 +73,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
-        ctx.set_csr(
-            Csr::Misa,
-            Arch::read_csr(Csr::Misa) & !misa::DISABLED,
-            &mut mctx,
-        );
+        ctx.csr.misa = Arch::read_csr(Csr::Misa) & !misa::DISABLED;
         ctx.pc = firmware_addr;
 
         if DELEGATE_PERF_COUNTER {

@@ -306,89 +306,21 @@ fn test_mcause() {
 
 fn test_misa() {
     let misa: u64;
-    unsafe {
-        // Read the misa CSR into the variable misa
-        asm!("csrr {}, misa", out(reg) misa);
-    }
-    if (misa & (1 << 7)) == 0 {
-        test_misa_no_h()
-    } else {
-        test_misa_h()
-    }
-}
+    let res: u64;
 
-fn test_misa_h() {
-    const MISA: usize = 0x8000000000141181;
-    let mut res: usize;
+    // Read the misa CSR into the variable misa
+    unsafe { asm!("csrr {}, misa", out(reg) misa) };
+
+    // Try to write bits to the misa CSR
     unsafe {
         asm!(
-        "li {0}, 0x80000000001411a9",
-        "csrw misa, {0}",
-        "csrr {1}, misa",
-        out(reg) _,
-        out(reg) res,
+        "csrw misa, {all}",
+        "csrr {res}, misa",
+        all = in(reg) u64::MAX, // All bits to 1
+        res = out(reg) res,
         );
     }
-    assert_eq!(res, MISA, "Unexpected misa");
-
-    unsafe {
-        asm!(
-        "li {0}, 0x800000000FFFFFFF",
-        "csrw misa, {0}",
-        "csrr {1}, misa",
-        out(reg) _,
-        out(reg) res,
-        );
-    }
-    assert_eq!(res, MISA, "Could write misa bits that should be zero");
-
-    unsafe {
-        asm!(
-        "li {0}, 0x00000000001411a9",
-        "csrw misa, {0}",
-        "csrr {1}, misa",
-        out(reg) _,
-        out(reg) res,
-        );
-    }
-    assert_eq!(res, MISA, "Could clean upper misa bit");
-}
-
-fn test_misa_no_h() {
-    const MISA: usize = 0x8000000000141101;
-    let mut res: usize;
-    unsafe {
-        asm!(
-        "li {0}, 0x8000000000141129",
-        "csrw misa, {0}",
-        "csrr {1}, misa",
-        out(reg) _,
-        out(reg) res,
-        );
-    }
-    assert_eq!(res, MISA, "Unexpected misa");
-
-    unsafe {
-        asm!(
-        "li {0}, 0x800000000FFFFFFF",
-        "csrw misa, {0}",
-        "csrr {1}, misa",
-        out(reg) _,
-        out(reg) res,
-        );
-    }
-    assert_eq!(res, MISA, "Could write misa bits that should be zero");
-
-    unsafe {
-        asm!(
-        "li {0}, 0x0000000000141129",
-        "csrw misa, {0}",
-        "csrr {1}, misa",
-        out(reg) _,
-        out(reg) res,
-        );
-    }
-    assert_eq!(res, MISA, "Could clean upper misa bit");
+    assert_eq!(res, misa, "misa CSR is exprected to be read-only");
 }
 
 // ————————————————— Machine Configuration Pointer register ————————————————— //
