@@ -6,7 +6,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
+use crate::arch::{hstatus, menvcfg, mie, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -355,25 +355,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
 
                 self.csr.mstatus = new_value;
             }
-            Csr::Misa => {
-                // misa shows the extensions available : we cannot have more than possible in hardware
-                let arch_misa: usize = Arch::read_csr(Csr::Misa);
-                // Update misa to a legal value
-                self.csr.misa =
-                    (value & arch_misa & misa::MISA_CHANGE_FILTER & !misa::DISABLED) | misa::MXL;
-
-                if (self.csr.misa & misa::U) == 0 && mctx.hw.extensions.has_s_extension {
-                    panic!("Miralis doesn't support deactivating the U mode extension, please implement the feature")
-                }
-
-                if (self.csr.misa & misa::S) == 0 && mctx.hw.extensions.has_s_extension {
-                    panic!("Miralis doesn't support deactivating the S mode extension, please implement the feature")
-                }
-
-                if (self.csr.misa & misa::H) == 0 && mctx.hw.extensions.has_h_extension {
-                    panic!("Miralis doesn't support deactivating the H mode extension, please implement the feature")
-                }
-            }
+            Csr::Misa => {} // Read only register, we don't support deactivating extensions in Miralis
             Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
             Csr::Mip => {
                 let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
