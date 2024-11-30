@@ -147,7 +147,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Scounteren => self.csr.scounteren as usize,
             Csr::Senvcfg => self.csr.senvcfg,
             Csr::Sscratch => self.csr.sscratch,
-            Csr::Sepc => self.csr.sepc,
+            Csr::Sepc => self.csr.sepc & self.pc_alignment_mask(),
             Csr::Scause => self.csr.scause,
             Csr::Stval => self.csr.stval,
             Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER,
