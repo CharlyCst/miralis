@@ -142,7 +142,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Mtval => self.csr.mtval,
             //Supervisor-level CSRs
             Csr::Sstatus => self.get(Csr::Mstatus) & mstatus::SSTATUS_FILTER,
-            Csr::Sie => self.get(Csr::Mie) & mie::SIE_FILTER,
+            Csr::Sie => self.get(Csr::Mie) & mie::SIE_FILTER_WITH_U & self.get(Csr::Mideleg),
             Csr::Stvec => self.csr.stvec,
             Csr::Scounteren => self.csr.scounteren as usize,
             Csr::Senvcfg => self.csr.senvcfg,
