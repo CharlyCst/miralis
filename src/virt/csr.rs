@@ -520,7 +520,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     }
                 }
             }
-            Csr::Scounteren => (), // Read-only 0
+            Csr::Scounteren => {
+                // Only show IR, TM and CY (for cycle, time and instret counters)
+                self.csr.scounteren = (self.csr.scounteren & !0b111) | (value & 0b111) as u32
+            }
             Csr::Senvcfg => self.csr.senvcfg = value,
             Csr::Sscratch => self.csr.sscratch = value,
             Csr::Sepc => {
