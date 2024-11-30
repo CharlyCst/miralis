@@ -439,7 +439,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mhpmcounter(_counter_idx) => (), // Read-only 0
             Csr::Mcountinhibit => (),             // Read-only 0
             Csr::Mhpmevent(_event_idx) => (),     // Read-only 0
-            Csr::Mcounteren => self.csr.mcounteren = (value & 0b111) as u32, // Only show IR, TM and CY (for cycle, time and instret counters)
+            Csr::Mcounteren => {
+                // Only show IR, TM and CY (for cycle, time and instret counters)
+                self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
+            }
             Csr::Menvcfg => {
                 let mut mask: usize = usize::MAX;
                 if !mctx.hw.extensions.has_sstc_extension {
