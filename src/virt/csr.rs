@@ -148,7 +148,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Sepc => self.csr.sepc,
             Csr::Scause => self.csr.scause,
             Csr::Stval => self.csr.stval,
-            Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER,
+            Csr::Sip => self.get(Csr::Mip) & mie::SIE_FILTER_WITH_U & self.get(Csr::Mideleg),
             Csr::Satp => self.csr.satp,
             Csr::Scontext => self.csr.scontext,
             Csr::Stimecmp => self.csr.stimecmp,
