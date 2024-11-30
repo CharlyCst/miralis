@@ -431,7 +431,7 @@ mod verification {
             // 0b001101000001 => 0b001101000001, // Verified mepc
             // 0b001101000010 => 0b001101000010, // Verified mcause
             // 0b001101000011 => 0b001101000011, // Verified mtval
-            // 0b001101000100 => 0b001101000100, // Todo: fix mip
+            0b001101000100 => 0b001101000100, // Verified mip
             // 0b101100000000 => 0b101100000000, // Verified mcycle
             // 0b101100000010 => 0b101100000010, // Verified minstret
             // 0b011110100000 => 0b011110100000, // Verified tselect
@@ -440,7 +440,7 @@ mod verification {
             // 0b000100000011 => 0b000100000011, // Todo: ignore sideleg
             // 0b000100000100 => 0b000100000100, // Todo: fix mie after done with read
             // 0b000100000101 => 0b000100000101, // Verified - stvec
-            0b000100000110 => 0b000100000110, // Verified scounteren
+            // 0b000100000110 => 0b000100000110, // Verified scounteren
             // 0b000100001010 => 0b000100001010, // Verified senvcfd
             // 0b000101000000 => 0b000101000000, // Verified sscratch
             // 0b000101000001 => 0b000101000001, // Verified sepc
