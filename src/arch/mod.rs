@@ -283,7 +283,8 @@ pub mod mstatus {
         | SUM_FILTER
         | MXR_FILTER
         | UXL_FILTER
-        | SD_FILTER;
+        | UIE_FILTER
+        | UPIE_FILTER;
 
     // Mstatus fields constants
     /// UIE

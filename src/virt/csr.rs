@@ -5,8 +5,10 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{
-    FS_FILTER, MBE_FILTER, MBE_OFFSET, MPP_FILTER, MPP_OFFSET, SBE_FILTER, SBE_OFFSET, SXL_OFFSET,
-    UIE_FILTER, UIE_OFFSET, UPIE_FILTER, UPIE_OFFSET, UXL_OFFSET,
+    FS_FILTER, FS_OFFSET, MBE_FILTER, MBE_OFFSET, MPP_FILTER, MPP_OFFSET, MXR_FILTER, MXR_OFFSET,
+    SBE_FILTER, SBE_OFFSET, SD_FILTER, SIE_FILTER, SPIE_FILTER, SPP_FILTER, SSTATUS_FILTER,
+    SUM_FILTER, SUM_OFFSET, SXL_OFFSET, UBE_FILTER, UIE_FILTER, UIE_OFFSET, UPIE_FILTER,
+    UPIE_OFFSET, UXL_FILTER, UXL_OFFSET, VS_FILTER, VS_OFFSET, XS_FILTER, XS_OFFSET,
 };
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, mie, misa, mstatus, Arch, Architecture, Csr, MCause, Register};
@@ -555,14 +557,25 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mtval => self.csr.mtval = value,
             //Supervisor-level CSRs
             Csr::Sstatus => {
-                // Clear sstatus bits
-                let mstatus = self.get(Csr::Mstatus) & !mstatus::SSTATUS_FILTER;
-                // Set sstatus bits to new value
-                self.set_csr(
-                    Csr::Mstatus,
-                    mstatus | (value & mstatus::SSTATUS_FILTER),
-                    mctx,
+                // Lift SStatus
+                let mut prev_mstatus = self.csr.mstatus & !SSTATUS_FILTER;
+                let new_status = value & SSTATUS_FILTER;
+
+                // Update sd field
+                let mut dirty = false;
+                dirty |= ((prev_mstatus & mstatus::FS_FILTER) >> mstatus::FS_OFFSET) == 0b11;
+                dirty |= ((prev_mstatus & mstatus::XS_FILTER) >> mstatus::XS_OFFSET) == 0b11;
+                dirty |= ((prev_mstatus & mstatus::VS_FILTER) >> mstatus::VS_OFFSET) == 0b11;
+
+                VirtCsr::set_csr_field(
+                    &mut prev_mstatus,
+                    mstatus::SD_OFFSET,
+                    mstatus::SD_FILTER,
+                    if dirty { 1 } else { 0 },
                 );
+
+                // Write to mstatus
+                self.set_csr(Csr::Mstatus, prev_mstatus | new_status, mctx);
             }
             Csr::Sie => {
                 // Clear S bits
