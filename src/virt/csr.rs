@@ -371,10 +371,12 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mie = hw.interrupts & ((value & filter) | (self.csr.mie & !filter))
             }
             Csr::Mip => {
-                if self.get(Csr::Misa) & misa::U != 0 {
-                    self.csr.mip = (self.csr.mip & !0b111111) | (value & 0b111111);
+                if self.get(Csr::Misa) & misa::U != 0 && self.get(Csr::Misa) & misa::N != 0 {
+                    self.csr.mip = (self.csr.mip & !mie::MIP_WRITE_FILTER_WITH_U)
+                        | (value & mie::MIP_WRITE_FILTER_WITH_U);
                 } else {
-                    self.csr.mip = (self.csr.mip & !0b111) | (value & 0b111);
+                    self.csr.mip =
+                        (self.csr.mip & !mie::MIP_WRITE_FILTER) | (value & mie::MIP_WRITE_FILTER);
                 }
 
                 // TODO: Charly, please check what to do with this, I need your expertise there :)

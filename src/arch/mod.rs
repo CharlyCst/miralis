@@ -374,6 +374,10 @@ pub mod mie {
     /// Constant to filter out writable bits of mip.
     pub const MIP_WRITE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
 
+    /// Constant to filter out writable bits of mip with userspace interrupt delegation
+    pub const MIP_WRITE_FILTER_WITH_U: usize =
+        MIP_WRITE_FILTER | UEIE_FILTER | USIE_FILTER | UTIE_FILTER;
+
     /// The bits in mideleg that must be read-only one.
     ///
     /// Some interrupts are forced to be delegated to S-mode because Miralis doesn't implement
