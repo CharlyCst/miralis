@@ -427,7 +427,7 @@ mod verification {
             // 0b111100010011 => 0b111100010011, // Verified mimpid
             // 0b111100010100 => 0b111100010100, // Verified mhartid
             // 0b111100010101 => 0b111100010101, // Verified mconfigptr
-            0b001100000000 => 0b001100000000, // Todo: fix issue in mstatus
+            // 0b001100000000 => 0b001100000000, // Verified mstatus - todo: end this part
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
             // 0b001100000011 => 0b001100000011, // Verified mideleg
@@ -444,7 +444,7 @@ mod verification {
             // 0b101100000000 => 0b101100000000, // Verified mcycle
             // 0b101100000010 => 0b101100000010, // Verified minstret
             // 0b011110100000 => 0b011110100000, // Verified tselect
-            // 0b000100000000 => 0b000100000000, // Todo: fix status
+            0b000100000000 => 0b000100000000, // Verified sstatus - todo: end this part
             // 0b000100000010 => 0b000100000010, // This register is ignored
             // 0b000100000011 => 0b000100000011, // This register is ignored
             // 0b000100000100 => 0b000100000100, // Verified Sie
@@ -556,6 +556,7 @@ mod verification {
         // assert_eq!(sail_ctx.into_virt_context().csr.scounteren, ctx.csr.scounteren, "Write equivalence");
         // assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write equivalence");
         // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write equivalence");
+        // assert_eq!(sail_ctx.into_virt_context().csr.mstatus, ctx.csr.mstatus, "Write equivalence");
 
         assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
