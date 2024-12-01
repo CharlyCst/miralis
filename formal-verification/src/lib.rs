@@ -26,6 +26,7 @@ impl SailVirtCtx {
         sail_ctx.mhartid = BitVector::new(ctx.hart_id as u64);
 
         // Transfer all csr
+        sail_ctx.mstatus = BitField::new(ctx.csr.mstatus as u64);
         sail_ctx.misa = BitField::new(ctx.csr.misa as u64);
         sail_ctx.mie = BitField::new(ctx.csr.mie as u64);
         sail_ctx.mip = BitField::new(ctx.csr.mip as u64);
@@ -123,6 +124,7 @@ impl SailVirtCtx {
         ctx.hart_id = self.mhartid.bits() as usize;
 
         // Transfer all csr
+        ctx.csr.mstatus = self.mstatus.bits.bits() as usize;
         ctx.csr.misa = self.misa.bits.bits() as usize;
         ctx.csr.mie = self.mie.bits.bits() as usize;
         ctx.csr.mip = self.mip.bits.bits() as usize;
@@ -231,7 +233,7 @@ fn KaniVirtCtx() -> VirtContext {
     ctx.csr.mepc = kani::any();
     ctx.csr.mtval = kani::any();
     // ctx.csr.mtval2= kani::any(); - TODO: What should we do with this?
-    // ctx.csr.mstatus= kani::any();
+    ctx.csr.mstatus = kani::any();
     // ctx.csr.mtinst= kani::any();
     ctx.csr.mconfigptr = kani::any();
     // ctx.csr.stvec= kani::any();
@@ -262,6 +264,9 @@ fn KaniVirtCtx() -> VirtContext {
 
     // We fix the architecture type to 64 bits
     ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
+
+    // We must have support for usermode in Miralis
+    ctx.csr.misa |= misa::U;
 
     // new added
     // ctx.csr.tselect = kani::any();
@@ -422,7 +427,7 @@ mod verification {
             // 0b111100010011 => 0b111100010011, // Verified mimpid
             // 0b111100010100 => 0b111100010100, // Verified mhartid
             // 0b111100010101 => 0b111100010101, // Verified mconfigptr
-            // 0b001100000000 => 0b001100000000, // Todo: fix issue in mstatus
+            0b001100000000 => 0b001100000000, // Todo: fix issue in mstatus
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
             // 0b001100000011 => 0b001100000011, // Verified mideleg
@@ -553,13 +558,9 @@ mod verification {
         // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write equivalence");
 
         assert_eq!(
-            sail_ctx.into_virt_context().csr.mip,
-            ctx.csr.mip,
+            sail_ctx.into_virt_context().csr.mstatus,
+            ctx.csr.mstatus,
             "Write equivalence"
         );
-
-        // To fix
-        // assert_eq!(sail_ctx.into_virt_context().csr.scounteren, ctx.csr.scounteren, "Write equivalence");
-        // assert_eq!(sail_ctx.into_virt_context().csr.mideleg, ctx.csr.mideleg, "Write equivalence");
     }
 }

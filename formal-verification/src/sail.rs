@@ -1527,6 +1527,7 @@ fn _get_Misa_S(sail_ctx: &mut SailVirtCtx, v: Misa) -> BitVector<1> {
 }
 
 fn _get_Misa_U(sail_ctx: &mut SailVirtCtx, v: Misa) -> BitVector<1> {
+    assert!(v.subrange::<20, 21, 1>().bits & 0x1 != 0, "Misa is one");
     v.subrange::<20, 21, 1>()
 }
 
@@ -1792,6 +1793,7 @@ fn legalize_mstatus(sail_ctx: &mut SailVirtCtx, o: Mstatus, v: BitVector<64>) ->
         ));
         Mk_Mstatus(sail_ctx, var_32)
     };
+
     let m = {
         let var_28 = m;
         let var_29 = if {
@@ -1823,6 +1825,7 @@ fn legalize_mstatus(sail_ctx: &mut SailVirtCtx, o: Mstatus, v: BitVector<64>) ->
     } else {
         m
     };
+
     let dirty = (({
         let var_23 = _get_Mstatus_FS(sail_ctx, m);
         extStatus_of_bits(sail_ctx, var_23)

@@ -421,6 +421,14 @@ mod tests {
         assert_eq!(v.subrange::<2, 6, 4>().bits(), 0b1101);
         assert_eq!(v.subrange::<2, 7, 5>().bits(), 0b01101);
 
+        assert_eq!(
+            BitVector::<32>::new(0xffffffff)
+                .subrange::<7, 23, 16>()
+                .bits(),
+            0xffff
+        );
+        assert_eq!(v.subrange::<2, 7, 5>().bits(), 0b01101);
+
         let v = BitVector::<32>::new(0b10110111);
         assert_eq!(
             v.set_subrange::<0, 1, 1>(BitVector::new(0b0)).bits(),
@@ -669,8 +677,6 @@ mod tests {
 
             val |= (1 as u64) << idx;
             v.set_vector_entry(idx, true);
-
-            print!("{} {}", val, v.bits);
 
             assert_eq!(v.bits, val);
         }
