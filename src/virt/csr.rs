@@ -4,6 +4,10 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mstatus::{
+    FS_FILTER, MBE_FILTER, MBE_OFFSET, MPP_FILTER, MPP_OFFSET, SBE_FILTER, SBE_OFFSET, SXL_OFFSET,
+    UIE_FILTER, UIE_OFFSET, UPIE_FILTER, UPIE_OFFSET, UXL_OFFSET,
+};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, mie, misa, mstatus, Arch, Architecture, Csr, MCause, Register};
 use crate::virt::emulator::pc_alignment_mask;
@@ -232,23 +236,80 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
                 // TODO: create some constant values
+
+                // 1 Mstatus filter was wrong
+                // TODO: Improve this first section and change the Mstatus filter
+                let filter = 0b11111111111111110111011;
                 let mut new_value = value & mstatus::MSTATUS_FILTER; //self.csr.mstatus;
                                                                      // MPP : 11 : write legal : 0,1,3
+
+                let previous_mstatus = self.csr.mstatus;
+
+                self.csr.mstatus = value & filter;
+
+                // 2 MPP doesn't get sanitized correctly
+                // MPP
                 let mpp = (value & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET;
+                let mut legalized_mpp: usize = mpp;
+
+                // Legalize MPP - todo: Improve this
+                if mpp == 0b01 {
+                    legalized_mpp = 0b01;
+                    if self.csr.misa & misa::S == 0 {
+                        legalized_mpp = 0b00;
+                    }
+                } else if mpp == 0b00 {
+                    legalized_mpp = 0b00;
+                } else if mpp == 0b10 {
+                    legalized_mpp = 0b00;
+                } else if mpp == 0b11 {
+                    legalized_mpp = 0b11;
+                }
+
                 VirtCsr::set_csr_field(
-                    &mut new_value,
+                    &mut self.csr.mstatus,
                     mstatus::MPP_OFFSET,
                     mstatus::MPP_FILTER,
-                    if mpp == 0 || mpp == 1 || mpp == 3 {
-                        mpp
-                    } else {
-                        0
-                    },
+                    legalized_mpp,
                 );
-                // SXL : 34 : read-only : MX-LEN = 64
-                let mxl: usize = 2;
+
+                // XS field : 15 : read-only 0 (NO FS nor VS)
                 VirtCsr::set_csr_field(
-                    &mut new_value,
+                    &mut self.csr.mstatus,
+                    mstatus::XS_OFFSET,
+                    mstatus::XS_FILTER,
+                    0,
+                );
+
+                // FS : 13 : read-only 0 (NO S-MODE, F extension)
+                // TODO: WHen I have internet look at the spec for this part
+                if !mctx.hw.extensions.has_s_extension || true {
+                    VirtCsr::set_csr_field(
+                        &mut self.csr.mstatus,
+                        mstatus::FS_OFFSET,
+                        mstatus::FS_FILTER,
+                        0,
+                    );
+                }
+
+                // SD field
+                let mut dirty = false;
+                dirty |= ((self.csr.mstatus & mstatus::FS_FILTER) >> mstatus::FS_OFFSET) == 0b11;
+                dirty |= ((self.csr.mstatus & mstatus::XS_FILTER) >> mstatus::XS_OFFSET) == 0b11;
+                dirty |= ((self.csr.mstatus & mstatus::VS_FILTER) >> mstatus::VS_OFFSET) == 0b11;
+
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::SD_OFFSET,
+                    mstatus::SD_FILTER,
+                    if dirty { 1 } else { 0 },
+                );
+
+                // SXL field
+                // TODO: Check what is the initial value....
+                let mxl: usize = (previous_mstatus >> SXL_OFFSET) & 0b11;
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
                     mstatus::SXL_OFFSET,
                     mstatus::SXL_FILTER,
                     if mctx.hw.extensions.has_s_extension {
@@ -257,13 +318,41 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         0
                     },
                 );
-                // UXL : 32 : read-only : MX-LEN = 64
+
+                // UXL field
+                let uxl: usize = (previous_mstatus >> UXL_OFFSET) & 0b11;
                 VirtCsr::set_csr_field(
-                    &mut new_value,
+                    &mut self.csr.mstatus,
                     mstatus::UXL_OFFSET,
                     mstatus::UXL_FILTER,
-                    mxl,
+                    if mctx.hw.extensions.has_s_extension {
+                        uxl
+                    } else {
+                        0
+                    },
                 );
+
+                // SBE and MBE are wired to zero
+                VirtCsr::set_csr_field(&mut self.csr.mstatus, MBE_OFFSET, MBE_FILTER, 0b0);
+                VirtCsr::set_csr_field(&mut self.csr.mstatus, SBE_OFFSET, SBE_FILTER, 0b0);
+
+                // UPIE and UIE are wired to zero if N extension is not available
+                if self.csr.misa & misa::N == 0 {
+                    VirtCsr::set_csr_field(&mut self.csr.mstatus, UIE_OFFSET, UIE_FILTER, 0b0);
+                    VirtCsr::set_csr_field(&mut self.csr.mstatus, UPIE_OFFSET, UPIE_FILTER, 0b0);
+                }
+
+                // MPRV is hardwired to zero if U extension is not available
+                if self.csr.misa & misa::U == 0 {
+                    VirtCsr::set_csr_field(
+                        &mut new_value,
+                        mstatus::MPRV_OFFSET,
+                        mstatus::MPRV_FILTER,
+                        0b0,
+                    );
+                }
+
+                return;
 
                 // MPRV : 17 : write anything
                 let mprv = (value & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
@@ -292,14 +381,6 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mstatus::MPRV_FILTER,
                     mprv,
                 );
-                // MBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & mstatus::MBE_FILTER != 0 {
-                    todo!("MBE filter is not implemented - please implement it");
-                }
-                // SBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & mstatus::SBE_FILTER != 0 {
-                    todo!("SBE filter is not implemented - please implement it");
-                }
                 // UBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & mstatus::UBE_FILTER != 0 {
                     todo!("UBE filter is not implemented - please implement it");
@@ -325,35 +406,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         );
                     }
                 }
-                // FS : 13 : read-only 0 (NO S-MODE, F extension)
-                if !mctx.hw.extensions.has_s_extension {
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::FS_OFFSET,
-                        mstatus::FS_FILTER,
-                        0,
-                    );
-                }
+
                 // VS : 9 : read-only 0 (v registers)
                 VirtCsr::set_csr_field(&mut new_value, mstatus::VS_OFFSET, mstatus::VS_FILTER, 0);
-                // XS : 15 : read-only 0 (NO FS nor VS)
-                VirtCsr::set_csr_field(&mut new_value, mstatus::XS_OFFSET, mstatus::XS_FILTER, 0);
-                // SD : 63 : read-only 0 (if NO FS/VS/XS)
-                VirtCsr::set_csr_field(
-                    &mut new_value,
-                    mstatus::SD_OFFSET,
-                    mstatus::SD_FILTER,
-                    if mctx.hw.extensions.has_s_extension {
-                        let fs: usize = (value & mstatus::FS_FILTER) >> mstatus::FS_OFFSET;
-                        if fs != 0 {
-                            0b1
-                        } else {
-                            0b0
-                        }
-                    } else {
-                        0
-                    },
-                );
 
                 self.csr.mstatus = new_value;
             }
