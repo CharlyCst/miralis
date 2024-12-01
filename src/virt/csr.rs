@@ -4,8 +4,6 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
-use crate::arch::mie::MEIE_FILTER;
-use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, mie, misa, mstatus, Arch, Architecture, Csr, MCause, Register};
 use crate::virt::emulator::pc_alignment_mask;
@@ -295,15 +293,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mprv,
                 );
                 // MBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & MBE_FILTER != 0 {
+                if new_value & mstatus::MBE_FILTER != 0 {
                     todo!("MBE filter is not implemented - please implement it");
                 }
                 // SBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & SBE_FILTER != 0 {
+                if new_value & mstatus::SBE_FILTER != 0 {
                     todo!("SBE filter is not implemented - please implement it");
                 }
                 // UBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & UBE_FILTER != 0 {
+                if new_value & mstatus::UBE_FILTER != 0 {
                     todo!("UBE filter is not implemented - please implement it");
                 }
                 // TVM & TSR are read only when no S-mode is available
@@ -547,10 +545,20 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Scause => self.csr.scause = value,
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
-                // Clear S bits
-                let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
-                // Set S bits to new value
-                self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
+                if self.csr.mideleg & mie::SSIE_FILTER != 0 {
+                    self.csr.mip = (value & mie::SSIE_FILTER) | (!mie::SSIE_FILTER & self.csr.mip);
+                }
+
+                if self.csr.misa & misa::N != 0 {
+                    if self.csr.mideleg & mie::UEIE_FILTER != 0 {
+                        self.csr.mip =
+                            (value & mie::UEIE_FILTER) | (!mie::UEIE_FILTER & self.csr.mip);
+                    }
+                    if self.csr.mideleg & mie::USIE_FILTER != 0 {
+                        self.csr.mip =
+                            (value & mie::USIE_FILTER) | (!mie::USIE_FILTER & self.csr.mip);
+                    }
+                }
             }
             Csr::Satp => {
                 let satp_mode = (value >> 60) & 0b1111;

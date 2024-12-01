@@ -260,14 +260,18 @@ fn KaniVirtCtx() -> VirtContext {
     // We don't have compressed instructions in Miralis
     ctx.csr.misa &= !misa::C;
 
+    // We fix the architecture type to 64 bits
+    ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
+
     // new added
     // ctx.csr.tselect = kani::any();
     ctx
 }
 
 #[cfg(kani)]
-fn generate_csr_register() -> usize {
-    let mut csr: usize = kani::any();
+fn generate_csr_register() -> u64 {
+    // We want only 12 bits
+    let mut csr: u64 = kani::any::<u64>() & 0xFFF;
 
     if csr == 0b000100000010 || csr == 0b000100000011 {
         csr = 0x0;
@@ -384,7 +388,7 @@ mod verification {
                                  // Pmp config works
         }; */
 
-        let csr_register = kani::any::<u64>() & ((1 << 12) - 1);
+        let csr_register = generate_csr_register();
 
         let mut ctx = KaniVirtCtx();
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
@@ -435,18 +439,18 @@ mod verification {
             // 0b101100000000 => 0b101100000000, // Verified mcycle
             // 0b101100000010 => 0b101100000010, // Verified minstret
             // 0b011110100000 => 0b011110100000, // Verified tselect
-            // 0b000100000000 => 0b000100000000, // Todo: fix mstatus
-            // 0b000100000010 => 0b000100000010, // Todo: ignore sedeleg
-            // 0b000100000011 => 0b000100000011, // Todo: ignore sideleg
-            // 0b000100000100 => 0b000100000100, // Todo: fix mie after done with read
-            // 0b000100000101 => 0b000100000101, // Verified - stvec
-            0b000100000110 => 0b000100000110, // Verified scounteren
+            // 0b000100000000 => 0b000100000000, // Todo: fix status
+            // 0b000100000010 => 0b000100000010, // This register is ignored
+            // 0b000100000011 => 0b000100000011, // This register is ignored
+            // 0b000100000100 => 0b000100000100, // Verified Sie
+            // 0b000100000101 => 0b000100000101, // Verified stvec
+            // 0b000100000110 => 0b000100000110, // Verified scounteren
             // 0b000100001010 => 0b000100001010, // Verified senvcfd
             // 0b000101000000 => 0b000101000000, // Verified sscratch
             // 0b000101000001 => 0b000101000001, // Verified sepc
             // 0b000101000010 => 0b000101000010, // Verified scause
             // 0b000101000011 => 0b000101000011, // Verified stval
-            // 0b000101000100 => 0b000101000100, // Todo: fix sip (after done with read)
+            // 0b000101000100 => 0b000101000100, // Verified sip
             // 0b000110000000 => 0b000110000000, // Verified satp
             // 0b000000010101 => 0b000000010101, // Verified seed
             // 0b000000001000 => 0b000000001000, // Verified vstart
@@ -461,7 +465,7 @@ mod verification {
                                  // Pmp config works
         };
 
-        /*// Pmp address (todo: next is the configuration)
+        /*// Pmp address
         csr_register = kani::any();
 
         if csr_register < 0x3a0 {
@@ -473,7 +477,6 @@ mod verification {
         }*/
 
         let mut ctx = KaniVirtCtx();
-        ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
 
         // Initialize Miralis's own context
@@ -547,6 +550,8 @@ mod verification {
         // assert_eq!(sail_ctx.into_virt_context().csr.mcounteren, ctx.csr.mcounteren, "Write equivalence");
         // assert_eq!(sail_ctx.into_virt_context().csr.scounteren, ctx.csr.scounteren, "Write equivalence");
         // assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write equivalence");
+        // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write equivalence");
+
         assert_eq!(
             sail_ctx.into_virt_context().csr.mip,
             ctx.csr.mip,

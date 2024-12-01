@@ -393,18 +393,18 @@ pub mod mie {
     pub const MIDELEG_READ_ONLY_ZERO: usize = MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
 
     // Mie fields constants
-    /// UTIE
-    pub const UTIE_OFFSET: usize = 0;
-    pub const UTIE_FILTER: usize = 0b1 << UTIE_OFFSET;
+    /// USIE
+    pub const USIE_OFFSET: usize = 0;
+    pub const USIE_FILTER: usize = 0b1 << USIE_OFFSET;
     /// SSIE
     pub const SSIE_OFFSET: usize = 1;
     pub const SSIE_FILTER: usize = 0b1 << SSIE_OFFSET;
     /// MSIE
     pub const MSIE_OFFSET: usize = 3;
     pub const MSIE_FILTER: usize = 0b1 << MSIE_OFFSET;
-    /// USIE
-    pub const USIE_OFFSET: usize = 4;
-    pub const USIE_FILTER: usize = 0b1 << USIE_OFFSET;
+    /// UTIE
+    pub const UTIE_OFFSET: usize = 4;
+    pub const UTIE_FILTER: usize = 0b1 << UTIE_OFFSET;
     /// STIE
     pub const STIE_OFFSET: usize = 5;
     pub const STIE_FILTER: usize = 0b1 << STIE_OFFSET;

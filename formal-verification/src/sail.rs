@@ -2811,34 +2811,34 @@ fn lower_mie(sail_ctx: &mut SailVirtCtx, m: Minterrupts, d: Minterrupts) -> Sint
 
 fn lift_sip(
     sail_ctx: &mut SailVirtCtx,
-    o: Minterrupts,
-    d: Minterrupts,
-    s: Sinterrupts,
+    mip: Minterrupts,
+    mideleg: Minterrupts,
+    value: Sinterrupts,
 ) -> Minterrupts {
-    let m: Minterrupts = o;
-    let m = if { (_get_Minterrupts_SSI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
+    let m: Minterrupts = mip;
+    let m = if { (_get_Minterrupts_SSI(sail_ctx, mideleg) == BitVector::<1>::new(0b1)) } {
         {
             let var_189 = m;
-            let var_190 = _get_Sinterrupts_SSI(sail_ctx, s);
+            let var_190 = _get_Sinterrupts_SSI(sail_ctx, value);
             _update_Minterrupts_SSI(sail_ctx, var_189, var_190)
         }
     } else {
         m
     };
     if { haveNExt(sail_ctx, ()) } {
-        let m = if { (_get_Minterrupts_UEI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
+        let m = if { (_get_Minterrupts_UEI(sail_ctx, mideleg) == BitVector::<1>::new(0b1)) } {
             {
                 let var_187 = m;
-                let var_188 = _get_Sinterrupts_UEI(sail_ctx, s);
+                let var_188 = _get_Sinterrupts_UEI(sail_ctx, value);
                 _update_Minterrupts_UEI(sail_ctx, var_187, var_188)
             }
         } else {
             m
         };
-        let m = if { (_get_Minterrupts_USI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
+        let m = if { (_get_Minterrupts_USI(sail_ctx, mideleg) == BitVector::<1>::new(0b1)) } {
             {
                 let var_185 = m;
-                let var_186 = _get_Sinterrupts_USI(sail_ctx, s);
+                let var_186 = _get_Sinterrupts_USI(sail_ctx, value);
                 _update_Minterrupts_USI(sail_ctx, var_185, var_186)
             }
         } else {
