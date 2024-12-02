@@ -228,6 +228,8 @@ pub mod misa {
     pub const I: usize = 1 << 8;
     /// Integer Multiply/Divide extension
     pub const M: usize = 1 << 12;
+    /// User-Level Interrupts extension
+    pub const N: usize = 1 << 13;
     /// Quad-precision floating-point extension
     pub const Q: usize = 1 << 16;
     /// Supervisor mode implemented
@@ -362,10 +364,13 @@ pub mod mstatus {
 #[allow(unused)]
 pub mod mie {
     /// Constant to filter out SIE bits of mstatus
-    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
+    pub const SIE_FILTER: usize = SEIE_FILTER | STIE_FILTER | SSIE_FILTER;
 
     /// Constant to filter out writable bits of mie.
-    pub const MIE_WRITE_FILTER: usize = SIE_FILTER | MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
+    pub const MIE_WRITE_FILTER: usize =  MSIE_FILTER | MTIE_FILTER | MEIE_FILTER | SIE_FILTER;
+
+    /// Constant to filter out writable bits of mie with userspace interrupt delegation
+    pub const MIE_WRITE_FILTER_WITH_U: usize =  MIE_WRITE_FILTER | UEIE_FILTER | USIE_FILTER | UTIE_FILTER;
 
     /// Constant to filter out writable bits of mip.
     pub const MIP_WRITE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
