@@ -101,7 +101,7 @@ impl Architecture for HostArch {
 
     unsafe fn detect_hardware() -> HardwareCapability {
         HardwareCapability {
-            interrupts: usize::MAX,
+            interrupts: mie::ALL_INT,
             hart: 0,
             _marker: PhantomData,
             available_reg: super::RegistersCapability {
