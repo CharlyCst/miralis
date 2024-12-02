@@ -78,6 +78,12 @@ pub enum Csr {
     Mcycle,
     /// Machine instructions-retired counter
     Minstret,
+    /// Cycle register
+    Cycle,
+    /// Time register
+    Time,
+    /// Instret register
+    Instret,
     /// Machine performance-monitoring counter
     Mhpmcounter(usize),
     /// Machine counter-inhibit register

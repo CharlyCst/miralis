@@ -208,6 +208,9 @@ impl Architecture for HostArch {
             Csr::Vl => ctx.csr.vl,
             Csr::Vtype => ctx.csr.vtype,
             Csr::Vlenb => ctx.csr.vlenb,
+            Csr::Cycle => ctx.csr.mcycle,
+            Csr::Time => 0,
+            Csr::Instret => ctx.csr.minstret,
             Csr::Unknown => panic!("Unkown csr!"),
         }
     }
@@ -299,6 +302,9 @@ impl Architecture for HostArch {
             Csr::Vl => ctx.csr.vl = value,
             Csr::Vtype => ctx.csr.vtype = value,
             Csr::Vlenb => ctx.csr.vlenb = value,
+            Csr::Cycle => {}
+            Csr::Time => {}
+            Csr::Instret => {}
             Csr::Unknown => panic!("Unkown csr!"),
         }
         prev_val

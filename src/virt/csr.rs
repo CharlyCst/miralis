@@ -213,6 +213,9 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Vtype => self.csr.vtype,
             Csr::Vlenb => self.csr.vlenb,
 
+            Csr::Cycle => self.csr.mcycle,
+            Csr::Time => Arch::read_csr(Csr::Time),
+            Csr::Instret => self.csr.minstret,
             // Unknown
             Csr::Unknown => {
                 log::warn!("Tried to access unknown CSR: {:?}", register);
@@ -648,6 +651,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Vl => self.csr.vl = value,
             Csr::Vtype => self.csr.vtype = value,
             Csr::Vlenb => self.csr.vlenb = value,
+
+            Csr::Cycle => todo!("Write cycle"),
+            Csr::Time => todo!("Write time"),
+            Csr::Instret => todo!("Write instret"),
 
             // Unknown
             Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
