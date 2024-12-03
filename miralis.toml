@@ -189,6 +189,12 @@ firmware = "linux-lock"
 config = "qemu-virt-protect-payload"
 description = "Integration test for the protect payload policy, running Linux with OpenSBI"
 
+[test.protect-payload-uboot]
+firmware = "opensbi-jump"
+payload = "u-boot-exit"
+config = "qemu-virt-protect-payload"
+description = "Integration test for the protect payload policy, running U-boot with OpenSBI"
+
 [test.protect-payload-misaligned]
 firmware = "misaligned_op"
 config = "spike-protect-payload"
