@@ -431,6 +431,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
             }
             Csr::Menvcfg => {
+
+                // @ Charly, we need to handle this
+
+                // Proposed by the spec
+
+                // We only change the value of FION here
+                self.csr.menvcfg = (value & 0b1) | (self.csr.menvcfg & !0b1);
+
+                // Our current code
                 let mut mask: usize = usize::MAX;
                 if !mctx.hw.extensions.has_sstc_extension {
                     mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
