@@ -1,6 +1,5 @@
 //! QEMU Virt board
 
-use core::arch::asm;
 use core::fmt::Write;
 use core::{fmt, hint, ptr};
 
@@ -127,24 +126,25 @@ impl Writer {
         }
     }
 
+    pub const fn get_register(&mut self, offset: usize) -> usize {
+        // Registers are 32 bits wide on the board
+        self.serial_port_base_addr + (offset << 2)
+    }
+
+    pub fn is_line_busy(&mut self) -> bool {
+        // Line Status Register
+        const LSR_OFFSET: usize = 0x05;
+        // Transmit Holding Register Empty
+        const LSR_THRE: u8 = 0x20;
+
+        unsafe { ptr::read_volatile(self.get_register(LSR_OFFSET) as *const u8) & LSR_THRE == 0 }
+    }
+
     fn write_char(&mut self, c: char) {
-        // const LSR_OFFSET: usize = 0x05;
-        // const LSR_THRE: u8 = 0x20;
-
         unsafe {
-            // Wait until THR (Transmitter Holding Register) is ready
-            // For now that's disabled, on the board this bit of LSR always reads as 0
-            // Which leads to an infinite wait cycle
-
-            // while ptr::read_volatile((self.serial_port_base_addr + LSR_OFFSET) as *const u8)
-            //     & LSR_THRE
-            //     == 0
-            // {}
+            while self.is_line_busy() {}
 
             ptr::write_volatile(self.serial_port_base_addr as *mut char, c);
-            for _n in 1..1000001 {
-                asm!("nop");
-            }
         }
     }
 }
