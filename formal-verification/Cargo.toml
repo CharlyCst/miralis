@@ -1,0 +1,9 @@
+[package]
+name = "formal-verification"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sail_prelude = { path = "sail_prelude" }
+miralis = { path = "../src", features = ["userspace"]}
+
