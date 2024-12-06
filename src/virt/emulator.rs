@@ -40,12 +40,12 @@ impl VirtContext {
             {
                 self.emulate_jump_trap_handler();
             }
-            Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, csr, rd, rs1),
-            Instr::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, csr, rd, rs1),
-            Instr::Csrrc { csr, rd, rs1 } => self.emulate_csrrc(mctx, csr, rd, rs1),
-            Instr::Csrrwi { csr, rd, uimm } => self.emulate_csrrwi(mctx, csr, rd, uimm),
-            Instr::Csrrsi { csr, rd, uimm } => self.emulate_csrrsi(mctx, csr, rd, uimm),
-            Instr::Csrrci { csr, rd, uimm } => self.emulate_csrrci(mctx, csr, rd, uimm),
+            Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
+            Instr::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, *csr, *rd, *rs1),
+            Instr::Csrrc { csr, rd, rs1 } => self.emulate_csrrc(mctx, *csr, *rd, *rs1),
+            Instr::Csrrwi { csr, rd, uimm } => self.emulate_csrrwi(mctx, *csr, *rd, *uimm),
+            Instr::Csrrsi { csr, rd, uimm } => self.emulate_csrrsi(mctx, *csr, *rd, *uimm),
+            Instr::Csrrci { csr, rd, uimm } => self.emulate_csrrci(mctx, *csr, *rd, *uimm),
             Instr::Mret => self.emulate_mret(mctx),
             Instr::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
             Instr::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
@@ -521,9 +521,9 @@ impl VirtContext {
     pub fn emulate_csrrw(
         &mut self,
         mctx: &mut MiralisContext,
-        csr: &Csr,
-        rd: &Register,
-        rs1: &Register,
+        csr: Csr,
+        rd: Register,
+        rs1: Register,
     ) {
         let tmp = self.get(csr);
         self.set_csr(csr, self.get(rs1), mctx);
@@ -534,9 +534,9 @@ impl VirtContext {
     pub fn emulate_csrrs(
         &mut self,
         mctx: &mut MiralisContext,
-        csr: &Csr,
-        rd: &Register,
-        rs1: &Register,
+        csr: Csr,
+        rd: Register,
+        rs1: Register,
     ) {
         let tmp = self.get(csr);
 
@@ -544,7 +544,7 @@ impl VirtContext {
         //
         // This makes the emulator simpler as some pseudo-instructions (such as RDTIME) translate
         // to CSRRS with x0 as the mask.
-        if *rs1 != Register::X0 {
+        if rs1 != Register::X0 {
             self.set_csr(csr, tmp | self.get(rs1), mctx);
         }
 
@@ -555,21 +555,21 @@ impl VirtContext {
     pub fn emulate_csrrwi(
         &mut self,
         mctx: &mut MiralisContext,
-        csr: &Csr,
-        rd: &Register,
-        uimm: &usize,
+        csr: Csr,
+        rd: Register,
+        uimm: usize,
     ) {
         self.set(rd, self.get(csr));
-        self.set_csr(csr, *uimm, mctx);
+        self.set_csr(csr, uimm, mctx);
         self.pc += 4;
     }
 
     pub fn emulate_csrrsi(
         &mut self,
         mctx: &mut MiralisContext,
-        csr: &Csr,
-        rd: &Register,
-        uimm: &usize,
+        csr: Csr,
+        rd: Register,
+        uimm: usize,
     ) {
         let tmp = self.get(csr);
         self.set_csr(csr, tmp | uimm, mctx);
@@ -580,9 +580,9 @@ impl VirtContext {
     pub fn emulate_csrrc(
         &mut self,
         mctx: &mut MiralisContext,
-        csr: &Csr,
-        rd: &Register,
-        rs1: &Register,
+        csr: Csr,
+        rd: Register,
+        rs1: Register,
     ) {
         let tmp = self.get(csr);
 
@@ -590,7 +590,7 @@ impl VirtContext {
         //
         // This makes the emulator simpler as some pseudo-instructions translate to CSRRC with x0
         // as the mask.
-        if *rs1 != Register::X0 {
+        if rs1 != Register::X0 {
             self.set_csr(csr, tmp & !self.get(rs1), mctx);
         }
 
@@ -601,9 +601,9 @@ impl VirtContext {
     pub fn emulate_csrrci(
         &mut self,
         mctx: &mut MiralisContext,
-        csr: &Csr,
-        rd: &Register,
-        uimm: &usize,
+        csr: Csr,
+        rd: Register,
+        uimm: usize,
     ) {
         let tmp = self.get(csr);
         self.set_csr(csr, tmp & !uimm, mctx);
