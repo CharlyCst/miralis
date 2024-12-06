@@ -42,6 +42,8 @@ pub struct VirtContext {
     pub hart_id: usize,
     /// Number of exists to Miralis
     pub nb_exits: usize,
+    /// Wether the vCPU is currently in Wait For Interrupt mode (WFI)
+    pub is_wfi: bool,
 }
 
 impl VirtContext {
@@ -140,6 +142,7 @@ impl VirtContext {
             nb_exits: 0,
             hart_id,
             extensions: available_extension,
+            is_wfi: false,
         }
     }
 

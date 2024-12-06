@@ -159,10 +159,16 @@ impl VirtContext {
     ///
     /// If an interrupt is injected, jumps to the firmware trap handler.
     pub fn check_and_inject_interrupts(&mut self) {
-        if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M {
+        if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M && !self.is_wfi {
             // Interrupts are disabled while in M-mode if mstatus.MIE is 0
             return;
         }
+
+        // For now we assume that the vCPU will be run each time this function is called (or
+        // rather, that this function is called before each vCPU run). Therefore by running the
+        // vCPU we exit the WFI mode, even if no interrupt is received (spurious wake-ups).
+        self.is_wfi = false;
+
         let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
         else {
             // No enabled interrupt pending
@@ -381,7 +387,6 @@ impl VirtContext {
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {
-                log::info!("Machine soft int");
                 self.handle_machine_software_interrupt(mctx, policy);
             }
             MCause::MachineExternalInt => {
@@ -504,18 +509,36 @@ impl VirtContext {
 // ——————————————————— Privileged Instructions Emulation ———————————————————— //
 
 impl VirtContext {
+    /// Emulate the WFI instruction, by putting the physical core in WFI state if needed.
+    ///
+    /// NOTE: for now there is no safeguard which guarantees that we will eventually get
+    /// an interrupt, so the firmware might be able to put the core in perpetual sleep
+    /// state.
     pub fn emulate_wfi(&mut self, _mctx: &mut MiralisContext) {
-        // NOTE: for now there is no safeguard which guarantees that we will eventually get
-        // an interrupt, so the firmware might be able to put the core in perpetual sleep
-        // state.
+        // The WFI instruction put the processor in a special state that enables taking interrupts
+        // even if mstatus.MIE = 0. We keep a bit in the virtual context to model that state.
+        self.is_wfi = true;
+        // After a WFI the execution always resumes on the next instruction, whether an interrupt
+        // is taken or not.
+        self.pc += 4;
 
-        // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
-        unsafe {
-            Arch::write_csr(Csr::Mie, self.csr.mie);
+        // If there is an interrupt that can be taken, then exit without doing a real WFI.
+        // The emulator will inject the interrupt before resuming the vCPU.
+        if get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg).is_some() {
+            // log::warn!("Early exit WFI on {}", self.hart_id);
+            return;
         }
 
+        // Otherwise if no interrupts are pending we execute a physical WFI.
+        let prev_mie: usize;
+
+        // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
+        unsafe { prev_mie = Arch::write_csr(Csr::Mie, self.csr.mie) };
+
         Arch::wfi();
-        self.pc += 4;
+
+        // Restore to previous mie value, including Miralis own bits
+        unsafe { Arch::write_csr(Csr::Mie, prev_mie) };
     }
 
     pub fn emulate_csrrw(

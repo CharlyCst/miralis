@@ -36,6 +36,8 @@ impl Architecture for MetalArch {
         // Ensure that there are no PT set, so that firmware in U-mode
         // Wouldn't try to read physical address as virtual (with jump, for example)
         unsafe { Arch::write_csr(Csr::Satp, 0) };
+        // Ensure that virtualized interrupts are enabled
+        unsafe { Arch::set_csr_bits(Csr::Mie, mie::MIDELEG_READ_ONLY_ZERO) };
     }
 
     #[inline]
@@ -333,13 +335,14 @@ impl Architecture for MetalArch {
         // Detect available interrupt IDs
         let available_int: usize;
         asm!(
-            "csrc mstatus, {clear_mie}", // Disable interrupts by clearing MIE in mstatus
-            "csrw mie, {all_int}",       // Set all bits in the mie register
-            "csrr {available_int}, mie", // Read back wich bits are set to 1
-            "csrw mie, x0",              // Clear all bits in mie
+            "csrc mstatus, {clear_mie}",   // Disable interrupts by clearing MIE in mstatus
+            "csrrw {tmp}, mie, {all_int}", // Set all bits in the mie register
+            "csrr {available_int}, mie",   // Read back wich bits are set to 1
+            "csrw mie, {tmp}",             // Clear all bits in mie
             clear_mie = in(reg) mstatus::MIE_FILTER,
             all_int = in(reg) usize::MAX,
             available_int = out(reg) available_int,
+            tmp = out(reg) _,
             options(nomem)
         );
 
@@ -415,20 +418,6 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn run_vcpu(ctx: &mut VirtContext) {
-        // When M-mode, patch mie register in order to trap on i only when mstatus.MIE
-        // is set and mideleg[i] is not set.
-        if ctx.mode == Mode::M {
-            let mie = (mstatus::MIE_FILTER & ctx.csr.mstatus) >> mstatus::MIE_OFFSET;
-            let mie_patched = if mie == 1 {
-                ctx.csr.mie & !ctx.csr.mideleg
-            } else {
-                0
-            };
-            unsafe {
-                Self::write_csr(Csr::Mie, mie_patched);
-            }
-        }
-
         asm!(
             // We need to save some registers manually, the compiler can't handle those
             "add sp, sp, -32",

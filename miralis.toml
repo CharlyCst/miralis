@@ -176,6 +176,11 @@ firmware = "linux"
 config = "qemu-virt-sifive-u54"
 description = "Run Linux and exit as soon as it reaches userspace on a sifive u54 CPU"
 
+[test.linux-multicores]
+firmware = "linux"
+config = "qemu-virt-2harts"
+description = "Run linux with two cores, expecting it to boot with both"
+
 ## ———————————————————————————— Testing Policies ———————————————————————————— ##
 
 [test.protect-payload]
