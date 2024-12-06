@@ -42,7 +42,7 @@ impl VirtContext {
         // NOTE: `mip` mut be set _after_ `menvcfg`, because `menvcfg` might change which bits in
         // `mip` are writeable. For more information see the Sstc extension specification.
         Arch::write_csr(Csr::Mip, self.csr.mip);
-        Arch::write_csr(Csr::Mie, self.csr.mie);
+        Arch::write_csr(Csr::Mie, self.csr.mie | mie::MIDELEG_READ_ONLY_ZERO);
 
         // If S extension is present - save the registers
         if mctx.hw.extensions.has_s_extension {
@@ -118,13 +118,15 @@ impl VirtContext {
         Arch::write_csr(Csr::Mideleg, 0); // Do not delegate any interrupts
         Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
 
-        self.csr.mie = Arch::read_csr(Csr::Mie);
+        let mie_hw_bits = Arch::read_csr(Csr::Mie) & !(mie::MIDELEG_READ_ONLY_ZERO);
+        let mie_sw_bits = self.csr.mie & mie::MIDELEG_READ_ONLY_ZERO;
+        self.csr.mie = mie_hw_bits | mie_sw_bits;
+        Arch::write_csr(Csr::Mie, mie::MIDELEG_READ_ONLY_ZERO);
 
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
-        // MSIE and MEIE could not be set by payload to it should be 0. The real value is read from hardware when
-        // the firmware want to read virtual mip.
+        // MSIE, MTIE, and MEIE are virtualized by Miralis.
         let mip_hw_bits =
             Arch::read_csr(Csr::Mip) & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
         let mip_sw_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
