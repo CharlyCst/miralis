@@ -441,6 +441,14 @@ impl VirtContext {
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 return self.handle_ecall();
             }
+            MCause::EcallFromSMode => {
+                log::debug!(
+                    "Forwarding ecall from s-mode with values 0x{:x}, 0x{:x} to the firmware",
+                    self.get(Register::X16),
+                    self.get(Register::X17)
+                );
+                self.emulate_jump_trap_handler();
+            }
             MCause::MachineTimerInt => {
                 self.handle_machine_timer_interrupt(mctx);
             }
