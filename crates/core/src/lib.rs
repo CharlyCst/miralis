@@ -43,3 +43,18 @@ pub mod abi_protect_payload {
     /// Ecall to lock the payload
     pub const MIRALIS_PROTECT_PAYLOAD_LOCK_FID: usize = 0x1;
 }
+
+// ———————————————————————————— RISCV SBI Definitions ————————————————————————————— //
+
+// Constants to idenfity the various SBI codes we use in Miralis
+// Documentation available here: https://github.com/riscv-non-isa/riscv-sbi-doc
+
+pub mod sbi_codes {
+
+    // SBI return codes used in Miralis
+    pub const SBI_ERR_DENIED: usize = (-4_i64) as usize;
+
+    // SBI EIDs and FIDs
+    /// The debug console extension defines a generic mechanism for boot-time early prints.
+    pub const SBI_DEBUG_CONSOLE_EXTENSION_EID: usize = 0x4442434E;
+}
