@@ -82,3 +82,10 @@ analyze-benchmark input_path:
 
 # The following line gives highlighting on vim
 # vim: set ft=make :
+
+vision-img:
+	just build config/visionfive2.toml
+	mkimage -f misc/visionfive2.its -A riscv -O u-boot -T firmware vision.img
+	curl -L -O https://github.com/epfl-dcsl/visionfive2-doc/raw/refs/heads/main/fw_payload.bin
+	@echo "Follow these instructions to run Miralis on the VisionFive2 board: https://github.com/epfl-dcsl/visionfive2-doc"
+	@echo "Follow these instruction to flash an OS on the board (section 3.3.1): https://doc-en.rvspace.org/VisionFive2/PDF/VisionFive2_QSG.pdf"
