@@ -65,6 +65,9 @@ struct RunArgs {
     /// An optional disk we can bind to qemu
     #[arg(long)]
     disk: Option<String>,
+    /// Redirect the output of the run to a file
+    #[arg(long)]
+    output: Option<String>,
 }
 
 #[derive(Args)]
