@@ -3,7 +3,8 @@
 use core::slice;
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use miralis_core::abi_protect_payload;
+use miralis_core::sbi_codes::SBI_ERR_DENIED;
+use miralis_core::{abi_protect_payload, sbi_codes};
 use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
@@ -152,6 +153,17 @@ impl ProtectPayloadPolicy {
         match cause {
             MCause::LoadAddrMisaligned | MCause::StoreAddrMisaligned => {
                 self.handle_misaligned_op(ctx, mctx)
+            }
+            // TODO: In the future, we want to have a more elaborate way of handling this kind of calls with a bounce buffer for example....
+            // In the meantime, we must explicitly disable this feature to run Ubuntu with the protect payload policy
+            MCause::EcallFromSMode
+                if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
+            {
+                log::debug!("Ignoring console ecall to the debug_console_extension");
+                // Explicitly tell the payload this feature is not available
+                ctx.set(Register::X10, SBI_ERR_DENIED);
+                ctx.pc += 4;
+                PolicyHookResult::Overwrite
             }
             MCause::EcallFromSMode => self.handle_ecall(ctx, mctx),
             _ => PolicyHookResult::Ignore,
