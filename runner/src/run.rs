@@ -4,6 +4,7 @@
 //! images.
 
 use core::str;
+use std::fs::File;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 use std::str::FromStr;
@@ -77,7 +78,14 @@ pub fn run(args: &RunArgs) -> ExitCode {
             .join(" ")
     );
 
-    let exit_status = cmd.status().expect("Failed to run");
+    let exit_status;
+    if let Some(file_path) = &args.output {
+        let output_file = File::create(file_path).unwrap();
+        // Pipe the output into the file
+        exit_status = cmd.stdout(output_file).status().expect("Failed to run")
+    } else {
+        exit_status = cmd.status().expect("Failed to run");
+    }
 
     if !exit_status.success() {
         ExitCode::from(exit_status.code().unwrap_or(1) as u8)
