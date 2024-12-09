@@ -30,4 +30,6 @@ pub struct Test {
     pub description: Option<String>,
     pub firmware: Option<String>,
     pub payload: Option<String>,
+    /// An expected string from the output of the test
+    pub expect: Option<String>,
 }
