@@ -9,6 +9,7 @@ use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
+use crate::arch::MCause::EcallFromSMode;
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register};
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::decoder::Instr;
@@ -83,6 +84,14 @@ impl PolicyModule for ProtectPayloadPolicy {
             // We don't clear ecall registers
             if !filter_rule.allow_in[i] {
                 ctx.regs[i] = 0;
+            }
+        }
+
+        // If this is an ecall from S-mode, we apply an extra filter according to the specification
+        if MCause::try_from(ctx.trap_info.mcause) == Ok(EcallFromSMode) {
+            let nb_allowed = get_nb_input_args(ctx.get(Register::X17), ctx.get(Register::X16));
+            for i in nb_allowed..6 {
+                ctx.regs[i] = 0
             }
         }
 
@@ -361,5 +370,84 @@ fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
         hasher.finalize(&mut hashed_value);
 
         hashed_value
+    }
+}
+
+// ———————————————————————————————— Filtering rules for ecall - automatically generated ———————————————————————————————— //
+
+fn get_nb_input_args(eid: usize, fid: usize) -> usize {
+    match (eid, fid) {
+        (0x10, 0) => 0,
+        (0x10, 1) => 0,
+        (0x10, 2) => 0,
+        (0x10, 3) => 1,
+        (0x10, 4) => 0,
+        (0x10, 5) => 0,
+        (0x10, 6) => 0,
+        (0x43505043, 0) => 1,
+        (0x43505043, 1) => 1,
+        (0x43505043, 2) => 1,
+        (0x43505043, 3) => 2,
+        (0x4442434E, 0) => 3,
+        (0x4442434E, 1) => 3,
+        (0x4442434E, 2) => 1,
+        (0x44425452, 0) => 1,
+        (0x44425452, 1) => 3,
+        (0x44425452, 2) => 2,
+        (0x44425452, 3) => 1,
+        (0x44425452, 4) => 1,
+        (0x44425452, 5) => 2,
+        (0x44425452, 6) => 2,
+        (0x44425452, 7) => 2,
+        (0x46574654, 0) => 3,
+        (0x46574654, 1) => 1,
+        (0x48534D, 0) => 3,
+        (0x48534D, 1) => 0,
+        (0x48534D, 2) => 1,
+        (0x48534D, 3) => 3,
+        (0x4D505859, 0) => 4,
+        (0x4D505859, 1) => 1,
+        (0x4D505859, 2) => 3,
+        (0x4D505859, 3) => 3,
+        (0x4D505859, 4) => 3,
+        (0x4D505859, 5) => 3,
+        (0x4D505859, 6) => 1,
+        (0x4E41434C, 0) => 1,
+        (0x4E41434C, 1) => 3,
+        (0x4E41434C, 2) => 1,
+        (0x4E41434C, 3) => 1,
+        (0x4E41434C, 4) => 0,
+        (0x504D55, 0) => 1,
+        (0x504D55, 1) => 1,
+        (0x504D55, 2) => 5,
+        (0x504D55, 3) => 4,
+        (0x504D55, 4) => 3,
+        (0x504D55, 5) => 1,
+        (0x504D55, 6) => 1,
+        (0x504D55, 7) => 3,
+        (0x504D55, 8) => 4,
+        (0x52464E43, 0) => 2,
+        (0x52464E43, 1) => 4,
+        (0x52464E43, 2) => 5,
+        (0x52464E43, 3) => 5,
+        (0x52464E43, 4) => 4,
+        (0x52464E43, 5) => 5,
+        (0x52464E43, 6) => 4,
+        (0x53525354, 0) => 2,
+        (0x535345, 0) => 5,
+        (0x535345, 1) => 5,
+        (0x535345, 2) => 3,
+        (0x535345, 3) => 1,
+        (0x535345, 4) => 1,
+        (0x535345, 5) => 1,
+        (0x535345, 6) => 0,
+        (0x535345, 7) => 2,
+        (0x535345, 8) => 0,
+        (0x535345, 9) => 0,
+        (0x535441, 0) => 3,
+        (0x53555350, 0) => 3,
+        (0x54494D45, 0) => 1,
+        (0x735049, 0) => 2,
+        _ => 0,
     }
 }
