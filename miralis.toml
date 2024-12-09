@@ -180,6 +180,7 @@ description = "Run Linux and exit as soon as it reaches userspace on a sifive u5
 firmware = "linux"
 config = "qemu-virt-2harts"
 description = "Run linux with two cores, expecting it to boot with both"
+expect = "smp: Brought up 1 node, 2 CPUs"
 
 ## ———————————————————————————— Testing Policies ———————————————————————————— ##
 

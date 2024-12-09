@@ -2,8 +2,9 @@
 
 use std::collections::HashMap;
 use std::fs;
+use std::io::Read;
 use std::path::PathBuf;
-use std::process::ExitCode;
+use std::process::{ExitCode, Stdio};
 
 use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
 use crate::config::{read_config, Config, Platforms};
@@ -170,6 +171,7 @@ pub fn run_one_test(test: &Test, test_name: &str, cfg: &Config) -> Result<(), Op
         return Err(None);
     };
 
+    // Prepare the command to run
     let cmd = match cfg.platform.name.unwrap_or(Platforms::QemuVirt) {
         Platforms::QemuVirt => {
             get_qemu_cmd(cfg, miralis, firmware, test.payload.as_ref(), false, false)
@@ -194,9 +196,38 @@ pub fn run_one_test(test: &Test, test_name: &str, cfg: &Config) -> Result<(), Op
             .join(" ")
     );
 
-    let exit_status = cmd.status().expect("Failed to run");
+    // Then execute the test and check for the success criteria
+    //
+    // For some tests we require a substring to be present in the output, in those cases we do some
+    // aditionnal work on top of checking the exit status.
+    let mut succeeded = true;
+    let exit_status = if let Some(expected) = &test.expect {
+        // We need to get the output of the child, we create a pipe for that purpose
+        cmd.stdout(Stdio::piped());
+        let mut child = cmd.spawn().expect("Failed to spawn command");
+        let pipe = child
+            .stdout
+            .as_mut()
+            .expect("Could not read child process output");
+        let mut buff = Vec::new();
+        pipe.read_to_end(&mut buff)
+            .expect("Failed to read output from child process");
+        let exit_status = child.wait().expect("Failed to wait for child process");
 
-    if !exit_status.success() {
+        // We got the exit status, now also check for the expected pattern
+        let buff = String::from_utf8_lossy(&buff);
+        if !buff.contains(expected) {
+            log::error!("Could not find '{}' in the test output", expected);
+            succeeded = false;
+        }
+
+        exit_status
+    } else {
+        // log::warn!("Test :)");
+        cmd.status().expect("Failed to run")
+    };
+
+    if !exit_status.success() || !succeeded {
         let cmd_str = format!(
             "{} {}",
             cmd.get_program().to_str().unwrap(),
