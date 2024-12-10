@@ -4,6 +4,7 @@ use crate::arch::Width;
 use crate::virt::VirtContext;
 
 pub mod clint;
+pub mod plic;
 pub mod tester;
 
 // ———————————————————————————— Virtual Devices ————————————————————————————— //

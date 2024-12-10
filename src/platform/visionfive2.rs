@@ -61,6 +61,7 @@ pub struct VisionFive2Platform {}
 
 impl Platform for VisionFive2Platform {
     const NB_HARTS: usize = 5;
+    const NB_VIRT_DEVICES: usize = 2;
 
     fn name() -> &'static str {
         "VisionFive 2 board"

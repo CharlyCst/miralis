@@ -56,6 +56,7 @@ pub trait Platform {
     fn get_max_valid_address() -> usize;
 
     const NB_HARTS: usize;
+    const NB_VIRT_DEVICES: usize;
 }
 
 pub fn init() {
@@ -64,4 +65,12 @@ pub fn init() {
 
     // Trap handler
     Arch::init();
+
+    // Ideally we would like to check this statically, until we find a good solution we assert it
+    // at runtime.
+    assert_eq!(
+        Plat::NB_VIRT_DEVICES,
+        Plat::get_virtual_devices().len(),
+        "Mismatch between advertised number of devices and returned value"
+    );
 }

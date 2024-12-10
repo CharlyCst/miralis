@@ -349,7 +349,7 @@ impl VirtContext {
             MCause::StoreAccessFault | MCause::LoadAccessFault => {
                 // PMP faults
                 if let Some(device) =
-                    device::find_matching_device(self.trap_info.mtval, &mctx.devices)
+                    device::find_matching_device(self.trap_info.mtval, mctx.devices)
                 {
                     let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                     let instr = mctx.decode(instr);
