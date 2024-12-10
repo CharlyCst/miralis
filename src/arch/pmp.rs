@@ -210,7 +210,7 @@ impl PmpGroup {
 
     pub fn init_pmp_group(nb_pmp: usize, start: usize, size: usize) -> PmpGroup {
         let mut pmp = Self::new(nb_pmp);
-        let virtual_devices = Plat::create_virtual_devices();
+        let virtual_devices = Plat::get_virtual_devices();
 
         // Configure PMP registers, if available
         if pmp.nb_pmp >= 8 {

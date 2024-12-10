@@ -14,7 +14,7 @@ pub struct MiralisContext {
     /// Hardware capabilities of the core (hart).
     pub hw: HardwareCapability,
     /// List of device with PMP
-    pub devices: [device::VirtDevice; 2],
+    pub devices: &'static [device::VirtDevice],
 }
 
 impl MiralisContext {
@@ -23,7 +23,7 @@ impl MiralisContext {
         Self {
             pmp: PmpGroup::init_pmp_group(hw.available_reg.nb_pmp, start, size),
             hw,
-            devices: Plat::create_virtual_devices(),
+            devices: Plat::get_virtual_devices(),
         }
     }
 }
