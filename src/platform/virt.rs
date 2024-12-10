@@ -11,7 +11,7 @@ use super::Platform;
 use crate::config::{PLATFORM_NAME, TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
-use crate::device::{self, VirtDevice};
+use crate::device::VirtDevice;
 use crate::driver::ClintDriver;
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
@@ -48,6 +48,22 @@ static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
+
+/// The list of virtual devices exposed on the platform.
+static VIRT_DEVICES: &[VirtDevice; 2] = &[
+    VirtDevice {
+        start_addr: CLINT_BASE,
+        size: CLINT_SIZE,
+        name: "CLINT",
+        device_interface: &VIRT_CLINT,
+    },
+    VirtDevice {
+        start_addr: TEST_DEVICE_BASE,
+        size: TEST_DEVICE_SIZE,
+        name: "TEST",
+        device_interface: &VIRT_TEST_DEVICE,
+    },
+];
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -107,22 +123,8 @@ impl Platform for VirtPlatform {
         usize::MAX
     }
 
-    fn create_virtual_devices() -> [VirtDevice; 2] {
-        let virtual_clint: device::VirtDevice = VirtDevice {
-            start_addr: CLINT_BASE,
-            size: CLINT_SIZE,
-            name: "CLINT",
-            device_interface: &VIRT_CLINT,
-        };
-
-        let virtual_test_device: device::VirtDevice = VirtDevice {
-            start_addr: TEST_DEVICE_BASE,
-            size: TEST_DEVICE_SIZE,
-            name: "TEST",
-            device_interface: &VIRT_TEST_DEVICE,
-        };
-
-        [virtual_clint, virtual_test_device]
+    fn get_virtual_devices() -> &'static [VirtDevice] {
+        VIRT_DEVICES
     }
 
     fn get_clint() -> &'static Mutex<ClintDriver> {
