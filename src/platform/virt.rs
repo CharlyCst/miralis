@@ -10,15 +10,18 @@ use uart_16550::MmioSerialPort;
 use super::Platform;
 use crate::config::{PLATFORM_NAME, TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::plic::VirtPlic;
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
-use crate::driver::ClintDriver;
+use crate::driver::clint::ClintDriver;
+use crate::driver::plic::PlicDriver;
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
+const PLIC_BASE: usize = 0xC000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
 
 // —————————————————————————— Spike Parameters ——————————————————————————— //
@@ -46,6 +49,20 @@ static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CL
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
+/// The physical PLIC driver.
+///
+/// SAFETY: this is the only PLIC device driver that we create, and the platform code does not
+/// otherwise access the PLIC.
+static PLIC_MUTEX: Mutex<PlicDriver> = unsafe { Mutex::new(PlicDriver::new(PLIC_BASE)) };
+
+/// The virtual PLIC device.
+///
+/// NOTE: For now we do not expose a virtual PLIC, as virtualizing the PLIC properly would also
+/// require trapping S-mode accessed to PLIC registers (because M and S-mode registers are
+/// interleaved).
+#[allow(unused)]
+static VIRT_PLIC: VirtPlic = VirtPlic::new(&PLIC_MUTEX);
+
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
 
@@ -71,6 +88,7 @@ pub struct VirtPlatform {}
 
 impl Platform for VirtPlatform {
     const NB_HARTS: usize = usize::MAX;
+    const NB_VIRT_DEVICES: usize = 2;
 
     fn name() -> &'static str {
         match PLATFORM_NAME {

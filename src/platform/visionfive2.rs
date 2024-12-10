@@ -11,7 +11,7 @@ use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
-use crate::driver::ClintDriver;
+use crate::driver::clint::ClintDriver;
 use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
@@ -61,6 +61,7 @@ pub struct VisionFive2Platform {}
 
 impl Platform for VisionFive2Platform {
     const NB_HARTS: usize = 5;
+    const NB_VIRT_DEVICES: usize = 2;
 
     fn name() -> &'static str {
         "VisionFive 2 board"

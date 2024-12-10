@@ -10,7 +10,7 @@ use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_PAYLOAD_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
-use crate::driver::ClintDriver;
+use crate::driver::clint::ClintDriver;
 use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
@@ -56,6 +56,7 @@ pub struct MiralisPlatform {}
 
 impl Platform for MiralisPlatform {
     const NB_HARTS: usize = usize::MAX;
+    const NB_VIRT_DEVICES: usize = 2;
 
     fn name() -> &'static str {
         "Miralis"
