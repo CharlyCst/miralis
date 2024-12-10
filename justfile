@@ -36,6 +36,12 @@ test:
 	# Run integration tests...
 	cargo run -- test --strict
 
+	# Test handwritten prelude for the formal verification
+	cargo test  --lib -p sail_prelude
+
+	# Symbolic formal verification with Kani
+	cd formal-verification; cargo kani --output-format terse
+
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
 
@@ -76,6 +82,8 @@ install-toolchain:
 	rustup component add llvm-tools-preview --toolchain "$(cat rust-toolchain)"
 	rustup component add clippy --toolchain "$(cat rust-toolchain)"
 	cargo install cargo-binutils
+	cargo install --locked kani-verifier
+	cargo kani setup
 
 analyze-benchmark input_path:
 	cargo run --package benchmark_analyzer -- {{input_path}}
