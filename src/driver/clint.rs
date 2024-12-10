@@ -1,21 +1,21 @@
-//! Base driver class
+//! # CLINT Driver
+//!
+//! This module implements a driver for the RISC-V CLINT (Core Local Interruptor). It is inteded to
+//! be used both as a back-end for the virtual CLINT device and for directly programming M-mode
+//! interrupts from Miralis.
 
 use core::ptr;
 
-use crate::arch::{Arch, Architecture, Csr};
+use crate::arch::{Arch, Architecture, Csr, Width};
 use crate::config::{self, PLATFORM_NB_HARTS};
 
-pub mod clint {
-    use crate::arch::Width;
+pub const MSIP_OFFSET: usize = 0x0;
+pub const MTIMECMP_OFFSET: usize = 0x4000;
+pub const MTIME_OFFSET: usize = 0xBFF8;
 
-    pub const MSIP_OFFSET: usize = 0x0;
-    pub const MTIMECMP_OFFSET: usize = 0x4000;
-    pub const MTIME_OFFSET: usize = 0xBFF8;
-
-    pub const MSIP_WIDTH: Width = Width::Byte4;
-    pub const MTIMECMP_WIDTH: Width = Width::Byte8;
-    pub const _MTIME_WIDTH: Width = Width::Byte8;
-}
+pub const MSIP_WIDTH: Width = Width::Byte4;
+pub const MTIMECMP_WIDTH: Width = Width::Byte8;
+pub const _MTIME_WIDTH: Width = Width::Byte8;
 
 #[derive(Clone, Debug)]
 pub struct ClintDriver {
@@ -42,7 +42,7 @@ impl ClintDriver {
 
     /// Read the current value of the machine timer (mtime)
     pub fn read_mtime(&self) -> usize {
-        let pointer = self.add_base_offset(clint::MTIME_OFFSET);
+        let pointer = self.add_base_offset(MTIME_OFFSET);
 
         // SAFETY: We derive a valid memory address assuming the base points to a valid CLINT
         // device.
@@ -54,7 +54,7 @@ impl ClintDriver {
 
     /// Write a new value to the machine timer (mtime)
     pub fn write_mtime(&mut self, time: usize) {
-        let pointer = self.add_base_offset(clint::MTIME_OFFSET);
+        let pointer = self.add_base_offset(MTIME_OFFSET);
 
         // SAFETY: We derive a valid memory address assuming the base points to a valid CLINT
         // device. Moreover, we take `self` with &mut reference to enforce aliasing rules.
@@ -72,8 +72,7 @@ impl ClintDriver {
             );
             return Err("Out of bounds MTIMECMP read attempt");
         }
-        let pointer =
-            self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH.to_bytes());
+        let pointer = self.add_base_offset(MTIMECMP_OFFSET + hart * MTIMECMP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MTIMECMP area of the CLINT.
@@ -92,8 +91,7 @@ impl ClintDriver {
             );
             return Err("Out of bounds MTIMECMP write attempt");
         }
-        let pointer =
-            self.add_base_offset(clint::MTIMECMP_OFFSET + hart * clint::MTIMECMP_WIDTH.to_bytes());
+        let pointer = self.add_base_offset(MTIMECMP_OFFSET + hart * MTIMECMP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MTIMECMP area of the CLINT. Moreover, we take `self`
@@ -113,8 +111,7 @@ impl ClintDriver {
             );
             return Err("Out of bounds MSIP read attempt");
         }
-        let pointer =
-            self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH.to_bytes());
+        let pointer = self.add_base_offset(MSIP_OFFSET + hart * MSIP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MSIP area of the CLINT.
@@ -137,8 +134,7 @@ impl ClintDriver {
             return Err("Out of bounds MSIP write attempt");
         }
         let msip_value = msip & 0x1;
-        let pointer =
-            self.add_base_offset(clint::MSIP_OFFSET + hart * clint::MSIP_WIDTH.to_bytes());
+        let pointer = self.add_base_offset(MSIP_OFFSET + hart * MSIP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MSIP area of the CLINT. Moreover, we take `self`

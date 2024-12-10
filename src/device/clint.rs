@@ -7,9 +7,8 @@ use crate::config::PLATFORM_NB_HARTS;
 use crate::debug;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
-    MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
+    ClintDriver, MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
 };
-use crate::driver::ClintDriver;
 use crate::virt::VirtContext;
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //

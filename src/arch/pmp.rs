@@ -19,6 +19,7 @@ use crate::platform::{Plat, Platform};
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
 
 pub mod pmplayout {
+    use crate::platform::{Plat, Platform};
     use crate::policy::{Policy, PolicyModule};
 
     /// First entry used to catch all pmp entries
@@ -30,7 +31,7 @@ pub mod pmplayout {
     pub const MIRALIS_OFFSET: usize = ALL_CATCH_SIZE;
 
     /// PMP entries used to protect the devices
-    pub const DEVICES_SIZE: usize = 2;
+    pub const DEVICES_SIZE: usize = Plat::NB_VIRT_DEVICES;
     pub const DEVICES_OFFSET: usize = MIRALIS_OFFSET + MIRALIS_SIZE;
 
     /// PMP entries used by the policy
@@ -221,19 +222,20 @@ impl PmpGroup {
             pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
 
             // Protect virtual devices
-            pmp.set_napot(
-                DEVICES_OFFSET,
-                virtual_devices[0].start_addr,
-                virtual_devices[0].size,
-                pmpcfg::NO_PERMISSIONS,
-            );
-
-            pmp.set_napot(
-                DEVICES_OFFSET + 1,
-                virtual_devices[1].start_addr,
-                virtual_devices[1].size,
-                pmpcfg::NO_PERMISSIONS,
-            );
+            for (i, device) in virtual_devices.iter().enumerate() {
+                log::debug!(
+                    "PMP protect device {} at [0x{:x}, 0x{:x}]",
+                    device.name,
+                    device.start_addr,
+                    device.start_addr + device.size
+                );
+                pmp.set_napot(
+                    DEVICES_OFFSET + i,
+                    device.start_addr,
+                    device.size,
+                    pmpcfg::NO_PERMISSIONS,
+                );
+            }
 
             // This PMP entry is used by the policy module for its own purpose
             #[allow(clippy::reversed_empty_ranges)]
