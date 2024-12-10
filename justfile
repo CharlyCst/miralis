@@ -82,3 +82,8 @@ analyze-benchmark input_path:
 
 # The following line gives highlighting on vim
 # vim: set ft=make :
+
+board:
+	just build config/visionfive2.toml
+	mkimage -f visionfive2-fit-image.its -A riscv -O u-boot -T firmware vision.img
+	cp vision.img ../vision.img
