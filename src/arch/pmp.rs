@@ -136,16 +136,60 @@ pub struct PmpFlush();
 
 impl fmt::Display for PmpGroup {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "\n===============================")?;
-        writeln!(f, "\n           PMP Entries       \n")?;
+        // We keep track of the previous address for TOR registers
+        let mut prev_addr = 0;
 
         for i in 0..self.nb_pmp {
-            writeln!(f, "===============================")?;
-            writeln!(
+            let addr = self.pmpaddr[i as usize];
+            let cfg = self.get_cfg(i as usize);
+
+            // Parse configuration
+            let r = if cfg & 0b001 != 0 { 'R' } else { '_' };
+            let w = if cfg & 0b010 != 0 { 'W' } else { '_' };
+            let x = if cfg & 0b100 != 0 { 'X' } else { '_' };
+            let a = (cfg >> 3) & 0b11;
+            let mode = match a {
+                0 => "OFF",
+                1 => "TOR",
+                2 => "NA4",
+                3 => "NAPOT",
+                _ => panic!("Unreacheable"),
+            };
+
+            // Compute start and end for each mode
+            let (start, end) = match a {
+                0 => {
+                    prev_addr = addr << 2;
+                    (addr << 2, 0)
+                }
+                1 => {
+                    let start = prev_addr;
+                    prev_addr = addr << 2;
+                    (start, addr << 2)
+                }
+                2 => {
+                    prev_addr = addr << 2;
+                    (addr, addr + 4)
+                }
+                3 => {
+                    let nb_ones = addr.trailing_ones();
+                    if nb_ones > usize::BITS - 2 {
+                        (0, usize::MAX) // TODO: Not true when one bit to 0
+                    } else {
+                        let start = (addr & !((1 << nb_ones) - 1)) << 2;
+                        let size = 1 << (nb_ones + 3);
+                        prev_addr = start;
+                        (start, start.saturating_add(size))
+                    }
+                }
+                _ => (addr, addr),
+            };
+
+            // Pretty print
+            write!(
                 f,
-                "{:16x} | {}",
-                self.pmpaddr[i as usize],
-                self.get_cfg(i as usize)
+                "\nPMP {:2}  {:16x} {:16x} | {}{}{}  {}",
+                i, start, end, r, w, x, mode
             )?;
         }
 
