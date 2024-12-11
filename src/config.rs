@@ -66,7 +66,7 @@ pub const DELEGATE_PERF_COUNTER: bool = is_enabled_default_false!("MIRALIS_DELEG
 pub const PLATFORM_BOOT_HART_ID: usize =
     parse_usize_or(option_env!("MIRALIS_PLATFORM_BOOT_HART_ID"), 0);
 
-/// Whether any benchmark is enable
+/// Whether any benchmark is enabled
 pub const BENCHMARK: bool = is_enabled!("MIRALIS_BENCHMARK");
 
 /// Whether print in csv format or not
@@ -97,7 +97,7 @@ pub const TARGET_FIRMWARE_ADDRESS: usize =
 
 /// Start address of the payload
 pub const TARGET_PAYLOAD_ADDRESS: usize =
-    parse_usize_or(option_env!("MIRALIS_TARGET_PAYLAOD_ADDRESS"), 0x80400000);
+    parse_usize_or(option_env!("MIRALIS_TARGET_PAYLOAD_ADDRESS"), 0x80400000);
 
 /// The stack size for each Miralis thread (one per hart)
 pub const TARGET_STACK_SIZE: usize =

@@ -3,91 +3,114 @@
 #![feature(start)]
 // ———————————————————————————————— Guest OS ———————————————————————————————— //
 
-use core::arch::global_asm;
+use core::arch::{asm, global_asm};
 
-use miralis_abi::{ecall3, log, setup_binary, success};
+use miralis_abi::{ecall3, failure, log, setup_binary, success};
 
 setup_binary!(main);
 
+static mut EID: usize = 0; // Enclave ID
+
+pub const ILLEGAL_ARGUMENT: usize = 100008;
+pub const MIRALIS_KEYSTONE_EID: usize = 0x08424b45;
+pub const CREATE_ENCLAVE_FID: usize = 2001;
+pub const DESTROY_ENCLAVE_FID: usize = 2002;
+pub const RUN_ENCLAVE_FID: usize = 2003;
+pub const RESUME_ENCLAVE_FID: usize = 2005;
+pub const ERR_ENCLAVE_INTERRUPTED: usize = 100002;
+pub const ERR_ENCLAVE_EDGE_CALL_HOST: usize = 100011;
+
+#[repr(C)]
+struct CreateArgs {
+    epm_paddr: usize,
+    epm_size: usize,
+    utm_paddr: usize,
+    utm_size: usize,
+    runtime_paddr: usize,
+    user_paddr: usize,
+    free_paddr: usize,
+    free_requested: usize,
+}
+
 fn main() -> ! {
     log::info!("Hello from test keystone payload");
-
-    pub const ILLEGAL_ARGUMENT: usize = 100008;
-    pub const MIRALIS_KEYSTONE_EID: usize = 0x08424b45;
-    pub const CREATE_ENCLAVE_FID: usize = 2001;
-    pub const RUN_ENCLAVE_FID: usize = 2003;
-    pub const RESUME_ENCLAVE_FID: usize = 2005;
-    pub const ERR_ENCLAVE_INTERRUPTED: usize = 100002;
-    pub const ERR_ENCLAVE_EDGE_CALL_HOST: usize = 100011;
-
     // Test create enclave
-    #[repr(C)]
-    struct CreateArgs {
-        epm_paddr: usize,
-        epm_size: usize,
-        utm_paddr: usize,
-        utm_size: usize,
-        runtime_paddr: usize,
-        user_paddr: usize,
-        free_paddr: usize,
-        free_requested: usize,
-    }
-
-    let valid_args = CreateArgs {
-        // Values copied from keystone
-        epm_paddr: _enclave as usize,
-        epm_size: 0x200000,
-        utm_paddr: 0x83240000,
-        utm_size: 0x40000,
-        runtime_paddr: 0x8380C000,
-        user_paddr: 0x83834000,
-        free_paddr: 0x838D6000,
-        free_requested: 0x40000,
-    };
-
-    // Keystone should return SUCCESS if given valid arguments
-    let eid = unsafe {
-        ecall3(
-            MIRALIS_KEYSTONE_EID,
-            CREATE_ENCLAVE_FID,
-            &valid_args as *const CreateArgs as usize,
-            0,
-            0,
-        )
-    }
-    .expect("Failed to create enclave");
-    log::info!("Enclave created successfully");
-
-    // Miralis should not crash if given an invalid argument
-    let err = unsafe {
-        ecall3(
+    unsafe {
+        // Miralis should not crash if given an invalid argument
+        let err = ecall3(
             MIRALIS_KEYSTONE_EID,
             CREATE_ENCLAVE_FID,
             0xDEADBEEFDEADBEEF,
             0,
             0,
         )
-    }
-    .unwrap_err();
-    assert_eq!(err, ILLEGAL_ARGUMENT);
-    log::info!("Illegal argument test passed");
+        .unwrap_err();
+        assert_eq!(err, ILLEGAL_ARGUMENT);
+        log::info!("Illegal argument test passed");
 
-    // Run the enclave
-    let mut result = unsafe { ecall3(MIRALIS_KEYSTONE_EID, RUN_ENCLAVE_FID, eid, 0, 0) };
-    let mut max_exits = 100;
-    log::info!("Enclave ran successfully");
-    while result.is_err() {
-        max_exits -= 1;
-        assert!(
-            result.unwrap_err() == ERR_ENCLAVE_INTERRUPTED
-                || result.unwrap_err() == ERR_ENCLAVE_EDGE_CALL_HOST
-        );
-        assert!(max_exits > 0, "Enclave exited too many times");
-        result = unsafe { ecall3(MIRALIS_KEYSTONE_EID, RESUME_ENCLAVE_FID, eid, 0, 0) };
-    }
+        let shared_memory: [usize; 64] = [0; 64];
+        let valid_args = CreateArgs {
+            epm_paddr: _enclave as usize,
+            epm_size: 0x128,
+            utm_paddr: shared_memory.as_ptr() as usize,
+            utm_size: shared_memory.len(),
+            runtime_paddr: 0x8380C000,
+            user_paddr: 0x83834000,
+            free_paddr: 0x838D6000,
+            free_requested: 0x40000,
+        };
 
-    assert_eq!(result.unwrap(), 0xBEEF);
-    log::info!("Enclave exited successfully");
+        // Keystone should return SUCCESS if given valid arguments
+        EID = ecall3(
+            MIRALIS_KEYSTONE_EID,
+            CREATE_ENCLAVE_FID,
+            &valid_args as *const CreateArgs as usize,
+            0,
+            0,
+        )
+        .expect("Failed to create enclave");
+        log::info!("Enclave created successfully");
+
+        // Run the enclave
+        let mut result = ecall3(MIRALIS_KEYSTONE_EID, RUN_ENCLAVE_FID, EID, 0, 0);
+        let mut max_exits = 100;
+        log::info!("Enclave ran successfully");
+        while result.is_err() {
+            max_exits -= 1;
+            assert!(
+                result.unwrap_err() == ERR_ENCLAVE_INTERRUPTED
+                    || result.unwrap_err() == ERR_ENCLAVE_EDGE_CALL_HOST
+            );
+            assert!(max_exits > 0, "Enclave exited too many times");
+            result = ecall3(MIRALIS_KEYSTONE_EID, RESUME_ENCLAVE_FID, EID, 0, 0);
+        }
+
+        assert_eq!(result.unwrap(), 0xBEEF);
+        log::info!("Enclave exited successfully");
+
+        // Set up a trap handler to catch load access faults
+        asm!(
+            "csrw stvec, {trap_handler}",
+            trap_handler = in(reg) trap_handler as usize & !0b11);
+
+        // Try to access the enclave memory. This should trigger a trap.
+        let y = *(_enclave as *const usize);
+
+        log::info!("The enclave memory is not protected: {:x}.", y);
+        failure();
+    }
+}
+
+unsafe fn trap_handler() {
+    log::info!("The enclave memory is protected.");
+
+    // Destroy the enclave
+    ecall3(MIRALIS_KEYSTONE_EID, DESTROY_ENCLAVE_FID, EID, 0, 0)
+        .expect("Failed to destroy enclave");
+    log::info!("Enclave destroyed successfully");
+
+    let y = *(_enclave as *const usize);
+    log::info!("The enclave is no longer protected: {:x}.", y);
     success()
 }
 

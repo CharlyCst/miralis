@@ -6,7 +6,7 @@ color = true
 max_firmware_exits = 2000
 
 [vcpu]
-max_pmp = 8
+max_pmp = 0
 
 [platform]
 nb_harts = 1

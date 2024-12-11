@@ -5,7 +5,7 @@ level = "info"
 color = true
 
 [vcpu]
-max_pmp = 8
+max_pmp = 0
 
 [platform]
 nb_harts = 1
