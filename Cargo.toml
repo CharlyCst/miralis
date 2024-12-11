@@ -42,6 +42,10 @@ members = [
     # Tooling
     "runner",
     "benchmark_analyzer",
+
+    # Formal verification
+    "formal-verification",
+    "formal-verification/sail_prelude"
 ]
 
 # Setting the runner as the default member makes it easier to invoke (no need

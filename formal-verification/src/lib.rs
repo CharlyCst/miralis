@@ -106,6 +106,9 @@ impl SailVirtCtx {
             0,
             0,
             ExtensionsCapability {
+                has_crypto_extension: true,
+                has_sstc_extension: false,
+                is_sstc_enabled: false,
                 has_h_extension: false,
                 has_s_extension: false,
                 has_v_extension: true,
@@ -200,8 +203,11 @@ fn KaniVirtCtx() -> VirtContext {
         0,
         0,
         ExtensionsCapability {
+            has_crypto_extension: true,
+            has_sstc_extension: false,
+            is_sstc_enabled: false,
             has_h_extension: false,
-            has_s_extension: true,
+            has_s_extension: false,
             has_v_extension: true,
         },
     );
@@ -312,8 +318,11 @@ mod verification {
             0,
             0,
             ExtensionsCapability {
+                has_crypto_extension: true,
+                has_sstc_extension: false,
+                is_sstc_enabled: false,
                 has_h_extension: false,
-                has_s_extension: true,
+                has_s_extension: false,
                 has_v_extension: true,
             },
         );
