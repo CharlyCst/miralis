@@ -7,6 +7,8 @@
 use core::cmp::PartialEq;
 use core::ptr;
 
+use crate::arch::pmp::pmplayout::POLICY_OFFSET;
+use crate::arch::pmp::{pmpcfg, Segment};
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
@@ -16,9 +18,7 @@ use crate::{RegisterContextGetter, VirtContext};
 /// Keystone parameters
 ///
 /// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sm/src/platform/generic/platform.h#L11
-const ENCL_MAX: usize = 16; // Maximum number of enclaves
-#[allow(unused)]
-const ENCLAVE_REGION_MAX: usize = 8;
+const ENCL_MAX: usize = 1; // Maximum number of enclaves
 
 /// Keystone EID & FIDs
 ///
@@ -144,7 +144,9 @@ impl EnclaveCtx {
 struct Enclave {
     eid: usize,          // Enclave ID
     hart_id: usize,      // The ID of the hart that is running the enclave
-    state: EnclaveState, // Global state of the enclave
+    epm: Segment,        // The enclave physical memory region used by the enclave
+    utm: Segment,        // The untrusted physical memory region shared by the enclave and the OS.
+    state: EnclaveState, // State of the enclave
     ctx: EnclaveCtx,     // Enclave context
 }
 
@@ -177,22 +179,65 @@ impl KeystonePolicy {
             .find(|e| e.state == EnclaveState::Running && e.hart_id == ctx.hart_id)
     }
 
+    /// Configure PMPs so that the enclave cannot be accessed
+    fn lock_enclave(mctx: &mut MiralisContext, enclave: &mut Enclave) {
+        let pmp_id = POLICY_OFFSET + enclave.eid * 2;
+        mctx.pmp.set_inactive(pmp_id, enclave.epm.start());
+        mctx.pmp.set_tor(
+            pmp_id + 1,
+            enclave.epm.start() + enclave.epm.size(),
+            pmpcfg::NO_PERMISSIONS,
+        );
+
+        unsafe {
+            Arch::write_pmp(&mctx.pmp).flush();
+        }
+    }
+
+    /// Configure PMPs so that only the enclave and the untrusted memory can be accessed
+    fn unlock_enclave(mctx: &mut MiralisContext, enclave: &mut Enclave) {
+        let pmp_id = POLICY_OFFSET + enclave.eid * 2;
+
+        // Grant access to the enclave physical memory
+        mctx.pmp.set_inactive(pmp_id, enclave.epm.start());
+        mctx.pmp.set_tor(
+            pmp_id + 1,
+            enclave.epm.start() + enclave.epm.size(),
+            pmpcfg::RWX,
+        );
+
+        // TODO: The enclave is currently allowed to access the payload memory, which it normally
+        // shouldn't. This is a temporary compromise due to limitations in the number of available
+        // PMPs (8 or fewer). Properly securing the payload would require additional PMPs.
+        unsafe {
+            Arch::write_pmp(&mctx.pmp).flush();
+        }
+    }
+
     fn context_switch_to_enclave(
-        mctx: &MiralisContext,
+        mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
         enclave: &mut Enclave,
     ) {
         enclave.state = EnclaveState::Running;
         enclave.hart_id = ctx.hart_id;
         enclave.ctx.swap_ctx(mctx, ctx);
+
+        Self::unlock_enclave(mctx, enclave);
     }
 
-    fn context_switch_to_host(mctx: &MiralisContext, ctx: &mut VirtContext, enclave: &mut Enclave) {
+    fn context_switch_to_host(
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+        enclave: &mut Enclave,
+    ) {
         enclave.state = EnclaveState::Stopped;
         enclave.ctx.swap_ctx(mctx, ctx);
+
+        Self::lock_enclave(mctx, enclave);
     }
 
-    fn create_enclave(&mut self, ctx: &mut VirtContext) -> ReturnCode {
+    fn create_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Create enclave");
         #[repr(C)]
         struct CreateArgs {
@@ -228,6 +273,8 @@ impl KeystonePolicy {
         let enclave = &mut self.enclaves[eid];
         enclave.eid = eid;
         enclave.state = EnclaveState::Fresh;
+        enclave.epm = Segment::new(args.epm_paddr, args.epm_size);
+        enclave.utm = Segment::new(args.utm_paddr, args.utm_size);
 
         // Set initial enclave context
         enclave.ctx = EnclaveCtx::default();
@@ -243,11 +290,13 @@ impl KeystonePolicy {
         enclave.ctx.mideleg = 0; // No interrupts are delegated in the first run
         enclave.ctx.mpp = Mode::S; // Enclave starts in S-mode
 
+        Self::lock_enclave(mctx, enclave);
+
         ctx.set(Register::X11, eid); // Return eid
         ReturnCode::Success
     }
 
-    fn run_enclave(&mut self, mctx: &MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
+    fn run_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Run enclave");
 
         let eid = ctx.get(Register::X10);
@@ -259,7 +308,7 @@ impl KeystonePolicy {
         ReturnCode::Success
     }
 
-    fn destroy_enclave(&mut self, ctx: &mut VirtContext) -> ReturnCode {
+    fn destroy_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Destroy enclave");
         let eid = ctx.get(Register::X10);
         if eid >= ENCL_MAX
@@ -271,10 +320,19 @@ impl KeystonePolicy {
 
         // TODO: Clear data in the enclave pages
         self.enclaves[eid].state = EnclaveState::Invalid;
+
+        // Clear enclave PMPs
+        let pmp_id = POLICY_OFFSET + eid * 2;
+        mctx.pmp.set_inactive(pmp_id, 0);
+        mctx.pmp.set_inactive(pmp_id + 1, 0);
+        unsafe {
+            Arch::write_pmp(&mctx.pmp).flush();
+        }
+
         ReturnCode::Success
     }
 
-    fn resume_enclave(&mut self, mctx: &MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
+    fn resume_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Resume enclave");
 
         let eid = ctx.get(Register::X10);
@@ -293,7 +351,7 @@ impl KeystonePolicy {
         ReturnCode::Success
     }
 
-    fn stop_enclave(&mut self, mctx: &MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
+    fn stop_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Stop enclave");
         let stop_reason = match MCause::new(ctx.trap_info.mcause) {
             MCause::MachineTimerInt | MCause::MachineSoftInt => StoppedReason::Interrupt,
@@ -310,7 +368,7 @@ impl KeystonePolicy {
         }
     }
 
-    fn exit_enclave(&mut self, mctx: &MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
+    fn exit_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         log::debug!("Keystone: Exit enclave");
         let enclave = self.get_active_enclave(ctx).unwrap();
         let exit_code = ctx.get(Register::X10);
@@ -355,8 +413,8 @@ impl PolicyModule for KeystonePolicy {
         }
 
         let return_code: ReturnCode = match (enclave_running, fid) {
-            (false, sbi::CREATE_ENCLAVE_FID) => self.create_enclave(ctx),
-            (false, sbi::DESTROY_ENCLAVE_FID) => self.destroy_enclave(ctx),
+            (false, sbi::CREATE_ENCLAVE_FID) => self.create_enclave(mctx, ctx),
+            (false, sbi::DESTROY_ENCLAVE_FID) => self.destroy_enclave(mctx, ctx),
             (false, sbi::RUN_ENCLAVE_FID) => self.run_enclave(mctx, ctx),
             (false, sbi::RESUME_ENCLAVE_FID) => self.resume_enclave(mctx, ctx),
             (true, sbi::RANDOM_FID) => self.random(ctx),
@@ -387,5 +445,5 @@ impl PolicyModule for KeystonePolicy {
 
     fn on_interrupt(&mut self, _ctx: &mut VirtContext, _mctx: &mut MiralisContext) {}
 
-    const NUMBER_PMPS: usize = 0;
+    const NUMBER_PMPS: usize = ENCL_MAX * 2; // Each enclave uses 2 PMPs because of TOR addressing
 }

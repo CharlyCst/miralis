@@ -377,7 +377,7 @@ impl PmpGroup {
 // ————————————————————————————— Memory Segment ————————————————————————————— //
 
 /// A segment of memory.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Segment {
     start: usize,
     size: usize,
