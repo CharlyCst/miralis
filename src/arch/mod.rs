@@ -148,7 +148,7 @@ pub struct RegistersCapability {
 }
 
 /// A struct that contains information about the available extensions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExtensionsCapability {
     /// Hypervisor extension
     pub has_h_extension: bool,

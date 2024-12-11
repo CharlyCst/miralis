@@ -106,7 +106,7 @@ impl TryFrom<usize> for MCause {
 
 /// Contains all the information automatically written by the hardware during a trap
 #[repr(C)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TrapInfo {
     // mtval2 and mtinst only exist with the hypervisor extension
     pub mepc: usize,
