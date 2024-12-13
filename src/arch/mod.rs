@@ -230,6 +230,8 @@ pub mod misa {
     pub const I: usize = 1 << 8;
     /// Integer Multiply/Divide extension
     pub const M: usize = 1 << 12;
+    /// Userspace interrupt delegations
+    pub const N: usize = 1 << 13;
     /// Quad-precision floating-point extension
     pub const Q: usize = 1 << 16;
     /// Supervisor mode implemented
@@ -364,7 +366,7 @@ pub mod mstatus {
 #[allow(unused)]
 pub mod mie {
     /// Constant to filter out SIE bits of mstatus
-    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
+    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
 
     /// Constant to filter out writable bits of mie.
     pub const MIE_WRITE_FILTER: usize = SIE_FILTER | MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
@@ -377,8 +379,7 @@ pub mod mie {
     /// Some interrupts are forced to be delegated to S-mode because Miralis doesn't implement
     /// virtualization for them (as that would incur a cost in terms of complexity and
     /// performance).
-    pub const MIDELEG_READ_ONLY_ONE: usize =
-        SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
+    pub const MIDELEG_READ_ONLY_ONE: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
 
     /// The bits in mideleg that are read-only zero
     ///
@@ -405,9 +406,6 @@ pub mod mie {
     /// MEIE
     pub const MEIE_OFFSET: usize = 11;
     pub const MEIE_FILTER: usize = 0b1 << MEIE_OFFSET;
-    /// LCOFIE
-    pub const LCOFIE_OFFSET: usize = 13;
-    pub const LCOFIE_FILTER: usize = 0b1 << LCOFIE_OFFSET;
 
     /// Mask with all valid interrupt bits
     pub const ALL_INT: usize =
