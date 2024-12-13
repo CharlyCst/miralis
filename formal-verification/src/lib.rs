@@ -269,7 +269,7 @@ fn KaniVirtCtx() -> VirtContext {
     ctx.csr.misa &= !misa::DISABLED;
 
     // We don't have the userspace interrupt delegation in Miralis
-    ctx.csr.misa &= misa::N;
+    ctx.csr.misa &= !misa::N;
 
     // We fix the architecture type to 64 bits
     ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
@@ -443,13 +443,13 @@ mod verification {
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
             // 0b001100000011 => 0b001100000011, // Verified mideleg
-            // 0b001100000100 => 0b001100000100, // Verified mie
+            0b001100000100 => 0b001100000100, // Verified mie
             // 0b001100000101 => 0b001100000101, // Verified mtvec
             // 0b001100000110 => 0b001100000110, // Verified mcounteren
             // 0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
             // 0b001100100000 => 0b001100100000, // Verified mcountinhibit
             // 0b001101000000 => 0b001101000000, // Verified mscratch
-            0b001101000001 => 0b001101000001, // Verified mepc - todo: fix this part
+            // 0b001101000001 => 0b001101000001, // Verified mepc
             // 0b001101000010 => 0b001101000010, // Verified mcause
             // 0b001101000011 => 0b001101000011, // Verified mtval
             // 0b001101000100 => 0b001101000100, // Verified mip - todo: fix this part
@@ -464,7 +464,7 @@ mod verification {
             // 0b000100000110 => 0b000100000110, // Verified scounteren
             // 0b000100001010 => 0b000100001010, // Verified senvcfd
             // 0b000101000000 => 0b000101000000, // Verified sscratch
-            0b000101000001 => 0b000101000001, // Verified sepc - todo: fix this part
+            // 0b000101000001 => 0b000101000001, // Verified sepc
             // 0b000101000010 => 0b000101000010, // Verified scause
             // 0b000101000011 => 0b000101000011, // Verified stval
             // 0b000101000100 => 0b000101000100, // Verified sip
@@ -666,13 +666,13 @@ mod verification {
             sail_ctx.into_virt_context().csr.vlenb,
             ctx.csr.vlenb,
             "Write vlenb"
-        );*/
+        );
         assert_eq!(
             sail_ctx.into_virt_context().csr.sepc,
             ctx.csr.sepc,
             "Write sepc"
         );
-        /*assert_eq!(
+        assert_eq!(
             sail_ctx.into_virt_context().csr.misa,
             ctx.csr.misa,
             "Write misa"
@@ -689,7 +689,7 @@ mod verification {
             "Write scounteren"
         );
         assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");*/
-        // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
+        assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
         /*assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
             ctx.csr.mstatus,
