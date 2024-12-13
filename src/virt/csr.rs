@@ -676,7 +676,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Seed => (), // Read only register
 
             // Unknown
-            Csr::Unknown => panic!("Tried to access unknown CSR: {:?}", register),
+            // Specification ingnores the write to a non-existing register
+            Csr::Unknown => log::warn!("Tried to access unknown CSR: {:?}", register),
         }
     }
 }
