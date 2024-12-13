@@ -449,7 +449,7 @@ mod verification {
             // 0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
             // 0b001100100000 => 0b001100100000, // Verified mcountinhibit
             // 0b001101000000 => 0b001101000000, // Verified mscratch
-            // 0b001101000001 => 0b001101000001, // Verified mepc
+            // 0b001101000001 => 0b001101000001, // Verified mepc - todo: fix this part
             // 0b001101000010 => 0b001101000010, // Verified mcause
             // 0b001101000011 => 0b001101000011, // Verified mtval
             // 0b001101000100 => 0b001101000100, // Verified mip - todo: fix this part
@@ -459,7 +459,7 @@ mod verification {
             // 0b000100000000 => 0b000100000000, // Verified sstatus - todo: end this part
             // 0b000100000010 => 0b000100000010, // This register is ignored
             // 0b000100000011 => 0b000100000011, // This register is ignored
-            // 0b000100000100 => 0b000100000100, // Verified Sie
+            // 0b000100000100 => 0b000100000100, // Verified Sie - todo: fix this part
             // 0b000100000101 => 0b000100000101, // Verified stvec
             // 0b000100000110 => 0b000100000110, // Verified scounteren
             // 0b000100001010 => 0b000100001010, // Verified senvcfd
