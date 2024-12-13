@@ -442,11 +442,11 @@ mod verification {
             // // 0b001100000000 => 0b001100000000, // Verified mstatus - todo: end this part
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
-            // 0b001100000011 => 0b001100000011, // Verified mideleg - todo: this part
-            // 0b001100000100 => 0b001100000100, // Verified mie - todo: fix this part
+            // 0b001100000011 => 0b001100000011, // Verified mideleg
+            0b001100000100 => 0b001100000100, // Verified mie
             // 0b001100000101 => 0b001100000101, // Verified mtvec
             // 0b001100000110 => 0b001100000110, // Verified mcounteren
-            0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
+            // 0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
             // 0b001100100000 => 0b001100100000, // Verified mcountinhibit
             // 0b001101000000 => 0b001101000000, // Verified mscratch
             // 0b001101000001 => 0b001101000001, // Verified mepc - todo: fix this part
@@ -502,7 +502,7 @@ mod verification {
         let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
         // Generate a random value
-        let value_to_write: usize = kani::any();
+        let mut value_to_write: usize = kani::any();
 
         // Write register in Miralis context
         let decoded_csr = mctx.decode_csr(csr_register as usize);
@@ -513,6 +513,11 @@ mod verification {
             Privilege::Machine,
             "not the correct precondition"
         );
+
+        if csr_register == 0b001100000011 {
+            value_to_write  |= mie::MIDELEG_READ_ONLY_ONE;
+            value_to_write  &= !mie::MIDELEG_READ_ONLY_ZERO;
+        }
 
         // Write register in Sail context
         sail::writeCSR(
@@ -616,9 +621,9 @@ mod verification {
             "Write mcause"
         );
         // assert_eq!(sail_ctx.into_virt_context().csr.mepc, ctx.csr.mepc, "Write mepc");
-        assert_eq!(sail_ctx.into_virt_context().csr.vstart, ctx.csr.vstart, "Write vstart"); */
+        assert_eq!(sail_ctx.into_virt_context().csr.vstart, ctx.csr.vstart, "Write vstart");
         assert_eq!(sail_ctx.into_virt_context().csr.menvcfg, ctx.csr.menvcfg, "Write menvcfg");
-        /*assert_eq!(
+        assert_eq!(
             sail_ctx.into_virt_context().csr.mcountinhibit,
             ctx.csr.mcountinhibit,
             "Write mcountinhibit"
@@ -660,7 +665,7 @@ mod verification {
             ctx.csr.misa,
             "Write misa"
         );
-        // assert_eq!(sail_ctx.into_virt_context().csr.mideleg, ctx.csr.mideleg, "Write mideleg");
+        assert_eq!(sail_ctx.into_virt_context().csr.mideleg, ctx.csr.mideleg, "Write mideleg");
         assert_eq!(
             sail_ctx.into_virt_context().csr.mcounteren,
             ctx.csr.mcounteren,
@@ -672,7 +677,7 @@ mod verification {
             "Write scounteren"
         );*/
         // assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");
-        // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
+        assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
         /*assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
             ctx.csr.mstatus,
