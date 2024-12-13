@@ -268,6 +268,9 @@ fn KaniVirtCtx() -> VirtContext {
     // We don't have compressed instructions in Miralis
     ctx.csr.misa &= !misa::C;
 
+    // We don't have the userspace interrupt delegation in Miralis
+    ctx.csr.misa &= misa::N;
+
     // We fix the architecture type to 64 bits
     ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
 
@@ -384,7 +387,7 @@ mod verification {
             // // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails
             // 0b000101000010 => 0b000101000010, // Verified
             // 0b000101000011 => 0b000101000011, // Verified
-            // // 0b000101000100 => 0b000101000100, // Verified - todo fix
+            0b000101000100 => 0b000101000100, // Verified - todo - fix sip
             // 0b000110000000 => 0b000110000000, // Verified
             // 0b000000010101 => 0b000000010101, // Verified
             // 0b000000001000 => 0b000000001000, // Verified
