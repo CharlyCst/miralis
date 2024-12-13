@@ -156,8 +156,8 @@ pub fn sign_extend<const M: usize>(value: usize, input: BitVector<M>) -> BitVect
         value == 64,
         "handle the case where sign_extend has value not equal 64"
     );
-    // assert!(false, "Implement this function !");
-    BitVector::<64>::new(input.bits())
+    let extension = ((1 << (64 - M)) - 1) << M;
+    BitVector::<64>::new(extension | input.bits)
 }
 
 pub fn sail_ones<const N: usize>(_n: usize) -> BitVector<N> {

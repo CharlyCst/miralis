@@ -439,7 +439,7 @@ mod verification {
             // 0b111100010011 => 0b111100010011, // Verified mimpid
             // 0b111100010100 => 0b111100010100, // Verified mhartid
             // 0b111100010101 => 0b111100010101, // Verified mconfigptr
-            // // 0b001100000000 => 0b001100000000, // Verified mstatus - todo: end this part
+            // 0b001100000000 => 0b001100000000, // Verified mstatus - todo: end this part
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
             // 0b001100000011 => 0b001100000011, // Verified mideleg
@@ -449,7 +449,7 @@ mod verification {
             // 0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
             // 0b001100100000 => 0b001100100000, // Verified mcountinhibit
             // 0b001101000000 => 0b001101000000, // Verified mscratch
-            // 0b001101000001 => 0b001101000001, // Verified mepc - todo: fix this part
+            0b001101000001 => 0b001101000001, // Verified mepc - todo: fix this part
             // 0b001101000010 => 0b001101000010, // Verified mcause
             // 0b001101000011 => 0b001101000011, // Verified mtval
             // 0b001101000100 => 0b001101000100, // Verified mip - todo: fix this part
@@ -464,7 +464,7 @@ mod verification {
             // 0b000100000110 => 0b000100000110, // Verified scounteren
             // 0b000100001010 => 0b000100001010, // Verified senvcfd
             // 0b000101000000 => 0b000101000000, // Verified sscratch
-            // 0b000101000001 => 0b000101000001, // Verified sepc - todo: fix this part
+            0b000101000001 => 0b000101000001, // Verified sepc - todo: fix this part
             // 0b000101000010 => 0b000101000010, // Verified scause
             // 0b000101000011 => 0b000101000011, // Verified stval
             // 0b000101000100 => 0b000101000100, // Verified sip
@@ -477,13 +477,13 @@ mod verification {
             // 0b110000100000 => 0b110000100000, // Verified vl
             // 0b110000100001 => 0b110000100001, // Verified vtype
             // 0b110000100010 => 0b110000100010, // Verified vlenb
-            _ => 0b111100010001,              // Default take working value
-                                               // Pmp addr works
-                                               // Pmp config works
+            _ => 0b111100010001, // Default take working value
+                                 // Pmp addr works
+                                 // Pmp config works
         };
 
         // Pmp address
-        csr_register = kani::any();
+        /*csr_register = kani::any();
 
         if csr_register < 0x3a0 {
             csr_register = 0x3a0
@@ -495,7 +495,7 @@ mod verification {
 
         if 0x3A0 <= csr_register && csr_register <= 0x3AF {
             csr_register -= csr_register & 0x1;
-        }
+        }*/
 
         let mut ctx = KaniVirtCtx();
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
@@ -519,8 +519,8 @@ mod verification {
         );
 
         if csr_register == 0b001100000011 {
-            value_to_write  |= mie::MIDELEG_READ_ONLY_ONE;
-            value_to_write  &= !mie::MIDELEG_READ_ONLY_ZERO;
+            value_to_write |= mie::MIDELEG_READ_ONLY_ONE;
+            value_to_write &= !mie::MIDELEG_READ_ONLY_ZERO;
         }
 
         // Write register in Sail context
@@ -623,9 +623,13 @@ mod verification {
             sail_ctx.into_virt_context().csr.mcause,
             ctx.csr.mcause,
             "Write mcause"
+        );*/
+        assert_eq!(
+            sail_ctx.into_virt_context().csr.mepc,
+            ctx.csr.mepc,
+            "Write mepc"
         );
-        // assert_eq!(sail_ctx.into_virt_context().csr.mepc, ctx.csr.mepc, "Write mepc");
-        assert_eq!(sail_ctx.into_virt_context().csr.vstart, ctx.csr.vstart, "Write vstart");
+        /*assert_eq!(sail_ctx.into_virt_context().csr.vstart, ctx.csr.vstart, "Write vstart");
         assert_eq!(sail_ctx.into_virt_context().csr.menvcfg, ctx.csr.menvcfg, "Write menvcfg");
         assert_eq!(
             sail_ctx.into_virt_context().csr.mcountinhibit,
@@ -662,9 +666,13 @@ mod verification {
             sail_ctx.into_virt_context().csr.vlenb,
             ctx.csr.vlenb,
             "Write vlenb"
-        );
-        // assert_eq!(sail_ctx.into_virt_context().csr.sepc, ctx.csr.sepc, "Write sepc");
+        );*/
         assert_eq!(
+            sail_ctx.into_virt_context().csr.sepc,
+            ctx.csr.sepc,
+            "Write sepc"
+        );
+        /*assert_eq!(
             sail_ctx.into_virt_context().csr.misa,
             ctx.csr.misa,
             "Write misa"
@@ -679,8 +687,8 @@ mod verification {
             sail_ctx.into_virt_context().csr.scounteren,
             ctx.csr.scounteren,
             "Write scounteren"
-        );*/
-        assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");
+        );
+        assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");*/
         // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
         /*assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
