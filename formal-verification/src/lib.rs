@@ -689,7 +689,11 @@ mod verification {
             "Write scounteren"
         );
         assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");*/
-        assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
+        assert_eq!(
+            sail_ctx.into_virt_context().csr.mie,
+            ctx.csr.mie,
+            "Write mie"
+        );
         /*assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
             ctx.csr.mstatus,

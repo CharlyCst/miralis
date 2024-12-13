@@ -148,7 +148,7 @@ impl VirtContext {
 
     /// Expected PC alignment, depending on the C extension.
     pub fn pc_alignment_mask(&self) -> usize {
-        !0b10
+        !0b00
     }
 }
 
