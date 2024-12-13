@@ -2081,8 +2081,7 @@ pub fn legalize_mie(sail_ctx: &mut SailVirtCtx, o: Minterrupts, v: BitVector<64>
         let var_52 = _get_Minterrupts_SSI(sail_ctx, v);
         _update_Minterrupts_SSI(sail_ctx, var_51, var_52)
     };
-    m
-    /*if { (haveUsrMode(sail_ctx, ()) && haveNExt(sail_ctx, ())) } {
+    if { (haveUsrMode(sail_ctx, ()) && haveNExt(sail_ctx, ())) } {
         {
             let var_45 = {
                 let var_47 = {
@@ -2098,7 +2097,7 @@ pub fn legalize_mie(sail_ctx: &mut SailVirtCtx, o: Minterrupts, v: BitVector<64>
         }
     } else {
         m
-    }*/
+    }
 }
 
 pub fn legalize_mideleg(

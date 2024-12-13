@@ -443,7 +443,7 @@ mod verification {
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
             // 0b001100000011 => 0b001100000011, // Verified mideleg
-            0b001100000100 => 0b001100000100, // Verified mie
+            // 0b001100000100 => 0b001100000100, // Verified mie
             // 0b001100000101 => 0b001100000101, // Verified mtvec
             // 0b001100000110 => 0b001100000110, // Verified mcounteren
             // 0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
@@ -456,7 +456,7 @@ mod verification {
             // 0b101100000000 => 0b101100000000, // Verified mcycle
             // 0b101100000010 => 0b101100000010, // Verified minstret
             // 0b011110100000 => 0b011110100000, // Verified tselect
-            // // 0b000100000000 => 0b000100000000, // Verified sstatus - todo: end this part
+            // 0b000100000000 => 0b000100000000, // Verified sstatus - todo: end this part
             // 0b000100000010 => 0b000100000010, // This register is ignored
             // 0b000100000011 => 0b000100000011, // This register is ignored
             // 0b000100000100 => 0b000100000100, // Verified Sie
@@ -483,7 +483,7 @@ mod verification {
         };
 
         // Pmp address
-        /*csr_register = kani::any();
+        csr_register = kani::any();
 
         if csr_register < 0x3a0 {
             csr_register = 0x3a0
@@ -491,7 +491,11 @@ mod verification {
 
         if csr_register > 0x3af {
             csr_register = 0x3aF
-        }*/
+        }
+
+        if 0x3A0 <= csr_register && csr_register <= 0x3AF {
+            csr_register -= csr_register & 0x1;
+        }
 
         let mut ctx = KaniVirtCtx();
         let mut sail_ctx = SailVirtCtx::from(&mut ctx);
@@ -676,8 +680,8 @@ mod verification {
             ctx.csr.scounteren,
             "Write scounteren"
         );*/
-        // assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");
-        assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
+        assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");
+        // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
         /*assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
             ctx.csr.mstatus,
