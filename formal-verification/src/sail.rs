@@ -5587,7 +5587,7 @@ pub fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector
         }
         (b__36, _) if { (b__36 == BitVector::<12>::new(0b000000001000)) } => {
             let vstart_length = get_vlen_pow(sail_ctx, ());
-            sail_ctx.vstart = zero_extend_16(subrange_bits(value, (vstart_length - 1), 0));
+            sail_ctx.vstart = zero_extend_16(subrange_bits_8(value, (vstart_length - 1), 0));
             Some(zero_extend_64(sail_ctx.vstart))
         }
         (b__37, _) if { (b__37 == BitVector::<12>::new(0b000000001001)) } => {

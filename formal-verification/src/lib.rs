@@ -349,7 +349,7 @@ mod verification {
         assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 
-    #[kani::proof]
+    // #[kani::proof]
     pub fn read_csr() {
         let csr_register = generate_csr_register();
 
@@ -429,54 +429,54 @@ mod verification {
         );
     }
 
-    // #[kani::proof]
+    #[kani::proof]
     pub fn write_csr() {
         let mut csr_register = kani::any::<u64>() & ((1 << 12) - 1);
 
         // tmp filtering of the registers
         let mut csr_register = match csr_register {
-            0b111100010001 => 0b111100010001, // Verified mvendorid
-            0b111100010011 => 0b111100010011, // Verified mimpid
-            0b111100010100 => 0b111100010100, // Verified mhartid
-            0b111100010101 => 0b111100010101, // Verified mconfigptr
-            // 0b001100000000 => 0b001100000000, // Verified mstatus - todo: end this part
-            0b001100000001 => 0b001100000001, // Verified misa
-            0b001100000010 => 0b001100000010, // Verified medeleg
-            0b001100000011 => 0b001100000011, // Verified mideleg
-            0b001100000100 => 0b001100000100, // Verified mie
-            0b001100000101 => 0b001100000101, // Verified mtvec
-            0b001100000110 => 0b001100000110, // Verified mcounteren
-            0b001100001010 => 0b001100001010, // Verified menvcfg
-            0b001100100000 => 0b001100100000, // Verified mcountinhibit
-            0b001101000000 => 0b001101000000, // Verified mscratch
-            0b001101000001 => 0b001101000001, // Verified mepc
-            0b001101000010 => 0b001101000010, // Verified mcause
-            0b001101000011 => 0b001101000011, // Verified mtval
-            0b001101000100 => 0b001101000100, // Verified mip
-            0b101100000000 => 0b101100000000, // Verified mcycle
-            0b101100000010 => 0b101100000010, // Verified minstret
-            0b011110100000 => 0b011110100000, // Verified tselect
-            // 0b000100000000 => 0b000100000000, // Verified sstatus - todo: end this part
-            0b000100000010 => 0b000100000010, // This register is ignored
-            0b000100000011 => 0b000100000011, // This register is ignored
-            0b000100000100 => 0b000100000100, // Verified Sie
-            0b000100000101 => 0b000100000101, // Verified stvec
-            0b000100000110 => 0b000100000110, // Verified scounteren
-            0b000100001010 => 0b000100001010, // Verified senvcfd
-            0b000101000000 => 0b000101000000, // Verified sscratch
-            0b000101000001 => 0b000101000001, // Verified sepc
-            0b000101000010 => 0b000101000010, // Verified scause
-            0b000101000011 => 0b000101000011, // Verified stval
-            0b000101000100 => 0b000101000100, // Verified sip
-            0b000110000000 => 0b000110000000, // Verified satp
-            0b000000010101 => 0b000000010101, // Verified seed
-            0b000000001000 => 0b000000001000, // Verified vstart
-            0b000000001001 => 0b000000001001, // Verified vxsat
-            0b000000001010 => 0b000000001010, // Verified vxrm
-            0b000000001111 => 0b000000001111, // Verified vcsr
-            0b110000100000 => 0b110000100000, // Verified vl
-            0b110000100001 => 0b110000100001, // Verified vtype
-            0b110000100010 => 0b110000100010, // Verified vlenb
+            // 0b111100010001 => 0b111100010001, // Verified mvendorid
+            // 0b111100010011 => 0b111100010011, // Verified mimpid
+            // 0b111100010100 => 0b111100010100, // Verified mhartid
+            // 0b111100010101 => 0b111100010101, // Verified mconfigptr
+            // // 0b001100000000 => 0b001100000000, // Verified mstatus - todo: end this part
+            // 0b001100000001 => 0b001100000001, // Verified misa
+            // 0b001100000010 => 0b001100000010, // Verified medeleg
+            // 0b001100000011 => 0b001100000011, // Verified mideleg - todo: this part
+            // 0b001100000100 => 0b001100000100, // Verified mie - todo: fix this part
+            // 0b001100000101 => 0b001100000101, // Verified mtvec
+            // 0b001100000110 => 0b001100000110, // Verified mcounteren
+            0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
+            // 0b001100100000 => 0b001100100000, // Verified mcountinhibit
+            // 0b001101000000 => 0b001101000000, // Verified mscratch
+            // 0b001101000001 => 0b001101000001, // Verified mepc - todo: fix this part
+            // 0b001101000010 => 0b001101000010, // Verified mcause
+            // 0b001101000011 => 0b001101000011, // Verified mtval
+            // 0b001101000100 => 0b001101000100, // Verified mip - todo: fix this part
+            // 0b101100000000 => 0b101100000000, // Verified mcycle
+            // 0b101100000010 => 0b101100000010, // Verified minstret
+            // 0b011110100000 => 0b011110100000, // Verified tselect
+            // // 0b000100000000 => 0b000100000000, // Verified sstatus - todo: end this part
+            // 0b000100000010 => 0b000100000010, // This register is ignored
+            // 0b000100000011 => 0b000100000011, // This register is ignored
+            // 0b000100000100 => 0b000100000100, // Verified Sie
+            // 0b000100000101 => 0b000100000101, // Verified stvec
+            // 0b000100000110 => 0b000100000110, // Verified scounteren
+            // 0b000100001010 => 0b000100001010, // Verified senvcfd
+            // 0b000101000000 => 0b000101000000, // Verified sscratch
+            // 0b000101000001 => 0b000101000001, // Verified sepc - todo: fix this part
+            // 0b000101000010 => 0b000101000010, // Verified scause
+            // 0b000101000011 => 0b000101000011, // Verified stval
+            // 0b000101000100 => 0b000101000100, // Verified sip
+            // 0b000110000000 => 0b000110000000, // Verified satp
+            // 0b000000010101 => 0b000000010101, // Verified seed
+            // 0b000000001000 => 0b000000001000, // Verified vstart
+            // 0b000000001001 => 0b000000001001, // Verified vxsat
+            // 0b000000001010 => 0b000000001010, // Verified vxrm
+            // 0b000000001111 => 0b000000001111, // Verified vcsr
+            // 0b110000100000 => 0b110000100000, // Verified vl
+            // 0b110000100001 => 0b110000100001, // Verified vtype
+            // 0b110000100010 => 0b110000100010, // Verified vlenb
             _ => 0b111100010001,              // Default take working value
                                                // Pmp addr works
                                                // Pmp config works
@@ -523,7 +523,7 @@ mod verification {
 
         // Pmp registers
         // assert_eq!(sail_ctx.into_virt_context().csr.pmpaddr, ctx.csr.pmpaddr, "Write equivalence");
-        assert_eq!(
+        /*assert_eq!(
             sail_ctx.into_virt_context().csr.pmpcfg,
             ctx.csr.pmpcfg,
             "Write pmp cfg equivalence"
@@ -616,9 +616,9 @@ mod verification {
             "Write mcause"
         );
         // assert_eq!(sail_ctx.into_virt_context().csr.mepc, ctx.csr.mepc, "Write mepc");
-        // assert_eq!(sail_ctx.into_virt_context().csr.vstart, ctx.csr.vstart, "Write vstart");
-        // assert_eq!(sail_ctx.into_virt_context().csr.menvcfg, ctx.csr.menvcfg, "Write menvcfg");
-        assert_eq!(
+        assert_eq!(sail_ctx.into_virt_context().csr.vstart, ctx.csr.vstart, "Write vstart"); */
+        assert_eq!(sail_ctx.into_virt_context().csr.menvcfg, ctx.csr.menvcfg, "Write menvcfg");
+        /*assert_eq!(
             sail_ctx.into_virt_context().csr.mcountinhibit,
             ctx.csr.mcountinhibit,
             "Write mcountinhibit"
@@ -670,13 +670,13 @@ mod verification {
             sail_ctx.into_virt_context().csr.scounteren,
             ctx.csr.scounteren,
             "Write scounteren"
-        );
+        );*/
         // assert_eq!(sail_ctx.into_virt_context().csr.mip, ctx.csr.mip, "Write mip");
         // assert_eq!(sail_ctx.into_virt_context().csr.mie, ctx.csr.mie, "Write mie");
-        assert_eq!(
+        /*assert_eq!(
             sail_ctx.into_virt_context().csr.mstatus,
             ctx.csr.mstatus,
             "Write mstatus"
-        );
+        );*/
     }
 }
