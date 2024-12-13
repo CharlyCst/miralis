@@ -379,7 +379,7 @@ mod verification {
             // // 0b000100000000 => 0b000100000000, // Verified - todo: sstatus
             // 0b000100000010 => 0b000100000010, // todo: Should we ignore sedeleg?
             // 0b000100000011 => 0b000100000011, // todo: Should we ignore sideleg?
-            // // 0b000100000100 => 0b000100000100, // Verified - todo: sie
+            0b000100000100 => 0b000100000100, // Verified - second attempt sie register
             // 0b000100000101 => 0b000100000101, // Verified
             // 0b000100000110 => 0b000100000110, // Verified
             // 0b000100001010 => 0b000100001010, // Verified
@@ -387,9 +387,9 @@ mod verification {
             // // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails
             // 0b000101000010 => 0b000101000010, // Verified
             // 0b000101000011 => 0b000101000011, // Verified
-            0b000101000100 => 0b000101000100, // Verified - todo - fix sip
+            // 0b000101000100 => 0b000101000100, // Verified - second attempt sip register
             // 0b000110000000 => 0b000110000000, // Verified
-            // 0b000000010101 => 0b000000010101, // Verified
+            // 0b000000010101 => 0b000000010101, // Verified - second attempt seed register
             // 0b000000001000 => 0b000000001000, // Verified
             // 0b000000001001 => 0b000000001001, // Verified
             // 0b000000001010 => 0b000000001010, // Verified
