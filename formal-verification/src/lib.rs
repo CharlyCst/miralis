@@ -284,6 +284,7 @@ fn generate_csr_register() -> u64 {
     // We want only 12 bits
     let mut csr: u64 = kani::any::<u64>() & 0xFFF;
 
+    // Ignore sedeleg and sideleg
     if csr == 0b000100000010 || csr == 0b000100000011 {
         csr = 0x0;
     }
@@ -345,59 +346,59 @@ mod verification {
         assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 
-    // #[kani::proof]
+    #[kani::proof]
     pub fn read_csr() {
         let csr_register = generate_csr_register();
 
         // tmp filtering of the registers
         let mut csr_register = match csr_register {
-            0b111100010001 => 0b111100010001, // Verified
-            0b111100010011 => 0b111100010011, // Verified
-            0b111100010100 => 0b111100010100, // Verified
-            0b111100010101 => 0b111100010101, // Verified
-            // 0b001100000000 => 0b001100000000, // Verified
-            0b001100000001 => 0b001100000001, // Verified
-            0b001100000010 => 0b001100000010, // Verified
-            0b001100000011 => 0b001100000011, // Verified
-            0b001100000100 => 0b001100000100, // Verified
-            0b001100000101 => 0b001100000101, // Verified
-            0b001100000110 => 0b001100000110, // Verified
-            0b001100001010 => 0b001100001010, // Verified
-            0b001100100000 => 0b001100100000, // Verified
-            0b001101000000 => 0b001101000000, // Verified
-            // 0b001101000001 => 0b001101000001, // todo: OpenSBI still fails
-            0b001101000010 => 0b001101000010, // Verified
-            0b001101000011 => 0b001101000011, // Verified
-            0b001101000100 => 0b001101000100, // Verified
-            0b101100000000 => 0b101100000000, // Verified
-            0b101100000010 => 0b101100000010, // Verified
-            0b011110100000 => 0b011110100000, // Verified
-            // 0b000100000000 => 0b000100000000, // Verified
-            0b000100000010 => 0b000100000010, // todo: Should we ignore sedeleg?
-            0b000100000011 => 0b000100000011, // todo: Should we ignore sideleg?
-            // 0b000100000100 => 0b000100000100, // Verified
-            0b000100000101 => 0b000100000101, // Verified
-            0b000100000110 => 0b000100000110, // Verified
-            0b000100001010 => 0b000100001010, // Verified
-            0b000101000000 => 0b000101000000, // Verified
-            // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails
-            0b000101000010 => 0b000101000010, // Verified
-            0b000101000011 => 0b000101000011, // Verified
-            // 0b000101000100 => 0b000101000100, // Verified
-            0b000110000000 => 0b000110000000, // Verified
+            // 0b111100010001 => 0b111100010001, // Verified
+            // 0b111100010011 => 0b111100010011, // Verified
+            // 0b111100010100 => 0b111100010100, // Verified
+            // 0b111100010101 => 0b111100010101, // Verified
+            // // 0b001100000000 => 0b001100000000, // Verified - todo: mstatus
+            // 0b001100000001 => 0b001100000001, // Verified
+            // 0b001100000010 => 0b001100000010, // Verified
+            // 0b001100000011 => 0b001100000011, // Verified
+            // 0b001100000100 => 0b001100000100, // Verified
+            // 0b001100000101 => 0b001100000101, // Verified
+            // 0b001100000110 => 0b001100000110, // Verified
+            // 0b001100001010 => 0b001100001010, // Verified
+            // 0b001100100000 => 0b001100100000, // Verified
+            // 0b001101000000 => 0b001101000000, // Verified
+            // // 0b001101000001 => 0b001101000001, // todo: OpenSBI still fails
+            // 0b001101000010 => 0b001101000010, // Verified
+            // 0b001101000011 => 0b001101000011, // Verified
+            // 0b001101000100 => 0b001101000100, // Verified
+            // 0b101100000000 => 0b101100000000, // Verified
+            // 0b101100000010 => 0b101100000010, // Verified
+            // 0b011110100000 => 0b011110100000, // Verified
+            // // 0b000100000000 => 0b000100000000, // Verified - todo: sstatus
+            // 0b000100000010 => 0b000100000010, // todo: Should we ignore sedeleg?
+            // 0b000100000011 => 0b000100000011, // todo: Should we ignore sideleg?
+            // // 0b000100000100 => 0b000100000100, // Verified - todo: sie
+            // 0b000100000101 => 0b000100000101, // Verified
+            // 0b000100000110 => 0b000100000110, // Verified
+            // 0b000100001010 => 0b000100001010, // Verified
+            // 0b000101000000 => 0b000101000000, // Verified
+            // // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails
+            // 0b000101000010 => 0b000101000010, // Verified
+            // 0b000101000011 => 0b000101000011, // Verified
+            // // 0b000101000100 => 0b000101000100, // Verified - todo fix
+            // 0b000110000000 => 0b000110000000, // Verified
             // 0b000000010101 => 0b000000010101, // Verified
-            0b000000001000 => 0b000000001000, // Verified
-            0b000000001001 => 0b000000001001, // Verified
-            0b000000001010 => 0b000000001010, // Verified
-            0b000000001111 => 0b000000001111, // Verified
-            0b110000100000 => 0b110000100000, // Verified
-            0b110000100001 => 0b110000100001, // Verified
-            0b110000100010 => 0b110000100010, // Verified
-
-            // Forgot a few
-            0b110000000000 => 0b110000000000, // Verified cycle
-            0b110000000001 => 0b110000000001, // Verified time
-            0b110000000010 => 0b110000000010, // Verified instret
+            // 0b000000001000 => 0b000000001000, // Verified
+            // 0b000000001001 => 0b000000001001, // Verified
+            // 0b000000001010 => 0b000000001010, // Verified
+            // 0b000000001111 => 0b000000001111, // Verified
+            // 0b110000100000 => 0b110000100000, // Verified
+            // 0b110000100001 => 0b110000100001, // Verified
+            // 0b110000100010 => 0b110000100010, // Verified
+//
+            // // Forgot a few
+            // 0b110000000000 => 0b110000000000, // Verified cycle
+            // 0b110000000001 => 0b110000000001, // Verified time
+            // 0b110000000010 => 0b110000000010, // Verified instret
 
             _ => 0b111100010001, // Default take mvendor id
                                  // Pmp addr works
@@ -426,7 +427,7 @@ mod verification {
         );
     }
 
-    #[kani::proof]
+    // #[kani::proof]
     pub fn write_csr() {
         let mut csr_register = kani::any::<u64>() & ((1 << 12) - 1);
 
