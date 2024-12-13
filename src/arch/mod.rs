@@ -379,8 +379,7 @@ pub mod mie {
     /// Some interrupts are forced to be delegated to S-mode because Miralis doesn't implement
     /// virtualization for them (as that would incur a cost in terms of complexity and
     /// performance).
-    pub const MIDELEG_READ_ONLY_ONE: usize =
-        SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
+    pub const MIDELEG_READ_ONLY_ONE: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER;
 
     /// The bits in mideleg that are read-only zero
     ///

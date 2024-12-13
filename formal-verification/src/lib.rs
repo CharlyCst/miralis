@@ -266,7 +266,7 @@ fn KaniVirtCtx() -> VirtContext {
     }
 
     // We don't have compressed instructions in Miralis
-    ctx.csr.misa &= !misa::C;
+    ctx.csr.misa &= !misa::DISABLED;
 
     // We don't have the userspace interrupt delegation in Miralis
     ctx.csr.misa &= misa::N;
@@ -369,7 +369,7 @@ mod verification {
             // 0b001100001010 => 0b001100001010, // Verified
             // 0b001100100000 => 0b001100100000, // Verified
             // 0b001101000000 => 0b001101000000, // Verified
-            // // 0b001101000001 => 0b001101000001, // todo: OpenSBI still fails
+            // 0b001101000001 => 0b001101000001, // Verified - todo: opensbi still fails - mepc
             // 0b001101000010 => 0b001101000010, // Verified
             // 0b001101000011 => 0b001101000011, // Verified
             // 0b001101000100 => 0b001101000100, // Verified
@@ -377,14 +377,14 @@ mod verification {
             // 0b101100000010 => 0b101100000010, // Verified
             // 0b011110100000 => 0b011110100000, // Verified
             // // 0b000100000000 => 0b000100000000, // Verified - todo: sstatus
-            // 0b000100000010 => 0b000100000010, // todo: Should we ignore sedeleg?
-            // 0b000100000011 => 0b000100000011, // todo: Should we ignore sideleg?
-            0b000100000100 => 0b000100000100, // Verified - second attempt sie register
+            // 0b000100000010 => 0b000100000010, // We ignore sedeleg
+            // 0b000100000011 => 0b000100000011, // We ignore sideleg
+            // 0b000100000100 => 0b000100000100, // Verified - second attempt sie register
             // 0b000100000101 => 0b000100000101, // Verified
             // 0b000100000110 => 0b000100000110, // Verified
             // 0b000100001010 => 0b000100001010, // Verified
             // 0b000101000000 => 0b000101000000, // Verified
-            // // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails
+            // // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails - mepc
             // 0b000101000010 => 0b000101000010, // Verified
             // 0b000101000011 => 0b000101000011, // Verified
             // 0b000101000100 => 0b000101000100, // Verified - second attempt sip register
@@ -397,12 +397,11 @@ mod verification {
             // 0b110000100000 => 0b110000100000, // Verified
             // 0b110000100001 => 0b110000100001, // Verified
             // 0b110000100010 => 0b110000100010, // Verified
-//
+            //
             // // Forgot a few
             // 0b110000000000 => 0b110000000000, // Verified cycle
             // 0b110000000001 => 0b110000000001, // Verified time
             // 0b110000000010 => 0b110000000010, // Verified instret
-
             _ => 0b111100010001, // Default take mvendor id
                                  // Pmp addr works
                                  // Pmp config works"

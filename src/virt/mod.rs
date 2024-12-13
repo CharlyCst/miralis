@@ -7,7 +7,7 @@ mod world_switch;
 pub use csr::traits;
 pub use emulator::ExitResult;
 
-use crate::arch::{mie, misa, ExtensionsCapability, Mode, TrapInfo};
+use crate::arch::{mie, ExtensionsCapability, Mode, TrapInfo};
 
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -148,11 +148,7 @@ impl VirtContext {
 
     /// Expected PC alignment, depending on the C extension.
     pub fn pc_alignment_mask(&self) -> usize {
-        if (self.csr.misa & misa::C != 0) || (misa::DISABLED & misa::C != 0) {
-            !0b00
-        } else {
-            !0b10
-        }
+        !0b10
     }
 }
 
