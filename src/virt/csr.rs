@@ -366,7 +366,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mstatus = new_value;
             }
             Csr::Misa => {} // Read only register, we don't support deactivating extensions in Miralis
-            Csr::Mie => self.csr.mie = value & hw.interrupts & mie::MIE_WRITE_FILTER,
+            Csr::Mie => self.csr.mie = hw.interrupts & ((value & mie::MIE_WRITE_FILTER) | (self.csr.mie & !mie::MIE_WRITE_FILTER)),
             Csr::Mip => {
                 let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
 
