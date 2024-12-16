@@ -67,7 +67,7 @@ pub const PLATFORM_BOOT_HART_ID: usize =
     parse_usize_or(option_env!("MIRALIS_PLATFORM_BOOT_HART_ID"), 0);
 
 /// Whether any benchmark is enabled
-pub const BENCHMARK: bool = is_enabled!("MIRALIS_BENCHMARK");
+pub const BENCHMARK: bool = is_enabled_default_false!("MIRALIS_BENCHMARK");
 
 /// Whether print in csv format or not
 pub const BENCHMARK_CSV_FORMAT: bool = is_enabled!("MIRALIS_BENCHMARK_CSV_FORMAT");
