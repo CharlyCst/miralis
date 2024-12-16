@@ -164,6 +164,8 @@ pub struct ExtensionsCapability {
     pub has_sstc_extension: bool,
     /// If the sstc extension is enabled
     pub is_sstc_enabled: bool,
+    /// Has Zihpm extension
+    pub has_zihpm_extension: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //

@@ -55,6 +55,7 @@ pub fn new_ctx() -> VirtContext {
             has_h_extension: false,
             has_s_extension: false,
             has_v_extension: true,
+            has_zihpm_extension: true,
         },
     );
 

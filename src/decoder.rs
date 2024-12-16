@@ -417,9 +417,22 @@ impl MiralisContext {
                     Csr::Unknown
                 }
             }
-            0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
+            0xB03..=0xB1F => {
+                // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
+                if self.hw.extensions.has_zihpm_extension {
+                    Csr::Mhpmcounter(csr - 0xB03)
+                } else {
+                    Csr::Unknown
+                }
+            }
             0x320 => Csr::Mcountinhibit,
-            0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
+            0x323..=0x33F => {
+                if self.hw.extensions.has_zihpm_extension {
+                    Csr::Mhpmevent(csr - 0x323)
+                } else {
+                    Csr::Unknown
+                }
+            }
             0x306 => Csr::Mcounteren,
             0x30a => Csr::Menvcfg,
             0x747 => Csr::Mseccfg,
