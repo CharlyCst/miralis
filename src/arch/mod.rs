@@ -158,6 +158,8 @@ pub struct ExtensionsCapability {
     pub has_v_extension: bool,
     /// Crypto extension
     pub has_crypto_extension: bool,
+    /// Zicntr - Standard Extension for Base Counters and Timers
+    pub has_zicntr: bool,
     /// If the sstc extension is supported
     pub has_sstc_extension: bool,
     /// If the sstc extension is enabled
