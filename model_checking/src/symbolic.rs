@@ -4,8 +4,13 @@
 //! context. We make sure that this module can compile and be tested even without Kani installed,
 //! in which case concrete values are used in place of symbolic ones.
 
-use miralis::arch::{misa, ExtensionsCapability, Mode};
+use miralis::arch::{misa, mstatus, Arch, Architecture, ExtensionsCapability, Mode};
+use miralis::host::MiralisContext;
+use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
+use sail_model::SailVirtCtx;
+
+use crate::adapters;
 
 /// Generates an arbitrary value.
 ///
@@ -118,4 +123,35 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.misa |= misa::U;
 
     ctx
+}
+
+/// Return a Miralis and Sail virtual context filled with symbolic values.
+///
+/// A [MiralisContext] containing concrete value is also returned, it is required for emulation by
+/// Miralis and mostly containst the list of hardware extensions (which are fixed during model
+/// checking).
+pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, SailVirtCtx) {
+    let mpp = match any!(u8) % 3 {
+        0 => 0b00,
+        1 => 0b01,
+        2 => 0b11,
+        _ => unreachable!(),
+    };
+    let mstatus = any!(usize) & !(0b11 << mstatus::MPP_OFFSET);
+
+    let mut ctx = new_ctx();
+
+    ctx.csr.mepc = any!(usize) & (!0b11);
+    ctx.csr.sepc = any!();
+    ctx.csr.mstatus = mstatus | (mpp << mstatus::MPP_OFFSET);
+    ctx.mode = Mode::M;
+    ctx.pc = any!();
+
+    let sail_ctx = adapters::miralis_to_sail(&ctx);
+
+    // Initialize Miralis's own context
+    let hw = unsafe { Arch::detect_hardware() };
+    let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
+
+    (ctx, mctx, sail_ctx)
 }

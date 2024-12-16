@@ -57,6 +57,11 @@ impl VirtContext {
                 self.csr.mtval
             ),
         }
+
+        // All instructions except MRET increases the pc by 4
+        if *instr != Instr::Mret {
+            self.pc += 4;
+        }
     }
 
     /// Handles a load instruction.
@@ -526,9 +531,6 @@ impl VirtContext {
         // The WFI instruction put the processor in a special state that enables taking interrupts
         // even if mstatus.MIE = 0. We keep a bit in the virtual context to model that state.
         self.is_wfi = true;
-        // After a WFI the execution always resumes on the next instruction, whether an interrupt
-        // is taken or not.
-        self.pc += 4;
 
         // If there is an interrupt that can be taken, then exit without doing a real WFI.
         // The emulator will inject the interrupt before resuming the vCPU.
@@ -559,7 +561,6 @@ impl VirtContext {
         let tmp = self.get(csr);
         self.set_csr(csr, self.get(rs1), mctx);
         self.set(rd, tmp);
-        self.pc += 4;
     }
 
     pub fn emulate_csrrs(
@@ -580,7 +581,6 @@ impl VirtContext {
         }
 
         self.set(rd, tmp);
-        self.pc += 4;
     }
 
     pub fn emulate_csrrwi(
@@ -592,7 +592,6 @@ impl VirtContext {
     ) {
         self.set(rd, self.get(csr));
         self.set_csr(csr, uimm, mctx);
-        self.pc += 4;
     }
 
     pub fn emulate_csrrsi(
@@ -605,7 +604,6 @@ impl VirtContext {
         let tmp = self.get(csr);
         self.set_csr(csr, tmp | uimm, mctx);
         self.set(rd, tmp);
-        self.pc += 4;
     }
 
     pub fn emulate_csrrc(
@@ -626,7 +624,6 @@ impl VirtContext {
         }
 
         self.set(rd, tmp);
-        self.pc += 4;
     }
 
     pub fn emulate_csrrci(
@@ -639,7 +636,6 @@ impl VirtContext {
         let tmp = self.get(csr);
         self.set_csr(csr, tmp & !uimm, mctx);
         self.set(rd, tmp);
-        self.pc += 4;
     }
 
     pub fn emulate_mret(&mut self, mctx: &mut MiralisContext) {
@@ -736,7 +732,6 @@ impl VirtContext {
                 reg => Some(self.get(reg)),
             };
             Arch::sfencevma(vaddr, asid);
-            self.pc += 4;
         }
     }
 
@@ -756,7 +751,6 @@ impl VirtContext {
                 reg => Some(self.get(reg)),
             };
             Arch::hfencegvma(vaddr, asid);
-            self.pc += 4;
         }
     }
 
@@ -776,7 +770,6 @@ impl VirtContext {
                 reg => Some(self.get(reg)),
             };
             Arch::hfencevvma(vaddr, asid);
-            self.pc += 4;
         }
     }
 }
