@@ -218,3 +218,11 @@ firmware = "ecall"
 config = "spike"
 description = "The most basic test, which directly exit with an ecall to Miralis"
 
+[test.spike-misaligned]
+firmware = "misaligned_op"
+config = "spike"
+description = "Test of emulation of the misaligned addresses"
+
+
+
+
