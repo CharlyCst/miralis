@@ -369,6 +369,7 @@ impl Architecture for MetalArch {
                 is_sstc_enabled: false, // Since the virtual menvcfg is initialized with 0
                 has_v_extension: false,
                 has_crypto_extension: false,
+                has_zicntr: false,
             },
         }
     }
