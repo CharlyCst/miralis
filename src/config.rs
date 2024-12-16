@@ -61,6 +61,9 @@ pub const PLATFORM_NB_HARTS: usize = {
 /// Delegate performance counters
 pub const DELEGATE_PERF_COUNTER: bool = is_enabled_default_false!("MIRALIS_DELEGATE_PERF_COUNTER");
 
+/// Display context at each trap
+pub const DISPLAY_CONTEXT: bool = is_enabled_default_false!("MIRALIS_DISPLAY_CONTEXT");
+
 /// Boot hart id
 #[allow(dead_code)] // Because rust analyzer doesn't understand that it is used in metals.rs
 pub const PLATFORM_BOOT_HART_ID: usize =
