@@ -63,10 +63,13 @@ fn handle_trap(
     mctx: &mut MiralisContext,
     policy: &mut Policy,
 ) -> ExitResult {
+    // TODO: Remove this value at compile time - useless
+    // We loose 45 cycles for nothing here
     if log::log_enabled!(log::Level::Trace) {
         log_ctx(ctx);
     }
 
+    // This is removed at compile time
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {
             log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
@@ -90,10 +93,12 @@ fn handle_trap(
         ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
     };
 
+    // TODO: Does branchless improves the speed here?
     if exec_mode == ExecutionMode::Firmware {
         Benchmark::increment_counter(Counter::FirmwareExits);
     }
 
+    // TODO: Does branchless improves the speed here?
     if exec_mode != ctx.mode.to_exec_mode() {
         Benchmark::increment_counter(Counter::WorldSwitches);
     }
