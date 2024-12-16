@@ -28,6 +28,31 @@ pub fn sign_extend(value: usize, width: Width) -> usize {
     }
 }
 
+/// Compare two &str, valid in compile time contexts.
+///
+/// The equality operator on &str is not const yet, therefore we need to implement a const function
+/// that compare strings manually to work around that limitation.
+pub const fn const_str_eq(a: &str, b: &str) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    // We are going to do the comparison byte by byte
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+
+    // We use a while loop as for loops are not yet stable in const contexts
+    let mut i = 0;
+    while i < a.len() {
+        if a[i] != b[i] {
+            return false;
+        }
+        i += 1;
+    }
+
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,5 +78,17 @@ mod tests {
         assert_eq!(sign_extend(0x7fffffff, Width::Byte4), 0x7fffffff);
         assert_eq!(sign_extend(0x00000000, Width::Byte4), 0x00000000);
         assert_eq!(sign_extend(0x0000ffff, Width::Byte4), 0x0000ffff);
+    }
+
+    #[test]
+    fn str_eq() {
+        assert!(const_str_eq("foo", "foo"));
+        assert!(const_str_eq("", ""));
+        assert!(!const_str_eq("foo", "fooo"));
+        assert!(!const_str_eq("fooo", "foo"));
+        assert!(!const_str_eq("bar", "foo"));
+
+        // Also check that the function is const
+        assert!(const { const_str_eq("foo", "foo") });
     }
 }
