@@ -78,7 +78,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         let trap_cause = MCause::try_from(ctx.trap_info.mcause).unwrap();
         let filter_rule = ForwardingRule::match_rule(trap_cause, &mut self.rules);
 
-        for i in 0..self.general_register.len() {
+        /*for i in 0..self.general_register.len() {
             self.general_register[i] = ctx.regs[i];
             // We don't clear ecall registers
             if !filter_rule.allow_in[i] {
@@ -89,7 +89,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         // Lock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp
-            .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
+            .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);*/
 
         self.last_cause = trap_cause;
     }
@@ -102,7 +102,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         let register_filter = ForwardingRule::match_rule(self.last_cause, &mut self.rules);
 
         // Restore general purpose registers
-        for i in 0..self.general_register.len() {
+       /* for i in 0..self.general_register.len() {
             if !register_filter.allow_out[i] {
                 ctx.regs[i] = self.general_register[i];
             }
@@ -133,7 +133,7 @@ impl PolicyModule for ProtectPayloadPolicy {
                 log::error!("Expected value: {:?}", LINUX_LOCK_PAYLOAD_HASH);
                 log::error!("Protect Payload policy: Invalid hash");
             }
-        }
+        }*/
     }
 
     // In this policy module, if we receive an interrupt from Miralis, it implies we need to lock the memory
