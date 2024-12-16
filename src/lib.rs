@@ -94,12 +94,10 @@ fn handle_trap(
         ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
     };
 
-    // TODO: Does branchless improves the speed here?
     if exec_mode == ExecutionMode::Firmware {
         Benchmark::increment_counter(Counter::FirmwareExits);
     }
 
-    // TODO: Does branchless improves the speed here?
     if exec_mode != ctx.mode.to_exec_mode() {
         Benchmark::increment_counter(Counter::WorldSwitches);
     }

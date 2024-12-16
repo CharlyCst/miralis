@@ -345,7 +345,7 @@ impl VirtContext {
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = mctx.decode(instr);
-                log::trace!("Faulting instruction: {:?}", instr);
+                //log::trace!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {

@@ -61,6 +61,9 @@ pub const PLATFORM_NB_HARTS: usize = {
 /// Delegate performance counters
 pub const DELEGATE_PERF_COUNTER: bool = is_enabled_default_false!("MIRALIS_DELEGATE_PERF_COUNTER");
 
+/// Logs on the critical path
+pub const ALLOW_LOGS_ON_CRITICAL_PATH: bool = is_enabled_default_false!("MIRALIS_ALLOW_LOGS_CRITICAL_PATH");
+
 /// Display context at each trap
 pub const DISPLAY_CONTEXT: bool = is_enabled_default_false!("MIRALIS_DISPLAY_CONTEXT");
 

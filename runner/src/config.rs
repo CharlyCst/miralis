@@ -61,6 +61,7 @@ pub struct VCpu {
     pub max_pmp: Option<usize>,
     pub delegate_perf_counters: Option<bool>,
     pub display_context: Option<bool>,
+    pub allow_logs_critical_path: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -254,6 +255,7 @@ impl VCpu {
             &self.delegate_perf_counters,
         );
         envs.insert("MIRALIS_DISPLAY_CONTEXT", &self.display_context);
+        envs.insert("MIRALIS_ALLOW_LOGS_CRITICAL_PATH", &self.allow_logs_critical_path);
         envs.envs
     }
 }
