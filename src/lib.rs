@@ -263,7 +263,6 @@ mod tests {
 
         // Firmware is running
         ctx.mode = Mode::M;
-
         ctx.csr.mstatus = 0;
         ctx.csr.mie = 0b1;
         ctx.csr.mideleg = 0;
