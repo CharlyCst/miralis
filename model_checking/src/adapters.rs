@@ -282,6 +282,7 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx) -> VirtContext {
             has_crypto_extension: true,
             has_sstc_extension: false,
             is_sstc_enabled: false,
+            has_zicntr: true,
             has_h_extension: false,
             has_s_extension: false,
             has_v_extension: true,

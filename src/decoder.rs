@@ -396,9 +396,27 @@ impl MiralisContext {
             0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
             0xB00 => Csr::Mcycle,
             0xB02 => Csr::Minstret,
-            0xC00 => Csr::Cycle,
-            0xC01 => Csr::Time,
-            0xC02 => Csr::Instret,
+            0xC00 => {
+                if self.hw.extensions.has_zicntr {
+                    Csr::Cycle
+                } else {
+                    Csr::Unknown
+                }
+            }
+            0xC01 => {
+                if self.hw.extensions.has_zicntr {
+                    Csr::Time
+                } else {
+                    Csr::Unknown
+                }
+            }
+            0xC02 => {
+                if self.hw.extensions.has_zicntr {
+                    Csr::Instret
+                } else {
+                    Csr::Unknown
+                }
+            }
             0xB03..=0xB1F => Csr::Mhpmcounter(csr - 0xB03), // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
             0x320 => Csr::Mcountinhibit,
             0x323..=0x33F => Csr::Mhpmevent(csr - 0x323),
