@@ -63,7 +63,7 @@ fn handle_trap(
     mctx: &mut MiralisContext,
     policy: &mut Policy,
 ) -> ExitResult {
-    if log::log_enabled!(log::Level::Trace) {
+    if logger::trace_enabled!() {
         log_ctx(ctx);
     }
 
