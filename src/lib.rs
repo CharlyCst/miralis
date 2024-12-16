@@ -34,7 +34,7 @@ use virt::{ExecutionMode, ExitResult, VirtContext};
 /// The virtuam firmware monitor main loop.
 ///
 /// Runs the firmware and payload in a loop, handling the traps and interrupts and switching world
-/// when required..
+/// when required.
 ///
 /// # Safety
 ///

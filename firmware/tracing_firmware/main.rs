@@ -87,7 +87,7 @@ extern "C" {
 
 // —————————————————————————————— Benchmark operating system —————————————————————————————— //
 
-const NB_REPEATS: usize = 1000;
+const NB_REPEATS: usize = 100;
 
 pub fn bubble_sort(arr: &mut [usize; NB_REPEATS]) {
     let len = arr.len();
