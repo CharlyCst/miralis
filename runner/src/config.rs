@@ -60,6 +60,7 @@ pub struct Debug {
 pub struct VCpu {
     pub max_pmp: Option<usize>,
     pub delegate_perf_counters: Option<bool>,
+    pub display_context: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -252,6 +253,7 @@ impl VCpu {
             "MIRALIS_DELEGATE_PERF_COUNTER",
             &self.delegate_perf_counters,
         );
+        envs.insert("MIRALIS_DISPLAY_CONTEXT", &self.display_context);
         envs.envs
     }
 }

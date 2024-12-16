@@ -22,7 +22,7 @@ pub mod policy;
 pub mod utils;
 pub mod virt;
 
-use arch::{Arch, Architecture, Csr, Register};
+use arch::{Arch, Architecture};
 use benchmark::{Benchmark, Counter, Scope};
 use host::MiralisContext;
 pub use platform::init;
@@ -30,6 +30,9 @@ use platform::{Plat, Platform};
 use policy::{Policy, PolicyModule};
 use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
+
+use crate::config::DISPLAY_CONTEXT;
+use crate::utils::log_ctx;
 
 /// The virtuam firmware monitor main loop.
 ///
@@ -63,7 +66,8 @@ fn handle_trap(
     mctx: &mut MiralisContext,
     policy: &mut Policy,
 ) -> ExitResult {
-    if log::log_enabled!(log::Level::Trace) {
+    // We eliminate this branch at compile time, otherwise we loose 50 cycles
+    if DISPLAY_CONTEXT {
         log_ctx(ctx);
     }
 
@@ -143,95 +147,6 @@ fn handle_miralis_trap(ctx: &mut VirtContext) {
     log::error!("  mip:     0x{:x}", trap.mip);
 
     todo!("Miralis trap handler entered");
-}
-
-// —————————————————————————————— Debug Helper —————————————————————————————— //
-
-/// Log the current context using the trace log level.
-fn log_ctx(ctx: &VirtContext) {
-    let trap_info = &ctx.trap_info;
-    log::trace!(
-        "Trapped on hart {}:  {:?}",
-        ctx.hart_id,
-        ctx.trap_info.get_cause()
-    );
-    log::trace!(
-        "  mstatus: 0x{:<16x} mepc: 0x{:x}",
-        trap_info.mstatus,
-        trap_info.mepc
-    );
-    log::trace!(
-        "  mtval:   0x{:<16x} exits: {}  {:?}-mode",
-        ctx.trap_info.mtval,
-        ctx.nb_exits,
-        ctx.mode
-    );
-    log::trace!(
-        "  x1  {:<16x}  x2  {:<16x}  x3  {:<16x}",
-        ctx.get(Register::X1),
-        ctx.get(Register::X2),
-        ctx.get(Register::X3)
-    );
-    log::trace!(
-        "  x4  {:<16x}  x5  {:<16x}  x6  {:<16x}",
-        ctx.get(Register::X4),
-        ctx.get(Register::X5),
-        ctx.get(Register::X6)
-    );
-    log::trace!(
-        "  x7  {:<16x}  x8  {:<16x}  x9  {:<16x}",
-        ctx.get(Register::X7),
-        ctx.get(Register::X8),
-        ctx.get(Register::X9)
-    );
-    log::trace!(
-        "  x10 {:<16x}  x11 {:<16x}  x12 {:<16x}",
-        ctx.get(Register::X10),
-        ctx.get(Register::X11),
-        ctx.get(Register::X12)
-    );
-    log::trace!(
-        "  x13 {:<16x}  x14 {:<16x}  x15 {:<16x}",
-        ctx.get(Register::X13),
-        ctx.get(Register::X14),
-        ctx.get(Register::X15)
-    );
-    log::trace!(
-        "  x16 {:<16x}  x17 {:<16x}  x18 {:<16x}",
-        ctx.get(Register::X16),
-        ctx.get(Register::X17),
-        ctx.get(Register::X18)
-    );
-    log::trace!(
-        "  x19 {:<16x}  x20 {:<16x}  x21 {:<16x}",
-        ctx.get(Register::X19),
-        ctx.get(Register::X20),
-        ctx.get(Register::X21)
-    );
-    log::trace!(
-        "  x22 {:<16x}  x23 {:<16x}  x24 {:<16x}",
-        ctx.get(Register::X22),
-        ctx.get(Register::X23),
-        ctx.get(Register::X24)
-    );
-    log::trace!(
-        "  x25 {:<16x}  x26 {:<16x}  x27 {:<16x}",
-        ctx.get(Register::X25),
-        ctx.get(Register::X26),
-        ctx.get(Register::X27)
-    );
-    log::trace!(
-        "  x28 {:<16x}  x29 {:<16x}  x30 {:<16x}",
-        ctx.get(Register::X28),
-        ctx.get(Register::X29),
-        ctx.get(Register::X30)
-    );
-    log::trace!(
-        "  x31 {:<16x}  mie {:<16x}  mip {:<16x}",
-        ctx.get(Register::X31),
-        ctx.get(Csr::Mie),
-        ctx.get(Csr::Mip)
-    );
 }
 
 // ————————————————————————————————— Tests —————————————————————————————————— //
