@@ -7,7 +7,7 @@ use miralis::virt::VirtContext;
 use sail::Privilege;
 use sail_prelude::{BitField, BitVector};
 
-use crate::sail::SailVirtCtx;
+use crate::sail::{SailVirtCtx, xlenbits};
 
 impl SailVirtCtx {
     pub fn from(ctx: &mut VirtContext) -> Self {
@@ -349,7 +349,7 @@ mod verification {
         assert_eq!(ctx, sail_ctx.into_virt_context(), "mret equivalence");
     }
 
-    // #[kani::proof]
+    #[kani::proof]
     pub fn read_csr() {
         let csr_register = generate_csr_register();
 
@@ -387,7 +387,7 @@ mod verification {
             // // 0b000101000001 => 0b000101000001, // todo: OpenSBI still fails - mepc
             // 0b000101000010 => 0b000101000010, // Verified
             // 0b000101000011 => 0b000101000011, // Verified
-            // 0b000101000100 => 0b000101000100, // Verified - second attempt sip register
+            0b000101000100 => 0b000101000100, // Verified - second attempt sip register
             // 0b000110000000 => 0b000110000000, // Verified
             // 0b000000010101 => 0b000000010101, // Verified - second attempt seed register
             // 0b000000001000 => 0b000000001000, // Verified
@@ -429,7 +429,7 @@ mod verification {
         );
     }
 
-    #[kani::proof]
+    // #[kani::proof]
     pub fn write_csr() {
         let mut csr_register = kani::any::<u64>() & ((1 << 12) - 1);
 
@@ -443,7 +443,7 @@ mod verification {
             // 0b001100000001 => 0b001100000001, // Verified misa
             // 0b001100000010 => 0b001100000010, // Verified medeleg
             // 0b001100000011 => 0b001100000011, // Verified mideleg
-            0b001100000100 => 0b001100000100, // Verified mie
+            // 0b001100000100 => 0b001100000100, // Verified mie
             // 0b001100000101 => 0b001100000101, // Verified mtvec
             // 0b001100000110 => 0b001100000110, // Verified mcounteren
             // 0b001100001010 => 0b001100001010, // Verified menvcfg - todo: fix this part
