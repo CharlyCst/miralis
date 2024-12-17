@@ -87,3 +87,8 @@ board:
 	just build config/visionfive2.toml
 	mkimage -f visionfive2-fit-image.its -A riscv -O u-boot -T firmware vision.img
 	cp vision.img ../vision.img
+
+fast:
+	just build config/visionfive2.toml
+	mkimage -f visionfive2-fit-image-fast.its -A riscv -O u-boot -T firmware vision.img
+	cp vision.img ../vision.img
