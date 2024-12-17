@@ -200,39 +200,73 @@ impl ProtectPayloadPolicy {
                 rd, rs1, imm, len, ..
             } => {
                 assert!(
-                    len.to_bytes() == 8,
-                    "Implement support for other than 8 bytes misalinged accesses"
+                    len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
+                    "Implement support for other than 2,4,8 bytes misalinged accesses"
                 );
 
                 // Build the value
                 let start_addr: *const u8 =
                     ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
 
-                let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-                unsafe {
-                    self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                }
+                if len.to_bytes() == 8 {
+                    let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+                    unsafe {
+                        self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                    }
 
-                // Return the value
-                ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
+                    // Return the value
+                    ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
+                } else if len.to_bytes() == 4 {
+                    let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
+                    unsafe {
+                        self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                    }
+
+                    // Return the value
+                    ctx.regs[rd as usize] = u32::from_le_bytes(value_to_read) as usize;
+                } else if len.to_bytes() == 2 {
+                    let mut value_to_read: [u8; 2] = [0, 0];
+                    unsafe {
+                        self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                    }
+
+                    // Return the value
+                    ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
+                }
             }
             Instr::Store {
                 rs2, rs1, imm, len, ..
             } => {
                 assert!(
-                    len.to_bytes() == 8,
-                    "Implement support for other than 8 bytes misalinged accesses"
+                    len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
+                    "Implement support for other than 2,4,8 bytes misalinged accesses"
                 );
 
                 // Build the value
                 let start_addr: *mut u8 =
                     ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *mut u8;
 
-                let val = ctx.regs[rs2 as usize];
-                let mut value_to_store: [u8; 8] = val.to_le_bytes();
+                if len.to_bytes() == 8 {
+                    let val = ctx.regs[rs2 as usize] as u64;
+                    let mut value_to_store: [u8; 8] = val.to_le_bytes();
 
-                unsafe {
-                    self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                    unsafe {
+                        self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                    }
+                } else if len.to_bytes() == 4 {
+                    let val = ctx.regs[rs2 as usize] as u32;
+                    let mut value_to_store: [u8; 4] = val.to_le_bytes();
+
+                    unsafe {
+                        self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                    }
+                } else if len.to_bytes() == 2 {
+                    let val = ctx.regs[rs2 as usize] as u16;
+                    let mut value_to_store: [u8; 2] = val.to_le_bytes();
+
+                    unsafe {
+                        self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                    }
                 }
             }
             _ => {
@@ -250,7 +284,7 @@ impl ProtectPayloadPolicy {
         unsafe { Arch::read_bytes_from_mode(src, dest, mode).unwrap() }
     }
 
-    unsafe fn copy_from_previous_mode_store(&mut self, src: &mut [u8; 8], dest: *mut u8) {
+    unsafe fn copy_from_previous_mode_store(&mut self, src: &mut [u8], dest: *mut u8) {
         // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
         let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
         unsafe { Arch::store_bytes_from_mode(src, dest, mode).unwrap() }
