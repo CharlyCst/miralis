@@ -70,6 +70,15 @@ fn handle_trap(
         log_ctx(ctx);
     }
 
+    /*log::debug!("");
+    log::debug!("");
+    log::debug!("");
+    log::debug!("");
+    log::debug!("");
+    log::debug!("");
+    log::debug!("");
+    log::debug!("");*/
+
     // This is removed at compile time
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {
