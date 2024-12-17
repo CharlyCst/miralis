@@ -96,8 +96,8 @@ pub const TARGET_FIRMWARE_ADDRESS: usize =
     parse_usize_or(option_env!("MIRALIS_TARGET_FIRMWARE_ADDRESS"), 0x80200000);
 
 /// Start address of the payload
-pub const TARGET_PAYLOAD_ADDRESS: usize =
-    parse_usize_or(option_env!("MIRALIS_TARGET_PAYLAOD_ADDRESS"), 0x80400000);
+pub const TARGET_PAYLOAD_ADDRESS: usize = 0x40200000;
+    //parse_usize_or(option_env!("MIRALIS_TARGET_PAYLAOD_ADDRESS"), 0x80400000);
 
 /// The stack size for each Miralis thread (one per hart)
 pub const TARGET_STACK_SIZE: usize =
