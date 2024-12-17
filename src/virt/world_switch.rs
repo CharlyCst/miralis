@@ -42,7 +42,13 @@ impl VirtContext {
         // NOTE: `mip` mut be set _after_ `menvcfg`, because `menvcfg` might change which bits in
         // `mip` are writeable. For more information see the Sstc extension specification.
         Arch::write_csr(Csr::Mip, self.csr.mip);
-        Arch::write_csr(Csr::Mie, self.csr.mie | mie::MIDELEG_READ_ONLY_ZERO);
+        // NOTE: we do not enable Machine External Interrupts (MIE) as we can't emulate them
+        // efficiently with the PLIC. This mean that firmware can't receive external interrupts for
+        // now. In the future we should add the MIE bit if the virtual PLIC is enabled.
+        Arch::write_csr(
+            Csr::Mie,
+            (self.csr.mie | mie::MIDELEG_READ_ONLY_ZERO) & !mie::MEIE_FILTER,
+        );
 
         // If S extension is present - save the registers
         if mctx.hw.extensions.has_s_extension {
@@ -121,7 +127,10 @@ impl VirtContext {
         let mie_hw_bits = Arch::read_csr(Csr::Mie) & !(mie::MIDELEG_READ_ONLY_ZERO);
         let mie_sw_bits = self.csr.mie & mie::MIDELEG_READ_ONLY_ZERO;
         self.csr.mie = mie_hw_bits | mie_sw_bits;
-        Arch::write_csr(Csr::Mie, mie::MIDELEG_READ_ONLY_ZERO);
+        // NOTE: we do not enable Machine External Interrupts (MIE) as we can't emulate them
+        // efficiently with the PLIC. This mean that firmware can't receive external interrupts for
+        // now. In the future we should add the MIE bit if the virtual PLIC is enabled.
+        Arch::write_csr(Csr::Mie, mie::MSIE_FILTER | mie::MTIE_FILTER);
 
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt

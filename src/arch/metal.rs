@@ -37,7 +37,7 @@ impl Architecture for MetalArch {
         // Wouldn't try to read physical address as virtual (with jump, for example)
         unsafe { Arch::write_csr(Csr::Satp, 0) };
         // Ensure that virtualized interrupts are enabled
-        unsafe { Arch::set_csr_bits(Csr::Mie, mie::MIDELEG_READ_ONLY_ZERO) };
+        unsafe { Arch::set_csr_bits(Csr::Mie, mie::MSIE_FILTER | mie::MTIE_FILTER) };
     }
 
     #[inline]

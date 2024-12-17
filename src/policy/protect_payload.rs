@@ -159,7 +159,7 @@ impl ProtectPayloadPolicy {
             MCause::EcallFromSMode
                 if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
             {
-                log::debug!("Ignoring console ecall to the debug_console_extension");
+                log::error!("Ignoring console ecall to the debug_console_extension");
                 // Explicitly tell the payload this feature is not available
                 ctx.set(Register::X10, SBI_ERR_DENIED);
                 ctx.pc += 4;
