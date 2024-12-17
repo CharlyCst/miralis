@@ -367,6 +367,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Misa => {} // Read only register, we don't support deactivating extensions in Miralis
             Csr::Mie => {
+                if value & mie::MEIE_FILTER != 0 {
+                    debug::warn_once!("MEIE bit in 'mie' is not yet supported");
+                }
+
                 self.csr.mie = hw.interrupts
                     & ((value & mie::MIE_WRITE_FILTER) | (self.csr.mie & !mie::MIE_WRITE_FILTER))
             }
