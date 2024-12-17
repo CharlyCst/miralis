@@ -148,7 +148,7 @@ impl PolicyModule for ProtectPayloadPolicy {
     // In this policy module, if we receive an interrupt from Miralis, it implies we need to lock the memory
     fn on_interrupt(&mut self, _ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         // Lock memory
-        mctx.pmp.set_inactive(POLICY_OFFSET, 0x80400000);
+        mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp
             .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
     }
