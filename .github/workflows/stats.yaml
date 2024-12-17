@@ -33,8 +33,6 @@ jobs:
         chmod +x spike
         echo "$PWD" >> $GITHUB_PATH
         sudo apt install device-tree-compiler
-    - name: Benchmark cycles
-      run: cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark.toml > cycles.txt
     - name: Push stats
       shell: bash
       run: |
