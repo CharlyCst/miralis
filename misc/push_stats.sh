@@ -46,7 +46,7 @@ fi
 file="cycles.txt"
 
 # Run the benchmarks
-Run cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark.toml > $file
+cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark.toml > $file
 
 # Extract the number after "firmware cost:"
 firmware_cost=$(grep -i "Firmware cost :" "$file"  | sed -E 's/.*Firmware cost : ([0-9]+).*/\1/')
