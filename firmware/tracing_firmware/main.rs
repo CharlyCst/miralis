@@ -36,7 +36,7 @@ fn main() -> ! {
 
     log::info!("Start benchmarking from Firmware");
 
-    measure();
+    measure(true);
 
     log::info!("Start benchmarking from Payload");
 
@@ -121,11 +121,11 @@ fn operating_system() {
         asm!("la sp, 0x80700000");
     }
 
-    measure();
+    measure(false);
     success();
 }
 
-fn measure() {
+fn measure(is_firmware: bool) {
     let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
 
     for i in 0..NB_REPEATS {
@@ -135,7 +135,12 @@ fn measure() {
     let stats = get_statistics(values);
     let average_measure = trigger_ctx_switch_to_firmware_batched();
 
-    log::info!("Average measure : {}", average_measure);
+    if is_firmware {
+        log::info!("Firmware cost : {}", average_measure);
+    } else {
+        log::info!("Payload cost : {}", average_measure);
+    }
+
     print_statistics(stats);
 }
 
