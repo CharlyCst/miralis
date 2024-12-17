@@ -66,18 +66,9 @@ fn handle_trap(
     policy: &mut Policy,
 ) -> ExitResult {
     // We eliminate this branch at compile time, otherwise we loose 50 cycles
-    if DISPLAY_CONTEXT {
+    if log::log_enabled!(log::Level::Trace) {
         log_ctx(ctx);
     }
-
-    /*log::debug!("");
-    log::debug!("");
-    log::debug!("");
-    log::debug!("");
-    log::debug!("");
-    log::debug!("");
-    log::debug!("");
-    log::debug!("");*/
 
     // This is removed at compile time
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
