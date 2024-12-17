@@ -29,6 +29,9 @@ path = "config/test/spike.toml"
 [config.spike-protect-payload]
 path = "config/test/spike-protect-payload.toml"
 
+[config.spike-benchmark]
+path = "./config/test/spike-latency-benchmark.toml"
+
 ## ——————————————————————————— Integration Tests ———————————————————————————— ##
 
 [test.ecall]
@@ -219,3 +222,7 @@ firmware = "ecall"
 config = "spike"
 description = "The most basic test, which directly exit with an ecall to Miralis"
 
+[test.spike-benchmark]
+firmware = "tracing_firmware"
+config = "spike-benchmark"
+description = "The firmware and configuration we use to measure cycles in the CI"

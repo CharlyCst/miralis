@@ -41,15 +41,39 @@ else
     miralis_size="$(stat --format=%s $miralis_img_path)"
 fi
 
+# ———————————————————————————————— Get latency cycles ———————————————————————————————— #
+
+file="cycles.txt"
+
+# Extract the number after "firmware cost:"
+firmware_cost=$(grep -i "Firmware cost :" "$file"  | sed -E 's/.*Firmware cost : ([0-9]+).*/\1/')
+payload_cost=$(grep -i "Payload cost :" "$file" | sed -E 's/.*Payload cost : ([0-9]+).*/\1/')
+
+# Check if a number was found
+if [ -n "$firmware_cost" ]; then
+    echo "Firmware cost: $firmware_cost"
+else
+    echo "No firmware cost found in the file."
+fi
+
+# Check if a number was found
+if [ -n "$payload_cost" ]; then
+    echo "Payload cost: $payload_cost"
+else
+    echo "No firmware cost found in the file."
+fi
+
 # ———————————————————————————————— Push stats ———————————————————————————————— #
 
 echo "Commit: $git_commit"
 echo "Current date: $current_date"
 echo "Miralis size: $miralis_size bytes"
 echo "Build time: $build_time"
+echo "Miralis <--> Firmware latency in cycles: " firmware_cost
+echo "Payload <--> Firmware latency in cycles: " $payload_cost
 
 if [ "$1" = "--commit" ]; then
-    csv_entry="$git_commit, $current_date, $miralis_size, $build_time"
+    csv_entry="$git_commit, $current_date, $miralis_size, $build_time, $firmware_cost, $payload_cost"
     echo $csv_entry >> "$miralis_stats_csv_path"
     echo "Added CSV entry to $miralis_stats_csv_path"
 fi
