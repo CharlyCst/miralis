@@ -295,6 +295,32 @@ fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<BinArtifact> {
     None
 }
 
+// ————————————————————————————————— Log helpers  —————————————————————————————————— //
+
+const MAX_LEVEL_TRACE: &str = "release_max_level_trace";
+const MAX_LEVEL_DEBUG: &str = "release_max_level_debug";
+const MAX_LEVEL_INFO: &str = "release_max_level_info";
+const MAX_LEVEL_WARN: &str = "release_max_level_warn";
+const MAX_LEVEL_ERROR: &str = "release_max_level_error";
+
+fn get_highest_log_level(cfg: &Config) -> &str {
+    let default_level = &String::from("info");
+    let current_level = cfg.log.level.as_ref().unwrap_or(default_level);
+
+    if !cfg.log.trace.as_ref().unwrap_or(&Vec::new()).is_empty() || current_level == "trace" {
+        return MAX_LEVEL_TRACE;
+    } else if !cfg.log.debug.as_ref().unwrap_or(&Vec::new()).is_empty() || current_level == "debug"
+    {
+        return MAX_LEVEL_DEBUG;
+    } else if !cfg.log.info.as_ref().unwrap_or(&Vec::new()).is_empty() || current_level == "info" {
+        return MAX_LEVEL_INFO;
+    } else if !cfg.log.warn.as_ref().unwrap_or(&Vec::new()).is_empty() || current_level == "warn" {
+        return MAX_LEVEL_WARN;
+    }
+
+    MAX_LEVEL_ERROR
+}
+
 // ————————————————————————————————— Build —————————————————————————————————— //
 
 /// Perform the actual build by invoking cargo.
@@ -340,6 +366,8 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 
             // Environment variables
             build_cmd.envs(cfg.build_envs());
+
+            build_cmd.arg("--features").arg(get_highest_log_level(cfg));
         }
 
         Target::Firmware(ref firmware) => {

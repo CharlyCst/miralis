@@ -33,6 +33,12 @@ tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 # When running on host architecture as a userspace application, such as when
 # running unit tests.
 userspace = []
+# Define features for Miralis
+release_max_level_trace = ["log/release_max_level_trace"]
+release_max_level_debug = ["log/release_max_level_debug"]
+release_max_level_info = ["log/release_max_level_info"]
+release_max_level_warn = ["log/release_max_level_warn"]
+release_max_level_error = ["log/release_max_level_error"]
 
 [lints.clippy]
 result_unit_err = "allow"
