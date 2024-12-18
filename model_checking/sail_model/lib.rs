@@ -393,6 +393,10 @@ pub fn hex_bits_forwards_matches<const N: usize>(
     true
 }
 
+pub fn get_config_print_instr(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> bool {
+    false
+}
+
 pub fn get_config_print_reg(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> bool {
     false
 }
@@ -662,6 +666,20 @@ pub enum InterruptType {
     I_U_External,
     I_S_External,
     I_M_External,
+}
+
+pub fn interruptType_to_bits(sail_ctx: &mut SailVirtCtx, i: InterruptType) -> BitVector<8> {
+    match i {
+        InterruptType::I_U_Software => BitVector::<8>::new(0b00000000),
+        InterruptType::I_S_Software => BitVector::<8>::new(0b00000001),
+        InterruptType::I_M_Software => BitVector::<8>::new(0b00000011),
+        InterruptType::I_U_Timer => BitVector::<8>::new(0b00000100),
+        InterruptType::I_S_Timer => BitVector::<8>::new(0b00000101),
+        InterruptType::I_M_Timer => BitVector::<8>::new(0b00000111),
+        InterruptType::I_U_External => BitVector::<8>::new(0b00001000),
+        InterruptType::I_S_External => BitVector::<8>::new(0b00001001),
+        InterruptType::I_M_External => BitVector::<8>::new(0b00001011),
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -2159,6 +2177,10 @@ pub fn _update_Counterin_CY(
     BitField {
         bits: update_subrange_bits(v.bits, 0, 0, x),
     }
+}
+
+pub fn _get_Counterin_IR(sail_ctx: &mut SailVirtCtx, v: Counterin) -> BitVector<1> {
+    v.subrange::<2, 3, 1>()
 }
 
 pub fn _update_Counterin_IR(
@@ -4697,7 +4719,7 @@ pub fn trap_handler(
                         Privilege::Supervisor => BitVector::<1>::new(0b1),
                         Privilege::Machine => internal_error(
                             String::from("../miralis-sail-riscv/model/riscv_sys_control.sail"),
-                            359,
+                            356,
                             String::from("invalid privilege for s-mode trap"),
                         ),
                     });
@@ -4955,6 +4977,19 @@ pub fn exception_handler(
             (prepare_xret_target(sail_ctx, Privilege::User) & pc_alignment_mask(sail_ctx, ()))
         }
     }
+}
+
+pub fn handle_interrupt(sail_ctx: &mut SailVirtCtx, i: InterruptType, del_priv: Privilege) {
+    let var_1 = {
+        let var_2 = del_priv;
+        let var_3 = true;
+        let var_4 = interruptType_to_bits(sail_ctx, i);
+        let var_5 = sail_ctx.PC;
+        let var_6 = None;
+        let var_7 = None;
+        trap_handler(sail_ctx, var_2, var_3, var_4, var_5, var_6, var_7)
+    };
+    set_next_pc(sail_ctx, var_1)
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -5876,4 +5911,31 @@ pub enum FetchResult {
     F_Base(word),
     F_RVC(half),
     F_Error((ExceptionType, xlenbits)),
+}
+
+pub fn ext_pre_step_hook(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
+    ()
+}
+
+pub fn step_interrupts_only(sail_ctx: &mut SailVirtCtx, step_no: usize) -> bool {
+    ext_pre_step_hook(sail_ctx, ());
+    sail_ctx.minstret_increment =
+        (_get_Counterin_IR(sail_ctx, sail_ctx.mcountinhibit) == BitVector::<1>::new(0b0));
+    let (retired, stepped): (Retired, bool) =
+        match dispatchInterrupt(sail_ctx, sail_ctx.cur_privilege) {
+            Some((intr, _priv_)) => {
+                if { get_config_print_instr(sail_ctx, ()) } {
+                    print_output(
+                        String::from("Handling interrupt: "),
+                        interruptType_to_bits(sail_ctx, intr),
+                    )
+                } else {
+                    ()
+                };
+                handle_interrupt(sail_ctx, intr, _priv_);
+                (Retired::RETIRE_FAIL, false)
+            }
+            None => (Retired::RETIRE_FAIL, false),
+        };
+    stepped
 }

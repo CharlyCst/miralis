@@ -5,12 +5,9 @@
 //! implementation and Miralis we need to be able to compare their internal representation. Hence
 //! this module exposing functions to convert from one representation to the other.
 
-use miralis::arch::mie::{
-    MEIE_OFFSET, MSIE_OFFSET, MTIE_OFFSET, SEIE_OFFSET, SSIE_OFFSET, STIE_OFFSET,
-};
 use miralis::arch::{ExtensionsCapability, Mode};
 use miralis::virt::VirtContext;
-use sail_model::{InterruptType, Privilege, SailVirtCtx};
+use sail_model::{Privilege, SailVirtCtx};
 use sail_prelude::{BitField, BitVector};
 
 pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
@@ -374,26 +371,4 @@ pub fn pmpaddr_sail_to_miralis(addresses: [BitVector<64>; 64]) -> [usize; 64] {
     }
 
     output
-}
-
-fn convert_sail_interrupt_to_code(interrupt_type: InterruptType) -> usize {
-    match interrupt_type {
-        InterruptType::I_M_External => MEIE_OFFSET,
-        InterruptType::I_M_Software => MSIE_OFFSET,
-        InterruptType::I_M_Timer => MTIE_OFFSET,
-        InterruptType::I_S_External => SEIE_OFFSET,
-        InterruptType::I_S_Software => SSIE_OFFSET,
-        InterruptType::I_S_Timer => STIE_OFFSET,
-        _ => 0,
-    }
-}
-
-pub fn sail_interrupts_code_to_miralis(
-    interrupt: Option<(InterruptType, Privilege)>,
-) -> Option<usize> {
-    if let Some((interrupt_type, _privilege)) = interrupt {
-        Some(convert_sail_interrupt_to_code(interrupt_type))
-    } else {
-        None
-    }
 }

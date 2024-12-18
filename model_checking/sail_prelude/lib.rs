@@ -82,7 +82,7 @@ pub fn internal_error(_file: String, _line: usize, _s: String) -> ! {
     exit(0);
 }
 
-pub fn print_output(text: String, _csr: BitVector<12>) {
+pub fn print_output<const N: usize>(text: String, _csr: BitVector<N>) {
     println!("{}", text)
 }
 
