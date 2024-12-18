@@ -15,7 +15,7 @@ use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{Policy, PolicyModule};
 use crate::utils::sign_extend;
-use crate::{device, utils};
+use crate::{device, logger, utils};
 
 /// Wether to continue execution of the virtual firmware or payload, or terminate the run loop.
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -345,7 +345,9 @@ impl VirtContext {
             MCause::IllegalInstr => {
                 let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
                 let instr = mctx.decode(instr);
-                log::trace!("Faulting instruction: {:?}", instr);
+                if logger::trace_enabled!() {
+                    log::trace!("Faulting instruction: {:?}", instr);
+                }
                 self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {
