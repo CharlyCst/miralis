@@ -160,7 +160,8 @@ impl VirtContext {
         }
     }
 
-    /// Check if an interrupt should be injected in virtual M-mode.
+    /// Check if an interrupt should be injected in virtual M-mode, and perform the injection if
+    /// any.
     ///
     /// If an interrupt is injected, jumps to the firmware trap handler.
     pub fn check_and_inject_interrupts(&mut self) {
@@ -174,12 +175,17 @@ impl VirtContext {
         // vCPU we exit the WFI mode, even if no interrupt is received (spurious wake-ups).
         self.is_wfi = false;
 
-        let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
-        else {
-            // No enabled interrupt pending
-            return;
-        };
+        // Inject the next penting interrupt if any
+        if let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg) {
+            self.inject_interrupt(next_int);
+        }
+    }
 
+    /// Inject a virtual interrupt.
+    ///
+    /// This function jumps to the trap handler for the corresponding interrupts and updates the
+    /// virtual CSRs accordingly.
+    pub fn inject_interrupt(&mut self, next_int: usize) {
         // Update Mstatus to match the semantic of a trap
         VirtCsr::set_csr_field(
             &mut self.csr.mstatus,
@@ -262,8 +268,9 @@ impl VirtContext {
             // else, jump to BASE + 4 * cause
             mtvec::Mode::Vectored => {
                 if MCause::is_interrupt(MCause::new(self.csr.mcause)) {
+                    // We use a wrapping add here to avoid an overflow
                     (self.csr.mtvec & mtvec::BASE_FILTER)
-                        + 4 * MCause::cause_number(self.csr.mcause)
+                        .wrapping_add(4_usize.wrapping_mul(MCause::cause_number(self.csr.mcause)))
                 } else {
                     self.csr.mtvec & mtvec::BASE_FILTER
                 }

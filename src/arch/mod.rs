@@ -428,7 +428,7 @@ pub mod mtvec {
     pub const MODE_FILTER: usize = 0b11;
 
     /// Constant to filter out BASE bits of mtvec
-    pub const BASE_FILTER: usize = usize::MAX & !MODE_FILTER;
+    pub const BASE_FILTER: usize = !MODE_FILTER;
 
     /// Privilege modes
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
