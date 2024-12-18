@@ -1,0 +1,28 @@
+# A simple configuration to run on StarFive VisionFive 2 platform in release mode with the protect payload policy
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 0
+
+[platform]
+name = "visionfive2"
+nb_harts = 5
+boot_hart_id = 1
+
+[benchmark]
+enable = false
+
+[target.miralis]
+start_address = 0x43000000
+stack_size = 0x8000
+profile = "release"
+
+[target.firmware]
+start_address = 0x40000000
+profile = "release"
+
+[policy]
+name = "protect_payload"
