@@ -393,6 +393,26 @@ impl<const N: usize> std::ops::Add<u64> for BitVector<N> {
     }
 }
 
+impl<const N: usize> std::ops::Add<i64> for BitVector<N> {
+    type Output = Self;
+
+    fn add(self, rhs: i64) -> BitVector<N> {
+        let result = self.bits as i64 + rhs;
+        // If the result is out of bounds, we may want to handle overflow
+        BitVector::<N>::new(result as u64) // Returning the result as BitVector
+    }
+}
+
+impl<const N: usize> std::ops::Add<i32> for BitVector<N> {
+    type Output = Self;
+
+    fn add(self, rhs: i32) -> BitVector<N> {
+        let result = self.bits as i64 + rhs as i64;
+        // If the result is out of bounds, we may want to handle overflow
+        BitVector::<N>::new(result as u64) // Returning the result as BitVector
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
