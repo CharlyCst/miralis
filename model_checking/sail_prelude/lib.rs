@@ -161,6 +161,10 @@ pub fn sail_ones<const N: usize>(_n: usize) -> BitVector<N> {
     !BitVector::<N>::new(0)
 }
 
+pub fn sail_zeros<const N: usize>(_n: usize) -> BitVector<N> {
+    BitVector::<N>::new(0)
+}
+
 pub fn min_int(v1: usize, v2: usize) -> usize {
     min(v1, v2)
 }
@@ -379,8 +383,20 @@ impl<const N: usize> ops::Not for BitVector<N> {
     }
 }
 
+impl<const N: usize> std::ops::Add<i64> for BitVector<N> {
+    type Output = Self;
+
+    fn add(self, rhs: i64) -> BitVector<N> {
+        let result = self.bits as i64 + rhs;
+        // If the result is out of bounds, we may want to handle overflow
+        BitVector::<N>::new(result as u64) // Returning the result as BitVector
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use rand::random;
+
     use super::*;
 
     #[test]
@@ -667,7 +683,9 @@ mod tests {
 
         let mut v = BitVector::<SIZE>::new(0);
         let mut val: u64 = 0;
-        for idx in 0..SIZE {
+        for _ in 0..100 {
+            let idx = random::<usize>() % SIZE;
+
             val |= (1 as u64) << idx;
             v.set_vector_entry(idx, true);
 
