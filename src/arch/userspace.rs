@@ -6,7 +6,7 @@
 use core::marker::PhantomData;
 use core::ptr;
 
-use spin::Mutex;
+use spin::{Mutex, MutexGuard};
 
 use super::{
     mie, mstatus, parse_mpp_return_mode, Architecture, Csr, ExtensionsCapability, MCause, Mode,
@@ -16,7 +16,7 @@ use crate::arch::{HardwareCapability, PmpGroup};
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
 
-static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
+pub static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
     0,
     16,
     ExtensionsCapability {
@@ -30,6 +30,10 @@ static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
         has_zihpm_extension: true,
     },
 ));
+
+pub fn return_userspace_ctx() -> MutexGuard<'static, VirtContext> {
+    HOST_CTX.lock()
+}
 
 /// User space mock, running on the host architecture.
 pub struct HostArch {}
