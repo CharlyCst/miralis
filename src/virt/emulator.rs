@@ -4,6 +4,9 @@ use miralis_core::abi;
 
 use super::csr::traits::*;
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::{
+    MEIE_OFFSET, MSIE_OFFSET, MTIE_OFFSET, SEIE_OFFSET, SSIE_OFFSET, STIE_OFFSET,
+};
 use crate::arch::{
     mie, misa, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode,
     Register,
@@ -165,20 +168,24 @@ impl VirtContext {
     ///
     /// If an interrupt is injected, jumps to the firmware trap handler.
     pub fn check_and_inject_interrupts(&mut self) {
-        if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M && !self.is_wfi {
-            // Interrupts are disabled while in M-mode if mstatus.MIE is 0
-            return;
-        }
-
-        // For now we assume that the vCPU will be run each time this function is called (or
-        // rather, that this function is called before each vCPU run). Therefore by running the
+        // For now, we assume that the vCPU will be run each time this function is called (or
+        // rather, that this function is called before each vCPU run). Therefore, by running the
         // vCPU we exit the WFI mode, even if no interrupt is received (spurious wake-ups).
         self.is_wfi = false;
 
-        // Inject the next penting interrupt if any
-        if let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg) {
-            self.inject_interrupt(next_int);
+        if let Some(int_id) = self.has_pending_interrupt() {
+            self.inject_interrupt(int_id)
         }
+    }
+
+    /// Return the next pending interrupt, if any.
+    pub fn has_pending_interrupt(&mut self) -> Option<usize> {
+        if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M && !self.is_wfi {
+            // Interrupts are disabled while in M-mode if mstatus.MIE is 0
+            return None;
+        }
+
+        get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
     }
 
     /// Inject a virtual interrupt.
@@ -789,16 +796,32 @@ fn has_user_mode(ctx: &VirtContext) -> bool {
     (ctx.csr.misa & misa::U) != 0
 }
 
+/// Retrieves the next interrupt by priority similar to the official risc-v specification
+fn find_pending_interrupt_by_priority(ip: usize) -> Option<usize> {
+    if ip & mie::MEIE_FILTER != 0 {
+        Some(MEIE_OFFSET)
+    } else if ip & mie::MSIE_FILTER != 0 {
+        Some(MSIE_OFFSET)
+    } else if ip & mie::MTIE_FILTER != 0 {
+        Some(MTIE_OFFSET)
+    } else if ip & mie::SEIE_FILTER != 0 {
+        Some(SEIE_OFFSET)
+    } else if ip & mie::SSIE_FILTER != 0 {
+        Some(SSIE_OFFSET)
+    } else if ip & mie::STIE_FILTER != 0 {
+        Some(STIE_OFFSET)
+    } else {
+        None
+    }
+}
+
 /// Return the ID of the next interrupt to be delivered, if any.
 fn get_next_interrupt(mie: usize, mip: usize, mideleg: usize) -> Option<usize> {
-    let ints = mie & mip & !mideleg;
-    if ints == 0 {
-        None
-    } else {
-        // TODO: use the same priority as hardware.
-        // Currently we serve the less significant bit first.
-        Some(ints.trailing_zeros() as usize)
-    }
+    // First function
+    let ip = mie & mip & !mideleg;
+
+    // Second function (they should be equivalent)
+    find_pending_interrupt_by_priority(ip)
 }
 
 // ————————————————————————————————— Tests —————————————————————————————————— //
@@ -850,8 +873,7 @@ mod tests {
         assert_eq!(get_next_interrupt(0b000, 0b010, 0b000), None);
         assert_eq!(get_next_interrupt(0b010, 0b010, 0b010), None);
 
-        assert_eq!(get_next_interrupt(0b001, 0b001, 0b000), Some(0));
-        assert_eq!(get_next_interrupt(0b011, 0b011, 0b000), Some(0));
+        assert_eq!(get_next_interrupt(0b011, 0b011, 0b000), Some(1));
         assert_eq!(get_next_interrupt(0b010, 0b010, 0b000), Some(1));
         assert_eq!(get_next_interrupt(0b010, 0b011, 0b000), Some(1));
         assert_eq!(get_next_interrupt(0b011, 0b011, 0b001), Some(1));
