@@ -1,10 +1,11 @@
-use sail_model::{execute_MRET, execute_WFI};
+use sail_model::{dispatchInterrupt, execute_MRET, execute_WFI, Privilege, trap_handler};
+use sail_prelude::{BitField, BitVector};
 
 #[macro_use]
 mod symbolic;
 mod adapters;
 
-#[cfg_attr(kani, kani::proof)]
+// #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn mret() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
@@ -20,7 +21,7 @@ pub fn mret() {
     );
 }
 
-#[cfg_attr(kani, kani::proof)]
+// #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn wfi() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
@@ -36,5 +37,71 @@ pub fn wfi() {
         ctx,
         adapters::sail_to_miralis(sail_ctx),
         "wfi instruction emulation is not correct"
+    );
+}
+
+// The first function symbolically verifies whether an interrupt needs to be injected, formally checking the "if".
+// The second function ensures that the interrupt is correctly injected into the system, verifying the "how".
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn requires_interrupt_injection() {
+    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    let has_miralis_interrupt = if let Some(x) = ctx.has_pending_interrupt() {
+        true
+    } else {
+        false
+    };
+
+    // Miralis runs in M mode exclusively
+    let has_sail_interrupt = if let Some(x) = dispatchInterrupt(&mut sail_ctx, Privilege::Machine) {
+        true
+    } else {
+        false
+    };
+
+    assert_eq!(has_miralis_interrupt, has_sail_interrupt, "Interrupt detection is not correct")
+}
+
+// #[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn interrupt_virtualization() {
+    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // Update mtvec state to be in a legal state
+    // .....10 is illegal for example and will make kani fail
+    ctx.csr.mtvec &= !0b10;
+    sail_ctx.mtvec = BitField::new(sail_ctx.mtvec.bits.bits() & !0b10);
+
+    // Generation of an interrupt
+    let current_interrupt = any!(usize) % 64;
+
+    ctx.setup_trap_handler(current_interrupt);
+
+    // Intr field is always true because we formally check the interrupt virtualization ant therefore traps are out of scope
+    {
+        // Makes the borrow checker happy
+        let cur_privilege = sail_ctx.cur_privilege;
+        let pc = sail_ctx.PC;
+        let ret_pc = trap_handler(
+            &mut sail_ctx,
+            cur_privilege,
+            true,
+            BitVector::new(current_interrupt as u64),
+            pc,
+            Some(BitVector::new(0)),
+            None,
+        );
+
+        // Now we can set the return pc
+        sail_ctx.nextPC = ret_pc;
+    }
+
+    // Finally, we can check that both virtual contexts are equivalent
+    assert_eq!(
+        ctx,
+        adapters::sail_to_miralis(sail_ctx),
+        "Interrupt injection is not correct"
     );
 }

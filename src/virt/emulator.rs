@@ -164,22 +164,27 @@ impl VirtContext {
     ///
     /// If an interrupt is injected, jumps to the firmware trap handler.
     pub fn check_and_inject_interrupts(&mut self) {
+        // We extract the logic in two functions because this make the formal verification easier to execute
+        if let Some(code) = self.has_pending_interrupt() {
+            self.setup_trap_handler(code)
+        }
+    }
+
+    pub fn has_pending_interrupt(&mut self) -> Option<usize> {
         if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M && !self.is_wfi {
             // Interrupts are disabled while in M-mode if mstatus.MIE is 0
-            return;
+            return None;
         }
 
-        // For now we assume that the vCPU will be run each time this function is called (or
-        // rather, that this function is called before each vCPU run). Therefore by running the
+        // For now, we assume that the vCPU will be run each time this function is called (or
+        // rather, that this function is called before each vCPU run). Therefore, by running the
         // vCPU we exit the WFI mode, even if no interrupt is received (spurious wake-ups).
         self.is_wfi = false;
 
-        let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
-        else {
-            // No enabled interrupt pending
-            return;
-        };
+        get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
+    }
 
+    pub fn setup_trap_handler(&mut self, next_int: usize) {
         // Update Mstatus to match the semantic of a trap
         VirtCsr::set_csr_field(
             &mut self.csr.mstatus,
@@ -262,8 +267,9 @@ impl VirtContext {
             // else, jump to BASE + 4 * cause
             mtvec::Mode::Vectored => {
                 if MCause::is_interrupt(MCause::new(self.csr.mcause)) {
+                    // We use a wrapping add here to avoid an overflow
                     (self.csr.mtvec & mtvec::BASE_FILTER)
-                        + 4 * MCause::cause_number(self.csr.mcause)
+                        .wrapping_add(4_usize.wrapping_mul(MCause::cause_number(self.csr.mcause)))
                 } else {
                     self.csr.mtvec & mtvec::BASE_FILTER
                 }
