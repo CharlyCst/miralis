@@ -199,7 +199,7 @@ impl fmt::Display for PmpGroup {
 }
 
 impl PmpGroup {
-    const fn new(nb_pmp: usize) -> Self {
+    pub const fn new(nb_pmp: usize) -> Self {
         PmpGroup {
             pmpaddr: [0; 64],
             pmpcfg: [0; 8],

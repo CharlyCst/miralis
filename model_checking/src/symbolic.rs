@@ -107,7 +107,7 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.medeleg = any!();
     ctx.csr.mideleg = any!();
     ctx.csr.pmpcfg = [any!(); 8];
-    ctx.csr.pmpaddr = [any!(); 64];
+    ctx.csr.pmpaddr = [any!(usize) >> 4; 64];
     // ctx.csr.mhpmcounter = [any!(); 29]; todo: What should we do?
     // ctx.csr.mhpmevent = [any!(); 29]; todo: What should we do?
 
