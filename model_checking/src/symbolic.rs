@@ -61,17 +61,23 @@ pub fn new_ctx() -> VirtContext {
 
     // Mode
     ctx.mode = Mode::M;
-
-    // Add hart id
-    ctx.hart_id = any!();
-
+    ctx.pc = any!();
     ctx.nb_pmp = 16;
 
+    // Pick a previous privilege mode
+    let mpp = match any!(u8) % 3 {
+        0 => 0b00,
+        1 => 0b01,
+        2 => 0b11,
+        _ => unreachable!(),
+    };
+
     // Add other csr
+    ctx.hart_id = any!();
     ctx.csr.misa = any!();
     ctx.csr.mie = any!();
     ctx.csr.mip = any!();
-    ctx.csr.mtvec = any!();
+    ctx.csr.mtvec = any!(usize) & !0b10; // 10 is  an illegal trap vector
     ctx.csr.mscratch = any!();
     ctx.csr.mvendorid = any!();
     ctx.csr.marchid = any!();
@@ -83,10 +89,10 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.menvcfg = any!();
     // ctx.csr.mseccfg = any!();
     ctx.csr.mcause = any!();
-    ctx.csr.mepc = any!();
+    ctx.csr.mepc = any!(usize) & (!0b11);
     ctx.csr.mtval = any!();
     // ctx.csr.mtval2 = any!(); - TODO: What should we do with this?
-    ctx.csr.mstatus = any!();
+    ctx.csr.mstatus = any!(usize) & !(0b11 << mstatus::MPP_OFFSET) | (mpp << mstatus::MPP_OFFSET);
     // ctx.csr.mtinst = any!();
     ctx.csr.mconfigptr = any!();
     // ctx.csr.stvec = any!();
@@ -133,22 +139,9 @@ pub fn new_ctx() -> VirtContext {
 /// Miralis and mostly containst the list of hardware extensions (which are fixed during model
 /// checking).
 pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, SailVirtCtx) {
-    let mpp = match any!(u8) % 3 {
-        0 => 0b00,
-        1 => 0b01,
-        2 => 0b11,
-        _ => unreachable!(),
-    };
-    let mstatus = any!(usize) & !(0b11 << mstatus::MPP_OFFSET);
-
-    let mut ctx = new_ctx();
-
-    ctx.csr.mepc = any!(usize) & (!0b11);
-    ctx.csr.sepc = any!();
-    ctx.csr.mstatus = mstatus | (mpp << mstatus::MPP_OFFSET);
-    ctx.mode = Mode::M;
-    ctx.pc = any!();
-
+    // We first create a symbolic context
+    let ctx = new_ctx();
+    // Then we copy the symbolic values into a Sail context
     let sail_ctx = adapters::miralis_to_sail(&ctx);
 
     // Initialize Miralis's own context
