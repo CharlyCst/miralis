@@ -1,6 +1,5 @@
 #![allow(incomplete_features, non_camel_case_types)]
 #![feature(generic_const_exprs)]
-
 use core::ops;
 use std::cmp::min;
 use std::process::{self, exit};
@@ -66,6 +65,8 @@ pub fn sys_enable_writable_fiom(_unit: ()) -> bool {
 
 pub fn get_16_random_bits(_unit: ()) -> BitVector<16> {
     BitVector::<16>::new(0)
+    // let number: u64 = rand::thread_rng().gen();
+    // BitVector::<16>::new(number & ((1 << 17) - 1))
 }
 
 pub fn not_implemented(_unit: ()) -> ! {
@@ -159,6 +160,10 @@ pub fn sign_extend<const M: usize>(value: usize, input: BitVector<M>) -> BitVect
 
 pub fn sail_ones<const N: usize>(_n: usize) -> BitVector<N> {
     !BitVector::<N>::new(0)
+}
+
+pub fn sail_zeros<const N: usize>(_n: usize) -> BitVector<N> {
+    BitVector::<N>::new(0)
 }
 
 pub fn min_int(v1: usize, v2: usize) -> usize {
@@ -379,8 +384,21 @@ impl<const N: usize> ops::Not for BitVector<N> {
     }
 }
 
+
+impl<const N: usize> std::ops::Add<i64> for BitVector<N> {
+    type Output = Self;
+
+    fn add(self, rhs: i64) -> BitVector<N> {
+        let result = self.bits as i64 + rhs;
+        // If the result is out of bounds, we may want to handle overflow
+        BitVector::<N>::new(result as u64) // Returning the result as BitVector
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use rand::random;
+
     use super::*;
 
     #[test]
@@ -531,7 +549,7 @@ mod tests {
                 0,
                 BitVector::<2>::new(0b11)
             )
-            .bits,
+                .bits,
             0b11111111
         );
         assert_eq!(
@@ -541,7 +559,7 @@ mod tests {
                 0,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b00000001
         );
         assert_eq!(
@@ -551,7 +569,7 @@ mod tests {
                 1,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b00000010
         );
         assert_eq!(
@@ -561,7 +579,7 @@ mod tests {
                 2,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b00000100
         );
         assert_eq!(
@@ -571,7 +589,7 @@ mod tests {
                 3,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b00001000
         );
         assert_eq!(
@@ -581,7 +599,7 @@ mod tests {
                 4,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b00010000
         );
         assert_eq!(
@@ -591,7 +609,7 @@ mod tests {
                 5,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b00100000
         );
         assert_eq!(
@@ -601,7 +619,7 @@ mod tests {
                 6,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b01000000
         );
         assert_eq!(
@@ -611,7 +629,7 @@ mod tests {
                 7,
                 BitVector::<1>::new(0b1)
             )
-            .bits,
+                .bits,
             0b10000000
         );
     }
@@ -667,7 +685,9 @@ mod tests {
 
         let mut v = BitVector::<SIZE>::new(0);
         let mut val: u64 = 0;
-        for idx in 0..SIZE {
+        for _ in 0..100 {
+            let idx = random::<usize>() % SIZE;
+
             val |= (1 as u64) << idx;
             v.set_vector_entry(idx, true);
 

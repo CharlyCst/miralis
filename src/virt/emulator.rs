@@ -164,20 +164,24 @@ impl VirtContext {
     ///
     /// If an interrupt is injected, jumps to the firmware trap handler.
     pub fn check_and_inject_interrupts(&mut self) {
+        // We extract the logic in two functions because this make the formal verification easier to execute
+        if let Some(code) = self.has_pending_interrupt() {
+            self.setup_trap_handler(code)
+        }
+    }
+
+    pub fn has_pending_interrupt(&mut self) -> Option<usize> {
         if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M && !self.is_wfi {
             // Interrupts are disabled while in M-mode if mstatus.MIE is 0
-            return;
+            return None;
         }
 
-        // For now we assume that the vCPU will be run each time this function is called (or
-        // rather, that this function is called before each vCPU run). Therefore by running the
+        // For now, we assume that the vCPU will be run each time this function is called (or
+        // rather, that this function is called before each vCPU run). Therefore, by running the
         // vCPU we exit the WFI mode, even if no interrupt is received (spurious wake-ups).
         self.is_wfi = false;
 
-        if let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg) {
-            // We extract the logic in another function because this make the formal verification easier to execute
-            self.setup_trap_handler(next_int);
-        }
+        get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
     }
 
     pub fn setup_trap_handler(&mut self, next_int: usize) {

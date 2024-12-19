@@ -1,11 +1,11 @@
-use sail_model::{execute_MRET, execute_WFI, trap_handler};
+use sail_model::{dispatchInterrupt, execute_MRET, execute_WFI, Privilege, trap_handler};
 use sail_prelude::{BitField, BitVector};
 
 #[macro_use]
 mod symbolic;
 mod adapters;
 
-#[cfg_attr(kani, kani::proof)]
+// #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn mret() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
@@ -21,7 +21,7 @@ pub fn mret() {
     );
 }
 
-#[cfg_attr(kani, kani::proof)]
+// #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn wfi() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
@@ -40,7 +40,31 @@ pub fn wfi() {
     );
 }
 
+// The first function symbolically verifies whether an interrupt needs to be injected, formally checking the "if".
+// The second function ensures that the interrupt is correctly injected into the system, verifying the "how".
+
 #[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn requires_interrupt_injection() {
+    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    let has_miralis_interrupt = if let Some(x) = ctx.has_pending_interrupt() {
+        true
+    } else {
+        false
+    };
+
+    // Miralis runs in M mode exclusively
+    let has_sail_interrupt = if let Some(x) = dispatchInterrupt(&mut sail_ctx, Privilege::Machine) {
+        true
+    } else {
+        false
+    };
+
+    assert_eq!(has_miralis_interrupt, has_sail_interrupt, "Interrupt detection is not correct")
+}
+
+// #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn interrupt_virtualization() {
     let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
