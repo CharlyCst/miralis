@@ -817,10 +817,8 @@ fn find_pending_interrupt_by_priority(ip: usize) -> Option<usize> {
 
 /// Return the ID of the next interrupt to be delivered, if any.
 fn get_next_interrupt(mie: usize, mip: usize, mideleg: usize) -> Option<usize> {
-    // First function
     let ip = mie & mip & !mideleg;
 
-    // Second function (they should be equivalent)
     find_pending_interrupt_by_priority(ip)
 }
 
@@ -872,6 +870,7 @@ mod tests {
         assert_eq!(get_next_interrupt(0b010, 0b000, 0b000), None);
         assert_eq!(get_next_interrupt(0b000, 0b010, 0b000), None);
         assert_eq!(get_next_interrupt(0b010, 0b010, 0b010), None);
+        assert_eq!(get_next_interrupt(0b001, 0b001, 0b000), None);
 
         assert_eq!(get_next_interrupt(0b011, 0b011, 0b000), Some(1));
         assert_eq!(get_next_interrupt(0b010, 0b010, 0b000), Some(1));

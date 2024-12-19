@@ -127,8 +127,9 @@ pub fn new_ctx() -> VirtContext {
     // We fix the architecture type to 64 bits
     ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
 
-    // We must have support for usermode in Miralis
+    // We must have support for U and S modes in Miralis
     ctx.csr.misa |= misa::U;
+    ctx.csr.misa |= misa::S;
 
     ctx
 }

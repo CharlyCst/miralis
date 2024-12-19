@@ -4427,11 +4427,150 @@ pub fn exception_delegatee(
     }
 }
 
+pub fn findPendingInterrupt(
+    sail_ctx: &mut SailVirtCtx,
+    ip: BitVector<64>,
+) -> Option<InterruptType> {
+    let ip = Mk_Minterrupts(sail_ctx, ip);
+    if { (_get_Minterrupts_MEI(sail_ctx, ip) == BitVector::<1>::new(0b1)) } {
+        Some(InterruptType::I_M_External)
+    } else if { (_get_Minterrupts_MSI(sail_ctx, ip) == BitVector::<1>::new(0b1)) } {
+        Some(InterruptType::I_M_Software)
+    } else if { (_get_Minterrupts_MTI(sail_ctx, ip) == BitVector::<1>::new(0b1)) } {
+        Some(InterruptType::I_M_Timer)
+    } else if { (_get_Minterrupts_SEI(sail_ctx, ip) == BitVector::<1>::new(0b1)) } {
+        Some(InterruptType::I_S_External)
+    } else if { (_get_Minterrupts_SSI(sail_ctx, ip) == BitVector::<1>::new(0b1)) } {
+        Some(InterruptType::I_S_Software)
+    } else if { (_get_Minterrupts_STI(sail_ctx, ip) == BitVector::<1>::new(0b1)) } {
+        Some(InterruptType::I_S_Timer)
+    } else {
+        None
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum interrupt_set {
     Ints_Pending(xlenbits),
     Ints_Delegated(xlenbits),
     Ints_Empty(()),
+}
+
+pub fn processPending(
+    sail_ctx: &mut SailVirtCtx,
+    xip: Minterrupts,
+    xie: Minterrupts,
+    xideleg: BitVector<64>,
+    priv_enabled: bool,
+) -> interrupt_set {
+    let effective_pend = (xip.bits & (xie.bits & !(xideleg)));
+    let effective_delg = (xip.bits & xideleg);
+    if { (priv_enabled && (effective_pend != zero_extend_64(BitVector::<1>::new(0b0)))) } {
+        interrupt_set::Ints_Pending(effective_pend)
+    } else if { (effective_delg != zero_extend_64(BitVector::<1>::new(0b0))) } {
+        interrupt_set::Ints_Delegated(effective_delg)
+    } else {
+        interrupt_set::Ints_Empty(())
+    }
+}
+
+pub fn getPendingSet(
+    sail_ctx: &mut SailVirtCtx,
+    _priv_: Privilege,
+) -> Option<(BitVector<64>, Privilege)> {
+    assert!(haveUsrMode(sail_ctx, ()), "Process message");
+    let effective_pending = (sail_ctx.mip.bits & sail_ctx.mie.bits);
+    if { (effective_pending == zero_extend_64(BitVector::<1>::new(0b0))) } {
+        None
+    } else {
+        let mIE = ((_priv_ != Privilege::Machine)
+            || ((_priv_ == Privilege::Machine)
+                && (_get_Mstatus_MIE(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1))));
+        let sIE = (haveSupMode(sail_ctx, ())
+            && ((_priv_ == Privilege::User)
+                || ((_priv_ == Privilege::Supervisor)
+                    && (_get_Mstatus_SIE(sail_ctx, sail_ctx.mstatus)
+                        == BitVector::<1>::new(0b1)))));
+        let uIE = (haveNExt(sail_ctx, ())
+            && ((_priv_ == Privilege::User)
+                && (_get_Mstatus_UIE(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1))));
+        match {
+            let var_5 = sail_ctx.mip;
+            let var_6 = sail_ctx.mie;
+            let var_7 = sail_ctx.mideleg.bits;
+            let var_8 = mIE;
+            processPending(sail_ctx, var_5, var_6, var_7, var_8)
+        } {
+            interrupt_set::Ints_Empty(()) => None,
+            interrupt_set::Ints_Pending(p) => {
+                let r = (p, Privilege::Machine);
+                Some(r)
+            }
+            interrupt_set::Ints_Delegated(d) => {
+                if { !(haveSupMode(sail_ctx, ())) } {
+                    if { uIE } {
+                        let r = (d, Privilege::User);
+                        Some(r)
+                    } else {
+                        None
+                    }
+                } else {
+                    match {
+                        let var_1 = Mk_Minterrupts(sail_ctx, d);
+                        let var_2 = sail_ctx.mie;
+                        let var_3 = sail_ctx.sideleg.bits;
+                        let var_4 = sIE;
+                        processPending(sail_ctx, var_1, var_2, var_3, var_4)
+                    } {
+                        interrupt_set::Ints_Empty(()) => None,
+                        interrupt_set::Ints_Pending(p) => {
+                            let r = (p, Privilege::Supervisor);
+                            Some(r)
+                        }
+                        interrupt_set::Ints_Delegated(d) => {
+                            if { uIE } {
+                                let r = (d, Privilege::User);
+                                Some(r)
+                            } else {
+                                None
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn dispatchInterrupt(
+    sail_ctx: &mut SailVirtCtx,
+    _priv_: Privilege,
+) -> Option<(InterruptType, Privilege)> {
+    if {
+        (!(haveUsrMode(sail_ctx, ()))
+            || (!(haveSupMode(sail_ctx, ())) && !(haveNExt(sail_ctx, ()))))
+    } {
+        assert!((_priv_ == Privilege::Machine), "Process message");
+        let enabled_pending = (sail_ctx.mip.bits & sail_ctx.mie.bits);
+        match findPendingInterrupt(sail_ctx, enabled_pending) {
+            Some(i) => {
+                let r = (i, Privilege::Machine);
+                Some(r)
+            }
+            None => None,
+        }
+    } else {
+        match getPendingSet(sail_ctx, _priv_) {
+            None => None,
+            Some((ip, p)) => match findPendingInterrupt(sail_ctx, ip) {
+                None => None,
+                Some(i) => {
+                    let r = (i, p);
+                    Some(r)
+                }
+            },
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
