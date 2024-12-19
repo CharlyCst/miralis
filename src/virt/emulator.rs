@@ -174,12 +174,13 @@ impl VirtContext {
         // vCPU we exit the WFI mode, even if no interrupt is received (spurious wake-ups).
         self.is_wfi = false;
 
-        let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg)
-        else {
-            // No enabled interrupt pending
-            return;
-        };
+        if let Some(next_int) = get_next_interrupt(self.csr.mie, self.csr.mip, self.csr.mideleg) {
+            // We extract the logic in another function because this make the formal verification easier to execute
+            self.setup_trap_handler(next_int);
+        }
+    }
 
+    pub fn setup_trap_handler(&mut self, next_int: usize) {
         // Update Mstatus to match the semantic of a trap
         VirtCsr::set_csr_field(
             &mut self.csr.mstatus,
@@ -262,8 +263,9 @@ impl VirtContext {
             // else, jump to BASE + 4 * cause
             mtvec::Mode::Vectored => {
                 if MCause::is_interrupt(MCause::new(self.csr.mcause)) {
+                    // We use a wrapping add here to avoid an overflow
                     (self.csr.mtvec & mtvec::BASE_FILTER)
-                        + 4 * MCause::cause_number(self.csr.mcause)
+                        .wrapping_add(4_usize.wrapping_mul(MCause::cause_number(self.csr.mcause)))
                 } else {
                     self.csr.mtvec & mtvec::BASE_FILTER
                 }
