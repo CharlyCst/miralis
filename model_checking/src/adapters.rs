@@ -80,7 +80,7 @@ pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
     sail_ctx
 }
 
-fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
+pub fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
     let mut output: [BitField<8>; 64] = [BitField::<8>::new(0); 64];
 
     for i in 0..64 {
@@ -92,7 +92,7 @@ fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
     output
 }
 
-fn pmpaddr_miralis_to_sail(addresses: [usize; 64]) -> [BitVector<64>; 64] {
+pub fn pmpaddr_miralis_to_sail(addresses: [usize; 64]) -> [BitVector<64>; 64] {
     let mut output: [BitVector<64>; 64] = [BitVector::<64>::new(0); 64];
     for i in 0..64 {
         output[i] = BitVector::new(addresses[i] as u64);
@@ -352,7 +352,7 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx) -> VirtContext {
     ctx
 }
 
-fn pmpcfg_sail_to_miralis(cfgs: [BitField<8>; 64]) -> [usize; 8] {
+pub fn pmpcfg_sail_to_miralis(cfgs: [BitField<8>; 64]) -> [usize; 8] {
     let mut output: [usize; 8] = [0; 8];
 
     for i in 0..64 {
@@ -364,7 +364,7 @@ fn pmpcfg_sail_to_miralis(cfgs: [BitField<8>; 64]) -> [usize; 8] {
     output
 }
 
-fn pmpaddr_sail_to_miralis(addresses: [BitVector<64>; 64]) -> [usize; 64] {
+pub fn pmpaddr_sail_to_miralis(addresses: [BitVector<64>; 64]) -> [usize; 64] {
     let mut output: [usize; 64] = [0; 64];
     for i in 0..64 {
         output[i] = addresses[i].bits as usize;
