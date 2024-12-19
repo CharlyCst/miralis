@@ -15,7 +15,7 @@ mod metal;
 pub mod pmp;
 mod registers;
 mod trap;
-mod userspace;
+pub mod userspace;
 
 use pmp::{PmpFlush, PmpGroup};
 pub use registers::{Csr, Register};
