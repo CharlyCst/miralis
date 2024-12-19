@@ -15,7 +15,7 @@ mod metal;
 pub mod pmp;
 mod registers;
 mod trap;
-mod userspace;
+pub mod userspace;
 
 use pmp::{PmpFlush, PmpGroup};
 pub use registers::{Csr, Register};
@@ -148,7 +148,7 @@ pub struct RegistersCapability {
 }
 
 /// A struct that contains information about the available extensions
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub struct ExtensionsCapability {
     /// Hypervisor extension
     pub has_h_extension: bool,

@@ -63,7 +63,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), get_miralis_size());
 
     // Initialize the virtual context and configure architecture
-    let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions.clone());
+    let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions);
     unsafe {
         // Set return address, mode and PMP permissions
         Arch::set_mpp(Mode::U);

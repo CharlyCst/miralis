@@ -401,6 +401,10 @@ pub fn get_config_print_platform(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> bo
     false
 }
 
+pub fn zeros_implicit<const N: usize>(sail_ctx: &mut SailVirtCtx, n: usize) -> BitVector<N> {
+    sail_zeros(n)
+}
+
 pub fn ones<const N: usize>(sail_ctx: &mut SailVirtCtx, n: usize) -> BitVector<N> {
     sail_ones(n)
 }
@@ -1676,6 +1680,10 @@ pub fn Mk_Minterrupts(sail_ctx: &mut SailVirtCtx, v: BitVector<64>) -> Minterrup
     Minterrupts { bits: v }
 }
 
+pub fn _get_Minterrupts_LCOFIE(sail_ctx: &mut SailVirtCtx, v: Minterrupts) -> BitVector<1> {
+    v.subrange::<13, 14, 1>()
+}
+
 pub fn _get_Minterrupts_MEI(sail_ctx: &mut SailVirtCtx, v: Minterrupts) -> BitVector<1> {
     v.subrange::<11, 12, 1>()
 }
@@ -2480,6 +2488,16 @@ pub fn Mk_Sinterrupts(sail_ctx: &mut SailVirtCtx, v: BitVector<64>) -> Sinterrup
     Sinterrupts { bits: v }
 }
 
+pub fn _update_Sinterrupts_LCOFIE(
+    sail_ctx: &mut SailVirtCtx,
+    v: Sinterrupts,
+    x: BitVector<1>,
+) -> Sinterrupts {
+    BitField {
+        bits: update_subrange_bits(v.bits, 13, 13, x),
+    }
+}
+
 pub fn _get_Sinterrupts_SEI(sail_ctx: &mut SailVirtCtx, v: Sinterrupts) -> BitVector<1> {
     v.subrange::<9, 10, 1>()
 }
@@ -2526,116 +2544,61 @@ pub fn _get_Sinterrupts_UEI(sail_ctx: &mut SailVirtCtx, v: Sinterrupts) -> BitVe
     v.subrange::<8, 9, 1>()
 }
 
-pub fn _update_Sinterrupts_UEI(
-    sail_ctx: &mut SailVirtCtx,
-    v: Sinterrupts,
-    x: BitVector<1>,
-) -> Sinterrupts {
-    BitField {
-        bits: update_subrange_bits(v.bits, 8, 8, x),
-    }
-}
-
 pub fn _get_Sinterrupts_USI(sail_ctx: &mut SailVirtCtx, v: Sinterrupts) -> BitVector<1> {
     v.subrange::<0, 1, 1>()
-}
-
-pub fn _update_Sinterrupts_USI(
-    sail_ctx: &mut SailVirtCtx,
-    v: Sinterrupts,
-    x: BitVector<1>,
-) -> Sinterrupts {
-    BitField {
-        bits: update_subrange_bits(v.bits, 0, 0, x),
-    }
 }
 
 pub fn _get_Sinterrupts_UTI(sail_ctx: &mut SailVirtCtx, v: Sinterrupts) -> BitVector<1> {
     v.subrange::<4, 5, 1>()
 }
 
-pub fn _update_Sinterrupts_UTI(
-    sail_ctx: &mut SailVirtCtx,
-    v: Sinterrupts,
-    x: BitVector<1>,
-) -> Sinterrupts {
-    BitField {
-        bits: update_subrange_bits(v.bits, 4, 4, x),
-    }
-}
-
 pub fn lower_mip(sail_ctx: &mut SailVirtCtx, m: Minterrupts, d: Minterrupts) -> Sinterrupts {
     let s: Sinterrupts = {
-        let var_13 = zero_extend_64(BitVector::<1>::new(0b0));
-        Mk_Sinterrupts(sail_ctx, var_13)
-    };
-    let s = {
-        let var_11 = s;
-        let var_12 = (_get_Minterrupts_SEI(sail_ctx, m) & _get_Minterrupts_SEI(sail_ctx, d));
-        _update_Sinterrupts_SEI(sail_ctx, var_11, var_12)
-    };
-    let s = {
-        let var_9 = s;
-        let var_10 = (_get_Minterrupts_STI(sail_ctx, m) & _get_Minterrupts_STI(sail_ctx, d));
-        _update_Sinterrupts_STI(sail_ctx, var_9, var_10)
+        let var_9 = zero_extend_64(BitVector::<1>::new(0b0));
+        Mk_Sinterrupts(sail_ctx, var_9)
     };
     let s = {
         let var_7 = s;
-        let var_8 = (_get_Minterrupts_SSI(sail_ctx, m) & _get_Minterrupts_SSI(sail_ctx, d));
-        _update_Sinterrupts_SSI(sail_ctx, var_7, var_8)
+        let var_8 = (_get_Minterrupts_SEI(sail_ctx, m) & _get_Minterrupts_SEI(sail_ctx, d));
+        _update_Sinterrupts_SEI(sail_ctx, var_7, var_8)
     };
     let s = {
         let var_5 = s;
-        let var_6 = (_get_Minterrupts_UEI(sail_ctx, m) & _get_Minterrupts_UEI(sail_ctx, d));
-        _update_Sinterrupts_UEI(sail_ctx, var_5, var_6)
+        let var_6 = (_get_Minterrupts_STI(sail_ctx, m) & _get_Minterrupts_STI(sail_ctx, d));
+        _update_Sinterrupts_STI(sail_ctx, var_5, var_6)
     };
     let s = {
         let var_3 = s;
-        let var_4 = (_get_Minterrupts_UTI(sail_ctx, m) & _get_Minterrupts_UTI(sail_ctx, d));
-        _update_Sinterrupts_UTI(sail_ctx, var_3, var_4)
+        let var_4 = (_get_Minterrupts_SSI(sail_ctx, m) & _get_Minterrupts_SSI(sail_ctx, d));
+        _update_Sinterrupts_SSI(sail_ctx, var_3, var_4)
     };
     let s = {
         let var_1 = s;
-        let var_2 = (_get_Minterrupts_USI(sail_ctx, m) & _get_Minterrupts_USI(sail_ctx, d));
-        _update_Sinterrupts_USI(sail_ctx, var_1, var_2)
+        let var_2 = (_get_Minterrupts_LCOFIE(sail_ctx, m) & _get_Minterrupts_LCOFIE(sail_ctx, d));
+        _update_Sinterrupts_LCOFIE(sail_ctx, var_1, var_2)
     };
     s
 }
 
 pub fn lower_mie(sail_ctx: &mut SailVirtCtx, m: Minterrupts, d: Minterrupts) -> Sinterrupts {
     let s: Sinterrupts = {
-        let var_13 = zero_extend_64(BitVector::<1>::new(0b0));
-        Mk_Sinterrupts(sail_ctx, var_13)
-    };
-    let s = {
-        let var_11 = s;
-        let var_12 = (_get_Minterrupts_SEI(sail_ctx, m) & _get_Minterrupts_SEI(sail_ctx, d));
-        _update_Sinterrupts_SEI(sail_ctx, var_11, var_12)
-    };
-    let s = {
-        let var_9 = s;
-        let var_10 = (_get_Minterrupts_STI(sail_ctx, m) & _get_Minterrupts_STI(sail_ctx, d));
-        _update_Sinterrupts_STI(sail_ctx, var_9, var_10)
-    };
-    let s = {
-        let var_7 = s;
-        let var_8 = (_get_Minterrupts_SSI(sail_ctx, m) & _get_Minterrupts_SSI(sail_ctx, d));
-        _update_Sinterrupts_SSI(sail_ctx, var_7, var_8)
+        let var_7 = zero_extend_64(BitVector::<1>::new(0b0));
+        Mk_Sinterrupts(sail_ctx, var_7)
     };
     let s = {
         let var_5 = s;
-        let var_6 = (_get_Minterrupts_UEI(sail_ctx, m) & _get_Minterrupts_UEI(sail_ctx, d));
-        _update_Sinterrupts_UEI(sail_ctx, var_5, var_6)
+        let var_6 = (_get_Minterrupts_SEI(sail_ctx, m) & _get_Minterrupts_SEI(sail_ctx, d));
+        _update_Sinterrupts_SEI(sail_ctx, var_5, var_6)
     };
     let s = {
         let var_3 = s;
-        let var_4 = (_get_Minterrupts_UTI(sail_ctx, m) & _get_Minterrupts_UTI(sail_ctx, d));
-        _update_Sinterrupts_UTI(sail_ctx, var_3, var_4)
+        let var_4 = (_get_Minterrupts_STI(sail_ctx, m) & _get_Minterrupts_STI(sail_ctx, d));
+        _update_Sinterrupts_STI(sail_ctx, var_3, var_4)
     };
     let s = {
         let var_1 = s;
-        let var_2 = (_get_Minterrupts_USI(sail_ctx, m) & _get_Minterrupts_USI(sail_ctx, d));
-        _update_Sinterrupts_USI(sail_ctx, var_1, var_2)
+        let var_2 = (_get_Minterrupts_SSI(sail_ctx, m) & _get_Minterrupts_SSI(sail_ctx, d));
+        _update_Sinterrupts_SSI(sail_ctx, var_1, var_2)
     };
     s
 }
@@ -2981,6 +2944,10 @@ pub fn _update_Pmpcfg_ent_W(
     }
 }
 
+pub fn _get_Pmpcfg_ent_X(sail_ctx: &mut SailVirtCtx, v: Pmpcfg_ent) -> BitVector<1> {
+    v.subrange::<2, 3, 1>()
+}
+
 pub fn _update_Pmpcfg_ent_X(
     sail_ctx: &mut SailVirtCtx,
     v: Pmpcfg_ent,
@@ -3153,6 +3120,62 @@ pub fn pmpWriteAddrReg(sail_ctx: &mut SailVirtCtx, n: usize, v: BitVector<64>) {
     }
 }
 
+pub fn pmpAddrRange(
+    sail_ctx: &mut SailVirtCtx,
+    cfg: Pmpcfg_ent,
+    pmpaddr: BitVector<64>,
+    prev_pmpaddr: BitVector<64>,
+) -> Option<(BitVector<64>, BitVector<64>)> {
+    match {
+        let var_1 = _get_Pmpcfg_ent_A(sail_ctx, cfg);
+        pmpAddrMatchType_of_bits(sail_ctx, var_1)
+    } {
+        PmpAddrMatchType::OFF => None,
+        PmpAddrMatchType::TOR => Some((prev_pmpaddr, pmpaddr)),
+        PmpAddrMatchType::NA4 => {
+            assert!((sys_pmp_grain(()) < 1), "Process message");
+            let lo = pmpaddr;
+            Some((lo, (lo + 4)))
+        }
+        PmpAddrMatchType::NAPOT => {
+            let mask = (pmpaddr ^ (pmpaddr + 1));
+            let lo = (pmpaddr & !(mask));
+            let len = (mask + 1);
+            Some((lo, lo.wrapped_add(len)))
+        }
+    }
+}
+
+pub fn pmpCheckRWX(sail_ctx: &mut SailVirtCtx, ent: Pmpcfg_ent, acc: AccessType) -> bool {
+    match acc {
+        AccessType::Read(_) => (_get_Pmpcfg_ent_R(sail_ctx, ent) == BitVector::<1>::new(0b1)),
+        AccessType::Write(_) => (_get_Pmpcfg_ent_W(sail_ctx, ent) == BitVector::<1>::new(0b1)),
+        AccessType::ReadWrite(_) => {
+            ((_get_Pmpcfg_ent_R(sail_ctx, ent) == BitVector::<1>::new(0b1))
+                && (_get_Pmpcfg_ent_W(sail_ctx, ent) == BitVector::<1>::new(0b1)))
+        }
+        AccessType::Execute(()) => (_get_Pmpcfg_ent_X(sail_ctx, ent) == BitVector::<1>::new(0b1)),
+    }
+}
+
+pub fn pmpCheckPerms(
+    sail_ctx: &mut SailVirtCtx,
+    ent: Pmpcfg_ent,
+    acc: AccessType,
+    _priv_: Privilege,
+) -> bool {
+    match _priv_ {
+        Privilege::Machine => {
+            if { pmpLocked(sail_ctx, ent) } {
+                pmpCheckRWX(sail_ctx, ent, acc)
+            } else {
+                true
+            }
+        }
+        _ => pmpCheckRWX(sail_ctx, ent, acc),
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum pmpAddrMatch {
     PMP_NoMatch,
@@ -3160,11 +3183,115 @@ pub enum pmpAddrMatch {
     PMP_Match,
 }
 
+pub fn pmpMatchAddr(
+    sail_ctx: &mut SailVirtCtx,
+    addr: BitVector<64>,
+    width: BitVector<64>,
+    rng: Option<(BitVector<64>, BitVector<64>)>,
+) -> pmpAddrMatch {
+    match rng {
+        None => pmpAddrMatch::PMP_NoMatch,
+        Some((lo, hi)) => {
+            let addr = addr.as_usize();
+            let width = width.as_usize();
+            let lo = (lo.as_usize() * 4);
+            let hi = (hi.as_usize() * 4);
+            if { lteq_int(hi, lo) } {
+                pmpAddrMatch::PMP_NoMatch
+            } else {
+                if { (lteq_int((addr + width), lo) || lteq_int(hi, addr)) } {
+                    pmpAddrMatch::PMP_NoMatch
+                } else if { (lteq_int(lo, addr) && lteq_int((addr + width), hi)) } {
+                    pmpAddrMatch::PMP_Match
+                } else {
+                    pmpAddrMatch::PMP_PartialMatch
+                }
+            }
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
 pub enum pmpMatch {
     PMP_Success,
     PMP_Continue,
     PMP_Fail,
+}
+
+pub fn pmpMatchEntry(
+    sail_ctx: &mut SailVirtCtx,
+    addr: BitVector<64>,
+    width: BitVector<64>,
+    acc: AccessType,
+    _priv_: Privilege,
+    ent: Pmpcfg_ent,
+    pmpaddr: BitVector<64>,
+    prev_pmpaddr: BitVector<64>,
+) -> pmpMatch {
+    let rng = pmpAddrRange(sail_ctx, ent, pmpaddr, prev_pmpaddr);
+    match pmpMatchAddr(sail_ctx, addr, width, rng) {
+        pmpAddrMatch::PMP_NoMatch => pmpMatch::PMP_Continue,
+        pmpAddrMatch::PMP_PartialMatch => pmpMatch::PMP_Fail,
+        pmpAddrMatch::PMP_Match => {
+            if { pmpCheckPerms(sail_ctx, ent, acc, _priv_) } {
+                pmpMatch::PMP_Success
+            } else {
+                pmpMatch::PMP_Fail
+            }
+        }
+    }
+}
+
+pub fn accessToFault(sail_ctx: &mut SailVirtCtx, acc: AccessType) -> ExceptionType {
+    match acc {
+        AccessType::Read(_) => ExceptionType::E_Load_Access_Fault(()),
+        AccessType::Write(_) => ExceptionType::E_SAMO_Access_Fault(()),
+        AccessType::ReadWrite(_) => ExceptionType::E_SAMO_Access_Fault(()),
+        AccessType::Execute(()) => ExceptionType::E_Fetch_Access_Fault(()),
+    }
+}
+
+pub fn pmpCheck<const N: usize>(
+    sail_ctx: &mut SailVirtCtx,
+    addr: BitVector<64>,
+    width: usize,
+    acc: AccessType,
+    _priv_: Privilege,
+) -> Option<ExceptionType> {
+    let width: xlenbits = BitVector::new(64);
+    for i in 0..=63 {
+        let prev_pmpaddr = if { gt_int(i, 0) } {
+            {
+                let var_8 = (i - 1);
+                pmpReadAddrReg(sail_ctx, var_8)
+            }
+        } else {
+            zeros_implicit(sail_ctx, 64)
+        };
+        match {
+            let var_1 = addr;
+            let var_2 = width;
+            let var_3 = acc;
+            let var_4 = _priv_;
+            let var_5 = sail_ctx.pmpcfg_n[i];
+            let var_6 = pmpReadAddrReg(sail_ctx, i);
+            let var_7 = prev_pmpaddr;
+            pmpMatchEntry(sail_ctx, var_1, var_2, var_3, var_4, var_5, var_6, var_7)
+        } {
+            pmpMatch::PMP_Success => {
+                return None;
+            }
+            pmpMatch::PMP_Fail => {
+                return Some(accessToFault(sail_ctx, acc));
+            }
+            pmpMatch::PMP_Continue => (),
+        }
+    }
+    if { (_priv_ == Privilege::Machine) } {
+        None
+    } else {
+        Some(accessToFault(sail_ctx, acc))
+    }
 }
 
 pub fn ext_check_CSR(
