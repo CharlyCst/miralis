@@ -1,5 +1,7 @@
-use sail_model::{execute_MRET, execute_WFI, trap_handler};
+use sail_model::{dispatchInterrupt, execute_MRET, execute_WFI, trap_handler, Privilege};
 use sail_prelude::{BitField, BitVector};
+
+use crate::adapters::sail_interrupts_code_to_miralis;
 
 #[macro_use]
 mod symbolic;
@@ -38,6 +40,28 @@ pub fn wfi() {
         adapters::sail_to_miralis(sail_ctx),
         "wfi instruction emulation is not correct"
     );
+}
+
+// The first function symbolically verifies whether an interrupt needs to be injected, formally checking the "if".
+// The second function ensures that the interrupt is correctly injected into the system, verifying the "how".
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn requires_interrupt_injection() {
+    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // We don't want this field to interfere we the result of the computation in this scenario
+    ctx.is_wfi = false;
+
+    // We don't delegate any interrupts in the formal verification
+    sail_ctx.mideleg = BitField::new(0);
+    ctx.csr.mideleg = 0;
+
+    // Finally, we can check the equivalence
+    assert_eq!(
+        ctx.has_pending_interrupt(),
+        sail_interrupts_code_to_miralis(dispatchInterrupt(&mut sail_ctx, Privilege::Machine)),
+        "Interrupt detection is not correct"
+    )
 }
 
 #[cfg_attr(kani, kani::proof)]
