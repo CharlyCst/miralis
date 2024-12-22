@@ -96,6 +96,8 @@ struct TestArgs {
 
 #[derive(Args)]
 struct VerifyArgs {
+    /// Pattern of harnesses to verify, all if none
+    pattern: Option<String>,
     /// The command will succeed only if all checks can be run successfully
     ///
     /// This flag can also be configured with the environment variable `MIRALIS_RUNNER_STRICT=1`
