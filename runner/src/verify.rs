@@ -30,6 +30,11 @@ pub fn verify(args: &mut VerifyArgs) -> ExitCode {
         .args(["--output-format", "terse"])
         .args(["-p", "model_checking"]);
 
+    // Filter by pattern, if any
+    if let Some(pattern) = &args.pattern {
+        kani_cmd.arg("--harness").arg(pattern);
+    }
+
     let exit_status = kani_cmd.status().expect("Failed to run Kani");
     if exit_status.success() {
         log::info!("Successfully passed verification");
