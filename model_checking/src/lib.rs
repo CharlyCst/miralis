@@ -77,15 +77,13 @@ pub fn read_csr() {
 
     let mut csr_register = generate_csr_register();
 
-    let is_mstatus = csr_register == 0b001100000000;
-    let is_sstatus = csr_register == 0b000100000000;
     let is_mepc = csr_register == 0b001101000001;
     let is_sepc = csr_register == 0b000101000001;
     let is_sie = csr_register == 0b000100000100;
     let is_seed = csr_register == 0b000000010101;
 
-    // TODO: Adapt the last 6 registers for the symbolic verification
-    if is_mstatus || is_sstatus || is_mepc || is_sepc || is_sie || is_seed {
+    // TODO: Adapt the last 4 registers for the symbolic verification
+    if is_mepc || is_sepc || is_sie || is_seed {
         csr_register = 0;
     }
 

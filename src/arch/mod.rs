@@ -284,7 +284,9 @@ pub mod mstatus {
         | MBE_FILTER;
 
     /// Constant to filter out WPRI fields of sstatus
-    pub const SSTATUS_FILTER: usize = SIE_FILTER
+    pub const SSTATUS_FILTER: usize = UIE_FILTER
+        | SIE_FILTER
+        | UPIE_FILTER
         | SPIE_FILTER
         | UBE_FILTER
         | SPP_FILTER
@@ -297,12 +299,18 @@ pub mod mstatus {
         | SD_FILTER;
 
     // Mstatus fields constants
+    /// UIE
+    pub const UIE_OFFSET: usize = 0;
+    pub const UIE_FILTER: usize = 0b1 << UIE_OFFSET;
     /// SIE
     pub const SIE_OFFSET: usize = 1;
     pub const SIE_FILTER: usize = 0b1 << SIE_OFFSET;
     /// MIE
     pub const MIE_OFFSET: usize = 3;
     pub const MIE_FILTER: usize = 0b1 << MIE_OFFSET;
+    /// UPIE
+    pub const UPIE_OFFSET: usize = 4;
+    pub const UPIE_FILTER: usize = 0b1 << UPIE_OFFSET;
     /// SPIE
     pub const SPIE_OFFSET: usize = 5;
     pub const SPIE_FILTER: usize = 0b1 << SPIE_OFFSET;
