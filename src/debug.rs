@@ -21,6 +21,24 @@ macro_rules! warn_once {
 
 pub(crate) use warn_once;
 
+// ————————————————————————————— Unimplemented —————————————————————————————— //
+
+/// Mark a code path as not yet implemented, causing a runtime panic.
+///
+/// This macro si equivalent to the standard [unimplemented!], except it makes model checking with
+/// Kani succeed when reached rather than fail.
+///
+/// See [Kani discussion](https://github.com/model-checking/kani/discussions/3746) for background.
+macro_rules! unimplemented {
+   ($($arg:tt)*) => {
+       #[cfg(kani)]
+       kani::assume(false);
+       unimplemented!($($arg)*);
+    };
+}
+
+pub(crate) use unimplemented;
+
 // ———————————————————————————— Max Stack Usage ————————————————————————————— //
 
 /// A well known memory pattern

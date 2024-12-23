@@ -57,7 +57,9 @@ pub fn sys_enable_fdext(_unit: ()) -> bool {
 }
 
 pub fn sys_enable_zfinx(_unit: ()) -> bool {
-    true
+    // An implementation can either have the F Xor the Zfinx (Z-F-in-X) extenstion enabled, not
+    // both at the same time. For the reference implementation we pick the F extension.
+    false
 }
 
 pub fn sys_enable_writable_fiom(_unit: ()) -> bool {

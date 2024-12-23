@@ -6,7 +6,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, menvcfg, mie, mstatus, Arch, Architecture, Csr, Register};
+use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -57,7 +57,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
     fn get(&self, register: Csr) -> usize {
         match register {
             Csr::Mhartid => self.hart_id,
-            Csr::Mstatus => self.csr.mstatus & mstatus::MSTATUS_FILTER,
+            Csr::Mstatus => self.csr.mstatus,
             Csr::Misa => self.csr.misa,
             Csr::Mie => self.csr.mie,
             Csr::Mip => {
@@ -302,15 +302,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
                 // MBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & MBE_FILTER != 0 {
-                    todo!("MBE filter is not implemented - please implement it");
+                    debug::unimplemented!("MBE filter is not implemented - please implement it");
                 }
                 // SBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & SBE_FILTER != 0 {
-                    todo!("SBE filter is not implemented - please implement it");
+                    debug::unimplemented!("SBE filter is not implemented - please implement it");
                 }
                 // UBE - We currently don't implement the feature as it is a very nice feature
                 if new_value & UBE_FILTER != 0 {
-                    todo!("UBE filter is not implemented - please implement it");
+                    debug::unimplemented!("UBE filter is not implemented - please implement it");
                 }
                 // TVM & TSR are read only when no S-mode is available
                 if !mctx.hw.extensions.has_s_extension {
@@ -342,8 +342,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         0,
                     );
                 }
-                // VS : 9 : read-only 0 (v registers)
-                VirtCsr::set_csr_field(&mut new_value, mstatus::VS_OFFSET, mstatus::VS_FILTER, 0);
+                // VS : 9 : read-only 0 if no supervisor and no v registers
+                if !mctx.hw.extensions.has_s_extension {
+                    VirtCsr::set_csr_field(
+                        &mut new_value,
+                        mstatus::VS_OFFSET,
+                        mstatus::VS_FILTER,
+                        0,
+                    );
+                }
                 // XS : 15 : read-only 0 (NO FS nor VS)
                 VirtCsr::set_csr_field(&mut new_value, mstatus::XS_OFFSET, mstatus::XS_FILTER, 0);
                 // SD : 63 : read-only 0 (if NO FS/VS/XS)
@@ -353,7 +360,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mstatus::SD_FILTER,
                     if mctx.hw.extensions.has_s_extension {
                         let fs: usize = (value & mstatus::FS_FILTER) >> mstatus::FS_OFFSET;
-                        if fs != 0 {
+                        let vs: usize = (value & mstatus::VS_FILTER) >> mstatus::VS_OFFSET;
+                        if fs == 0b11 || vs == 0b11 {
                             0b1
                         } else {
                             0b0
@@ -362,6 +370,21 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         0
                     },
                 );
+                // UIE and UPIE should be zero if user-space interrupts are disabled
+                if self.csr.misa & misa::N == 0 {
+                    VirtCsr::set_csr_field(
+                        &mut new_value,
+                        mstatus::UIE_OFFSET,
+                        mstatus::UIE_FILTER,
+                        0,
+                    );
+                    VirtCsr::set_csr_field(
+                        &mut new_value,
+                        mstatus::UPIE_OFFSET,
+                        mstatus::UPIE_FILTER,
+                        0,
+                    );
+                }
 
                 self.csr.mstatus = new_value;
             }

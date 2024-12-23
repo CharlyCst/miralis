@@ -71,6 +71,7 @@ pub fn new_ctx() -> VirtContext {
         2 => 0b11,
         _ => unreachable!(),
     };
+    let xlen = 0b10; // X-len fixed at 64 bits
 
     // Add other csr
     ctx.hart_id = any!();
@@ -92,7 +93,14 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.mepc = any!(usize) & (!0b11);
     ctx.csr.mtval = any!();
     // ctx.csr.mtval2 = any!(); - TODO: What should we do with this?
-    ctx.csr.mstatus = any!(usize) & !(0b11 << mstatus::MPP_OFFSET) | (mpp << mstatus::MPP_OFFSET);
+    ctx.csr.mstatus =
+        any!(usize) & !mstatus::MPP_FILTER & !mstatus::SXL_FILTER & !mstatus::UXL_FILTER
+            | (mpp << mstatus::MPP_OFFSET)
+            | (xlen << mstatus::SXL_OFFSET)
+            | (xlen << mstatus::UXL_OFFSET);
+    // We fix the endianess to little endian
+    ctx.csr.mstatus =
+        ctx.csr.mstatus & !mstatus::UBE_FILTER & !mstatus::SBE_FILTER & !mstatus::MBE_OFFSET;
     // ctx.csr.mtinst = any!();
     ctx.csr.mconfigptr = any!();
     // ctx.csr.stvec = any!();
@@ -125,7 +133,7 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.misa &= !misa::N;
 
     // We fix the architecture type to 64 bits
-    ctx.csr.misa = (0b10 << 62) | (ctx.csr.misa & ((1 << 62) - 1));
+    ctx.csr.misa = (xlen << 62) | (ctx.csr.misa & ((1 << 62) - 1));
 
     // We must have support for U and S modes in Miralis
     ctx.csr.misa |= misa::U;

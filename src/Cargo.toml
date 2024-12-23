@@ -34,5 +34,8 @@ tiny-keccak = { version = "2.0.0", features = ["sha3"] }
 # running unit tests.
 userspace = []
 
+[lints.rust]
+unexpected_cfgs = { level = "warn",  check-cfg = ["cfg(kani)"] }
+
 [lints.clippy]
 result_unit_err = "allow"
