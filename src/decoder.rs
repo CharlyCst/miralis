@@ -373,7 +373,7 @@ impl MiralisContext {
         }
     }
 
-    fn decode_csr(&self, csr: usize) -> Csr {
+    pub fn decode_csr(&self, csr: usize) -> Csr {
         match csr {
             0x300 => Csr::Mstatus,
             0x301 => Csr::Misa,
