@@ -79,11 +79,10 @@ pub fn read_csr() {
 
     let is_mepc = csr_register == 0b001101000001;
     let is_sepc = csr_register == 0b000101000001;
-    let is_sie = csr_register == 0b000100000100;
     let is_seed = csr_register == 0b000000010101;
 
     // TODO: Adapt the last 4 registers for the symbolic verification
-    if is_mepc || is_sepc || is_sie || is_seed {
+    if is_mepc || is_sepc || is_seed {
         csr_register = 0;
     }
 
