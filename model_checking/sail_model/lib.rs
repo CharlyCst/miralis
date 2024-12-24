@@ -2604,23 +2604,28 @@ pub fn lower_mip(sail_ctx: &mut SailVirtCtx, m: Minterrupts, d: Minterrupts) -> 
 
 pub fn lower_mie(sail_ctx: &mut SailVirtCtx, m: Minterrupts, d: Minterrupts) -> Sinterrupts {
     let s: Sinterrupts = {
-        let var_7 = zero_extend_64(BitVector::<1>::new(0b0));
-        Mk_Sinterrupts(sail_ctx, var_7)
+        let var_9 = zero_extend_64(BitVector::<1>::new(0b0));
+        Mk_Sinterrupts(sail_ctx, var_9)
+    };
+    let s = {
+        let var_7 = s;
+        let var_8 = (_get_Minterrupts_SEI(sail_ctx, m) & _get_Minterrupts_SEI(sail_ctx, d));
+        _update_Sinterrupts_SEI(sail_ctx, var_7, var_8)
     };
     let s = {
         let var_5 = s;
-        let var_6 = (_get_Minterrupts_SEI(sail_ctx, m) & _get_Minterrupts_SEI(sail_ctx, d));
-        _update_Sinterrupts_SEI(sail_ctx, var_5, var_6)
+        let var_6 = (_get_Minterrupts_STI(sail_ctx, m) & _get_Minterrupts_STI(sail_ctx, d));
+        _update_Sinterrupts_STI(sail_ctx, var_5, var_6)
     };
     let s = {
         let var_3 = s;
-        let var_4 = (_get_Minterrupts_STI(sail_ctx, m) & _get_Minterrupts_STI(sail_ctx, d));
-        _update_Sinterrupts_STI(sail_ctx, var_3, var_4)
+        let var_4 = (_get_Minterrupts_SSI(sail_ctx, m) & _get_Minterrupts_SSI(sail_ctx, d));
+        _update_Sinterrupts_SSI(sail_ctx, var_3, var_4)
     };
     let s = {
         let var_1 = s;
-        let var_2 = (_get_Minterrupts_SSI(sail_ctx, m) & _get_Minterrupts_SSI(sail_ctx, d));
-        _update_Sinterrupts_SSI(sail_ctx, var_1, var_2)
+        let var_2 = (_get_Minterrupts_LCOFIE(sail_ctx, m) & _get_Minterrupts_LCOFIE(sail_ctx, d));
+        _update_Sinterrupts_LCOFIE(sail_ctx, var_1, var_2)
     };
     s
 }
