@@ -250,15 +250,7 @@ pub mod misa {
     pub const MXL: usize = 0b10 << (core::mem::size_of::<usize>() * 8 - 2);
 
     /// Architecture extensions disabled by the current configuration
-    pub const DISABLED: usize = {
-        // By default we disable compressed instructions for now, because emulation and the
-        // decoded assume 4 bytes instructions.
-        // We also disable H mode, because we don't provide support for it right now.
-        // In addition, we disable floating points because we encountered some issues with those
-        // and they will require special handling when context switching from the OS (checking the
-        // mstatus.FS bits).
-        C | D | F | Q
-    };
+    pub const DISABLED: usize = N | F | D | Q;
 
     /// Constant to filter out non-writable fields of the misa csr
     pub const MISA_CHANGE_FILTER: usize = 0x0000000003FFFFFF;
