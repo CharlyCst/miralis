@@ -593,7 +593,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     _ => { /* Nothing to change */ }
                 }
             }
-            Csr::Scontext => todo!("No information in the specification"),
+            Csr::Scontext => (), // TODO: No information from the specification currently
             Csr::Stimecmp => self.csr.stimecmp = value,
             Csr::Hstatus => {
                 let mut value = value;
@@ -698,9 +698,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Vtype => self.csr.vtype = value,
             Csr::Vlenb => self.csr.vlenb = value,
 
-            Csr::Cycle => todo!("Write cycle"),
-            Csr::Time => todo!("Write time"),
-            Csr::Instret => todo!("Write instret"),
+            Csr::Cycle => (),   // Read only register
+            Csr::Time => (),    // Read only register
+            Csr::Instret => (), // Read only register
 
             // Crypto extension
             Csr::Seed => (), // Read only register
