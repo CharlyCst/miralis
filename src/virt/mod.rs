@@ -243,7 +243,7 @@ impl VirtCsr {
 
     /// Returns the mask of valid bit for the given PMP configuration register.
     pub fn get_pmp_cfg_filter(pmp_csr_idx: usize, nbr_valid_pmps: usize) -> usize {
-        if pmp_csr_idx == nbr_valid_pmps / 8 {
+        if pmp_csr_idx / 2 == nbr_valid_pmps / 8 {
             // We are in the correct csr to filter out
             let to_filter_out: usize = ((nbr_valid_pmps / 8) + 1) * 8 - nbr_valid_pmps;
 

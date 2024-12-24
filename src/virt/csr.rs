@@ -444,7 +444,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     // invalid CSR instead).
                     log::warn!("Invalid pmpcfg write {}", pmp_cfg_idx);
                     return;
-                } else if pmp_cfg_idx >= self.nb_pmp / 8 {
+                } else if (pmp_cfg_idx / 2) >= self.nb_pmp / 8 {
                     // This PMP is not emulated, ignore changes
                     return;
                 }
