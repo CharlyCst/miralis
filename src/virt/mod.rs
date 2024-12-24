@@ -148,7 +148,7 @@ impl VirtContext {
 
     /// Expected PC alignment, depending on the C extension.
     pub fn pc_alignment_mask(&self) -> usize {
-        if (self.csr.misa & misa::C != 0) || (misa::DISABLED & misa::C != 0) {
+        if self.csr.misa & misa::C != 0 {
             !0b00
         } else {
             !0b10
