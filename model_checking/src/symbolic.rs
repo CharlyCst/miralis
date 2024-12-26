@@ -62,7 +62,7 @@ pub fn new_ctx() -> VirtContext {
     // Mode
     ctx.mode = Mode::M;
     ctx.pc = any!();
-    ctx.nb_pmp = 16;
+    ctx.nb_pmp = 64;
 
     // Pick a previous privilege mode
     let mpp = match any!(u8) % 3 {
@@ -154,7 +154,8 @@ pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, SailVirtCtx) {
     let sail_ctx = adapters::miralis_to_sail(&ctx);
 
     // Initialize Miralis's own context
-    let hw = unsafe { Arch::detect_hardware() };
+    let mut hw = unsafe { Arch::detect_hardware() };
+    hw.available_reg.nb_pmp = 64; // We assume 64 PMPs during model checking
     let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
     (ctx, mctx, sail_ctx)

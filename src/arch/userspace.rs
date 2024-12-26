@@ -68,7 +68,7 @@ impl Architecture for HostArch {
 
         for (idx, _) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
             let cfg = pmpcfg[idx];
-            HOST_CTX.lock().csr.pmpcfg[idx * 2] = cfg;
+            HOST_CTX.lock().csr.pmpcfg[idx] = cfg;
         }
 
         PmpFlush()
