@@ -9,7 +9,9 @@ use core::ptr;
 
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::pmp::{pmpcfg, Segment};
-use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register};
+use crate::arch::{
+    parse_mpp_return_mode, set_mpp, Arch, Architecture, Csr, MCause, Mode, Register,
+};
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::*;
@@ -135,7 +137,7 @@ impl EnclaveCtx {
 
             // Swap M-mode registers
             self.mideleg = Arch::write_csr(Csr::Mideleg, self.mideleg);
-            self.mpp = Arch::set_mpp(self.mpp);
+            self.mpp = set_mpp(self.mpp);
         }
     }
 }

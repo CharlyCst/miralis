@@ -17,6 +17,8 @@ mod registers;
 mod trap;
 pub mod userspace;
 
+use core::ptr;
+
 use pmp::{PmpFlush, PmpGroup};
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
@@ -69,8 +71,6 @@ pub trait Architecture {
     /// environment.
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize;
 
-    /// Change mstatus.MPP and return the previous mstatus.MPP
-    unsafe fn set_mpp(mode: Mode) -> Mode;
     unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush;
     unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
@@ -94,13 +94,6 @@ pub trait Architecture {
     /// standard operations.
     /// It should not be assume that any of the core configuration is preserved by this function.
     unsafe fn detect_hardware() -> HardwareCapability;
-
-    /// Return the faulting instruction at the provided exception PC.
-    ///
-    /// # Safety
-    ///
-    /// The trap info must correspond to a valid trap info, no further checks are performed.
-    unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize;
 
     unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext);
 
@@ -516,4 +509,35 @@ impl From<usize> for Width {
             _ => panic!("Invalid width value"),
         }
     }
+}
+
+// ———————————————————————— Helpers ————————————————————————— //
+
+/// Change mstatus.MPP and return the previous mstatus.MPP
+pub unsafe fn set_mpp(mode: Mode) -> Mode {
+    let value = mode.to_bits() << mstatus::MPP_OFFSET;
+    let prev_mstatus = Arch::read_csr(Csr::Mstatus);
+    Arch::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value);
+    parse_mpp_return_mode(prev_mstatus)
+}
+
+/// Return the faulting instruction at the provided exception PC.
+///
+/// # Safety
+///
+/// The trap info must correspond to a valid trap info, no further checks are performed.
+pub unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
+    if trap_info.mcause == MCause::IllegalInstr as usize {
+        // First, try mtval and check if it contains an instruction
+        if trap_info.mtval != 0 {
+            return trap_info.mtval;
+        }
+    }
+
+    let instr_ptr = trap_info.mepc as *const u32;
+
+    // With compressed instruction extention ("C") instructions can be misaligned.
+    // TODO: add support for 16 bits instructions
+    let instr = ptr::read_unaligned(instr_ptr);
+    instr as usize
 }

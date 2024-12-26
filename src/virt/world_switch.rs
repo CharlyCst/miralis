@@ -5,7 +5,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
-use crate::arch::{mie, mstatus, Arch, Architecture, Csr, Mode};
+use crate::arch::{mie, mstatus, set_mpp, Arch, Architecture, Csr, Mode};
 use crate::config::DELEGATE_PERF_COUNTER;
 use crate::host::MiralisContext;
 
@@ -120,7 +120,7 @@ impl VirtContext {
 
         self.csr.mstatus = self.csr.mstatus & !mstatus::SSTATUS_FILTER
             | Arch::read_csr(Csr::Mstatus) & mstatus::SSTATUS_FILTER;
-        Arch::set_mpp(Mode::U);
+        set_mpp(Mode::U);
         Arch::write_csr(Csr::Mideleg, 0); // Do not delegate any interrupts
         Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
 

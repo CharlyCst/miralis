@@ -8,8 +8,8 @@ use crate::arch::mie::{
     MEIE_OFFSET, MSIE_OFFSET, MTIE_OFFSET, SEIE_OFFSET, SSIE_OFFSET, STIE_OFFSET,
 };
 use crate::arch::{
-    mie, misa, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Mode,
-    Register,
+    get_raw_faulting_instr, mie, misa, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture,
+    Csr, MCause, Mode, Register,
 };
 use crate::benchmark::Benchmark;
 use crate::decoder::Instr;
@@ -357,7 +357,7 @@ impl VirtContext {
                 panic!("Firmware should not be able to come from S-mode");
             }
             MCause::IllegalInstr => {
-                let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
                 let instr = mctx.decode(instr);
                 if logger::trace_enabled!() {
                     log::trace!("Faulting instruction: {:?}", instr);
@@ -372,7 +372,7 @@ impl VirtContext {
                 if let Some(device) =
                     device::find_matching_device(self.trap_info.mtval, mctx.devices)
                 {
-                    let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                    let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
                     let instr = mctx.decode(instr);
                     log::trace!(
                         "Accessed devices: {} | With instr: {:?}",
@@ -382,7 +382,7 @@ impl VirtContext {
                     self.handle_device_access_fault(&instr, device);
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
                     // TODO: make sure virtual address does not get around PMP protection
-                    let instr = unsafe { Arch::get_raw_faulting_instr(&self.trap_info) };
+                    let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
                     let instr = mctx.decode(instr);
                     log::trace!(
                         "Access fault {:x?} with a virtual address: 0x{:x}",

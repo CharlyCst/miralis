@@ -12,7 +12,7 @@
 
 use core::arch::global_asm;
 
-use miralis::arch::{misa, Arch, Architecture, Csr, Mode, Register};
+use miralis::arch::{misa, set_mpp, Arch, Architecture, Csr, Mode, Register};
 use miralis::config::{
     DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
     TARGET_STACK_SIZE,
@@ -66,7 +66,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions.clone());
     unsafe {
         // Set return address, mode and PMP permissions
-        Arch::set_mpp(Mode::U);
+        set_mpp(Mode::U);
         // Update the PMPs prior to first entry
         Arch::write_pmp(&mctx.pmp).flush();
 
