@@ -4,13 +4,10 @@
 //! architecture, such as when running unit tests.
 
 use core::marker::PhantomData;
-use core::ptr;
 
 use spin::{Mutex, MutexGuard};
 
-use super::{
-    mie, mstatus, parse_mpp_return_mode, Architecture, Csr, ExtensionsCapability, MCause, Mode,
-};
+use super::{mie, mstatus, Architecture, Csr, ExtensionsCapability, Mode};
 use crate::arch::pmp::PmpFlush;
 use crate::arch::{HardwareCapability, PmpGroup};
 use crate::decoder::Instr;
@@ -47,13 +44,6 @@ impl Architecture for HostArch {
         log::debug!("Userspace wfi");
     }
 
-    unsafe fn set_mpp(mode: Mode) -> Mode {
-        let value = mode.to_bits() << mstatus::MPP_OFFSET;
-        let prev_mstatus = Self::read_csr(Csr::Mstatus);
-        Self::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value);
-        parse_mpp_return_mode(prev_mstatus)
-    }
-
     unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
         let pmpaddr = pmp.pmpaddr();
         let pmpcfg = pmp.pmpcfg();
@@ -76,22 +66,6 @@ impl Architecture for HostArch {
 
     unsafe fn run_vcpu(_ctx: &mut crate::virt::VirtContext) {
         todo!()
-    }
-
-    unsafe fn get_raw_faulting_instr(trap_info: &super::TrapInfo) -> usize {
-        if trap_info.mcause == MCause::IllegalInstr as usize {
-            // First, try mtval and check if it contains an instruction
-            if trap_info.mtval != 0 {
-                return trap_info.mtval;
-            }
-        }
-
-        let instr_ptr = trap_info.mepc as *const u32;
-
-        // With compressed instruction extention ("C") instructions can be misaligned.
-        // TODO: add support for 16 bits instructions
-        let instr = ptr::read_unaligned(instr_ptr);
-        instr as usize
     }
 
     unsafe fn sfencevma(_vaddr: Option<usize>, _asid: Option<usize>) {

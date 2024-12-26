@@ -1,14 +1,13 @@
 //! Bare metal RISC-V
 use core::arch::{asm, global_asm};
 use core::marker::PhantomData;
-use core::{ptr, usize};
+use core::usize;
 
-use super::{
-    menvcfg, Arch, Architecture, Csr, ExtensionsCapability, MCause, Mode, RegistersCapability,
-    TrapInfo,
-};
+use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
 use crate::arch::pmp::PmpFlush;
-use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, HardwareCapability, PmpGroup, Width};
+use crate::arch::{
+    mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, PmpGroup, Width,
+};
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
 use crate::{utils, RegisterContextGetter, RegisterContextSetter};
@@ -375,13 +374,6 @@ impl Architecture for MetalArch {
         }
     }
 
-    unsafe fn set_mpp(mode: Mode) -> Mode {
-        let value = mode.to_bits() << mstatus::MPP_OFFSET;
-        let prev_mstatus = Self::read_csr(Csr::Mstatus);
-        Self::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value);
-        parse_mpp_return_mode(prev_mstatus)
-    }
-
     unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
         let pmpaddr = pmp.pmpaddr();
         let pmpcfg = pmp.pmpcfg();
@@ -401,22 +393,6 @@ impl Architecture for MetalArch {
         }
 
         PmpFlush()
-    }
-
-    unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
-        if trap_info.mcause == MCause::IllegalInstr as usize {
-            // First, try mtval and check if it contains an instruction
-            if trap_info.mtval != 0 {
-                return trap_info.mtval;
-            }
-        }
-
-        let instr_ptr = trap_info.mepc as *const u32;
-
-        // With compressed instruction extention ("C") instructions can be misaligned.
-        // TODO: add support for 16 bits instructions
-        let instr = ptr::read_unaligned(instr_ptr);
-        instr as usize
     }
 
     unsafe fn run_vcpu(ctx: &mut VirtContext) {
@@ -760,7 +736,7 @@ impl Architecture for MetalArch {
         Self::write_csr(Csr::Mcause, 0);
 
         // Set the MPP mode to match the vMPP
-        let prev_mpp = Self::set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+        let prev_mpp = set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
         let prev_satp = Self::write_csr(Csr::Satp, ctx.csr.satp);
 
         // Changes to SATP require an sfence instruction to take effect
@@ -877,7 +853,7 @@ impl Architecture for MetalArch {
 
         // Restore the original values
         Self::write_csr(Csr::Satp, prev_satp);
-        Self::set_mpp(prev_mpp);
+        set_mpp(prev_mpp);
 
         // Ensure memory consistency
         Self::sfencevma(None, None);
@@ -893,7 +869,7 @@ impl Architecture for MetalArch {
         let prev_mstatus = Self::read_csr(Csr::Mstatus);
 
         // Set mstatus.MPP to mode
-        let prev_mode = Self::set_mpp(mode);
+        let prev_mode = set_mpp(mode);
         for i in 0..dest.len() {
             let mut byte_read: u8 = 0;
             unsafe {
@@ -941,7 +917,7 @@ impl Architecture for MetalArch {
             src += 1;
         }
 
-        Self::set_mpp(prev_mode);
+        set_mpp(prev_mode);
         Ok(())
     }
 
@@ -955,7 +931,7 @@ impl Architecture for MetalArch {
         let prev_mstatus = Self::read_csr(Csr::Mstatus);
 
         // Set mstatus.MPP to mode
-        let prev_mode = Self::set_mpp(mode);
+        let prev_mode = set_mpp(mode);
         for i in 0..src.len() {
             let byte_value: u8 = src[i];
             unsafe {
@@ -1000,7 +976,7 @@ impl Architecture for MetalArch {
             dest += 1;
         }
 
-        Self::set_mpp(prev_mode);
+        set_mpp(prev_mode);
         Ok(())
     }
 }
