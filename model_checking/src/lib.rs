@@ -75,14 +75,7 @@ pub fn read_csr() {
     // Infinite number of pmps for the formal verification
     ctx.nb_pmp = usize::MAX;
 
-    let mut csr_register = generate_csr_register();
-
-    let is_seed = csr_register == 0b000000010101;
-
-    // TODO: Adapt the last registers for the symbolic verification
-    if is_seed {
-        csr_register = 0;
-    }
+    let csr_register = generate_csr_register();
 
     // Read value from Miralis
     let decoded_csr = mctx.decode_csr(csr_register as usize);

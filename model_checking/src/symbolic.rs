@@ -156,6 +156,7 @@ pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, SailVirtCtx) {
     // Initialize Miralis's own context
     let mut hw = unsafe { Arch::detect_hardware() };
     hw.available_reg.nb_pmp = 64; // We assume 64 PMPs during model checking
+    hw.extensions.has_crypto_extension = true; // Needed for Seed register
     let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
     (ctx, mctx, sail_ctx)
