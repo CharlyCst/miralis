@@ -7,7 +7,7 @@ use sail_model::{
     execute_MRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType,
     ExceptionType, Privilege,
 };
-use sail_prelude::{BitField, BitVector};
+use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
 use crate::adapters::{pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis, sail_to_miralis};
 
@@ -361,6 +361,15 @@ pub fn pmp_equivalence() {
         _ => AccessType::Execute(()),
     };
 
+    let virtual_offset = VIRTUAL_PMP_OFFSET;
+    let number_virtual_pmps = sys_pmp_count(()) - virtual_offset;
+
+    // Deactivate the last pmp entries in the physical context
+    for idx in number_virtual_pmps..sys_pmp_count(()) {
+        sail_ctx.pmpcfg_n[idx] = BitField::new(0);
+        sail_ctx.pmpaddr_n[idx] = BitVector::new(0);
+    }
+
     let physical_check: Option<ExceptionType> = pmpCheck::<64>(
         &mut sail_ctx,
         address_to_check,
@@ -371,15 +380,15 @@ pub fn pmp_equivalence() {
 
     let virtual_check: Option<ExceptionType> = {
         // Creation of the PMP group
-        let mut pmp_group = PmpGroup::new(sail_prelude::sys_pmp_count(()));
-        pmp_group.virt_pmp_offset = VIRTUAL_PMP_OFFSET;
+        let mut pmp_group = PmpGroup::new(sys_pmp_count(()));
+        pmp_group.virt_pmp_offset = virtual_offset;
 
         // Physical write of the pmp registers
         pmp_group.load_with_offset(
             &pmpaddr_sail_to_miralis(sail_ctx.pmpaddr_n),
             &pmpcfg_sail_to_miralis(sail_ctx.pmpcfg_n),
-            0,
-            sail_prelude::sys_pmp_count(()),
+            virtual_offset,
+            number_virtual_pmps,
         );
         unsafe {
             write_pmp(&pmp_group).flush();
