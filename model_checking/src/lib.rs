@@ -1,7 +1,7 @@
 use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::userspace::return_userspace_ctx;
-use miralis::arch::{mie, Arch, Architecture};
+use miralis::arch::{mie, write_pmp};
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_model::{
     execute_MRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType,
@@ -382,7 +382,7 @@ pub fn pmp_equivalence() {
             sail_prelude::sys_pmp_count(()),
         );
         unsafe {
-            Arch::write_pmp(&pmp_group).flush();
+            write_pmp(&pmp_group).flush();
         }
 
         // Retrieve hardware context

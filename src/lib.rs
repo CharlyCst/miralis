@@ -31,6 +31,8 @@ use policy::{Policy, PolicyModule};
 use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
 
+use crate::arch::write_pmp;
+
 /// The virtuam firmware monitor main loop.
 ///
 /// Runs the firmware and payload in a loop, handling the traps and interrupts and switching world
@@ -110,7 +112,7 @@ fn handle_trap(
 
             unsafe {
                 // Commit the PMP to hardware
-                Arch::write_pmp(&mctx.pmp).flush();
+                write_pmp(&mctx.pmp).flush();
             }
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
@@ -123,7 +125,7 @@ fn handle_trap(
 
             unsafe {
                 // Commit the PMP to hardware
-                Arch::write_pmp(&mctx.pmp).flush();
+                write_pmp(&mctx.pmp).flush();
             }
         }
         _ => {} // No execution mode transition

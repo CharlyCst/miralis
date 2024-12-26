@@ -8,8 +8,7 @@ use core::marker::PhantomData;
 use spin::{Mutex, MutexGuard};
 
 use super::{mie, mstatus, Architecture, Csr, ExtensionsCapability, Mode};
-use crate::arch::pmp::PmpFlush;
-use crate::arch::{HardwareCapability, PmpGroup};
+use crate::arch::HardwareCapability;
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
 
@@ -44,24 +43,13 @@ impl Architecture for HostArch {
         log::debug!("Userspace wfi");
     }
 
-    unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
-        let pmpaddr = pmp.pmpaddr();
-        let pmpcfg = pmp.pmpcfg();
-        let nb_pmp = pmp.nb_pmp as usize;
+    unsafe fn write_pmpaddr(idx: usize, value: usize) {
+        HOST_CTX.lock().csr.pmpaddr[idx] = value;
+    }
 
-        assert!(
-            nb_pmp <= pmpaddr.len() && nb_pmp <= pmpcfg.len() * 8,
-            "Invalid number of PMP registers"
-        );
-
-        HOST_CTX.lock().csr.pmpaddr[..nb_pmp].copy_from_slice(&pmpaddr[..nb_pmp]);
-
-        for (idx, _) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
-            let cfg = pmpcfg[idx];
-            HOST_CTX.lock().csr.pmpcfg[idx] = cfg;
-        }
-
-        PmpFlush()
+    unsafe fn write_pmpcfg(idx: usize, configuration: usize) {
+        // The pmpcfg registers must be even. Since we have an array of 8 elements, we divide all indices by two
+        HOST_CTX.lock().csr.pmpcfg[idx / 2] = configuration;
     }
 
     unsafe fn run_vcpu(_ctx: &mut crate::virt::VirtContext) {

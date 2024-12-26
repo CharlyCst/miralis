@@ -71,7 +71,6 @@ pub trait Architecture {
     /// environment.
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize;
 
-    unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush;
     unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);
@@ -107,6 +106,8 @@ pub trait Architecture {
 
     /// This function is similar to the function above except it is used to store bytes in virtual memory from a chphysical address.
     unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()>;
+    unsafe fn write_pmpaddr(idx: usize, value: usize);
+    unsafe fn write_pmpcfg(idx: usize, configuration: usize);
 }
 
 // ——————————————————————————— Hardware Detection ——————————————————————————— //
@@ -540,4 +541,25 @@ pub unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
     // TODO: add support for 16 bits instructions
     let instr = ptr::read_unaligned(instr_ptr);
     instr as usize
+}
+
+pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
+    let pmpaddr = pmp.pmpaddr();
+    let pmpcfg = pmp.pmpcfg();
+    let nb_pmp = pmp.nb_pmp as usize;
+
+    assert!(
+        nb_pmp <= pmpaddr.len() && nb_pmp <= pmpcfg.len() * 8,
+        "Invalid number of PMP registers"
+    );
+
+    for (idx, pmp_addr_entry) in pmpaddr.iter().enumerate().take(nb_pmp) {
+        Arch::write_pmpaddr(idx, *pmp_addr_entry);
+    }
+
+    for (idx, cfg) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
+        Arch::write_pmpcfg(idx * 2, *cfg);
+    }
+
+    PmpFlush()
 }
