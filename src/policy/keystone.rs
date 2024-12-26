@@ -10,7 +10,7 @@ use core::ptr;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::pmp::{pmpcfg, Segment};
 use crate::arch::{
-    parse_mpp_return_mode, set_mpp, Arch, Architecture, Csr, MCause, Mode, Register,
+    parse_mpp_return_mode, set_mpp, write_pmp, Arch, Architecture, Csr, MCause, Mode, Register,
 };
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
@@ -192,7 +192,7 @@ impl KeystonePolicy {
         );
 
         unsafe {
-            Arch::write_pmp(&mctx.pmp).flush();
+            write_pmp(&mctx.pmp).flush();
         }
     }
 
@@ -212,7 +212,7 @@ impl KeystonePolicy {
         // shouldn't. This is a temporary compromise due to limitations in the number of available
         // PMPs (8 or fewer). Properly securing the payload would require additional PMPs.
         unsafe {
-            Arch::write_pmp(&mctx.pmp).flush();
+            write_pmp(&mctx.pmp).flush();
         }
     }
 
@@ -328,7 +328,7 @@ impl KeystonePolicy {
         mctx.pmp.set_inactive(pmp_id, 0);
         mctx.pmp.set_inactive(pmp_id + 1, 0);
         unsafe {
-            Arch::write_pmp(&mctx.pmp).flush();
+            write_pmp(&mctx.pmp).flush();
         }
 
         ReturnCode::Success

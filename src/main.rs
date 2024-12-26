@@ -12,7 +12,7 @@
 
 use core::arch::global_asm;
 
-use miralis::arch::{misa, set_mpp, Arch, Architecture, Csr, Mode, Register};
+use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
 use miralis::config::{
     DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
     TARGET_STACK_SIZE,
@@ -68,7 +68,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         // Set return address, mode and PMP permissions
         set_mpp(Mode::U);
         // Update the PMPs prior to first entry
-        Arch::write_pmp(&mctx.pmp).flush();
+        write_pmp(&mctx.pmp).flush();
 
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);

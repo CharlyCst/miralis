@@ -4,10 +4,7 @@ use core::marker::PhantomData;
 use core::usize;
 
 use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
-use crate::arch::pmp::PmpFlush;
-use crate::arch::{
-    mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, PmpGroup, Width,
-};
+use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, Width};
 use crate::decoder::Instr;
 use crate::virt::VirtContext;
 use crate::{utils, RegisterContextGetter, RegisterContextSetter};
@@ -44,6 +41,110 @@ impl Architecture for MetalArch {
         unsafe { asm!("wfi") };
     }
 
+    unsafe fn write_pmpaddr(index: usize, pmpaddr: usize) {
+        macro_rules! asm_write_pmpaddr {
+        ($idx:literal, $addr:expr) => {
+            asm!(
+                concat!("csrw pmpaddr", $idx, ", {addr}"),
+                addr = in(reg) pmpaddr,
+                options(nomem)
+            )
+        };
+    }
+
+        match index {
+            0 => asm_write_pmpaddr!(0, pmpaddr),
+            1 => asm_write_pmpaddr!(1, pmpaddr),
+            2 => asm_write_pmpaddr!(2, pmpaddr),
+            3 => asm_write_pmpaddr!(3, pmpaddr),
+            4 => asm_write_pmpaddr!(4, pmpaddr),
+            5 => asm_write_pmpaddr!(5, pmpaddr),
+            6 => asm_write_pmpaddr!(6, pmpaddr),
+            7 => asm_write_pmpaddr!(7, pmpaddr),
+            8 => asm_write_pmpaddr!(8, pmpaddr),
+            9 => asm_write_pmpaddr!(9, pmpaddr),
+            10 => asm_write_pmpaddr!(10, pmpaddr),
+            11 => asm_write_pmpaddr!(11, pmpaddr),
+            12 => asm_write_pmpaddr!(12, pmpaddr),
+            13 => asm_write_pmpaddr!(13, pmpaddr),
+            14 => asm_write_pmpaddr!(14, pmpaddr),
+            15 => asm_write_pmpaddr!(15, pmpaddr),
+            16 => asm_write_pmpaddr!(16, pmpaddr),
+            17 => asm_write_pmpaddr!(17, pmpaddr),
+            18 => asm_write_pmpaddr!(18, pmpaddr),
+            19 => asm_write_pmpaddr!(19, pmpaddr),
+            20 => asm_write_pmpaddr!(20, pmpaddr),
+            21 => asm_write_pmpaddr!(21, pmpaddr),
+            22 => asm_write_pmpaddr!(22, pmpaddr),
+            23 => asm_write_pmpaddr!(23, pmpaddr),
+            24 => asm_write_pmpaddr!(24, pmpaddr),
+            25 => asm_write_pmpaddr!(25, pmpaddr),
+            26 => asm_write_pmpaddr!(26, pmpaddr),
+            27 => asm_write_pmpaddr!(27, pmpaddr),
+            28 => asm_write_pmpaddr!(28, pmpaddr),
+            29 => asm_write_pmpaddr!(29, pmpaddr),
+            30 => asm_write_pmpaddr!(30, pmpaddr),
+            31 => asm_write_pmpaddr!(31, pmpaddr),
+            32 => asm_write_pmpaddr!(32, pmpaddr),
+            33 => asm_write_pmpaddr!(33, pmpaddr),
+            34 => asm_write_pmpaddr!(34, pmpaddr),
+            35 => asm_write_pmpaddr!(35, pmpaddr),
+            36 => asm_write_pmpaddr!(36, pmpaddr),
+            37 => asm_write_pmpaddr!(37, pmpaddr),
+            38 => asm_write_pmpaddr!(38, pmpaddr),
+            39 => asm_write_pmpaddr!(39, pmpaddr),
+            40 => asm_write_pmpaddr!(40, pmpaddr),
+            41 => asm_write_pmpaddr!(41, pmpaddr),
+            42 => asm_write_pmpaddr!(42, pmpaddr),
+            43 => asm_write_pmpaddr!(43, pmpaddr),
+            44 => asm_write_pmpaddr!(44, pmpaddr),
+            45 => asm_write_pmpaddr!(45, pmpaddr),
+            46 => asm_write_pmpaddr!(46, pmpaddr),
+            47 => asm_write_pmpaddr!(47, pmpaddr),
+            48 => asm_write_pmpaddr!(48, pmpaddr),
+            49 => asm_write_pmpaddr!(49, pmpaddr),
+            50 => asm_write_pmpaddr!(50, pmpaddr),
+            51 => asm_write_pmpaddr!(51, pmpaddr),
+            52 => asm_write_pmpaddr!(52, pmpaddr),
+            53 => asm_write_pmpaddr!(53, pmpaddr),
+            54 => asm_write_pmpaddr!(54, pmpaddr),
+            55 => asm_write_pmpaddr!(55, pmpaddr),
+            56 => asm_write_pmpaddr!(56, pmpaddr),
+            57 => asm_write_pmpaddr!(57, pmpaddr),
+            58 => asm_write_pmpaddr!(58, pmpaddr),
+            59 => asm_write_pmpaddr!(59, pmpaddr),
+            60 => asm_write_pmpaddr!(60, pmpaddr),
+            61 => asm_write_pmpaddr!(61, pmpaddr),
+            62 => asm_write_pmpaddr!(62, pmpaddr),
+            63 => asm_write_pmpaddr!(63, pmpaddr),
+            _ => panic!("Invalid pmpaddr register"),
+        }
+    }
+
+    unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
+        macro_rules! asm_write_pmpcfg {
+        ($idx:literal, $cfg:expr) => {
+            asm!(
+                concat!("csrw pmpcfg", $idx, ", {cfg}"),
+                cfg = in(reg) $cfg,
+                options(nomem)
+            )
+        };
+    }
+
+        match index {
+            0 => asm_write_pmpcfg!(0, pmpcfg),
+            2 => asm_write_pmpcfg!(2, pmpcfg),
+            4 => asm_write_pmpcfg!(4, pmpcfg),
+            6 => asm_write_pmpcfg!(6, pmpcfg),
+            8 => asm_write_pmpcfg!(8, pmpcfg),
+            10 => asm_write_pmpcfg!(10, pmpcfg),
+            12 => asm_write_pmpcfg!(12, pmpcfg),
+            14 => asm_write_pmpcfg!(14, pmpcfg),
+            _ => panic!("Invalid pmpcfg register"),
+        }
+    }
+
     unsafe fn write_csr(csr: Csr, value: usize) -> usize {
         let mut prev_value: usize = 0;
 
@@ -70,7 +171,7 @@ impl Architecture for MetalArch {
             Csr::Marchid => asm_write_csr!("marchid"),
             Csr::Mimpid => asm_write_csr!("mimpid"),
             Csr::Pmpcfg(_) => todo!(),
-            Csr::Pmpaddr(index) => write_pmpaddr(index, value),
+            Csr::Pmpaddr(index) => Arch::write_pmpaddr(index, value),
             Csr::Mcycle => asm_write_csr!("mcycle"),
             Csr::Minstret => asm_write_csr!("minstret"),
             Csr::Cycle => todo!(),
@@ -372,27 +473,6 @@ impl Architecture for MetalArch {
                 has_zihpm_extension: true,
             },
         }
-    }
-
-    unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
-        let pmpaddr = pmp.pmpaddr();
-        let pmpcfg = pmp.pmpcfg();
-        let nb_pmp = pmp.nb_pmp as usize;
-
-        assert!(
-            nb_pmp as usize <= pmpaddr.len() && nb_pmp as usize <= pmpcfg.len() * 8,
-            "Invalid number of PMP registers"
-        );
-
-        for idx in 0..nb_pmp {
-            write_pmpaddr(idx, pmpaddr[idx]);
-        }
-        for idx in 0..(nb_pmp / 8) {
-            let cfg = pmpcfg[idx];
-            write_pmpcfg(idx * 2, cfg);
-        }
-
-        PmpFlush()
     }
 
     unsafe fn run_vcpu(ctx: &mut VirtContext) {
@@ -1098,110 +1178,6 @@ unsafe fn find_nb_of_non_zero_pmp(nb_implemented: usize) -> usize {
     test_pmp!(63);
 
     return 64;
-}
-
-unsafe fn write_pmpaddr(index: usize, pmpaddr: usize) {
-    macro_rules! asm_write_pmpaddr {
-        ($idx:literal, $addr:expr) => {
-            asm!(
-                concat!("csrw pmpaddr", $idx, ", {addr}"),
-                addr = in(reg) pmpaddr,
-                options(nomem)
-            )
-        };
-    }
-
-    match index {
-        0 => asm_write_pmpaddr!(0, pmpaddr),
-        1 => asm_write_pmpaddr!(1, pmpaddr),
-        2 => asm_write_pmpaddr!(2, pmpaddr),
-        3 => asm_write_pmpaddr!(3, pmpaddr),
-        4 => asm_write_pmpaddr!(4, pmpaddr),
-        5 => asm_write_pmpaddr!(5, pmpaddr),
-        6 => asm_write_pmpaddr!(6, pmpaddr),
-        7 => asm_write_pmpaddr!(7, pmpaddr),
-        8 => asm_write_pmpaddr!(8, pmpaddr),
-        9 => asm_write_pmpaddr!(9, pmpaddr),
-        10 => asm_write_pmpaddr!(10, pmpaddr),
-        11 => asm_write_pmpaddr!(11, pmpaddr),
-        12 => asm_write_pmpaddr!(12, pmpaddr),
-        13 => asm_write_pmpaddr!(13, pmpaddr),
-        14 => asm_write_pmpaddr!(14, pmpaddr),
-        15 => asm_write_pmpaddr!(15, pmpaddr),
-        16 => asm_write_pmpaddr!(16, pmpaddr),
-        17 => asm_write_pmpaddr!(17, pmpaddr),
-        18 => asm_write_pmpaddr!(18, pmpaddr),
-        19 => asm_write_pmpaddr!(19, pmpaddr),
-        20 => asm_write_pmpaddr!(20, pmpaddr),
-        21 => asm_write_pmpaddr!(21, pmpaddr),
-        22 => asm_write_pmpaddr!(22, pmpaddr),
-        23 => asm_write_pmpaddr!(23, pmpaddr),
-        24 => asm_write_pmpaddr!(24, pmpaddr),
-        25 => asm_write_pmpaddr!(25, pmpaddr),
-        26 => asm_write_pmpaddr!(26, pmpaddr),
-        27 => asm_write_pmpaddr!(27, pmpaddr),
-        28 => asm_write_pmpaddr!(28, pmpaddr),
-        29 => asm_write_pmpaddr!(29, pmpaddr),
-        30 => asm_write_pmpaddr!(30, pmpaddr),
-        31 => asm_write_pmpaddr!(31, pmpaddr),
-        32 => asm_write_pmpaddr!(32, pmpaddr),
-        33 => asm_write_pmpaddr!(33, pmpaddr),
-        34 => asm_write_pmpaddr!(34, pmpaddr),
-        35 => asm_write_pmpaddr!(35, pmpaddr),
-        36 => asm_write_pmpaddr!(36, pmpaddr),
-        37 => asm_write_pmpaddr!(37, pmpaddr),
-        38 => asm_write_pmpaddr!(38, pmpaddr),
-        39 => asm_write_pmpaddr!(39, pmpaddr),
-        40 => asm_write_pmpaddr!(40, pmpaddr),
-        41 => asm_write_pmpaddr!(41, pmpaddr),
-        42 => asm_write_pmpaddr!(42, pmpaddr),
-        43 => asm_write_pmpaddr!(43, pmpaddr),
-        44 => asm_write_pmpaddr!(44, pmpaddr),
-        45 => asm_write_pmpaddr!(45, pmpaddr),
-        46 => asm_write_pmpaddr!(46, pmpaddr),
-        47 => asm_write_pmpaddr!(47, pmpaddr),
-        48 => asm_write_pmpaddr!(48, pmpaddr),
-        49 => asm_write_pmpaddr!(49, pmpaddr),
-        50 => asm_write_pmpaddr!(50, pmpaddr),
-        51 => asm_write_pmpaddr!(51, pmpaddr),
-        52 => asm_write_pmpaddr!(52, pmpaddr),
-        53 => asm_write_pmpaddr!(53, pmpaddr),
-        54 => asm_write_pmpaddr!(54, pmpaddr),
-        55 => asm_write_pmpaddr!(55, pmpaddr),
-        56 => asm_write_pmpaddr!(56, pmpaddr),
-        57 => asm_write_pmpaddr!(57, pmpaddr),
-        58 => asm_write_pmpaddr!(58, pmpaddr),
-        59 => asm_write_pmpaddr!(59, pmpaddr),
-        60 => asm_write_pmpaddr!(60, pmpaddr),
-        61 => asm_write_pmpaddr!(61, pmpaddr),
-        62 => asm_write_pmpaddr!(62, pmpaddr),
-        63 => asm_write_pmpaddr!(63, pmpaddr),
-        _ => panic!("Invalid pmpaddr register"),
-    }
-}
-
-unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
-    macro_rules! asm_write_pmpcfg {
-        ($idx:literal, $cfg:expr) => {
-            asm!(
-                concat!("csrw pmpcfg", $idx, ", {cfg}"),
-                cfg = in(reg) $cfg,
-                options(nomem)
-            )
-        };
-    }
-
-    match index {
-        0 => asm_write_pmpcfg!(0, pmpcfg),
-        2 => asm_write_pmpcfg!(2, pmpcfg),
-        4 => asm_write_pmpcfg!(4, pmpcfg),
-        6 => asm_write_pmpcfg!(6, pmpcfg),
-        8 => asm_write_pmpcfg!(8, pmpcfg),
-        10 => asm_write_pmpcfg!(10, pmpcfg),
-        12 => asm_write_pmpcfg!(12, pmpcfg),
-        14 => asm_write_pmpcfg!(14, pmpcfg),
-        _ => panic!("Invalid pmpcfg register"),
-    }
 }
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
