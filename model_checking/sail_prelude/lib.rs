@@ -131,7 +131,7 @@ pub fn truncate(v: BitVector<64>, size: usize) -> BitVector<64> {
 }
 
 pub fn sys_pmp_count(_unit: ()) -> usize {
-    16
+    64
 }
 
 macro_rules! create_zero_extend_fn {

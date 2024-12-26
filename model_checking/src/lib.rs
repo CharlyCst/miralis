@@ -121,10 +121,6 @@ pub fn write_csr() {
         csr_register = 0;
     }
 
-    // Initialize Miralis's own context
-    mctx.hw.available_reg.nb_pmp = 64;
-    ctx.nb_pmp = 64;
-
     // Generate a random value
     let mut value_to_write: usize = any!(usize);
 
