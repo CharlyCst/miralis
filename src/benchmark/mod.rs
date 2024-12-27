@@ -32,7 +32,7 @@ pub trait BenchmarkModule {
     /// Print formated string with value of the counters
     fn display_counters();
 
-    fn get_counter_value(counter: Counter) -> usize;
+    fn get_counter_value(core_id: usize, counter: Counter) -> usize;
 }
 
 pub enum Scope {
