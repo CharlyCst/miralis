@@ -2,6 +2,7 @@
 //!
 //! This modules holds the different values for the benchmarks
 
+mod counter;
 mod default;
 mod empty;
 
@@ -38,7 +39,7 @@ pub trait BenchmarkModule {
     /// Note: the specific ABI is depends on the benchmark back-end.
     fn read_counters(ctx: &mut VirtContext);
 
-    fn get_counter_value(counter: Counter) -> usize;
+    fn get_counter_value(core_id: usize, counter: Counter) -> usize;
 }
 
 pub enum Scope {

@@ -267,7 +267,7 @@ impl BenchmarkModule for DefaultBenchmark {
         }
     }
 
-    fn get_counter_value(_counter: Counter) -> usize {
+    fn get_counter_value(_core_id: usize, _counter: Counter) -> usize {
         todo!("implement the logic");
     }
 }
