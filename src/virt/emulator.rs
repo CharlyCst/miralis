@@ -345,7 +345,7 @@ impl VirtContext {
         match cause {
             MCause::EcallFromUMode if policy.ecall_from_firmware(mctx, self).overwrites() => {
                 // Nothing to do, the policy module handles those ecalls
-                log::trace!("Catching E-call from firmware in the policy module");
+                logger::trace!("Catching E-call from firmware in the policy module");
             }
             MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 return self.handle_ecall();
@@ -359,9 +359,7 @@ impl VirtContext {
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
                 let instr = mctx.decode(instr);
-                if logger::trace_enabled!() {
-                    log::trace!("Faulting instruction: {:?}", instr);
-                }
+                logger::trace!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {
@@ -374,7 +372,7 @@ impl VirtContext {
                 {
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
                     let instr = mctx.decode(instr);
-                    log::trace!(
+                    logger::trace!(
                         "Accessed devices: {} | With instr: {:?}",
                         device.name,
                         instr
@@ -384,7 +382,7 @@ impl VirtContext {
                     // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
                     let instr = mctx.decode(instr);
-                    log::trace!(
+                    logger::trace!(
                         "Access fault {:x?} with a virtual address: 0x{:x}",
                         &instr,
                         self.trap_info.mtval
@@ -393,7 +391,7 @@ impl VirtContext {
                         Arch::handle_virtual_load_store(instr, self);
                     }
                 } else {
-                    log::trace!(
+                    logger::trace!(
                         "No matching device found for address: {:x}",
                         self.trap_info.mtval
                     );
@@ -401,7 +399,7 @@ impl VirtContext {
                 }
             }
             MCause::InstrAccessFault => {
-                log::trace!("Instruction access fault: {:x?}", self.trap_info);
+                logger::trace!("Instruction access fault: {:x?}", self.trap_info);
                 self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
@@ -448,7 +446,7 @@ impl VirtContext {
         self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
 
         if policy.trap_from_payload(mctx, self).overwrites() {
-            log::trace!("Catching trap in the policy module");
+            logger::trace!("Catching trap in the policy module");
             return ExitResult::Continue;
         }
 
@@ -457,13 +455,13 @@ impl VirtContext {
         match self.trap_info.get_cause() {
             MCause::EcallFromSMode if policy.ecall_from_payload(mctx, self).overwrites() => {
                 // Nothing to do, the Policy module handles those ecalls
-                log::trace!("Catching E-call from payload in the policy module");
+                logger::trace!("Catching E-call from payload in the policy module");
             }
             MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
                 return self.handle_ecall();
             }
             MCause::EcallFromSMode => {
-                log::debug!(
+                logger::debug!(
                     "Forwarding ecall from s-mode with values 0x{:x}, 0x{:x} to the firmware",
                     self.get(Register::X16),
                     self.get(Register::X17)
