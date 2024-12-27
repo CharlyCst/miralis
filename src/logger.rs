@@ -148,7 +148,44 @@ macro_rules! trace_enabled {
     };
 }
 
-pub(crate) use trace_enabled;
+/// Returns true if the Debug logging level is enabled for the current module.
+///
+/// This macro is guaranteed to be executed at compile time, thus dead-code elimination is
+/// guaranteed by any reasonable compiler.
+macro_rules! debug_enabled {
+    () => {
+        // We wrap the computation in a const block to guarantee execution at compile time
+        const { crate::logger::enabled(core::module_path!(), log::Level::Debug) }
+    };
+}
+
+/// Log a message at the trace level.
+///
+/// This macro call is guaranteed to be optimized-out at compile time if the corresponding log
+/// level is not enabled. Therefore it is free even in the critical path, whereas the [log::trace]
+/// macro might not be (it performs run-time checks).
+macro_rules! trace {
+    ($($args:tt)*) => {
+        if logger::trace_enabled!() {
+            log::trace!($($args)*);
+        }
+    };
+}
+
+/// Log a message at the debug level.
+///
+/// This macro call is guaranteed to be optimized-out at compile time if the corresponding log
+/// level is not enabled. Therefore it is free even in the critical path, whereas the [log::debug]
+/// macro might not be (it performs run-time checks).
+macro_rules! debug {
+    ($($args:tt)*) => {
+        if logger::debug_enabled!() {
+            log::debug!($($args)*);
+        }
+    };
+}
+
+pub(crate) use {debug, debug_enabled, trace, trace_enabled};
 
 // ————————————————————————————————— Utils —————————————————————————————————— //
 

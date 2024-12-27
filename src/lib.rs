@@ -106,7 +106,7 @@ fn handle_trap(
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
-            log::debug!("Execution mode: Firmware -> Payload");
+            logger::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
             policy.switch_from_firmware_to_payload(ctx, mctx);
 
@@ -116,7 +116,7 @@ fn handle_trap(
             }
         }
         (ExecutionMode::Payload, ExecutionMode::Firmware) => {
-            log::debug!(
+            logger::debug!(
                 "Execution mode: Payload -> Firmware ({:?})",
                 ctx.trap_info.get_cause()
             );
