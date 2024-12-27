@@ -14,7 +14,7 @@ max_pmp = 8
 nb_harts = 1
 
 [benchmark]
-enable = true
+benchmark_type = "default"
 time = true
 instruction = true
 nb_exits = true
