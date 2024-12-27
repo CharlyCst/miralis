@@ -31,7 +31,7 @@ impl BenchmarkModule for EmptyBenchmark {
 
     fn display_counters() {}
 
-    fn get_counter_value(_counter: Counter) -> usize {
+    fn get_counter_value(_core_id: usize, _counter: Counter) -> usize {
         0
     }
 }
