@@ -69,8 +69,8 @@ disk = "ubuntu"
 # Enable benchmark code and logs. Logs can then be collected to 
 # analyze a run of the program.
 [benchmark]
-# Enable all benchmark
-enable = false
+# Runs the default benchmark type
+benchmark_type = "default"
 
 # Print in csv_format, useful for analysis
 csv_format = true

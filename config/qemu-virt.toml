@@ -13,6 +13,3 @@ max_pmp = 8
 [platform]
 nb_harts = 1
 boot_hart_id = 0
-
-[benchmark]
-enable = false

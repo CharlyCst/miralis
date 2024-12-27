@@ -15,7 +15,7 @@ nb_harts = 1
 boot_hart_id = 0
 
 [benchmark]
-enable = true
+benchmark_type = "default"
 csv_format = true
 time = true
 instruction = true
