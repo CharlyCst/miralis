@@ -11,8 +11,5 @@ max_pmp = 0
 [platform]
 nb_harts = 1
 
-[benchmark]
-enable = false
-
 [policy]
 name = "keystone"

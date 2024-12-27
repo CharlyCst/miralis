@@ -14,9 +14,6 @@ max_pmp = 8
 nb_harts = 1
 boot_hart_id = 0
 
-[benchmark]
-enable = false
-
 [qemu]
 machine = "virt"
 cpu = "sifive-u54"

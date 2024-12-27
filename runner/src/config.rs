@@ -102,7 +102,7 @@ impl fmt::Display for Platforms {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Benchmark {
-    pub enable: Option<bool>,
+    pub benchmark_type: Option<String>,
     pub csv_format: Option<bool>,
     pub time: Option<bool>,
     pub instruction: Option<bool>,
@@ -269,7 +269,7 @@ impl Platform {
 impl Benchmark {
     pub fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
-        envs.insert("MIRALIS_BENCHMARK", &self.enable);
+        envs.insert("MIRALIS_BENCHMARK_TYPE", &self.benchmark_type);
         envs.insert("MIRALIS_BENCHMARK_CSV_FORMAT", &self.csv_format);
         envs.insert("MIRALIS_BENCHMARK_TIME", &self.time);
         envs.insert("MIRALIS_BENCHMARK_INSTRUCTION", &self.instruction);

@@ -5,6 +5,7 @@
 use spin::Mutex;
 
 use crate::arch::{Arch, Architecture, Csr};
+use crate::benchmark::{BenchmarkModule, Counter, Scope};
 use crate::config;
 use crate::platform::{Plat, Platform};
 
@@ -17,22 +18,13 @@ macro_rules! _benchmark_print {
 
 #[macro_export]
 macro_rules! benchmark_print {
-    () => (if config::BENCHMARK { $crate::_benchmark_print!("\r\n")});
-    ($($arg:tt)*) => (if config::BENCHMARK { $crate::_benchmark_print!("{}\r\n", core::format_args!($($arg)*))})
+    () => ($crate::_benchmark_print!("\r\n"));
+    ($($arg:tt)*) => ($crate::_benchmark_print!("{}\r\n", core::format_args!($($arg)*)))
 }
 
-pub static BENCH: Mutex<Benchmark> = Mutex::new(Benchmark::new());
+pub static BENCH: Mutex<DefaultBenchmark> = Mutex::new(DefaultBenchmark::build());
 
 const NB_COUNTER: usize = 3;
-
-/// Benchmark counters.
-/// This kind of counter aims to be incremented to count occurences of an event.
-#[derive(PartialEq, Eq, Copy, Clone)]
-pub enum Counter {
-    TotalExits = 0,
-    FirmwareExits = 1,
-    WorldSwitches = 2,
-}
 
 const NB_INTERVAL_COUNTER: usize = 2;
 
@@ -54,27 +46,6 @@ struct IntervalCounterStats {
     max: usize,
     mean: usize,
     sum: usize,
-}
-
-pub enum Scope {
-    HandleTrap,
-    RunVCPU,
-}
-
-impl Scope {
-    fn base(&self) -> usize {
-        match self {
-            Self::HandleTrap => 0,
-            Self::RunVCPU => 1,
-        }
-    }
-
-    fn name(&self) -> &'static str {
-        match self {
-            Self::HandleTrap => "handle_trap",
-            Self::RunVCPU => "run_vcpu",
-        }
-    }
 }
 
 enum Either {
@@ -128,7 +99,7 @@ impl Either {
     }
 }
 
-pub struct Benchmark {
+pub struct DefaultBenchmark {
     // Temporary value to store previous state (e.g. state when the benchmark started to compare).
     interval_counters: [IntervalCounterStats; NB_INTERVAL_COUNTER * NB_SCOPES],
 
@@ -136,57 +107,17 @@ pub struct Benchmark {
     counters: [usize; NB_COUNTER],
 }
 
-impl Benchmark {
-    pub const fn new() -> Benchmark {
-        Benchmark {
-            interval_counters: [IntervalCounterStats {
-                previous: 0,
-                count: 0,
-                min: usize::MAX,
-                max: 0,
-                mean: 0,
-                sum: 0,
-            }; NB_INTERVAL_COUNTER * 2],
-
-            counters: [0; NB_COUNTER],
-        }
+impl BenchmarkModule for DefaultBenchmark {
+    fn init() -> Self {
+        Self::build()
     }
 
-    /// Reset counter value to default and return previous one.
-    fn reset(&mut self, counter: &Either, scope: &Scope) -> usize {
-        let value = counter.reset_value();
-        match counter {
-            Either::Counter(c) => {
-                let index = *c as usize;
-                let previous = self.counters[index];
-                self.counters[index] = value;
-                previous
-            }
-            Either::IntervalCounter(c) => {
-                let index = Self::interval_counter_index(c, scope);
-                let previous = self.interval_counters[index].previous;
-                self.interval_counters[index].previous = value;
-                previous
-            }
-        }
-    }
-
-    fn interval_counter_index(counter: &IntervalCounter, scope: &Scope) -> usize {
-        *counter as usize + scope.base() * NB_INTERVAL_COUNTER
-    }
-
-    /// Read value of a counter.
-    fn read_interval_counters(&self, counter: &IntervalCounter, scope: &Scope) -> usize {
-        let index = Self::interval_counter_index(counter, scope);
-        self.interval_counters[index].previous
+    fn name() -> &'static str {
+        "Default benchmark"
     }
 
     /// Reset interval counters.
-    pub fn start_interval_counters(scope: Scope) {
-        if !config::BENCHMARK {
-            return;
-        }
-
+    fn start_interval_counters(scope: Scope) {
         for counter in [
             IntervalCounter::ExecutionTime,
             IntervalCounter::InstructionRet,
@@ -202,11 +133,7 @@ impl Benchmark {
     }
 
     /// Stop and record interval counter.
-    pub fn stop_interval_counters(scope: Scope) {
-        if !config::BENCHMARK {
-            return;
-        }
-
+    fn stop_interval_counters(scope: Scope) {
         for counter in [
             IntervalCounter::ExecutionTime,
             IntervalCounter::InstructionRet,
@@ -241,11 +168,7 @@ impl Benchmark {
     }
 
     /// Increment counter's value.
-    pub fn increment_counter(counter: Counter) {
-        if !config::BENCHMARK {
-            return;
-        }
-
+    fn increment_counter(counter: Counter) {
         let index = counter as usize;
 
         let wrapped_counter = Either::Counter(counter);
@@ -258,11 +181,7 @@ impl Benchmark {
     }
 
     /// Print formated string with value of the counters
-    pub fn record_counters() {
-        if !config::BENCHMARK {
-            return;
-        }
-
+    fn display_counters() {
         let bench = BENCH.lock();
 
         if config::BENCHMARK_CSV_FORMAT {
@@ -331,5 +250,55 @@ impl Benchmark {
                 benchmark_print!("╚{:─>30}╝", "");
             }
         }
+    }
+
+    fn get_counter_value(_counter: Counter) -> usize {
+        todo!("implement the logic");
+    }
+}
+
+impl DefaultBenchmark {
+    pub const fn build() -> DefaultBenchmark {
+        DefaultBenchmark {
+            interval_counters: [IntervalCounterStats {
+                previous: 0,
+                count: 0,
+                min: usize::MAX,
+                max: 0,
+                mean: 0,
+                sum: 0,
+            }; NB_INTERVAL_COUNTER * 2],
+
+            counters: [0; NB_COUNTER],
+        }
+    }
+
+    /// Reset counter value to default and return previous one.
+    fn reset(&mut self, counter: &Either, scope: &Scope) -> usize {
+        let value = counter.reset_value();
+        match counter {
+            Either::Counter(c) => {
+                let index = *c as usize;
+                let previous = self.counters[index];
+                self.counters[index] = value;
+                previous
+            }
+            Either::IntervalCounter(c) => {
+                let index = Self::interval_counter_index(c, scope);
+                let previous = self.interval_counters[index].previous;
+                self.interval_counters[index].previous = value;
+                previous
+            }
+        }
+    }
+
+    fn interval_counter_index(counter: &IntervalCounter, scope: &Scope) -> usize {
+        *counter as usize + scope.base() * NB_INTERVAL_COUNTER
+    }
+
+    /// Read value of a counter.
+    fn read_interval_counters(&self, counter: &IntervalCounter, scope: &Scope) -> usize {
+        let index = Self::interval_counter_index(counter, scope);
+        self.interval_counters[index].previous
     }
 }
