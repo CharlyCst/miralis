@@ -13,5 +13,3 @@ max_pmp = 8
 [platform]
 nb_harts = 2
 
-[benchmark]
-enable = false

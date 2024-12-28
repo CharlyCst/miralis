@@ -10,9 +10,6 @@ max_pmp = 0
 [platform]
 nb_harts = 1
 
-[benchmark]
-enable = false
-
 [target.miralis]
 profile = "dev"
 start_address = 0x80000000

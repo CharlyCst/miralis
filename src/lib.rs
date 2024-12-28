@@ -9,7 +9,7 @@
 #![cfg_attr(not(test), no_main)]
 
 pub mod arch;
-mod benchmark;
+pub mod benchmark;
 pub mod config;
 pub mod debug;
 pub mod decoder;
@@ -23,7 +23,6 @@ pub mod utils;
 pub mod virt;
 
 use arch::{Arch, Architecture, Csr, Register};
-use benchmark::{Benchmark, Counter, Scope};
 use host::MiralisContext;
 pub use platform::init;
 use platform::{Plat, Platform};
@@ -32,6 +31,7 @@ use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
 
 use crate::arch::write_pmp;
+use crate::benchmark::{Benchmark, BenchmarkModule, Counter, Scope};
 
 /// The virtuam firmware monitor main loop.
 ///

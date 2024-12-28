@@ -15,9 +15,6 @@ nb_harts = 1
 boot_hart_id = 0
 name = "spike"
 
-[benchmark]
-enable = false
-
 [qemu]
 machine = "virt"
 cpu = "sifive-u54"
