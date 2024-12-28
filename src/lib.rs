@@ -51,7 +51,7 @@ pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy
         Benchmark::stop_interval_counters(Scope::RunVCPU);
         Benchmark::start_interval_counters(Scope::HandleTrap);
 
-        if handle_trap(ctx, mctx, policy) == ExitResult::Donne {
+        if handle_trap(ctx, mctx, policy) == ExitResult::Done {
             return;
         }
 
