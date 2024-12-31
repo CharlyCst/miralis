@@ -7,6 +7,8 @@ edition = "2021"
 miralis = { path = "../src", features = ["userspace"] }
 sail_prelude = { path = "sail_prelude"}
 sail_model = { path = "sail_model"}
+sail_decoder = { path = "sail_decoder"}
+log = "0.4.22"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
