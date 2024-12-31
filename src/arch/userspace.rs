@@ -83,11 +83,11 @@ impl Architecture for HostArch {
                 has_h_extension: false,
                 has_s_extension: true,
                 has_v_extension: true,
-                has_crypto_extension: false,
+                has_crypto_extension: true,
                 has_zicntr: true,
                 has_sstc_extension: false,
                 is_sstc_enabled: false,
-                has_zihpm_extension: true,
+                has_zihpm_extension: false,
             },
         }
     }

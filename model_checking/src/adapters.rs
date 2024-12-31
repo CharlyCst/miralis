@@ -5,9 +5,10 @@
 //! implementation and Miralis we need to be able to compare their internal representation. Hence
 //! this module exposing functions to convert from one representation to the other.
 
-use miralis::arch::{ExtensionsCapability, Mode};
+use miralis::arch::{Csr, ExtensionsCapability, Mode, Register};
+use miralis::decoder::Instr;
 use miralis::virt::VirtContext;
-use sail_model::{Privilege, SailVirtCtx};
+use sail_model::{ast, csrop, Privilege, SailVirtCtx};
 use sail_prelude::{BitField, BitVector};
 
 pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
@@ -371,4 +372,134 @@ pub fn pmpaddr_sail_to_miralis(addresses: [BitVector<64>; 64]) -> [usize; 64] {
     }
 
     output
+}
+
+pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
+    if 0b001110100000 <= arg_hashtag_.bits()
+        && arg_hashtag_.bits() <= (0b001110100000 + 15)
+        && arg_hashtag_.bits() % 2 == 0
+    {
+        return Csr::Pmpcfg((arg_hashtag_.bits() - 0b001110100000) as usize);
+    }
+
+    if 0b001110110000 <= arg_hashtag_.bits() && arg_hashtag_.bits() <= (0b001110110000 + 63) {
+        return Csr::Pmpaddr((arg_hashtag_.bits() - 0b001110110000) as usize);
+    }
+
+    match arg_hashtag_ {
+        b_11 if { b_11 == BitVector::<12>::new(0b000000010101) } => Csr::Seed,
+        b_12 if { b_12 == BitVector::<12>::new(0b110000000000) } => Csr::Cycle,
+        b_13 if { b_13 == BitVector::<12>::new(0b110000000001) } => Csr::Time,
+        b_14 if { b_14 == BitVector::<12>::new(0b110000000010) } => Csr::Instret,
+        b_18 if { b_18 == BitVector::<12>::new(0b000100000000) } => Csr::Sstatus,
+        b_21 if { b_21 == BitVector::<12>::new(0b000100000100) } => Csr::Sie,
+        b_22 if { b_22 == BitVector::<12>::new(0b000100000101) } => Csr::Stvec,
+        b_23 if { b_23 == BitVector::<12>::new(0b000100000110) } => Csr::Scounteren,
+        b_24 if { b_24 == BitVector::<12>::new(0b000101000000) } => Csr::Sscratch,
+        b_25 if { b_25 == BitVector::<12>::new(0b000101000001) } => Csr::Sepc,
+        b_26 if { b_26 == BitVector::<12>::new(0b000101000010) } => Csr::Scause,
+        b_27 if { b_27 == BitVector::<12>::new(0b000101000011) } => Csr::Stval,
+        b_28 if { b_28 == BitVector::<12>::new(0b000101000100) } => Csr::Sip,
+        b_29 if { b_29 == BitVector::<12>::new(0b000110000000) } => Csr::Satp,
+        b_30 if { b_30 == BitVector::<12>::new(0b000100001010) } => Csr::Senvcfg,
+        b_31 if { b_31 == BitVector::<12>::new(0b111100010001) } => Csr::Mvendorid,
+        b_32 if { b_32 == BitVector::<12>::new(0b111100010010) } => Csr::Marchid,
+        b_34 if { b_34 == BitVector::<12>::new(0b111100010100) } => Csr::Mhartid,
+        b_35 if { b_35 == BitVector::<12>::new(0b111100010101) } => Csr::Mconfigptr,
+        b_36 if { b_36 == BitVector::<12>::new(0b001100000000) } => Csr::Mstatus,
+        b_37 if { b_37 == BitVector::<12>::new(0b001100000001) } => Csr::Misa,
+        b_38 if { b_38 == BitVector::<12>::new(0b001100000010) } => Csr::Medeleg,
+        b_39 if { b_39 == BitVector::<12>::new(0b001100000011) } => Csr::Mideleg,
+        b_40 if { b_40 == BitVector::<12>::new(0b001100000100) } => Csr::Mie,
+        b_41 if { b_41 == BitVector::<12>::new(0b001100000101) } => Csr::Mtvec,
+        b_42 if { b_42 == BitVector::<12>::new(0b001100000110) } => Csr::Mcounteren,
+        b_43 if { b_43 == BitVector::<12>::new(0b001100100000) } => Csr::Mcountinhibit,
+        b_44 if { b_44 == BitVector::<12>::new(0b001100001010) } => Csr::Menvcfg,
+        b_45 if { b_45 == BitVector::<12>::new(0b001101000000) } => Csr::Mscratch,
+        b_46 if { b_46 == BitVector::<12>::new(0b001101000001) } => Csr::Mepc,
+        b_47 if { b_47 == BitVector::<12>::new(0b001101000010) } => Csr::Mcause,
+        b_48 if { b_48 == BitVector::<12>::new(0b001101000011) } => Csr::Mtval,
+        b_49 if { b_49 == BitVector::<12>::new(0b001101000100) } => Csr::Mip,
+        b_130 if { b_130 == BitVector::<12>::new(0b101100000000) } => Csr::Mcycle,
+        b_131 if { b_131 == BitVector::<12>::new(0b101100000010) } => Csr::Minstret,
+        b_134 if { b_134 == BitVector::<12>::new(0b011110100000) } => Csr::Tselect,
+        // Manually removed
+        // b_135 if { b_135 == BitVector::<12>::new(0b011110100001) } => Csr::Tdata1,
+        // b_136 if { b_136 == BitVector::<12>::new(0b011110100010) } => Csr::Tdata2,
+        // b_137 if { b_137 == BitVector::<12>::new(0b011110100011) } => Csr::Tdata3,
+        b_138 if { b_138 == BitVector::<12>::new(0b000000001000) } => Csr::Vstart,
+        b_139 if { b_139 == BitVector::<12>::new(0b000000001001) } => Csr::Vxsat,
+        b_140 if { b_140 == BitVector::<12>::new(0b000000001010) } => Csr::Vxrm,
+        b_141 if { b_141 == BitVector::<12>::new(0b000000001111) } => Csr::Vcsr,
+        b_142 if { b_142 == BitVector::<12>::new(0b110000100000) } => Csr::Vl,
+        b_143 if { b_143 == BitVector::<12>::new(0b110000100001) } => Csr::Vtype,
+        b_144 if { b_144 == BitVector::<12>::new(0b110000100010) } => Csr::Vlenb,
+        // Manually added
+        b_155 if { BitVector::new(0x5A8) == b_155 } => Csr::Scontext,
+        b_156 if { BitVector::new(0xf13) == b_156 } => Csr::Mimpid,
+        b_157 if { BitVector::new(0x747) == b_157 } => Csr::Mseccfg,
+        // End manually added
+        _ => Csr::Unknown,
+    }
+}
+
+pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
+    match ast_entry {
+        ast::MRET(()) => Instr::Mret,
+        ast::WFI(()) => Instr::Wfi,
+        ast::ECALL(()) => Instr::Ecall,
+        ast::EBREAK(()) => Instr::Ebreak,
+        ast::SFENCE_VMA((rs1, rs2)) => Instr::Sfencevma {
+            rs1: Register::from(rs1.bits as usize),
+            rs2: Register::from(rs2.bits as usize),
+        },
+        ast::HFENCE_VVMA((rs1, rs2)) => Instr::Hfencevvma {
+            rs1: Register::from(rs1.bits as usize),
+            rs2: Register::from(rs2.bits as usize),
+        },
+        ast::HFENCE_GVMA((rs1, rs2)) => Instr::Hfencegvma {
+            rs1: Register::from(rs1.bits as usize),
+            rs2: Register::from(rs2.bits as usize),
+        },
+        ast::CSR((csrreg, rs1, rd, is_immediate, op)) => {
+            let csr_register: Csr = decode_csr_register(csrreg);
+
+            let rs1_miralis = Register::from(rs1.bits() as usize);
+            let rd_miralis = Register::from(rd.bits() as usize);
+
+            match (op, is_immediate) {
+                (csrop::CSRRW, false) => Instr::Csrrw {
+                    csr: csr_register,
+                    rd: rd_miralis,
+                    rs1: rs1_miralis,
+                },
+                (csrop::CSRRC, false) => Instr::Csrrc {
+                    csr: csr_register,
+                    rd: rd_miralis,
+                    rs1: rs1_miralis,
+                },
+                (csrop::CSRRS, false) => Instr::Csrrs {
+                    csr: csr_register,
+                    rd: rd_miralis,
+                    rs1: rs1_miralis,
+                },
+                (csrop::CSRRW, true) => Instr::Csrrwi {
+                    csr: csr_register,
+                    rd: rd_miralis,
+                    uimm: rs1.bits as usize,
+                },
+                (csrop::CSRRC, true) => Instr::Csrrci {
+                    csr: csr_register,
+                    rd: rd_miralis,
+                    uimm: rs1.bits as usize,
+                },
+                (csrop::CSRRS, true) => Instr::Csrrsi {
+                    csr: csr_register,
+                    rd: rd_miralis,
+                    uimm: rs1.bits as usize,
+                },
+            }
+        }
+        _ => Instr::Unknown,
+    }
 }

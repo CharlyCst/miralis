@@ -280,6 +280,20 @@ impl<const N: usize> BitVector<N> {
         self.bits as usize
     }
 
+    pub const fn sign_extend_32(self) -> isize {
+        let pos = {
+            let mut position = 0;
+            let mut n = self.bits;
+            while n > 1 {
+                n >>= 1; // Right shift by 1
+                position += 1;
+            }
+            position
+        };
+
+        (self.bits | !((1 << pos) - 1)) as isize
+    }
+
     pub fn set_vector_entry(&mut self, idx: usize, value: bool) {
         assert!(idx < N, "Out of bounds array check");
         if value {
