@@ -47,7 +47,6 @@ pub enum Instr {
         uimm: usize,
     },
     Mret,
-    Sret,
     /// Fence instructions
     Sfencevma {
         rs1: Register,
@@ -120,7 +119,6 @@ impl MiralisContext {
                 0b000000000001 => Instr::Ebreak,
                 0b000100000101 => Instr::Wfi,
                 0b001100000010 => Instr::Mret,
-                0b000100000010 => Instr::Sret,
                 _ if func7 == 0b0001001 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
@@ -884,8 +882,6 @@ mod tests {
         assert_eq!(mctx.decode_illegal_instruction(0x00100073), Instr::Ebreak);
         // MRET: Return from machine mode.
         assert_eq!(mctx.decode_illegal_instruction(0x30200073), Instr::Mret);
-        // SRET: Return from supervisor mode.
-        assert_eq!(mctx.decode_illegal_instruction(0x10200073), Instr::Sret);
         // WFI: Wait for interrupt.
         assert_eq!(mctx.decode_illegal_instruction(0x10500073), Instr::Wfi);
         // SFENCE.VMA: Supervisor memory-management fence.
