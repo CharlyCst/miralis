@@ -193,7 +193,7 @@ impl ProtectPayloadPolicy {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
         }
 
-        let instr = mctx.decode(u64::from_le_bytes(instr) as usize);
+        let instr = mctx.decode_load_store(u64::from_le_bytes(instr) as usize);
 
         match instr {
             Instr::Load {
