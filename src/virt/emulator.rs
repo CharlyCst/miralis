@@ -358,7 +358,13 @@ impl VirtContext {
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                let instr = mctx.decode(instr);
+
+                // Illegal instruction can have two causes:
+                // - privileged (system) instructions
+                // - Vector/floating points while they are disabled
+                // For now we only decode system instructions, but we should handle floating
+                // points/vector in the future.
+                let instr = mctx.decode_system(instr);
                 logger::trace!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
@@ -371,7 +377,7 @@ impl VirtContext {
                     device::find_matching_device(self.trap_info.mtval, mctx.devices)
                 {
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode(instr);
+                    let instr = mctx.decode_load_store(instr);
                     logger::trace!(
                         "Accessed devices: {} | With instr: {:?}",
                         device.name,
@@ -381,7 +387,7 @@ impl VirtContext {
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
                     // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode(instr);
+                    let instr = mctx.decode_load_store(instr);
                     logger::trace!(
                         "Access fault {:x?} with a virtual address: 0x{:x}",
                         &instr,
