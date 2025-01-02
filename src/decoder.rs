@@ -92,16 +92,78 @@ enum Opcode {
 }
 
 impl MiralisContext {
-    /// Decode a raw RISC-V instruction.
+    /// Decodes a raw read / write RISC-V instruction.
     ///
     /// NOTE: for now this function  only support 32 bits instructions.
-    pub fn decode(&self, raw: usize) -> Instr {
+    pub fn decode_read_write(&self, raw: usize) -> Instr {
         let opcode = self.decode_opcode(raw);
         match opcode {
-            Opcode::System => self.decode_system(raw),
             Opcode::Load => self.decode_load(raw),
             Opcode::Store => self.decode_store(raw),
             Opcode::Compressed => self.decode_c_reg_based(raw),
+            _ => Instr::Unknown,
+        }
+    }
+
+    /// Decodes the illegal instructions in userspace
+    ///
+    /// NOTE: for now this function  only support 32 bits instructions.
+    pub fn decode_illegal_instruction(&self, raw: usize) -> Instr {
+        let rd = (raw >> 7) & 0b11111;
+        let func3 = (raw >> 12) & 0b111;
+        let rs1 = (raw >> 15) & 0b11111;
+        let imm = (raw >> 20) & 0b111111111111;
+        let func7 = (raw >> 25) & 0b1111111;
+        if func3 == 0b000 {
+            return match imm {
+                0b000000000000 => Instr::Ecall,
+                0b000000000001 => Instr::Ebreak,
+                0b000100000101 => Instr::Wfi,
+                0b001100000010 => Instr::Mret,
+                0b000100000010 => Instr::Sret,
+                _ if func7 == 0b0001001 => {
+                    let rs1 = Register::from(rs1);
+                    let rs2 = (raw >> 20) & 0b11111;
+                    let rs2 = Register::from(rs2);
+                    return Instr::Sfencevma { rs1, rs2 };
+                }
+                _ if func7 == 0b0010001 => {
+                    let rs1 = Register::from(rs1);
+                    let rs2 = (raw >> 20) & 0b11111;
+                    let rs2 = Register::from(rs2);
+                    return Instr::Hfencevvma { rs1, rs2 };
+                }
+                _ if func7 == 0b0110001 => {
+                    let rs1 = Register::from(rs1);
+                    let rs2 = (raw >> 20) & 0b11111;
+                    let rs2 = Register::from(rs2);
+                    return Instr::Hfencegvma { rs1, rs2 };
+                }
+                _ => Instr::Unknown,
+            };
+        }
+
+        let csr = self.decode_csr(imm);
+        let rd = Register::from(rd);
+        match func3 {
+            0b001 => Instr::Csrrw {
+                csr,
+                rd,
+                rs1: Register::from(rs1),
+            },
+            0b010 => Instr::Csrrs {
+                csr,
+                rd,
+                rs1: Register::from(rs1),
+            },
+            0b011 => Instr::Csrrc {
+                csr,
+                rd,
+                rs1: Register::from(rs1),
+            },
+            0b101 => Instr::Csrrwi { csr, rd, uimm: rs1 },
+            0b110 => Instr::Csrrsi { csr, rd, uimm: rs1 },
+            0b111 => Instr::Csrrci { csr, rd, uimm: rs1 },
             _ => Instr::Unknown,
         }
     }
@@ -312,67 +374,6 @@ impl MiralisContext {
             _ => Instr::Unknown,
         }
     }
-
-    fn decode_system(&self, raw: usize) -> Instr {
-        let rd = (raw >> 7) & 0b11111;
-        let func3 = (raw >> 12) & 0b111;
-        let rs1 = (raw >> 15) & 0b11111;
-        let imm = (raw >> 20) & 0b111111111111;
-        let func7 = (raw >> 25) & 0b1111111;
-        if func3 == 0b000 {
-            return match imm {
-                0b000000000000 => Instr::Ecall,
-                0b000000000001 => Instr::Ebreak,
-                0b000100000101 => Instr::Wfi,
-                0b001100000010 => Instr::Mret,
-                0b000100000010 => Instr::Sret,
-                _ if func7 == 0b0001001 => {
-                    let rs1 = Register::from(rs1);
-                    let rs2 = (raw >> 20) & 0b11111;
-                    let rs2 = Register::from(rs2);
-                    return Instr::Sfencevma { rs1, rs2 };
-                }
-                _ if func7 == 0b0010001 => {
-                    let rs1 = Register::from(rs1);
-                    let rs2 = (raw >> 20) & 0b11111;
-                    let rs2 = Register::from(rs2);
-                    return Instr::Hfencevvma { rs1, rs2 };
-                }
-                _ if func7 == 0b0110001 => {
-                    let rs1 = Register::from(rs1);
-                    let rs2 = (raw >> 20) & 0b11111;
-                    let rs2 = Register::from(rs2);
-                    return Instr::Hfencegvma { rs1, rs2 };
-                }
-                _ => Instr::Unknown,
-            };
-        }
-
-        let csr = self.decode_csr(imm);
-        let rd = Register::from(rd);
-        match func3 {
-            0b001 => Instr::Csrrw {
-                csr,
-                rd,
-                rs1: Register::from(rs1),
-            },
-            0b010 => Instr::Csrrs {
-                csr,
-                rd,
-                rs1: Register::from(rs1),
-            },
-            0b011 => Instr::Csrrc {
-                csr,
-                rd,
-                rs1: Register::from(rs1),
-            },
-            0b101 => Instr::Csrrwi { csr, rd, uimm: rs1 },
-            0b110 => Instr::Csrrsi { csr, rd, uimm: rs1 },
-            0b111 => Instr::Csrrci { csr, rd, uimm: rs1 },
-            _ => Instr::Unknown,
-        }
-    }
-
     pub fn decode_csr(&self, csr: usize) -> Csr {
         match csr {
             0x300 => Csr::Mstatus,
@@ -878,25 +879,25 @@ mod tests {
     fn system_instructions() {
         let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x100000, 0x2000);
         // ECALL: Environment call.
-        assert_eq!(mctx.decode(0x00000073), Instr::Ecall);
+        assert_eq!(mctx.decode_illegal_instruction(0x00000073), Instr::Ecall);
         // EBREAK: Environment break.
-        assert_eq!(mctx.decode(0x00100073), Instr::Ebreak);
+        assert_eq!(mctx.decode_illegal_instruction(0x00100073), Instr::Ebreak);
         // MRET: Return from machine mode.
-        assert_eq!(mctx.decode(0x30200073), Instr::Mret);
+        assert_eq!(mctx.decode_illegal_instruction(0x30200073), Instr::Mret);
         // SRET: Return from supervisor mode.
-        assert_eq!(mctx.decode(0x10200073), Instr::Sret);
+        assert_eq!(mctx.decode_illegal_instruction(0x10200073), Instr::Sret);
         // WFI: Wait for interrupt.
-        assert_eq!(mctx.decode(0x10500073), Instr::Wfi);
+        assert_eq!(mctx.decode_illegal_instruction(0x10500073), Instr::Wfi);
         // SFENCE.VMA: Supervisor memory-management fence.
         assert_eq!(
-            mctx.decode(0x12000073),
+            mctx.decode_illegal_instruction(0x12000073),
             Instr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X0
             }
         );
         assert_eq!(
-            mctx.decode(0x13300073),
+            mctx.decode_illegal_instruction(0x13300073),
             Instr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X19
@@ -910,7 +911,7 @@ mod tests {
 
         // CSRRW: Atomic Read/Write CSR.
         assert_eq!(
-            mctx.decode(0x30001073),
+            mctx.decode_illegal_instruction(0x30001073),
             Instr::Csrrw {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -920,7 +921,7 @@ mod tests {
 
         // CSRRS: Atomic Read and Set Bits in CSR.
         assert_eq!(
-            mctx.decode(0x30002073),
+            mctx.decode_illegal_instruction(0x30002073),
             Instr::Csrrs {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -930,7 +931,7 @@ mod tests {
 
         // CSRRC: Atomic Read and Clear Bits in CSR.
         assert_eq!(
-            mctx.decode(0x30003073),
+            mctx.decode_illegal_instruction(0x30003073),
             Instr::Csrrc {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -940,7 +941,7 @@ mod tests {
 
         // CSRRWI: Atomic Read/Write CSR Immediate.
         assert_eq!(
-            mctx.decode(0x30005073),
+            mctx.decode_illegal_instruction(0x30005073),
             Instr::Csrrwi {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -950,7 +951,7 @@ mod tests {
 
         // CSRRSI: Atomic Read and Set Bits in CSR Immediate.
         assert_eq!(
-            mctx.decode(0x30006073),
+            mctx.decode_illegal_instruction(0x30006073),
             Instr::Csrrsi {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -960,7 +961,7 @@ mod tests {
 
         // CSRRCI: Atomic Read and Clear Bits in CSR Immediate.s
         assert_eq!(
-            mctx.decode(0x30007073),
+            mctx.decode_illegal_instruction(0x30007073),
             Instr::Csrrci {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
@@ -974,7 +975,7 @@ mod tests {
         let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x10000, 0x2000);
 
         assert_eq!(
-            mctx.decode(0xff87b703),
+            mctx.decode_read_write(0xff87b703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -986,7 +987,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xfee7bc23),
+            mctx.decode_read_write(0xfee7bc23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -997,7 +998,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xff87a703),
+            mctx.decode_read_write(0xff87a703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1009,7 +1010,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xfee7ac23),
+            mctx.decode_read_write(0xfee7ac23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -1020,7 +1021,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xff879703),
+            mctx.decode_read_write(0xff879703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1032,7 +1033,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xfee79c23),
+            mctx.decode_read_write(0xfee79c23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -1043,7 +1044,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xff878703),
+            mctx.decode_read_write(0xff878703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1055,7 +1056,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xfee78c23),
+            mctx.decode_read_write(0xfee78c23),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -1074,7 +1075,7 @@ mod tests {
         // This helps to keep compressed and uncompressed instructions handlers more homogenous in other modules.
 
         assert_eq!(
-            mctx.decode(0xffffe798),
+            mctx.decode_read_write(0xffffe798),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -1085,7 +1086,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xffff6798),
+            mctx.decode_read_write(0xffff6798),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1097,7 +1098,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xffff4798),
+            mctx.decode_read_write(0xffff4798),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1109,7 +1110,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xffffc798),
+            mctx.decode_read_write(0xffffc798),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
@@ -1120,7 +1121,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xff87e703),
+            mctx.decode_read_write(0xff87e703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1132,7 +1133,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xff87d703),
+            mctx.decode_read_write(0xff87d703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1144,7 +1145,7 @@ mod tests {
         );
 
         assert_eq!(
-            mctx.decode(0xff87c703),
+            mctx.decode_read_write(0xff87c703),
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
@@ -1201,7 +1202,7 @@ mod tests {
 
         for tuple in registers_to_test.iter() {
             assert_eq!(
-                mctx.decode(tuple.0),
+                mctx.decode_illegal_instruction(tuple.0),
                 Instr::Csrrw {
                     csr: Csr::Mstatus,
                     rd: tuple.1,
@@ -1257,7 +1258,7 @@ mod tests {
 
         for tuple in registers_to_test.iter() {
             assert_eq!(
-                mctx.decode(tuple.0),
+                mctx.decode_illegal_instruction(tuple.0),
                 Instr::Csrrw {
                     csr: Csr::Mstatus,
                     rd: Register::X0,

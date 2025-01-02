@@ -358,7 +358,7 @@ impl VirtContext {
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                let instr = mctx.decode(instr);
+                let instr = mctx.decode_illegal_instruction(instr);
                 logger::trace!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
@@ -371,7 +371,7 @@ impl VirtContext {
                     device::find_matching_device(self.trap_info.mtval, mctx.devices)
                 {
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode(instr);
+                    let instr = mctx.decode_read_write(instr);
                     logger::trace!(
                         "Accessed devices: {} | With instr: {:?}",
                         device.name,
@@ -381,7 +381,7 @@ impl VirtContext {
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
                     // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode(instr);
+                    let instr = mctx.decode_read_write(instr);
                     logger::trace!(
                         "Access fault {:x?} with a virtual address: 0x{:x}",
                         &instr,
