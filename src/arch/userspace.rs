@@ -10,6 +10,7 @@ use spin::{Mutex, MutexGuard};
 use super::{mie, mstatus, Architecture, Csr, ExtensionsCapability, Mode};
 use crate::arch::HardwareCapability;
 use crate::decoder::Instr;
+use crate::logger;
 use crate::virt::VirtContext;
 
 pub static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
@@ -40,7 +41,7 @@ impl Architecture for HostArch {
     }
 
     fn wfi() {
-        log::debug!("Userspace wfi");
+        logger::debug!("Userspace wfi");
     }
 
     unsafe fn write_pmpaddr(idx: usize, value: usize) {
@@ -57,15 +58,15 @@ impl Architecture for HostArch {
     }
 
     unsafe fn sfencevma(_vaddr: Option<usize>, _asid: Option<usize>) {
-        log::debug!("Userspace sfencevma");
+        logger::debug!("Userspace sfencevma");
     }
 
     unsafe fn hfencegvma(_: Option<usize>, _: Option<usize>) {
-        log::debug!("Userspace hfencegvma")
+        logger::debug!("Userspace hfencegvma")
     }
 
     unsafe fn hfencevvma(_: Option<usize>, _: Option<usize>) {
-        log::debug!("Userspace hfencevvma")
+        logger::debug!("Userspace hfencevvma")
     }
 
     unsafe fn detect_hardware() -> HardwareCapability {

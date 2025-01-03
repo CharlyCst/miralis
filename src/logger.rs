@@ -177,6 +177,7 @@ macro_rules! trace {
 /// This macro call is guaranteed to be optimized-out at compile time if the corresponding log
 /// level is not enabled. Therefore it is free even in the critical path, whereas the [log::debug]
 /// macro might not be (it performs run-time checks).
+#[macro_export]
 macro_rules! debug {
     ($($args:tt)*) => {
         if logger::debug_enabled!() {

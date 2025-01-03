@@ -8,10 +8,10 @@
 
 use spin::Mutex;
 
-use crate::debug;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::plic::PlicDriver;
 use crate::virt::VirtContext;
+use crate::{debug, logger};
 
 // —————————————————————————————— Virtual PLIC —————————————————————————————— //
 
@@ -32,7 +32,7 @@ impl DeviceAccess for VirtPlic {
         r_width: Width,
         _ctx: &mut VirtContext,
     ) -> Result<usize, &'static str> {
-        log::trace!("read PLIC at offset 0x{:x}", offset);
+        logger::trace!("read PLIC at offset 0x{:x}", offset);
         let plic = self.driver.lock();
 
         // TODO: for now we don't virtualize the PLIC, but simply implement a pass-through
@@ -72,12 +72,12 @@ impl DeviceAccess for VirtPlic {
         // Log some information, for debugging purpose
         match offset {
             0x000000..0x001000 => {
-                log::trace!("Setting interrupt {} to priority 0x{:x}", offset / 4, value)
+                logger::trace!("Setting interrupt {} to priority 0x{:x}", offset / 4, value)
             }
             0x002000..0x200000 => {
                 let context = (offset - 0x002000) / 0x80;
                 let source_group = ((offset - 0x002000) % 0x80) * 8;
-                log::trace!(
+                logger::trace!(
                     "Setting enable bits for sources {}-{} to 0x{:x} on context {}",
                     source_group,
                     source_group + 31,
@@ -88,16 +88,16 @@ impl DeviceAccess for VirtPlic {
             0x200000..0x400000 => {
                 let context = (offset - 0x200000) % 0x1000;
                 match offset % 0x1000 {
-                    0 => log::trace!(
+                    0 => logger::trace!(
                         "Set priority threshold for context {} to 0x{:x}",
                         context,
                         value
                     ),
-                    4 => log::trace!("Complete interrupt {} on context {}", value, context),
-                    _ => log::trace!("Write to reserved area at offset 0x{:x}", offset),
+                    4 => logger::trace!("Complete interrupt {} on context {}", value, context),
+                    _ => logger::trace!("Write to reserved area at offset 0x{:x}", offset),
                 }
             }
-            _ => log::debug!("Writting to unknon PLIC region at offset 0x{:x}", offset),
+            _ => logger::debug!("Writting to unknon PLIC region at offset 0x{:x}", offset),
         }
         let plic = self.driver.lock();
 
