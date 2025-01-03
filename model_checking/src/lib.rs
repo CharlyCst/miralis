@@ -19,6 +19,7 @@ use crate::adapters::{
 #[macro_use]
 mod symbolic;
 mod adapters;
+mod execute;
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
@@ -458,4 +459,34 @@ pub fn verify_decoder() {
             "decoders are not equivalent"
         );
     }
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn formally_verify_emulation_privileged_instructions() {
+    let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // Generate instruction to decode and emulate
+    let mut instr: usize = any!(u32) as usize;
+
+    // For the moment, we verify the behavior only for MRET and WFI
+    instr = match instr {
+        // MRET
+        0b00110000001000000000000001110011 => 0b00110000001000000000000001110011,
+        // WFI
+        _ => 0b00110000001000000000000001110011,
+    };
+
+    // Emulate instruction in Miralis
+    ctx.emulate_illegal_instruction(&mut mctx, instr);
+
+    // Execute value in sail
+    execute::execute_ast(&mut sail_ctx, instr);
+
+    // Check the equivalence
+    assert_eq!(
+        ctx,
+        sail_to_miralis(sail_ctx),
+        "emulation of privileged instructions isn't equivalent"
+    );
 }
