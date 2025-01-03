@@ -14,6 +14,7 @@ use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Regist
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::decoder::Instr;
 use crate::host::MiralisContext;
+use crate::logger;
 use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::*;
@@ -167,7 +168,7 @@ impl ProtectPayloadPolicy {
             MCause::EcallFromSMode
                 if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
             {
-                log::debug!("Ignoring console ecall to the debug_console_extension");
+                logger::debug!("Ignoring console ecall to the debug_console_extension");
                 // Explicitly tell the payload this feature is not available
                 ctx.set(Register::X10, SBI_ERR_DENIED);
                 ctx.pc += 4;

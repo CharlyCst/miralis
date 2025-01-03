@@ -1,6 +1,7 @@
 //! RISC-V instruction decoder
 use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
+use crate::logger;
 
 /// A RISC-V instruction.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -847,7 +848,7 @@ impl MiralisContext {
             }
 
             _ => {
-                log::debug!("Unknown CSR: 0x{:x}", csr);
+                logger::debug!("Unknown CSR: 0x{:x}", csr);
                 Csr::Unknown
             }
         }
