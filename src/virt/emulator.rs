@@ -163,6 +163,39 @@ impl VirtContext {
         }
     }
 
+    /// Handle a PMP fault due to a load or store instruction.
+    ///
+    /// When Miralis gets an access fault there might be three causes:
+    /// - An emulated MMIO access, that is a device is being accessed.
+    /// - A load/store with MPRV set to 1
+    /// - A normal access fault, which should be forwarded.
+    fn handle_pmp_fault(&mut self, mctx: &mut MiralisContext, instr: Instr) {
+        if let Some(device) = device::find_matching_device(self.trap_info.mtval, mctx.devices) {
+            logger::trace!(
+                "Accessed devices: {} | With instr: {:?}",
+                device.name,
+                instr
+            );
+            self.handle_device_access_fault(&instr, device);
+        } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
+            // TODO: make sure virtual address does not get around PMP protection
+            logger::trace!(
+                "Access fault {:x?} with a virtual address: 0x{:x}",
+                &instr,
+                self.trap_info.mtval
+            );
+            unsafe {
+                Arch::handle_virtual_load_store(instr, self);
+            }
+        } else {
+            logger::trace!(
+                "No matching device found for address: {:x}",
+                self.trap_info.mtval
+            );
+            self.emulate_jump_trap_handler();
+        }
+    }
+
     /// Check if an interrupt should be injected in virtual M-mode, and perform the injection if
     /// any.
     ///
@@ -360,49 +393,26 @@ impl VirtContext {
                 let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
 
                 // Illegal instruction can have two causes:
-                // - privileged (system) instructions
+                // - privileged (system) instructions excepts ebreak and ecall
                 // - Vector/floating points while they are disabled
                 // For now we only decode system instructions, but we should handle floating
                 // points/vector in the future.
-                let instr = mctx.decode_system(instr);
+                let instr = mctx.decode_illegal_instruction(instr);
                 logger::trace!("Faulting instruction: {:?}", instr);
                 self.emulate_privileged_instr(&instr, mctx);
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
-            MCause::StoreAccessFault | MCause::LoadAccessFault => {
-                // PMP faults
-                if let Some(device) =
-                    device::find_matching_device(self.trap_info.mtval, mctx.devices)
-                {
-                    let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode_load_store(instr);
-                    logger::trace!(
-                        "Accessed devices: {} | With instr: {:?}",
-                        device.name,
-                        instr
-                    );
-                    self.handle_device_access_fault(&instr, device);
-                } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
-                    // TODO: make sure virtual address does not get around PMP protection
-                    let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode_load_store(instr);
-                    logger::trace!(
-                        "Access fault {:x?} with a virtual address: 0x{:x}",
-                        &instr,
-                        self.trap_info.mtval
-                    );
-                    unsafe {
-                        Arch::handle_virtual_load_store(instr, self);
-                    }
-                } else {
-                    logger::trace!(
-                        "No matching device found for address: {:x}",
-                        self.trap_info.mtval
-                    );
-                    self.emulate_jump_trap_handler();
-                }
+            MCause::StoreAccessFault => {
+                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
+                let instr = mctx.decode_store(instr);
+                self.handle_pmp_fault(mctx, instr);
+            }
+            MCause::LoadAccessFault => {
+                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
+                let instr = mctx.decode_load(instr);
+                self.handle_pmp_fault(mctx, instr);
             }
             MCause::InstrAccessFault => {
                 logger::trace!("Instruction access fault: {:x?}", self.trap_info);
