@@ -6037,6 +6037,26 @@ pub fn execute_WFI(sail_ctx: &mut SailVirtCtx) -> Retired {
     }
 }
 
+pub fn execute_SFENCE_VMA(sail_ctx: &mut SailVirtCtx, rs1: regidx, rs2: regidx) -> Retired {
+    Retired::RETIRE_SUCCESS
+}
+
+pub fn execute_HFENCE_VVMA(
+    sail_ctx: &mut SailVirtCtx,
+    rs1: BitVector<5>,
+    rs2: BitVector<5>,
+) -> Retired {
+    Retired::RETIRE_SUCCESS
+}
+
+pub fn execute_HFENCE_GVMA(
+    sail_ctx: &mut SailVirtCtx,
+    rs1: BitVector<5>,
+    rs2: BitVector<5>,
+) -> Retired {
+    Retired::RETIRE_SUCCESS
+}
+
 pub fn execute_CSR(
     sail_ctx: &mut SailVirtCtx,
     csr: csreg,
