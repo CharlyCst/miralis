@@ -29,6 +29,39 @@ pub enum ExitResult {
     Donne,
 }
 
+macro_rules! handle_pmp_fault {
+    ($decoder:ident, $handler:ident, $self:expr, $mctx:expr) => {
+        if let Some(device) = device::find_matching_device($self.trap_info.mtval, $mctx.devices) {
+            let instr = unsafe { get_raw_faulting_instr(&$self.trap_info) };
+            let instr = $mctx.$decoder(instr);
+            logger::trace!(
+                "Accessed devices: {} | With instr: {:?}",
+                device.name,
+                instr
+            );
+            $self.$handler(device, &instr);
+        } else if ($self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
+            // TODO: make sure virtual address does not get around PMP protection
+            let instr = unsafe { get_raw_faulting_instr(&$self.trap_info) };
+            let instr = $mctx.$decoder(instr);
+            logger::trace!(
+                "Access fault {:x?} with a virtual address: 0x{:x}",
+                &instr,
+                $self.trap_info.mtval
+            );
+            unsafe {
+                Arch::handle_virtual_load_store(instr, $self);
+            }
+        } else {
+            logger::trace!(
+                "No matching device found for address: {:x}",
+                $self.trap_info.mtval
+            );
+            $self.emulate_jump_trap_handler();
+        }
+    };
+}
+
 impl VirtContext {
     fn emulate_privileged_instr(&mut self, instr: &Instr, mctx: &mut MiralisContext) {
         match instr {
@@ -152,14 +185,6 @@ impl VirtContext {
                 }
             }
             _ => panic!("Not a store instruction in a store handler"),
-        }
-    }
-
-    pub fn handle_device_access_fault(&mut self, instr: &Instr, device: &VirtDevice) {
-        match instr {
-            Instr::Load { .. } => self.handle_load(device, instr),
-            Instr::Store { .. } => self.handle_store(device, instr),
-            _ => todo!("Instruction not yet implemented: {:?}", instr),
         }
     }
 
@@ -365,39 +390,8 @@ impl VirtContext {
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
             }
-            MCause::StoreAccessFault | MCause::LoadAccessFault => {
-                // PMP faults
-                if let Some(device) =
-                    device::find_matching_device(self.trap_info.mtval, mctx.devices)
-                {
-                    let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode_read_write(instr);
-                    logger::trace!(
-                        "Accessed devices: {} | With instr: {:?}",
-                        device.name,
-                        instr
-                    );
-                    self.handle_device_access_fault(&instr, device);
-                } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
-                    // TODO: make sure virtual address does not get around PMP protection
-                    let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode_read_write(instr);
-                    logger::trace!(
-                        "Access fault {:x?} with a virtual address: 0x{:x}",
-                        &instr,
-                        self.trap_info.mtval
-                    );
-                    unsafe {
-                        Arch::handle_virtual_load_store(instr, self);
-                    }
-                } else {
-                    logger::trace!(
-                        "No matching device found for address: {:x}",
-                        self.trap_info.mtval
-                    );
-                    self.emulate_jump_trap_handler();
-                }
-            }
+            MCause::StoreAccessFault => handle_pmp_fault!(decode_write, handle_store, self, mctx),
+            MCause::LoadAccessFault => handle_pmp_fault!(decode_read, handle_load, self, mctx),
             MCause::InstrAccessFault => {
                 logger::trace!("Instruction access fault: {:x?}", self.trap_info);
                 self.emulate_jump_trap_handler();

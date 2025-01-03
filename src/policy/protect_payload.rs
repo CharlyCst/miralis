@@ -160,9 +160,8 @@ impl ProtectPayloadPolicy {
     fn check_trap(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) -> PolicyHookResult {
         let cause = ctx.trap_info.get_cause();
         match cause {
-            MCause::LoadAddrMisaligned | MCause::StoreAddrMisaligned => {
-                self.handle_misaligned_op(ctx, mctx)
-            }
+            MCause::LoadAddrMisaligned => self.emulate_misaligned_read(ctx, mctx),
+            MCause::StoreAddrMisaligned => self.emulate_misaligned_write(ctx, mctx),
             // TODO: In the future, we want to have a more elaborate way of handling this kind of calls with a bounce buffer for example....
             // In the meantime, we must explicitly disable this feature to run Ubuntu with the protect payload policy
             MCause::EcallFromSMode
@@ -179,7 +178,7 @@ impl ProtectPayloadPolicy {
         }
     }
 
-    fn handle_misaligned_op(
+    fn emulate_misaligned_read(
         &mut self,
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
@@ -193,47 +192,75 @@ impl ProtectPayloadPolicy {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
         }
 
-        let instr = mctx.decode_read_write(u64::from_le_bytes(instr) as usize);
+        let instr = mctx.decode_read(u64::from_le_bytes(instr) as usize);
 
         match instr {
             Instr::Load {
                 rd, rs1, imm, len, ..
             } => {
-                assert!(
-                    len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
-                    "Implement support for other than 2,4,8 bytes misalinged accesses"
-                );
-
                 // Build the value
                 let start_addr: *const u8 =
                     ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
 
-                if len.to_bytes() == 8 {
-                    let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-                    unsafe {
-                        self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                    }
+                match len.to_bytes() {
+                    8 => {
+                        let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+                        unsafe {
+                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                        }
 
-                    // Return the value
-                    ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
-                } else if len.to_bytes() == 4 {
-                    let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
-                    unsafe {
-                        self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                        // Return the value
+                        ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
                     }
+                    4 => {
+                        let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
+                        unsafe {
+                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                        }
 
-                    // Return the value
-                    ctx.regs[rd as usize] = u32::from_le_bytes(value_to_read) as usize;
-                } else if len.to_bytes() == 2 {
-                    let mut value_to_read: [u8; 2] = [0, 0];
-                    unsafe {
-                        self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                        // Return the value
+                        ctx.regs[rd as usize] = u32::from_le_bytes(value_to_read) as usize;
                     }
+                    2 => {
+                        let mut value_to_read: [u8; 2] = [0, 0];
+                        unsafe {
+                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                        }
 
-                    // Return the value
-                    ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
+                        // Return the value
+                        ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
+                    }
+                    _ => {
+                        todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", len.to_bytes())
+                    }
                 }
             }
+            _ => {
+                panic!("Must be a load instruction here")
+            }
+        }
+
+        ctx.pc += 4;
+        PolicyHookResult::Overwrite
+    }
+
+    fn emulate_misaligned_write(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) -> PolicyHookResult {
+        let instr_ptr = ctx.trap_info.mepc as *const u8;
+
+        // With compressed instruction extention ("C") instructions can be misaligned.
+        // TODO: add support for 16 bits instructions
+        let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+        unsafe {
+            self.copy_from_previous_mode(instr_ptr, &mut instr);
+        }
+
+        let instr = mctx.decode_write(u64::from_le_bytes(instr) as usize);
+
+        match instr {
             Instr::Store {
                 rs2, rs1, imm, len, ..
             } => {
@@ -246,26 +273,33 @@ impl ProtectPayloadPolicy {
                 let start_addr: *mut u8 =
                     ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *mut u8;
 
-                if len.to_bytes() == 8 {
-                    let val = ctx.regs[rs2 as usize] as u64;
-                    let mut value_to_store: [u8; 8] = val.to_le_bytes();
+                match len.to_bytes() {
+                    8 => {
+                        let val = ctx.regs[rs2 as usize] as u64;
+                        let mut value_to_store: [u8; 8] = val.to_le_bytes();
 
-                    unsafe {
-                        self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                        unsafe {
+                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                        }
                     }
-                } else if len.to_bytes() == 4 {
-                    let val = ctx.regs[rs2 as usize] as u32;
-                    let mut value_to_store: [u8; 4] = val.to_le_bytes();
+                    4 => {
+                        let val = ctx.regs[rs2 as usize] as u32;
+                        let mut value_to_store: [u8; 4] = val.to_le_bytes();
 
-                    unsafe {
-                        self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                        unsafe {
+                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                        }
                     }
-                } else if len.to_bytes() == 2 {
-                    let val = ctx.regs[rs2 as usize] as u16;
-                    let mut value_to_store: [u8; 2] = val.to_le_bytes();
+                    2 => {
+                        let val = ctx.regs[rs2 as usize] as u16;
+                        let mut value_to_store: [u8; 2] = val.to_le_bytes();
 
-                    unsafe {
-                        self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                        unsafe {
+                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                        }
+                    }
+                    _ => {
+                        todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", len.to_bytes())
                     }
                 }
             }
