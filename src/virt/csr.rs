@@ -7,7 +7,7 @@ use super::{VirtContext, VirtCsr};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
-use crate::{debug, MiralisContext, Plat, Platform};
+use crate::{debug, logger, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
 ///
@@ -285,7 +285,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // When vMPRV transitions back to 0, remove the protection.
                 // pMPRV is never set to 1 outside of a virtual access handler.
                 if mprv != previous_mprv {
-                    log::trace!("vMPRV set to {:b}", mprv);
+                    logger::trace!("vMPRV set to {:b}", mprv);
                     if mprv != 0 {
                         pmp.set_tor(0, usize::MAX, pmpcfg::X);
                     } else {

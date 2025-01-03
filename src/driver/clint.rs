@@ -8,6 +8,7 @@ use core::ptr;
 
 use crate::arch::{Arch, Architecture, Csr, Width};
 use crate::config::{self, PLATFORM_NB_HARTS};
+use crate::logger;
 
 pub const MSIP_OFFSET: usize = 0x0;
 pub const MTIMECMP_OFFSET: usize = 0x4000;
@@ -47,7 +48,7 @@ impl ClintDriver {
         // SAFETY: We derive a valid memory address assuming the base points to a valid CLINT
         // device.
         let time = unsafe { ptr::read_volatile(pointer as *const usize) };
-        log::trace!("MTIME value: 0x{:x}", time);
+        logger::trace!("MTIME value: 0x{:x}", time);
 
         time
     }
@@ -59,7 +60,7 @@ impl ClintDriver {
         // SAFETY: We derive a valid memory address assuming the base points to a valid CLINT
         // device. Moreover, we take `self` with &mut reference to enforce aliasing rules.
         unsafe { ptr::write_volatile(pointer as *mut usize, time) };
-        log::trace!("MTIME value written: 0x{:x}", time);
+        logger::trace!("MTIME value written: 0x{:x}", time);
     }
 
     ///  Read the value of the machine timer compare (mtimecmp) for a specific hart
@@ -77,7 +78,7 @@ impl ClintDriver {
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MTIMECMP area of the CLINT.
         let deadline = unsafe { ptr::read_volatile(pointer as *const usize) };
-        log::trace!("MTIMECMP value: 0x{:x}", deadline);
+        logger::trace!("MTIMECMP value: 0x{:x}", deadline);
         Ok(deadline)
     }
 
@@ -97,7 +98,7 @@ impl ClintDriver {
         // the read is contained within the MTIMECMP area of the CLINT. Moreover, we take `self`
         // with a &mut reference to enforce aliasing rules.
         unsafe { ptr::write_volatile(pointer as *mut usize, deadline) };
-        log::trace!("MTIMECMP value written: 0x{:x}", deadline);
+        logger::trace!("MTIMECMP value written: 0x{:x}", deadline);
         Ok(())
     }
 
@@ -116,7 +117,7 @@ impl ClintDriver {
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
         // the read is contained within the MSIP area of the CLINT.
         let msip = unsafe { ptr::read_volatile((pointer) as *const u32) };
-        log::trace!("MSIP value: 0x{:x}", msip);
+        logger::trace!("MSIP value: 0x{:x}", msip);
         if (msip >> 1) != 0 {
             log::warn!("Upper 31 bits of MSIP value are not zero!");
         }
@@ -140,7 +141,7 @@ impl ClintDriver {
         // the read is contained within the MSIP area of the CLINT. Moreover, we take `self`
         // with a &mut reference to enforce aliasing rules.
         unsafe { ptr::write_volatile((pointer) as *mut u32, msip_value) };
-        log::trace!("MSIP value written: 0x{:x} for hart {hart}", msip_value);
+        logger::trace!("MSIP value written: 0x{:x} for hart {hart}", msip_value);
         Ok(())
     }
 

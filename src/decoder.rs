@@ -1,6 +1,7 @@
 //! RISC-V instruction decoder
 use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
+use crate::logger;
 
 const OPCODE_MASK: usize = 0b1111111;
 
@@ -857,7 +858,7 @@ impl MiralisContext {
             }
 
             _ => {
-                log::debug!("Unknown CSR: 0x{:x}", csr);
+                logger::debug!("Unknown CSR: 0x{:x}", csr);
                 Csr::Unknown
             }
         }

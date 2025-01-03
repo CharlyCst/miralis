@@ -15,7 +15,7 @@ use crate::arch::{
 use crate::host::MiralisContext;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::*;
-use crate::{RegisterContextGetter, VirtContext};
+use crate::{logger, RegisterContextGetter, VirtContext};
 
 /// Keystone parameters
 ///
@@ -240,7 +240,7 @@ impl KeystonePolicy {
     }
 
     fn create_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Create enclave");
+        logger::debug!("Keystone: Create enclave");
         #[repr(C)]
         struct CreateArgs {
             epm_paddr: usize, // Enclave region
@@ -299,7 +299,7 @@ impl KeystonePolicy {
     }
 
     fn run_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Run enclave");
+        logger::debug!("Keystone: Run enclave");
 
         let eid = ctx.get(Register::X10);
         if eid >= ENCL_MAX || self.enclaves[eid].state != EnclaveState::Fresh {
@@ -311,7 +311,7 @@ impl KeystonePolicy {
     }
 
     fn destroy_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Destroy enclave");
+        logger::debug!("Keystone: Destroy enclave");
         let eid = ctx.get(Register::X10);
         if eid >= ENCL_MAX
             || self.enclaves[eid].state == EnclaveState::Running
@@ -335,7 +335,7 @@ impl KeystonePolicy {
     }
 
     fn resume_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Resume enclave");
+        logger::debug!("Keystone: Resume enclave");
 
         let eid = ctx.get(Register::X10);
         if eid >= ENCL_MAX || self.enclaves[eid].state != EnclaveState::Stopped {
@@ -347,14 +347,14 @@ impl KeystonePolicy {
     }
 
     fn random(&mut self, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Random");
+        logger::debug!("Keystone: Random");
         ctx.set(Register::X11, self.nonce);
         self.nonce += 1;
         ReturnCode::Success
     }
 
     fn stop_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Stop enclave");
+        logger::debug!("Keystone: Stop enclave");
         let stop_reason = match MCause::new(ctx.trap_info.mcause) {
             MCause::MachineTimerInt | MCause::MachineSoftInt => StoppedReason::Interrupt,
             _ => StoppedReason::from(ctx.get(Register::X10)),
@@ -371,7 +371,7 @@ impl KeystonePolicy {
     }
 
     fn exit_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
-        log::debug!("Keystone: Exit enclave");
+        logger::debug!("Keystone: Exit enclave");
         let enclave = self.get_active_enclave(ctx).unwrap();
         let exit_code = ctx.get(Register::X10);
         Self::context_switch_to_host(mctx, ctx, enclave);
