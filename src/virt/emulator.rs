@@ -398,9 +398,7 @@ impl VirtContext {
                 // - Vector/floating points while they are disabled
                 // For now we only decode system instructions, but we should handle floating
                 // points/vector in the future.
-                let instr = mctx.decode_illegal_instruction(instr);
-                logger::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_privileged_instr(&instr, mctx);
+                self.emulate_illegal_instruction(mctx, instr)
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
@@ -550,6 +548,12 @@ impl VirtContext {
 
         self.pc += 4;
         ExitResult::Continue
+    }
+
+    pub fn emulate_illegal_instruction(&mut self, mctx: &mut MiralisContext, raw_instr: usize) {
+        let instr = mctx.decode_illegal_instruction(raw_instr);
+        logger::trace!("Faulting instruction: {:?}", instr);
+        self.emulate_privileged_instr(&instr, mctx);
     }
 }
 
