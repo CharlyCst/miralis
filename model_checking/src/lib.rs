@@ -1,13 +1,13 @@
 use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::userspace::return_userspace_ctx;
-use miralis::arch::{mie, write_pmp};
+use miralis::arch::{mie, write_pmp, Register};
 use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_decoder::encdec_backwards;
 use sail_model::{
-    execute_MRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType,
-    ExceptionType, Privilege,
+    execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_WFI,
+    pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType, Privilege,
 };
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
@@ -71,6 +71,71 @@ fn generate_csr_register() -> u64 {
     }
 
     return csr;
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn fences() {
+    {
+        let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+        let rs1 = any!(usize) & 0b11111;
+        let rs2 = any!(usize) & 0b11111;
+
+        ctx.emulate_sfence_vma(&mut mctx, &Register::from(rs1), &Register::from(rs2));
+
+        execute_SFENCE_VMA(
+            &mut sail_ctx,
+            BitVector::new(rs1 as u64),
+            BitVector::new(rs2 as u64),
+        );
+
+        assert_eq!(
+            ctx,
+            adapters::sail_to_miralis(sail_ctx),
+            "sfence-vma instruction emulation is not correct"
+        );
+    }
+    {
+        let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+        let rs1 = any!(usize) & 0b11111;
+        let rs2 = any!(usize) & 0b11111;
+
+        ctx.emulate_hfence_vvma(&mut mctx, &Register::from(rs1), &Register::from(rs2));
+
+        execute_HFENCE_VVMA(
+            &mut sail_ctx,
+            BitVector::new(rs1 as u64),
+            BitVector::new(rs2 as u64),
+        );
+
+        assert_eq!(
+            ctx,
+            adapters::sail_to_miralis(sail_ctx),
+            "hfence-vvma instruction emulation is not correct"
+        );
+    }
+    {
+        let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+        let rs1 = any!(usize) & 0b11111;
+        let rs2 = any!(usize) & 0b11111;
+
+        ctx.emulate_hfence_gvma(&mut mctx, &Register::from(rs1), &Register::from(rs2));
+
+        execute_HFENCE_GVMA(
+            &mut sail_ctx,
+            BitVector::new(rs1 as u64),
+            BitVector::new(rs2 as u64),
+        );
+
+        assert_eq!(
+            ctx,
+            adapters::sail_to_miralis(sail_ctx),
+            "hfence-gvma instruction emulation is not correct"
+        );
+    }
 }
 
 #[cfg_attr(kani, kani::proof)]
