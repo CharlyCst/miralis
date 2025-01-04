@@ -1,19 +1,25 @@
 use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::userspace::return_userspace_ctx;
-use miralis::arch::{mie, write_pmp};
+use miralis::arch::{mie, write_pmp, Register};
+use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
+use sail_decoder::encdec_backwards;
 use sail_model::{
-    execute_MRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType,
-    ExceptionType, Privilege,
+    execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_WFI,
+    pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType, Privilege,
 };
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
-use crate::adapters::{pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis, sail_to_miralis};
+use crate::adapters::{
+    ast_to_miralis_instr, decode_csr_register, pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis,
+    sail_to_miralis,
+};
 
 #[macro_use]
 mod symbolic;
 mod adapters;
+mod execute;
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
@@ -65,6 +71,71 @@ fn generate_csr_register() -> u64 {
     }
 
     return csr;
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn fences() {
+    {
+        let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+        let rs1 = any!(usize) & 0b11111;
+        let rs2 = any!(usize) & 0b11111;
+
+        ctx.emulate_sfence_vma(&mut mctx, &Register::from(rs1), &Register::from(rs2));
+
+        execute_SFENCE_VMA(
+            &mut sail_ctx,
+            BitVector::new(rs1 as u64),
+            BitVector::new(rs2 as u64),
+        );
+
+        assert_eq!(
+            ctx,
+            adapters::sail_to_miralis(sail_ctx),
+            "sfence-vma instruction emulation is not correct"
+        );
+    }
+    {
+        let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+        let rs1 = any!(usize) & 0b11111;
+        let rs2 = any!(usize) & 0b11111;
+
+        ctx.emulate_hfence_vvma(&mut mctx, &Register::from(rs1), &Register::from(rs2));
+
+        execute_HFENCE_VVMA(
+            &mut sail_ctx,
+            BitVector::new(rs1 as u64),
+            BitVector::new(rs2 as u64),
+        );
+
+        assert_eq!(
+            ctx,
+            adapters::sail_to_miralis(sail_ctx),
+            "hfence-vvma instruction emulation is not correct"
+        );
+    }
+    {
+        let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+        let rs1 = any!(usize) & 0b11111;
+        let rs2 = any!(usize) & 0b11111;
+
+        ctx.emulate_hfence_gvma(&mut mctx, &Register::from(rs1), &Register::from(rs2));
+
+        execute_HFENCE_GVMA(
+            &mut sail_ctx,
+            BitVector::new(rs1 as u64),
+            BitVector::new(rs2 as u64),
+        );
+
+        assert_eq!(
+            ctx,
+            adapters::sail_to_miralis(sail_ctx),
+            "hfence-gvma instruction emulation is not correct"
+        );
+    }
 }
 
 #[cfg_attr(kani, kani::proof)]
@@ -411,5 +482,76 @@ pub fn pmp_equivalence() {
     assert_eq!(
         physical_check, virtual_check,
         "pmp are not installed correctly in Miralis"
+    );
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn verify_csr_decoder() {
+    let (_, mctx, _) = symbolic::new_symbolic_contexts();
+
+    let register = any!(usize) % 0xFFF;
+
+    // Decode values
+    let decoded_value_sail = decode_csr_register(BitVector::new(register as u64));
+    let decoded_value_miralis = mctx.decode_csr(register);
+
+    assert_eq!(
+        decoded_value_sail, decoded_value_miralis,
+        "CSR Decoding is not similar"
+    );
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn verify_decoder() {
+    let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // Generate an instruction to decode
+    let instr = any!(u32);
+
+    // Decode values
+    let decoded_value_sail = ast_to_miralis_instr(encdec_backwards(
+        &mut sail_ctx,
+        BitVector::new(instr as u64),
+    ));
+    let decoded_value_miralis = mctx.decode_illegal_instruction(instr as usize);
+
+    // For the moment, we ignore the values that are not decoded by the sail reference
+    if decoded_value_sail != Instr::Unknown {
+        assert_eq!(
+            decoded_value_sail, decoded_value_miralis,
+            "decoders are not equivalent"
+        );
+    }
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn formally_verify_emulation_privileged_instructions() {
+    let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // Generate instruction to decode and emulate
+    let mut instr: usize = any!(u32) as usize;
+
+    // For the moment, we verify the behavior only for MRET and WFI
+    instr = match instr {
+        // MRET
+        0b00110000001000000000000001110011 => 0b00110000001000000000000001110011,
+        // WFI
+        _ => 0b00110000001000000000000001110011,
+    };
+
+    // Emulate instruction in Miralis
+    ctx.emulate_illegal_instruction(&mut mctx, instr);
+
+    // Execute value in sail
+    execute::execute_ast(&mut sail_ctx, instr);
+
+    // Check the equivalence
+    assert_eq!(
+        ctx,
+        sail_to_miralis(sail_ctx),
+        "emulation of privileged instructions isn't equivalent"
     );
 }

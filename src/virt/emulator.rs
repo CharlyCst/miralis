@@ -358,9 +358,7 @@ impl VirtContext {
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                let instr = mctx.decode(instr);
-                logger::trace!("Faulting instruction: {:?}", instr);
-                self.emulate_privileged_instr(&instr, mctx);
+                self.emulate_illegal_instruction(mctx, instr)
             }
             MCause::Breakpoint => {
                 self.emulate_jump_trap_handler();
@@ -371,7 +369,7 @@ impl VirtContext {
                     device::find_matching_device(self.trap_info.mtval, mctx.devices)
                 {
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode(instr);
+                    let instr = mctx.decode_read_write(instr);
                     logger::trace!(
                         "Accessed devices: {} | With instr: {:?}",
                         device.name,
@@ -381,7 +379,7 @@ impl VirtContext {
                 } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
                     // TODO: make sure virtual address does not get around PMP protection
                     let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                    let instr = mctx.decode(instr);
+                    let instr = mctx.decode_read_write(instr);
                     logger::trace!(
                         "Access fault {:x?} with a virtual address: 0x{:x}",
                         &instr,
@@ -530,6 +528,12 @@ impl VirtContext {
         }
 
         ExitResult::Continue
+    }
+
+    pub fn emulate_illegal_instruction(&mut self, mctx: &mut MiralisContext, raw_instr: usize) {
+        let instr = mctx.decode_illegal_instruction(raw_instr);
+        logger::trace!("Faulting instruction: {:?}", instr);
+        self.emulate_privileged_instr(&instr, mctx);
     }
 }
 
