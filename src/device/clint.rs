@@ -4,12 +4,12 @@ use spin::Mutex;
 
 use crate::arch::mie;
 use crate::config::PLATFORM_NB_HARTS;
-use crate::debug;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
     ClintDriver, MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
 };
 use crate::virt::VirtContext;
+use crate::{debug, logger};
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //
 
@@ -67,7 +67,7 @@ impl VirtClint {
     }
 
     pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
-        log::trace!("Read from CLINT at offset 0x{:x}", offset);
+        logger::trace!("Read from CLINT at offset 0x{:x}", offset);
         self.validate_offset(offset)?;
         let driver = self.driver.lock();
 
@@ -92,7 +92,7 @@ impl VirtClint {
         value: usize,
         ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
-        log::trace!(
+        logger::trace!(
             "Write to CLINT at offset 0x{:x} with a value 0x{:x}",
             offset,
             value

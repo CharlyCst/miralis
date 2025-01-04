@@ -13,8 +13,8 @@ use crate::arch::pmp::pmplayout::{
     POLICY_OFFSET, POLICY_SIZE, VIRTUAL_PMP_OFFSET,
 };
 use crate::arch::Arch;
-use crate::config;
 use crate::platform::{Plat, Platform};
+use crate::{config, logger};
 
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
 
@@ -223,7 +223,7 @@ impl PmpGroup {
 
             // Protect virtual devices
             for (i, device) in virtual_devices.iter().enumerate() {
-                log::debug!(
+                logger::debug!(
                     "PMP protect device {} at [0x{:x}, 0x{:x}]",
                     device.name,
                     device.start_addr,
