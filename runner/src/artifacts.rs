@@ -15,7 +15,8 @@ use crate::config::{Config, Profiles};
 use crate::path::{
     extract_file_extension, extract_file_name, get_artifact_manifest_path, get_artifacts_path,
     get_target_config_path, get_target_dir_path, get_workspace_path, is_file_present, is_older,
-    remove_file_extention, GZ_COMPRESSION, IMG_EXTENSION, XZ_COMPRESSION, ZST_COMPRESSION,
+    remove_file_extention, EXT2_EXTENSION, GZ_COMPRESSION, IMG_EXTENSION, XZ_COMPRESSION,
+    ZST_COMPRESSION,
 };
 use crate::ArtifactArgs;
 
@@ -548,7 +549,7 @@ pub fn download_disk_image(name: &str, url_path: &str) {
                 image_extractor = Command::new("gunzip");
                 image_extractor.arg("-d").arg(file_name);
             }
-            IMG_EXTENSION => {
+            IMG_EXTENSION | EXT2_EXTENSION => {
                 image_extractor = Command::new("echo");
                 image_extractor.arg("provided image is uncompressed, no extraction is required");
                 filename_without_extension = file_name.parse().unwrap();

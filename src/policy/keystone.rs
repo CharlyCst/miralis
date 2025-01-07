@@ -2,7 +2,6 @@
 //!
 //! This policy module enforces the Keystone policies, i.e. it enables the creation of user-level
 //! enclaves by leveraging PMP for memory isolation.
-//! TODO: Remove allow(unused)
 
 use core::cmp::PartialEq;
 use core::ptr;
@@ -355,7 +354,7 @@ impl KeystonePolicy {
 
     fn stop_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         logger::debug!("Keystone: Stop enclave");
-        let stop_reason = match MCause::new(ctx.trap_info.mcause) {
+        let stop_reason = match ctx.trap_info.get_cause() {
             MCause::MachineTimerInt | MCause::MachineSoftInt => StoppedReason::Interrupt,
             _ => StoppedReason::from(ctx.get(Register::X10)),
         };
@@ -407,10 +406,8 @@ impl PolicyModule for KeystonePolicy {
         let eid = ctx.get(Register::X17);
         let fid = ctx.get(Register::X16);
         let enclave_running = self.get_active_enclave(ctx).is_some();
-        let mcause = MCause::new(ctx.trap_info.mcause);
-        let is_interrupt = matches!(mcause, MCause::MachineSoftInt | MCause::MachineTimerInt);
 
-        if eid != sbi::KEYSTONE_EID && (!enclave_running || !is_interrupt) {
+        if eid != sbi::KEYSTONE_EID {
             return PolicyHookResult::Ignore;
         }
 
