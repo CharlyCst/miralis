@@ -7,6 +7,10 @@ color = true
 [vcpu]
 max_pmp = 0
 
+[qemu]
+memory = "8G"
+disk = "keystone"
+
 [platform]
 nb_harts = 1
 
@@ -16,6 +20,7 @@ start_address = 0x80000000
 stack_size = 0x8000
 
 [target.firmware]
+name = "keystone"
 profile = "dev"
 start_address = 0x80200000
 stack_size = 0x8000

@@ -55,6 +55,16 @@ description = "An OpenSBI image with a Linux kernel payload that locks itself in
 url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.5/opensbi-linux-kernel-lock.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
+[bin.keystone]
+description = "An OpenSBI Image with a Linux kernel payload that supports the Keystone driver"
+url = "https://github.com/FredKhayat/miralis-artifact-keystone/releases/download/v1.4.0/opensbi-linux-keystone.bin"
+repo = "https://github.com/FredKhayat/miralis-artifact-keystone"
+
+[disk.keystone]
+description = "A .ext2 filesystem image that contains the Keystone driver and some example keystone enclaves"
+url = "https://github.com/FredKhayat/miralis-artifact-keystone/releases/download/v1.4.0/keystone.ext2"
+repo = "https://github.com/FredKhayat/miralis-artifact-keystone"
+
 [disk.ubuntu]
 description = "A RISC-V Ubuntu image that can be used with Miralis"
 url = "https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.1-preinstalled-server-riscv64.img.xz"

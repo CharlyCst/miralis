@@ -13,6 +13,7 @@ pub const XZ_COMPRESSION: &str = "xz";
 pub const ZST_COMPRESSION: &str = "zst";
 pub const GZ_COMPRESSION: &str = "gz";
 pub const IMG_EXTENSION: &str = "img";
+pub const EXT2_EXTENSION: &str = "ext2";
 
 /// Find the root of the project, indicated by the presence of the root config file.
 ///
