@@ -347,7 +347,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={firmware_address}");
             build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.env("IS_TARGET_FIRMWARE", "true");
-            build_cmd.envs(cfg.benchmark.build_envs());
+            build_cmd.envs(cfg.build_envs());
             build_cmd.arg("--package").arg(firmware);
 
             if firmware == "miralis" {
@@ -365,7 +365,7 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
             let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={payload_address}");
             build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.env("IS_TARGET_FIRMWARE", "false");
-            build_cmd.envs(cfg.benchmark.build_envs());
+            build_cmd.envs(cfg.build_envs());
             build_cmd.arg("--package").arg(payload_name);
         }
     }

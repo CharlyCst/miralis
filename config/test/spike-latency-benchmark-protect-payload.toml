@@ -1,0 +1,23 @@
+# A simple configuration to run on the Spike platform
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 8
+delegate_perf_counters=true
+
+[platform]
+name = "spike"
+
+[target.miralis]
+# Build profile for Miralis (dev profile is set by default)
+profile = "release"
+
+[target.firmware]
+# Build profile for the firmware (dev profile is set by default)
+profile = "release"
+
+[policy]
+name = "protect_payload"
