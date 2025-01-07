@@ -49,8 +49,11 @@ file="cycles.txt"
 cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark.toml > $file
 
 # Extract the number after "firmware cost:"
-firmware_cost=$(grep -i "Firmware cost :" "$file"  | sed -E 's/.*Firmware cost : ([0-9]+).*/\1/')
-payload_cost=$(grep -i "Payload cost :" "$file" | sed -E 's/.*Payload cost : ([0-9]+).*/\1/')
+firmware_cost=$(grep -i "Firmware cost default_policy :" "$file"  | sed -E 's/.*Firmware cost default_policy : ([0-9]+).*/\1/')
+payload_cost=$(grep -i "Payload cost default_policy :" "$file" | sed -E 's/.*Payload cost default_policy : ([0-9]+).*/\1/')
+firmware_cost_protect=$(grep -i "Firmware cost protect_payload:" "$file"  | sed -E 's/.*Firmware cost protect_payload : ([0-9]+).*/\1/')
+payload_cost_protect=$(grep -i "Payload cost protect_payload :" "$file" | sed -E 's/.*Payload cost protect_payload : ([0-9]+).*/\1/')
+misaligned_cost_protect=$(grep -i "Misaligned cost protect_payload :" "$file" | sed -E 's/.*Misaligned cost protect_payload : ([0-9]+).*/\1/')
 
 # Check if a number was found
 if [ -n "$firmware_cost" ]; then
@@ -66,17 +69,42 @@ else
     echo "No firmware cost found in the file."
 fi
 
+# Check if a number was found
+if [ -n "$firmware_cost_protect" ]; then
+    echo "Firmware cost: $firmware_cost_protect"
+else
+    echo "No firmware cost found in the file."
+fi
+
+# Check if a number was found
+if [ -n "$payload_cost_protect" ]; then
+    echo "Payload cost: $payload_cost_protect"
+else
+    echo "No firmware cost found in the file."
+fi
+
+# Check if a number was found
+if [ -n "$misaligned_cost_protect" ]; then
+    echo "Payload cost: $misaligned_cost_protect"
+else
+    echo "No firmware cost found in the file."
+fi
+
+
 # ———————————————————————————————— Push stats ———————————————————————————————— #
 
 echo "Commit: $git_commit"
 echo "Current date: $current_date"
 echo "Miralis size: $miralis_size bytes"
 echo "Build time: $build_time"
-echo "Miralis <--> Firmware latency in cycles: " firmware_cost
+echo "Miralis <--> Firmware latency in cycles: " $firmware_cost
 echo "Payload <--> Firmware latency in cycles: " $payload_cost
+echo "[PROTECT PAYLOAD] Miralis <--> Firmware latency in cycles: " $firmware_cost_protect
+echo "[PROTECT PAYLOAD] Payload <--> Firmware latency in cycles: " $payload_cost_protect
+echo "[PROTECT PAYLOAD] Cost of a misaligned emulation: " $misaligned_cost_protect
 
 if [ "$1" = "--commit" ]; then
-    csv_entry="$git_commit, $current_date, $miralis_size, $build_time, $firmware_cost, $payload_cost"
+    csv_entry="$git_commit, $current_date, $miralis_size, $build_time, $firmware_cost, $payload_cost,$firmware_cost_protect,$payload_cost_protect,$misaligned_cost_protect"
     echo $csv_entry >> "$miralis_stats_csv_path"
     echo "Added CSV entry to $miralis_stats_csv_path"
 fi

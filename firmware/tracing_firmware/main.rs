@@ -9,9 +9,14 @@
 
 use core::arch::{asm, global_asm};
 
+use config_helpers::parse_str_or;
 use miralis_abi::{failure, log, setup_binary, success};
 
 setup_binary!(main);
+
+const POLICY_NAME: &str = parse_str_or(option_env!("MIRALIS_POLICY_NAME"), "default_policy");
+
+const PROTECT_PAYLOAD_POLICY: &str = "protect_payload";
 
 fn enable_mcycle_in_smode() {
     unsafe {
@@ -122,6 +127,11 @@ fn operating_system() {
     }
 
     measure(false);
+
+    if POLICY_NAME == PROTECT_PAYLOAD_POLICY {
+        measure_misaligned();
+    }
+
     success();
 }
 
@@ -136,10 +146,25 @@ fn measure(is_firmware: bool) {
     let average_measure = trigger_ctx_switch_to_firmware_batched();
 
     if is_firmware {
-        log::info!("Firmware cost : {}", average_measure);
+        log::info!("Firmware cost {} : {}", POLICY_NAME, average_measure);
     } else {
-        log::info!("Payload cost : {}", average_measure);
+        log::info!("Payload cost {} : {}", POLICY_NAME, average_measure);
     }
+
+    print_statistics(stats);
+}
+
+fn measure_misaligned() {
+    let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
+
+    for i in 0..NB_REPEATS {
+        values[i] = trigger_misaligned_op()
+    }
+
+    let stats = get_statistics(values);
+    let average_measure = trigger_ctx_switch_to_firmware_batched();
+
+    log::info!("Misaligned cost {} : {}", POLICY_NAME, average_measure);
 
     print_statistics(stats);
 }
@@ -172,6 +197,53 @@ fn trigger_ctx_switch_to_firmware_batched() -> usize {
             asm!("csrw mscratch, zero");
         }
 
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) end);
+    }
+
+    (end - begin) as usize / NB_REPEATS
+}
+
+pub fn trigger_misaligned_op() -> usize {
+    let begin: u64;
+    let end: u64;
+
+    let misaligned_address_8_bytes: usize = 0x80600301;
+
+    unsafe {
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) begin);
+        // We trigger a misaligned operation
+        asm!(
+        "ld {r}, 0({addr})",
+        addr = in(reg) misaligned_address_8_bytes,
+        r = out(reg) _,
+        );
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) end);
+    }
+
+    (end - begin) as usize
+}
+
+pub fn trigger_misaligned_op_batched() -> usize {
+    let begin: u64;
+    let end: u64;
+
+    let misaligned_address_8_bytes: usize = 0x80600301;
+
+    unsafe {
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) begin);
+
+        for _ in 0..NB_REPEATS {
+            // We trigger a misaligned operation
+            asm!(
+            "ld {r}, 0({addr})",
+            addr = in(reg) misaligned_address_8_bytes,
+            r = out(reg) _,
+            );
+        }
         // Read the `mcycle` register (assuming 64-bit RISC-V)
         asm!("csrr {}, cycle", out(reg) end);
     }

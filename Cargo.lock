@@ -551,6 +551,7 @@ dependencies = [
 name = "tracing_firmware"
 version = "0.1.0"
 dependencies = [
+ "config_helpers",
  "miralis_abi",
 ]
 
