@@ -1,0 +1,26 @@
+name: Duration formal verification
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  Miralis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 500
+    env:
+      RUSTFLAGS: --deny warnings
+      MIRALIS_RUNNER_STRICT: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # We fetch the whole git tree to be able to run tests on previous commits
+          ref: ${{ github.event.pull_request.head.sha }} # Ignore automatic merge commit
+      - uses: extractions/setup-just@v2 # Install `just`
+      - name: Setup Toolchain
+        run: just install-toolchain
+      - name: DurationVerification
+        shell: bash
+        run: python3 misc/formal_verification_time.py
