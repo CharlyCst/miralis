@@ -4,8 +4,8 @@ use miralis::arch::userspace::return_userspace_ctx;
 use miralis::arch::{mie, write_pmp};
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_model::{
-    execute_MRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType,
-    ExceptionType, Privilege,
+    execute_MRET, execute_SRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR,
+    AccessType, ExceptionType, Privilege,
 };
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
@@ -28,6 +28,22 @@ pub fn mret() {
         ctx,
         adapters::sail_to_miralis(sail_ctx),
         "mret instruction emulation is not correct"
+    );
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn sret() {
+    let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    ctx.emulate_sret(&mut mctx);
+
+    execute_SRET(&mut sail_ctx);
+
+    assert_eq!(
+        ctx,
+        adapters::sail_to_miralis(sail_ctx),
+        "sret instruction emulation is not correct"
     );
 }
 
