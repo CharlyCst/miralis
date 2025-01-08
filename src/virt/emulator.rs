@@ -8,8 +8,8 @@ use crate::arch::mie::{
     MEIE_OFFSET, MSIE_OFFSET, MTIE_OFFSET, SEIE_OFFSET, SSIE_OFFSET, STIE_OFFSET,
 };
 use crate::arch::{
-    get_raw_faulting_instr, mie, misa, mstatus, mtvec, parse_mpp_return_mode, Arch, Architecture,
-    Csr, MCause, Mode, Register,
+    get_raw_faulting_instr, mie, misa, mstatus, mtvec, parse_mpp_return_mode,
+    parse_spp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register,
 };
 use crate::benchmark::{Benchmark, BenchmarkModule};
 use crate::decoder::Instr;
@@ -50,6 +50,7 @@ impl VirtContext {
             Instr::Csrrsi { csr, rd, uimm } => self.emulate_csrrsi(mctx, *csr, *rd, *uimm),
             Instr::Csrrci { csr, rd, uimm } => self.emulate_csrrci(mctx, *csr, *rd, *uimm),
             Instr::Mret => self.emulate_mret(mctx),
+            Instr::Sret => self.emulate_sret(mctx),
             Instr::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
             Instr::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
             Instr::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
@@ -61,8 +62,8 @@ impl VirtContext {
             ),
         }
 
-        // All instructions except MRET increases the pc by 4
-        if *instr != Instr::Mret {
+        // All instructions except MRET and SRET increases the pc by 4
+        if *instr != Instr::Mret && *instr != Instr::Sret {
             self.pc += 4;
         }
     }
@@ -747,6 +748,60 @@ impl VirtContext {
 
         // Jump back to firmware
         self.pc = self.csr.mepc;
+    }
+
+    pub fn emulate_sret(&mut self, mctx: &mut MiralisContext) {
+        match parse_spp_return_mode(self.csr.mstatus) {
+            Mode::S if mctx.hw.extensions.has_s_extension => {
+                log::trace!("sret to s-mode with SPP to {:x}", self.csr.sepc);
+                // Sret is jumping to supervisor mode, the runner is the guest OS
+                self.mode = Mode::S;
+            }
+            Mode::U => {
+                log::trace!("mret to u-mode with SPP");
+                // Sret is jumping to user mode, the runner is the guest OS
+                self.mode = Mode::U;
+            }
+            _ => {
+                panic!(
+                    "SRET is not going to S/U mode: {} with MPP {:x}",
+                    self.csr.mstatus,
+                    (self.csr.mstatus & mstatus::SPP_FILTER) >> mstatus::SPP_OFFSET
+                );
+            }
+        }
+
+        let spie = (self.csr.mstatus & mstatus::SPIE_FILTER) >> mstatus::SPIE_OFFSET;
+
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::SPIE_OFFSET,
+            mstatus::SPIE_FILTER,
+            1,
+        );
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::SIE_OFFSET,
+            mstatus::SIE_FILTER,
+            spie,
+        );
+
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::SPP_OFFSET,
+            mstatus::SPP_FILTER,
+            0b0,
+        );
+
+        VirtCsr::set_csr_field(
+            &mut self.csr.mstatus,
+            mstatus::MPRV_OFFSET,
+            mstatus::MPRV_FILTER,
+            0,
+        );
+
+        // Jump back to firmware
+        self.pc = self.csr.sepc;
     }
 
     pub fn emulate_sfence_vma(
