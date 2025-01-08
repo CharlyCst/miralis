@@ -435,6 +435,9 @@ pub fn bit_to_bool(sail_ctx: &mut SailVirtCtx, b: bool) -> bool {
     match b {
         true => true,
         false => false,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -484,6 +487,9 @@ pub fn get_vlen_pow(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> usize {
         b__9 if { (b__9 == BitVector::<4>::new(0b1001)) } => 14,
         b__10 if { (b__10 == BitVector::<4>::new(0b1010)) } => 15,
         _ => 16,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -576,6 +582,9 @@ pub fn architecture(sail_ctx: &mut SailVirtCtx, a: BitVector<2>) -> Option<Archi
         b__1 if { (b__1 == BitVector::<2>::new(0b10)) } => Some(Architecture::RV64),
         b__2 if { (b__2 == BitVector::<2>::new(0b11)) } => Some(Architecture::RV128),
         _ => None,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -584,6 +593,9 @@ pub fn arch_to_bits(sail_ctx: &mut SailVirtCtx, a: Architecture) -> BitVector<2>
         Architecture::RV32 => BitVector::<2>::new(0b01),
         Architecture::RV64 => BitVector::<2>::new(0b10),
         Architecture::RV128 => BitVector::<2>::new(0b11),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -605,6 +617,9 @@ pub fn privLevel_to_bits(sail_ctx: &mut SailVirtCtx, p: Privilege) -> BitVector<
         Privilege::User => BitVector::<2>::new(0b00),
         Privilege::Supervisor => BitVector::<2>::new(0b01),
         Privilege::Machine => BitVector::<2>::new(0b11),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -622,6 +637,9 @@ pub fn privLevel_of_bits(sail_ctx: &mut SailVirtCtx, p: BitVector<2>) -> Privile
                 bits_str(p)
             ),
         ),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -630,6 +648,9 @@ pub fn privLevel_to_str(sail_ctx: &mut SailVirtCtx, p: Privilege) -> String {
         Privilege::User => String::from("U"),
         Privilege::Supervisor => String::from("S"),
         Privilege::Machine => String::from("M"),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -679,6 +700,9 @@ pub fn interruptType_to_bits(sail_ctx: &mut SailVirtCtx, i: InterruptType) -> Bi
         InterruptType::I_U_External => BitVector::<8>::new(0b00001000),
         InterruptType::I_S_External => BitVector::<8>::new(0b00001001),
         InterruptType::I_M_External => BitVector::<8>::new(0b00001011),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -722,6 +746,9 @@ pub fn exceptionType_to_bits(sail_ctx: &mut SailVirtCtx, e: ExceptionType) -> Bi
         ExceptionType::E_Reserved_14(()) => BitVector::<8>::new(0b00001110),
         ExceptionType::E_SAMO_Page_Fault(()) => BitVector::<8>::new(0b00001111),
         ExceptionType::E_Extension(e) => ext_exc_type_to_bits(sail_ctx, e),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -744,6 +771,9 @@ pub fn num_of_ExceptionType(sail_ctx: &mut SailVirtCtx, e: ExceptionType) -> usi
         ExceptionType::E_Reserved_14(()) => 14,
         ExceptionType::E_SAMO_Page_Fault(()) => 15,
         ExceptionType::E_Extension(e) => num_of_ext_exc_type(sail_ctx, e),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -766,6 +796,9 @@ pub fn exceptionType_to_str(sail_ctx: &mut SailVirtCtx, e: ExceptionType) -> Str
         ExceptionType::E_Reserved_14(()) => String::from("reserved-1"),
         ExceptionType::E_SAMO_Page_Fault(()) => String::from("store/amo-page-fault"),
         ExceptionType::E_Extension(e) => ext_exc_type_to_str(sail_ctx, e),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -781,6 +814,9 @@ pub fn trapVectorMode_of_bits(sail_ctx: &mut SailVirtCtx, m: BitVector<2>) -> Tr
         b__0 if { (b__0 == BitVector::<2>::new(0b00)) } => TrapVectorMode::TV_Direct,
         b__1 if { (b__1 == BitVector::<2>::new(0b01)) } => TrapVectorMode::TV_Vector,
         _ => TrapVectorMode::TV_Reserved,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -798,6 +834,9 @@ pub fn extStatus_to_bits(sail_ctx: &mut SailVirtCtx, e: ExtStatus) -> BitVector<
         ExtStatus::Initial => BitVector::<2>::new(0b01),
         ExtStatus::Clean => BitVector::<2>::new(0b10),
         ExtStatus::Dirty => BitVector::<2>::new(0b11),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -807,6 +846,9 @@ pub fn extStatus_of_bits(sail_ctx: &mut SailVirtCtx, e: BitVector<2>) -> ExtStat
         b__1 if { (b__1 == BitVector::<2>::new(0b01)) } => ExtStatus::Initial,
         b__2 if { (b__2 == BitVector::<2>::new(0b10)) } => ExtStatus::Clean,
         _ => ExtStatus::Dirty,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -835,6 +877,9 @@ pub fn satp64Mode_of_bits(
             Some(SATPMode::Sv48)
         }
         (_, _) => None,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -1200,6 +1245,9 @@ pub fn rX(sail_ctx: &mut SailVirtCtx, r: usize) -> BitVector<64> {
             assert!(false, "Process message");
             __exit()
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     regval_from_reg(sail_ctx, v)
 }
@@ -1245,6 +1293,9 @@ pub fn wX(sail_ctx: &mut SailVirtCtx, r: usize, in_v: BitVector<64>) {
         31 => sail_ctx.x31 = v,
         _ => {
             assert!(false, "Process message")
+        }
+        _ => {
+            panic!("Unreachable code")
         }
     };
     if { (r != 0) } {
@@ -1400,6 +1451,9 @@ pub fn have_privLevel(sail_ctx: &mut SailVirtCtx, _priv_: BitVector<2>) -> bool 
         b__1 if { (b__1 == BitVector::<2>::new(0b01)) } => haveSupMode(sail_ctx, ()),
         b__2 if { (b__2 == BitVector::<2>::new(0b10)) } => false,
         _ => true,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -1499,6 +1553,10 @@ pub fn _update_Mstatus_SUM(sail_ctx: &mut SailVirtCtx, v: Mstatus, x: BitVector<
     BitField {
         bits: update_subrange_bits(v.bits, 18, 18, x),
     }
+}
+
+pub fn _get_Mstatus_TSR(sail_ctx: &mut SailVirtCtx, v: Mstatus) -> BitVector<1> {
+    v.subrange::<22, 23, 1>()
 }
 
 pub fn _get_Mstatus_TVM(sail_ctx: &mut SailVirtCtx, v: Mstatus) -> BitVector<1> {
@@ -1683,6 +1741,9 @@ pub fn cur_Architecture(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> Architectur
         Privilege::Machine => _get_Misa_MXL(sail_ctx, sail_ctx.misa),
         Privilege::Supervisor => get_mstatus_SXL(sail_ctx, sail_ctx.mstatus),
         Privilege::User => get_mstatus_UXL(sail_ctx, sail_ctx.mstatus),
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     match architecture(sail_ctx, a) {
         Some(a) => a,
@@ -1691,6 +1752,9 @@ pub fn cur_Architecture(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> Architectur
             323,
             String::from("Invalid current architecture"),
         ),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -1993,6 +2057,9 @@ pub fn legalize_tvec(sail_ctx: &mut SailVirtCtx, o: Mtvec, v: BitVector<64>) -> 
             let var_2 = _get_Mtvec_Mode(sail_ctx, o);
             _update_Mtvec_Mode(sail_ctx, var_1, var_2)
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -2023,6 +2090,9 @@ pub fn tvec_addr(sail_ctx: &mut SailVirtCtx, m: Mtvec, c: Mcause) -> Option<BitV
             }
         }
         TrapVectorMode::TV_Reserved => None,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -2790,6 +2860,9 @@ pub fn legalize_satp64(
         None => o,
         Some(SATPMode::Sv32) => o,
         Some(_) => s.bits,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -2816,6 +2889,9 @@ pub fn opst_code_forwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: seed_opst) -
         seed_opst::WAIT => BitVector::<2>::new(0b01),
         seed_opst::ES16 => BitVector::<2>::new(0b10),
         seed_opst::DEAD => BitVector::<2>::new(0b11),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -2909,6 +2985,9 @@ pub fn pmpAddrMatchType_of_bits(sail_ctx: &mut SailVirtCtx, bs: BitVector<2>) ->
         b__1 if { (b__1 == BitVector::<2>::new(0b01)) } => PmpAddrMatchType::TOR,
         b__2 if { (b__2 == BitVector::<2>::new(0b10)) } => PmpAddrMatchType::NA4,
         _ => PmpAddrMatchType::NAPOT,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -2918,6 +2997,9 @@ pub fn pmpAddrMatchType_to_bits(sail_ctx: &mut SailVirtCtx, bs: PmpAddrMatchType
         PmpAddrMatchType::TOR => BitVector::<2>::new(0b01),
         PmpAddrMatchType::NA4 => BitVector::<2>::new(0b10),
         PmpAddrMatchType::NAPOT => BitVector::<2>::new(0b11),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3035,6 +3117,9 @@ pub fn pmpReadAddrReg(sail_ctx: &mut SailVirtCtx, n: usize) -> BitVector<64> {
             (addr & !(mask))
         }
         _ => addr,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3170,6 +3255,9 @@ pub fn pmpAddrRange(
             let len = (mask + 1);
             Some((lo, lo.wrapped_add(len)))
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3182,6 +3270,9 @@ pub fn pmpCheckRWX(sail_ctx: &mut SailVirtCtx, ent: Pmpcfg_ent, acc: AccessType)
                 && (_get_Pmpcfg_ent_W(sail_ctx, ent) == BitVector::<1>::new(0b1)))
         }
         AccessType::Execute(()) => (_get_Pmpcfg_ent_X(sail_ctx, ent) == BitVector::<1>::new(0b1)),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3200,6 +3291,9 @@ pub fn pmpCheckPerms(
             }
         }
         _ => pmpCheckRWX(sail_ctx, ent, acc),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3235,6 +3329,9 @@ pub fn pmpMatchAddr(
                 }
             }
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3266,6 +3363,9 @@ pub fn pmpMatchEntry(
                 pmpMatch::PMP_Fail
             }
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3275,6 +3375,9 @@ pub fn accessToFault(sail_ctx: &mut SailVirtCtx, acc: AccessType) -> ExceptionTy
         AccessType::Write(_) => ExceptionType::E_SAMO_Access_Fault(()),
         AccessType::ReadWrite(_) => ExceptionType::E_SAMO_Access_Fault(()),
         AccessType::Execute(()) => ExceptionType::E_Fetch_Access_Fault(()),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3312,6 +3415,9 @@ pub fn pmpCheck<const N: usize>(
                 return Some(accessToFault(sail_ctx, acc));
             }
             pmpMatch::PMP_Continue => (),
+            _ => {
+                panic!("Unreachable code")
+            }
         }
     }
     if { (_priv_ == Privilege::Machine) } {
@@ -3923,6 +4029,9 @@ pub fn prepare_trap_vector(
         Privilege::Machine => sail_ctx.mtvec,
         Privilege::Supervisor => sail_ctx.stvec,
         Privilege::User => sail_ctx.utvec,
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     match tvec_addr(sail_ctx, tvec, cause) {
         Some(epc) => epc,
@@ -3931,6 +4040,9 @@ pub fn prepare_trap_vector(
             29,
             String::from("Invalid tvec mode"),
         ),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3939,6 +4051,9 @@ pub fn get_xret_target(sail_ctx: &mut SailVirtCtx, p: Privilege) -> BitVector<64
         Privilege::Machine => sail_ctx.mepc,
         Privilege::Supervisor => sail_ctx.sepc,
         Privilege::User => sail_ctx.uepc,
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -3952,6 +4067,9 @@ pub fn set_xret_target(
         Privilege::Machine => sail_ctx.mepc = target,
         Privilege::Supervisor => sail_ctx.sepc = target,
         Privilege::User => sail_ctx.uepc = target,
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     target
 }
@@ -4128,6 +4246,9 @@ pub fn csr_name_map_forwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: BitVector
         b__143 if { (b__143 == BitVector::<12>::new(0b110000100001)) } => String::from("vtype"),
         b__144 if { (b__144 == BitVector::<12>::new(0b110000100010)) } => String::from("vlenb"),
         reg => hex_bits_12_forwards(reg),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -4310,6 +4431,9 @@ pub fn is_CSR_defined(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, p: Privile
         }
         b__45 if { (b__45 == BitVector::<12>::new(0b000000010101)) } => haveZkr(sail_ctx, ()),
         _ => ext_is_CSR_defined(sail_ctx, csr, p),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -4376,6 +4500,9 @@ pub fn check_Counteren(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, p: Privil
                 true
             }
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -4394,6 +4521,9 @@ pub fn check_seed_CSR(
             Privilege::Machine => true,
             Privilege::Supervisor => false,
             Privilege::User => false,
+            _ => {
+                panic!("Unreachable code")
+            }
         }
     }
 }
@@ -4562,8 +4692,14 @@ pub fn getPendingSet(
                                 None
                             }
                         }
+                        _ => {
+                            panic!("Unreachable code")
+                        }
                     }
                 }
+            }
+            _ => {
+                panic!("Unreachable code")
             }
         }
     }
@@ -4585,6 +4721,9 @@ pub fn dispatchInterrupt(
                 Some(r)
             }
             None => None,
+            _ => {
+                panic!("Unreachable code")
+            }
         }
     } else {
         match getPendingSet(sail_ctx, _priv_) {
@@ -4595,7 +4734,13 @@ pub fn dispatchInterrupt(
                     let r = (i, p);
                     Some(r)
                 }
+                _ => {
+                    panic!("Unreachable code")
+                }
             },
+            _ => {
+                panic!("Unreachable code")
+            }
         }
     }
 }
@@ -4612,6 +4757,9 @@ pub fn tval(sail_ctx: &mut SailVirtCtx, excinfo: Option<BitVector<64>>) -> BitVe
     match excinfo {
         Some(e) => e,
         None => zero_extend_64(BitVector::<1>::new(0b0)),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -4727,6 +4875,9 @@ pub fn trap_handler(
                             356,
                             String::from("invalid privilege for s-mode trap"),
                         ),
+                        _ => {
+                            panic!("Unreachable code")
+                        }
                     });
             sail_ctx.stval = tval(sail_ctx, info);
             sail_ctx.sepc = pc;
@@ -4774,6 +4925,9 @@ pub fn trap_handler(
                 ()
             };
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.ucause)
+        }
+        _ => {
+            panic!("Unreachable code")
         }
     }
 }
@@ -4981,6 +5135,9 @@ pub fn exception_handler(
             cancel_reservation(());
             (prepare_xret_target(sail_ctx, Privilege::User) & pc_alignment_mask(sail_ctx, ()))
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -5120,6 +5277,8 @@ pub enum ast {
     EBREAK(()),
     WFI(()),
     SFENCE_VMA((regidx, regidx)),
+    HFENCE_VVMA((BitVector<5>, BitVector<5>)),
+    HFENCE_GVMA((BitVector<5>, BitVector<5>)),
     LOADRES((bool, bool, regidx, word_width, regidx)),
     STORECON((bool, bool, regidx, regidx, word_width, regidx)),
     AMO((amoop, bool, bool, regidx, regidx, word_width, regidx)),
@@ -5543,7 +5702,13 @@ pub fn readCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>) -> BitVector<64> 
                 print_output(String::from("unhandled read to CSR "), csr);
                 zero_extend_64(BitVector::<4>::new(0b0000))
             }
+            _ => {
+                panic!("Unreachable code")
+            }
         },
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     if { get_config_print_reg(sail_ctx, ()) } {
         print_reg(format!(
@@ -5761,6 +5926,9 @@ pub fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector
             Some(sail_ctx.vlenb)
         }
         _ => ext_write_CSR(sail_ctx, csr, value),
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     match res {
         Some(v) => {
@@ -5791,6 +5959,9 @@ pub fn writeCSR(sail_ctx: &mut SailVirtCtx, csr: BitVector<12>, value: BitVector
             }
         }
         None => print_output(String::from("unhandled write to CSR "), csr),
+        _ => {
+            panic!("Unreachable code")
+        }
     }
 }
 
@@ -5816,6 +5987,9 @@ pub fn execute_ITYPE(
         iop::RISCV_ANDI => (rs1_val & immext),
         iop::RISCV_ORI => (rs1_val | immext),
         iop::RISCV_XORI => (rs1_val ^ immext),
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     wX_bits(sail_ctx, rd, result);
     Retired::RETIRE_SUCCESS
@@ -5833,6 +6007,38 @@ pub fn execute_MRET(sail_ctx: &mut SailVirtCtx) -> Retired {
             let var_1 = {
                 let var_2 = sail_ctx.cur_privilege;
                 let var_3 = ctl_result::CTL_MRET(());
+                let var_4 = sail_ctx.PC;
+                exception_handler(sail_ctx, var_2, var_3, var_4)
+            };
+            set_next_pc(sail_ctx, var_1)
+        };
+        Retired::RETIRE_SUCCESS
+    }
+}
+
+pub fn execute_SRET(sail_ctx: &mut SailVirtCtx) -> Retired {
+    let sret_illegal: bool = match sail_ctx.cur_privilege {
+        Privilege::User => true,
+        Privilege::Supervisor => {
+            (!(haveSupMode(sail_ctx, ()))
+                || (_get_Mstatus_TSR(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1)))
+        }
+        Privilege::Machine => !(haveSupMode(sail_ctx, ())),
+        _ => {
+            panic!("Unreachable code")
+        }
+    };
+    if { sret_illegal } {
+        handle_illegal(sail_ctx, ());
+        Retired::RETIRE_FAIL
+    } else if { !(ext_check_xret_priv(sail_ctx, Privilege::Supervisor)) } {
+        ext_fail_xret_priv(sail_ctx, ());
+        Retired::RETIRE_FAIL
+    } else {
+        {
+            let var_1 = {
+                let var_2 = sail_ctx.cur_privilege;
+                let var_3 = ctl_result::CTL_SRET(());
                 let var_4 = sail_ctx.PC;
                 exception_handler(sail_ctx, var_2, var_3, var_4)
             };
@@ -5861,7 +6067,30 @@ pub fn execute_WFI(sail_ctx: &mut SailVirtCtx) -> Retired {
             handle_illegal(sail_ctx, ());
             Retired::RETIRE_FAIL
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     }
+}
+
+pub fn execute_SFENCE_VMA(sail_ctx: &mut SailVirtCtx, rs1: regidx, rs2: regidx) -> Retired {
+    Retired::RETIRE_SUCCESS
+}
+
+pub fn execute_HFENCE_VVMA(
+    sail_ctx: &mut SailVirtCtx,
+    rs1: BitVector<5>,
+    rs2: BitVector<5>,
+) -> Retired {
+    Retired::RETIRE_SUCCESS
+}
+
+pub fn execute_HFENCE_GVMA(
+    sail_ctx: &mut SailVirtCtx,
+    rs1: BitVector<5>,
+    rs2: BitVector<5>,
+) -> Retired {
+    Retired::RETIRE_SUCCESS
 }
 
 pub fn execute_CSR(
@@ -5886,6 +6115,9 @@ pub fn execute_CSR(
                 (rs1.as_usize() != 0)
             }
         }
+        _ => {
+            panic!("Unreachable code")
+        }
     };
     if { !(check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
         handle_illegal(sail_ctx, ());
@@ -5900,6 +6132,9 @@ pub fn execute_CSR(
                 csrop::CSRRW => rs1_val,
                 csrop::CSRRS => (csr_val | rs1_val),
                 csrop::CSRRC => (csr_val & !(rs1_val)),
+                _ => {
+                    panic!("Unreachable code")
+                }
             };
             writeCSR(sail_ctx, csr, new_val)
         } else {
@@ -5941,6 +6176,9 @@ pub fn step_interrupts_only(sail_ctx: &mut SailVirtCtx, step_no: usize) -> bool 
                 (Retired::RETIRE_FAIL, false)
             }
             None => (Retired::RETIRE_FAIL, false),
+            _ => {
+                panic!("Unreachable code")
+            }
         };
     stepped
 }
