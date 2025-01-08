@@ -39,6 +39,22 @@ pub fn mret() {
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
+pub fn sret() {
+    let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    ctx.emulate_sret(&mut mctx);
+
+    execute_SRET(&mut sail_ctx);
+
+    assert_eq!(
+        ctx,
+        adapters::sail_to_miralis(sail_ctx),
+        "sret instruction emulation is not correct"
+    );
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
 pub fn wfi() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 

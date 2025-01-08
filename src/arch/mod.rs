@@ -23,7 +23,7 @@ use pmp::{PmpFlush, PmpGroup};
 pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
-use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET};
+use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET, SPP_FILTER, SPP_OFFSET};
 use crate::decoder::Instr;
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
@@ -182,6 +182,14 @@ pub fn parse_mpp_return_mode(mstatus_reg: usize) -> Mode {
         0 => Mode::U,
         1 => Mode::S,
         3 => Mode::M,
+        _ => panic!("Unknown mode!"),
+    }
+}
+
+pub fn parse_spp_return_mode(mstatus_reg: usize) -> Mode {
+    match (mstatus_reg & SPP_FILTER) >> SPP_OFFSET {
+        0 => Mode::U,
+        1 => Mode::S,
         _ => panic!("Unknown mode!"),
     }
 }
