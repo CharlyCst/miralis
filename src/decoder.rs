@@ -7,8 +7,6 @@ const OPCODE_MASK: usize = 0b1111111;
 /// A RISC-V instruction.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instr {
-    Ecall,
-    Ebreak,
     Wfi,
     /// CSR Read/Write
     Csrrw {
@@ -876,10 +874,6 @@ mod tests {
     #[test]
     fn system_instructions() {
         let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x100000, 0x2000);
-        // ECALL: Environment call.
-        assert_eq!(mctx.decode_illegal_instruction(0x00000073), Instr::Ecall);
-        // EBREAK: Environment break.
-        assert_eq!(mctx.decode_illegal_instruction(0x00100073), Instr::Ebreak);
         // MRET: Return from machine mode.
         assert_eq!(mctx.decode_illegal_instruction(0x30200073), Instr::Mret);
         // SRET: Return from supervisor mode.
