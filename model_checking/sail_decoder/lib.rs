@@ -1,3 +1,11 @@
+#![allow(
+    unused,
+    non_snake_case,
+    non_upper_case_globals,
+    non_camel_case_types,
+    bindings_with_variant_name
+)]
+
 use sail_model::{ast, csrop, word_width, SailVirtCtx};
 use sail_prelude::{bitvector_concat, lteq_int, BitVector};
 
