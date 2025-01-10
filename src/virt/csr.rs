@@ -4,6 +4,7 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::{MIP_WRITE_FILTER, SEIE_FILTER, SSIE_FILTER, STIE_FILTER};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
@@ -398,7 +399,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     & ((value & mie::MIE_WRITE_FILTER) | (self.csr.mie & !mie::MIE_WRITE_FILTER))
             }
             Csr::Mip => {
-                let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
+                /*let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
 
                 // If the firmware wants to read the mip register after cleaning vmip.SEIP, and we don't sync
                 // vmip.SEIP with mip.SEIP, it can't know if there is an interrupt signal from the interrupt
@@ -416,7 +417,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         }
                     }
                 }
-                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
+                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);*/
+
+                self.csr.mip = (self.csr.mip & !MIP_WRITE_FILTER) | (value & MIP_WRITE_FILTER);
             }
             Csr::Mtvec => {
                 match value & 0b11 {
@@ -480,6 +483,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
             }
             Csr::Menvcfg => {
+                self.csr.menvcfg = (value & 0b1) | (self.csr.menvcfg & !0b1);
+                return;
                 let mut mask: usize = usize::MAX;
                 if !mctx.hw.extensions.has_sstc_extension {
                     mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
@@ -524,7 +529,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.mepc = value & !0b1 // First bit is always zero
+                if self.get(Csr::Misa) & misa::C != 0 {
+                    self.csr.mepc = value & !0b1
+                } else {
+                    self.csr.mepc = value & !0b11 // First bit is always zero
+                }
             }
             Csr::Mcause => self.csr.mcause = value,
             Csr::Mtval => self.csr.mtval = value,
@@ -540,10 +549,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
             }
             Csr::Sie => {
-                // Clear S bits
-                let mie = self.get(Csr::Mie) & !mie::SIE_FILTER;
-                // Set S bits to new value
-                self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), mctx);
+                if SEIE_FILTER & self.get(Csr::Mideleg) != 0 {
+                    self.csr.mie = (self.csr.mie & !SEIE_FILTER) | (SEIE_FILTER & value);
+                }
+                if STIE_FILTER & self.get(Csr::Mideleg) != 0 {
+                    self.csr.mie = (self.csr.mie & !STIE_FILTER) | (STIE_FILTER & value);
+                }
+                if SSIE_FILTER & self.get(Csr::Mideleg) != 0 {
+                    self.csr.mie = (self.csr.mie & !SSIE_FILTER) | (SSIE_FILTER & value);
+                }
             }
             Csr::Stvec => {
                 match value & 0b11 {

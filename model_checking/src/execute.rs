@@ -7,6 +7,9 @@ pub fn execute_ast(sail_virt_ctx: &mut SailVirtCtx, instr: usize) {
         ast::MRET(_) => {
             sail_model::execute_MRET(sail_virt_ctx);
         }
+        ast::SRET(()) => {
+            sail_model::execute_SRET(sail_virt_ctx);
+        }
         ast::WFI(()) => {
             sail_model::execute_WFI(sail_virt_ctx);
         }
