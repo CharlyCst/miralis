@@ -107,7 +107,7 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.scounteren = any!();
     ctx.csr.senvcfg = any!();
     ctx.csr.sscratch = any!();
-    ctx.csr.sepc = any!();
+    ctx.csr.sepc = any!(usize) & (!0b11);
     ctx.csr.scause = any!();
     ctx.csr.stval = any!();
     ctx.csr.satp = any!();
