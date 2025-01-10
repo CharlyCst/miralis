@@ -5,7 +5,11 @@ use miralis::arch::{mie, write_pmp, Register};
 use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_decoder::encdec_backwards;
-use sail_model::{execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType, Privilege, execute_SRET};
+use sail_model::{
+    execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET,
+    execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType,
+    Privilege,
+};
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
 use crate::adapters::{
@@ -356,9 +360,13 @@ pub fn formally_verify_emulation_privileged_instructions() {
     instr = match instr {
         // MRET
         0b00110000001000000000000001110011 => 0b00110000001000000000000001110011,
+        // SRET
+        0b00010000001000000000000001110011 => 0b00010000001000000000000001110011,
         // WFI
         _ => 0b00110000001000000000000001110011,
     };
+
+
 
     // Emulate instruction in Miralis
     ctx.emulate_illegal_instruction(&mut mctx, instr);

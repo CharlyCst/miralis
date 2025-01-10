@@ -116,8 +116,6 @@ impl MiralisContext {
         let func7 = (raw >> 25) & 0b1111111;
         if func3 == 0b000 {
             return match imm {
-                0b000000000000 => Instr::Ecall,
-                0b000000000001 => Instr::Ebreak,
                 0b000100000101 => Instr::Wfi,
                 0b001100000010 => Instr::Mret,
                 0b000100000010 => Instr::Sret,
