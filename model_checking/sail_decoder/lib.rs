@@ -192,7 +192,7 @@ pub fn encdec_backwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: BitVector<32>)
                 }
             }
             _ => {
-                panic!("Unreachable code")
+                ast::ILLEGAL(BitVector::new(0x0))
             }
 
             _ => {

@@ -447,8 +447,6 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
     match ast_entry {
         ast::MRET(()) => Instr::Mret,
         ast::WFI(()) => Instr::Wfi,
-        ast::ECALL(()) => Instr::Ecall,
-        ast::EBREAK(()) => Instr::Ebreak,
         ast::SFENCE_VMA((rs1, rs2)) => Instr::Sfencevma {
             rs1: Register::from(rs1.bits as usize),
             rs2: Register::from(rs2.bits as usize),

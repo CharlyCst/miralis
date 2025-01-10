@@ -7,7 +7,7 @@ use super::{VirtContext, VirtCsr};
 use crate::arch::mie::{MIP_WRITE_FILTER, SEIE_FILTER, SSIE_FILTER, STIE_FILTER};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
+use crate::arch::{hstatus, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -584,15 +584,23 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.sepc = value & !0b1 // First bit is always zero
+                if self.get(Csr::Misa) & misa::C != 0 {
+                    self.csr.sepc = value & !0b1
+                } else {
+                    self.csr.sepc = value & !0b11 // First bit is always zero
+                }
             }
             Csr::Scause => self.csr.scause = value,
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
+                // TODO: After HotOS, create a PR
+                if self.csr.mideleg & SSIE_FILTER != 0 {
+                    self.csr.mip = (self.csr.mip & !SSIE_FILTER) | (SSIE_FILTER & value);
+                }
                 // Clear S bits
-                let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
+                //let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
                 // Set S bits to new value
-                self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
+                //self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
             }
             Csr::Satp => {
                 let satp_mode = (value >> 60) & 0b1111;
