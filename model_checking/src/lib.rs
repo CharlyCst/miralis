@@ -5,10 +5,7 @@ use miralis::arch::{mie, write_pmp, Register};
 use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_decoder::encdec_backwards;
-use sail_model::{
-    execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_WFI,
-    pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType, Privilege,
-};
+use sail_model::{execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType, Privilege, execute_SRET};
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
 use crate::adapters::{
@@ -178,7 +175,7 @@ pub fn read_csr() {
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn write_csr() {
-    let mut csr_register = generate_csr_register();
+    let csr_register = generate_csr_register();
 
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 

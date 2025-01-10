@@ -485,13 +485,13 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Menvcfg => {
                 self.csr.menvcfg = (value & 0b1) | (self.csr.menvcfg & !0b1);
                 return;
-                let mut mask: usize = usize::MAX;
+                /*let mut mask: usize = usize::MAX;
                 if !mctx.hw.extensions.has_sstc_extension {
                     mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
                 }
 
                 self.csr.menvcfg = value & mask;
-                mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
+                mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;*/
             }
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (), // Read-only

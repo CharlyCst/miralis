@@ -6077,38 +6077,6 @@ pub fn execute_SRET(sail_ctx: &mut SailVirtCtx) -> Retired {
     }
 }
 
-pub fn execute_SRET(sail_ctx: &mut SailVirtCtx) -> Retired {
-    let sret_illegal: bool = match sail_ctx.cur_privilege {
-        Privilege::User => true,
-        Privilege::Supervisor => {
-            (!(haveSupMode(sail_ctx, ()))
-                || (_get_Mstatus_TSR(sail_ctx, sail_ctx.mstatus) == BitVector::<1>::new(0b1)))
-        }
-        Privilege::Machine => !(haveSupMode(sail_ctx, ())),
-        _ => {
-            panic!("Unreachable code")
-        }
-    };
-    if { sret_illegal } {
-        handle_illegal(sail_ctx, ());
-        Retired::RETIRE_FAIL
-    } else if { !(ext_check_xret_priv(sail_ctx, Privilege::Supervisor)) } {
-        ext_fail_xret_priv(sail_ctx, ());
-        Retired::RETIRE_FAIL
-    } else {
-        {
-            let var_1 = {
-                let var_2 = sail_ctx.cur_privilege;
-                let var_3 = ctl_result::CTL_SRET(());
-                let var_4 = sail_ctx.PC;
-                exception_handler(sail_ctx, var_2, var_3, var_4)
-            };
-            set_next_pc(sail_ctx, var_1)
-        };
-        Retired::RETIRE_SUCCESS
-    }
-}
-
 pub fn execute_EBREAK(sail_ctx: &mut SailVirtCtx) -> Retired {
     {
         let var_1 = sail_ctx.PC;

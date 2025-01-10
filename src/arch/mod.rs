@@ -418,8 +418,13 @@ pub mod mie {
     pub const LCOFIE_FILTER: usize = 0b1 << LCOFIE_OFFSET;
 
     /// Mask with all valid interrupt bits
-    pub const ALL_INT: usize =
-        SSIE_FILTER | MSIE_FILTER | STIE_FILTER | MTIE_FILTER | SEIE_FILTER | MEIE_FILTER | LCOFIE_FILTER;
+    pub const ALL_INT: usize = SSIE_FILTER
+        | MSIE_FILTER
+        | STIE_FILTER
+        | MTIE_FILTER
+        | SEIE_FILTER
+        | MEIE_FILTER
+        | LCOFIE_FILTER;
 }
 
 // ———————————————————— Machine Trap-Vector Base-Address ———————————————————— //
