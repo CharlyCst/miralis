@@ -4,7 +4,7 @@ use crate::host::MiralisContext;
 
 /// A RISC-V instruction.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Instr {
+pub enum IllegalInstr {
     Ecall,
     Ebreak,
     Wfi,
@@ -58,54 +58,59 @@ pub enum Instr {
         rs1: Register,
         rs2: Register,
     },
-    /// Load (register-based)
-    Load {
-        rd: Register,
-        rs1: Register,
-        imm: isize,
-        len: Width,
-        is_compressed: bool,
-        is_unsigned: bool,
-    },
-    /// Store (register-based)
-    Store {
-        rs2: Register,
-        rs1: Register,
-        imm: isize,
-        len: Width,
-        is_compressed: bool,
-    },
     Unknown,
 }
+
+/// Load (register-based)
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct LoadInstr {
+    pub rd: Register,
+    pub rs1: Register,
+    pub imm: isize,
+    pub len: Width,
+    pub is_compressed: bool,
+    pub is_unsigned: bool,
+}
+
+/// Store (register-based)
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct StoreInstr {
+    pub rs2: Register,
+    pub rs1: Register,
+    pub imm: isize,
+    pub len: Width,
+    pub is_compressed: bool,
+}
+
 fn extract_last_two_bits(value: usize) -> usize {
     value & 0b11
 }
 
 impl MiralisContext {
     /// Decodes a raw read RISC-V instruction.
-    pub fn decode_read(&self, raw: usize) -> Instr {
+    pub fn decode_read(&self, raw: usize) -> LoadInstr {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_load(raw),
             // Register-based load and store instructions for C set start with 0b00
             0b00 => self.decode_compressed_load(raw),
-            _ => Instr::Unknown,
+            _ => panic!("Unreachable statement"),
         }
     }
 
     /// Decodes a raw write RISC-V instruction.
-    pub fn decode_write(&self, raw: usize) -> Instr {
+    pub fn decode_write(&self, raw: usize) -> StoreInstr {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_store(raw),
             // Register-based load and store instructions for C set start with 0b00
             0b00 => self.decode_compressed_store(raw),
-            _ => Instr::Unknown,
+            _ => panic!("unreachable code"),
         }
     }
 
     /// Decodes a raw illegal instruction
     ///
     /// NOTE: for now this function  only support 32 bits instructions.
-    pub fn decode_illegal_instruction(&self, raw: usize) -> Instr {
+    pub fn decode_illegal_instruction(&self, raw: usize) -> IllegalInstr {
         let rd = (raw >> 7) & 0b11111;
         let func3 = (raw >> 12) & 0b111;
         let rs1 = (raw >> 15) & 0b11111;
@@ -113,58 +118,58 @@ impl MiralisContext {
         let func7 = (raw >> 25) & 0b1111111;
         if func3 == 0b000 {
             return match imm {
-                0b000000000000 => Instr::Ecall,
-                0b000000000001 => Instr::Ebreak,
-                0b000100000101 => Instr::Wfi,
-                0b001100000010 => Instr::Mret,
+                0b000000000000 => IllegalInstr::Ecall,
+                0b000000000001 => IllegalInstr::Ebreak,
+                0b000100000101 => IllegalInstr::Wfi,
+                0b001100000010 => IllegalInstr::Mret,
                 _ if func7 == 0b0001001 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
-                    return Instr::Sfencevma { rs1, rs2 };
+                    return IllegalInstr::Sfencevma { rs1, rs2 };
                 }
                 _ if func7 == 0b0010001 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
-                    return Instr::Hfencevvma { rs1, rs2 };
+                    return IllegalInstr::Hfencevvma { rs1, rs2 };
                 }
                 _ if func7 == 0b0110001 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
-                    return Instr::Hfencegvma { rs1, rs2 };
+                    return IllegalInstr::Hfencegvma { rs1, rs2 };
                 }
-                _ => Instr::Unknown,
+                _ => IllegalInstr::Unknown,
             };
         }
 
         let csr = self.decode_csr(imm);
         let rd = Register::from(rd);
         match func3 {
-            0b001 => Instr::Csrrw {
+            0b001 => IllegalInstr::Csrrw {
                 csr,
                 rd,
                 rs1: Register::from(rs1),
             },
-            0b010 => Instr::Csrrs {
+            0b010 => IllegalInstr::Csrrs {
                 csr,
                 rd,
                 rs1: Register::from(rs1),
             },
-            0b011 => Instr::Csrrc {
+            0b011 => IllegalInstr::Csrrc {
                 csr,
                 rd,
                 rs1: Register::from(rs1),
             },
-            0b101 => Instr::Csrrwi { csr, rd, uimm: rs1 },
-            0b110 => Instr::Csrrsi { csr, rd, uimm: rs1 },
-            0b111 => Instr::Csrrci { csr, rd, uimm: rs1 },
-            _ => Instr::Unknown,
+            0b101 => IllegalInstr::Csrrwi { csr, rd, uimm: rs1 },
+            0b110 => IllegalInstr::Csrrsi { csr, rd, uimm: rs1 },
+            0b111 => IllegalInstr::Csrrci { csr, rd, uimm: rs1 },
+            _ => IllegalInstr::Unknown,
         }
     }
 
-    fn decode_compressed_load(&self, raw: usize) -> Instr {
+    fn decode_compressed_load(&self, raw: usize) -> LoadInstr {
         let func3 = (raw >> 13) & 0b111;
         let rd_rs2 = (raw >> 2) & 0b111;
         let rs1 = (raw >> 7) & 0b111;
@@ -176,7 +181,7 @@ impl MiralisContext {
             0b011 => {
                 let rd = rd_rs2;
                 let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
-                Instr::Load {
+                LoadInstr {
                     rd,
                     rs1,
                     imm: (imm * 8).try_into().unwrap(),
@@ -188,7 +193,7 @@ impl MiralisContext {
             0b010 => {
                 let rd = rd_rs2;
                 let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
-                Instr::Load {
+                LoadInstr {
                     rd,
                     rs1,
                     imm: (imm * 4).try_into().unwrap(),
@@ -197,11 +202,11 @@ impl MiralisContext {
                     is_unsigned: false,
                 }
             }
-            _ => Instr::Unknown,
+            _ => panic!("unreachable statement, something is wrong"),
         }
     }
 
-    fn decode_compressed_store(&self, raw: usize) -> Instr {
+    fn decode_compressed_store(&self, raw: usize) -> StoreInstr {
         let func3 = (raw >> 13) & 0b111;
         let rd_rs2 = (raw >> 2) & 0b111;
         let rs1 = (raw >> 7) & 0b111;
@@ -213,7 +218,7 @@ impl MiralisContext {
             0b111 => {
                 let rs2 = rd_rs2;
                 let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
-                Instr::Store {
+                StoreInstr {
                     rs2,
                     rs1,
                     imm: (imm * 8).try_into().unwrap(),
@@ -224,7 +229,7 @@ impl MiralisContext {
             0b110 => {
                 let rs2 = rd_rs2;
                 let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
-                Instr::Store {
+                StoreInstr {
                     rs2,
                     rs1,
                     imm: (imm * 4).try_into().unwrap(),
@@ -232,7 +237,7 @@ impl MiralisContext {
                     is_compressed: true,
                 }
             }
-            _ => Instr::Unknown,
+            _ => panic!("unreachable code"),
         }
     }
 
@@ -249,7 +254,7 @@ impl MiralisContext {
             value as isize
         }
     }
-    fn decode_load(&self, raw: usize) -> Instr {
+    fn decode_load(&self, raw: usize) -> LoadInstr {
         let func3 = (raw >> 12) & 0b111;
         let rd = (raw >> 7) & 0b11111;
         let rs1 = (raw >> 15) & 0b11111;
@@ -259,7 +264,7 @@ impl MiralisContext {
         let rd = Register::from(rd);
 
         match func3 {
-            0b000 => Instr::Load {
+            0b000 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -267,7 +272,7 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: false,
             },
-            0b001 => Instr::Load {
+            0b001 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -275,7 +280,7 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: false,
             },
-            0b010 => Instr::Load {
+            0b010 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -283,7 +288,7 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: false,
             },
-            0b011 => Instr::Load {
+            0b011 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -291,7 +296,7 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: false,
             },
-            0b100 => Instr::Load {
+            0b100 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -299,7 +304,7 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: true,
             },
-            0b101 => Instr::Load {
+            0b101 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -307,7 +312,7 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: true,
             },
-            0b110 => Instr::Load {
+            0b110 => LoadInstr {
                 rd,
                 rs1,
                 imm,
@@ -315,11 +320,11 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: true,
             },
-            _ => Instr::Unknown,
+            _ => panic!("unreachable code"),
         }
     }
 
-    fn decode_store(&self, raw: usize) -> Instr {
+    fn decode_store(&self, raw: usize) -> StoreInstr {
         let func3 = (raw >> 12) & 0b111;
         let rs1: usize = (raw >> 15) & 0b11111;
         let rs2 = (raw >> 20) & 0b11111;
@@ -333,35 +338,35 @@ impl MiralisContext {
         let rs2 = Register::from(rs2);
 
         match func3 {
-            0b000 => Instr::Store {
+            0b000 => StoreInstr {
                 rs2,
                 rs1,
                 imm,
                 len: Width::from(8),
                 is_compressed: false,
             },
-            0b001 => Instr::Store {
+            0b001 => StoreInstr {
                 rs2,
                 rs1,
                 imm,
                 len: Width::from(16),
                 is_compressed: false,
             },
-            0b010 => Instr::Store {
+            0b010 => StoreInstr {
                 rs2,
                 rs1,
                 imm,
                 len: Width::from(32),
                 is_compressed: false,
             },
-            0b011 => Instr::Store {
+            0b011 => StoreInstr {
                 rs2,
                 rs1,
                 imm,
                 len: Width::from(64),
                 is_compressed: false,
             },
-            _ => Instr::Unknown,
+            _ => panic!("unreachable code"),
         }
     }
     pub fn decode_csr(&self, csr: usize) -> Csr {
@@ -869,24 +874,36 @@ mod tests {
     fn system_instructions() {
         let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x100000, 0x2000);
         // ECALL: Environment call.
-        assert_eq!(mctx.decode_illegal_instruction(0x00000073), Instr::Ecall);
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x00000073),
+            IllegalInstr::Ecall
+        );
         // EBREAK: Environment break.
-        assert_eq!(mctx.decode_illegal_instruction(0x00100073), Instr::Ebreak);
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x00100073),
+            IllegalInstr::Ebreak
+        );
         // MRET: Return from machine mode.
-        assert_eq!(mctx.decode_illegal_instruction(0x30200073), Instr::Mret);
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x30200073),
+            IllegalInstr::Mret
+        );
         // WFI: Wait for interrupt.
-        assert_eq!(mctx.decode_illegal_instruction(0x10500073), Instr::Wfi);
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x10500073),
+            IllegalInstr::Wfi
+        );
         // SFENCE.VMA: Supervisor memory-management fence.
         assert_eq!(
             mctx.decode_illegal_instruction(0x12000073),
-            Instr::Sfencevma {
+            IllegalInstr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X0
             }
         );
         assert_eq!(
             mctx.decode_illegal_instruction(0x13300073),
-            Instr::Sfencevma {
+            IllegalInstr::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X19
             }
@@ -900,7 +917,7 @@ mod tests {
         // CSRRW: Atomic Read/Write CSR.
         assert_eq!(
             mctx.decode_illegal_instruction(0x30001073),
-            Instr::Csrrw {
+            IllegalInstr::Csrrw {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 rs1: Register::X0,
@@ -910,7 +927,7 @@ mod tests {
         // CSRRS: Atomic Read and Set Bits in CSR.
         assert_eq!(
             mctx.decode_illegal_instruction(0x30002073),
-            Instr::Csrrs {
+            IllegalInstr::Csrrs {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 rs1: Register::X0,
@@ -920,7 +937,7 @@ mod tests {
         // CSRRC: Atomic Read and Clear Bits in CSR.
         assert_eq!(
             mctx.decode_illegal_instruction(0x30003073),
-            Instr::Csrrc {
+            IllegalInstr::Csrrc {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 rs1: Register::X0,
@@ -930,7 +947,7 @@ mod tests {
         // CSRRWI: Atomic Read/Write CSR Immediate.
         assert_eq!(
             mctx.decode_illegal_instruction(0x30005073),
-            Instr::Csrrwi {
+            IllegalInstr::Csrrwi {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 uimm: 0x0,
@@ -940,7 +957,7 @@ mod tests {
         // CSRRSI: Atomic Read and Set Bits in CSR Immediate.
         assert_eq!(
             mctx.decode_illegal_instruction(0x30006073),
-            Instr::Csrrsi {
+            IllegalInstr::Csrrsi {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 uimm: 0x0,
@@ -950,7 +967,7 @@ mod tests {
         // CSRRCI: Atomic Read and Clear Bits in CSR Immediate.s
         assert_eq!(
             mctx.decode_illegal_instruction(0x30007073),
-            Instr::Csrrci {
+            IllegalInstr::Csrrci {
                 csr: Csr::Mstatus,
                 rd: Register::X0,
                 uimm: 0x0,
@@ -964,7 +981,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff87b703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -976,7 +993,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_write(0xfee7bc23),
-            Instr::Store {
+            StoreInstr {
                 rs2: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -987,7 +1004,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff87a703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -999,7 +1016,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_write(0xfee7ac23),
-            Instr::Store {
+            StoreInstr {
                 rs2: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1010,7 +1027,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff879703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1022,7 +1039,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_write(0xfee79c23),
-            Instr::Store {
+            StoreInstr {
                 rs2: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1033,7 +1050,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff878703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1045,7 +1062,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_write(0xfee78c23),
-            Instr::Store {
+            StoreInstr {
                 rs2: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1064,7 +1081,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_write(0xffffe798),
-            Instr::Store {
+            StoreInstr {
                 rs2: Register::X14,
                 rs1: Register::X15,
                 imm: 64,
@@ -1075,7 +1092,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xffff6798),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: 64,
@@ -1087,7 +1104,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xffff4798),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: 32,
@@ -1099,7 +1116,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_write(0xffffc798),
-            Instr::Store {
+            StoreInstr {
                 rs2: Register::X14,
                 rs1: Register::X15,
                 imm: 32,
@@ -1110,7 +1127,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff87e703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1122,7 +1139,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff87d703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1134,7 +1151,7 @@ mod tests {
 
         assert_eq!(
             mctx.decode_read(0xff87c703),
-            Instr::Load {
+            LoadInstr {
                 rd: Register::X14,
                 rs1: Register::X15,
                 imm: -8,
@@ -1191,7 +1208,7 @@ mod tests {
         for tuple in registers_to_test.iter() {
             assert_eq!(
                 mctx.decode_illegal_instruction(tuple.0),
-                Instr::Csrrw {
+                IllegalInstr::Csrrw {
                     csr: Csr::Mstatus,
                     rd: tuple.1,
                     rs1: Register::X0,
@@ -1247,7 +1264,7 @@ mod tests {
         for tuple in registers_to_test.iter() {
             assert_eq!(
                 mctx.decode_illegal_instruction(tuple.0),
-                Instr::Csrrw {
+                IllegalInstr::Csrrw {
                     csr: Csr::Mstatus,
                     rd: Register::X0,
                     rs1: tuple.1,

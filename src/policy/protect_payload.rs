@@ -12,7 +12,6 @@ use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::MCause::EcallFromSMode;
 use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register};
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
-use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
@@ -194,49 +193,40 @@ impl ProtectPayloadPolicy {
 
         let instr = mctx.decode_read(u64::from_le_bytes(instr) as usize);
 
-        match instr {
-            Instr::Load {
-                rd, rs1, imm, len, ..
-            } => {
-                // Build the value
-                let start_addr: *const u8 =
-                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
+        // Build the value
+        let start_addr: *const u8 =
+            ((ctx.regs[instr.rs1 as usize] as isize + instr.imm) as usize) as *const u8;
 
-                match len.to_bytes() {
-                    8 => {
-                        let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-                        unsafe {
-                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                        }
-
-                        // Return the value
-                        ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
-                    }
-                    4 => {
-                        let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
-                        unsafe {
-                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                        }
-
-                        // Return the value
-                        ctx.regs[rd as usize] = u32::from_le_bytes(value_to_read) as usize;
-                    }
-                    2 => {
-                        let mut value_to_read: [u8; 2] = [0, 0];
-                        unsafe {
-                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                        }
-
-                        // Return the value
-                        ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
-                    }
-                    _ => {
-                        todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", len.to_bytes())
-                    }
+        match instr.len.to_bytes() {
+            8 => {
+                let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+                unsafe {
+                    self.copy_from_previous_mode(start_addr, &mut value_to_read);
                 }
+
+                // Return the value
+                ctx.regs[instr.rd as usize] = u64::from_le_bytes(value_to_read) as usize;
+            }
+            4 => {
+                let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
+                unsafe {
+                    self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                }
+
+                // Return the value
+                ctx.regs[instr.rd as usize] = u32::from_le_bytes(value_to_read) as usize;
+            }
+            2 => {
+                let mut value_to_read: [u8; 2] = [0, 0];
+                unsafe {
+                    self.copy_from_previous_mode(start_addr, &mut value_to_read);
+                }
+
+                // Return the value
+                ctx.regs[instr.rd as usize] = u16::from_le_bytes(value_to_read) as usize;
             }
             _ => {
-                panic!("Must be a load instruction here")
+                todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", instr.len.to_bytes())
             }
         }
 
@@ -260,51 +250,42 @@ impl ProtectPayloadPolicy {
 
         let instr = mctx.decode_write(u64::from_le_bytes(instr) as usize);
 
-        match instr {
-            Instr::Store {
-                rs2, rs1, imm, len, ..
-            } => {
-                assert!(
-                    len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
-                    "Implement support for other than 2,4,8 bytes misalinged accesses"
-                );
+        assert!(
+            instr.len.to_bytes() == 8 || instr.len.to_bytes() == 4 || instr.len.to_bytes() == 2,
+            "Implement support for other than 2,4,8 bytes misalinged accesses"
+        );
 
-                // Build the value
-                let start_addr: *mut u8 =
-                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *mut u8;
+        // Build the value
+        let start_addr: *mut u8 =
+            ((ctx.regs[instr.rs1 as usize] as isize + instr.imm) as usize) as *mut u8;
 
-                match len.to_bytes() {
-                    8 => {
-                        let val = ctx.regs[rs2 as usize] as u64;
-                        let mut value_to_store: [u8; 8] = val.to_le_bytes();
+        match instr.len.to_bytes() {
+            8 => {
+                let val = ctx.regs[instr.rs2 as usize] as u64;
+                let mut value_to_store: [u8; 8] = val.to_le_bytes();
 
-                        unsafe {
-                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
-                        }
-                    }
-                    4 => {
-                        let val = ctx.regs[rs2 as usize] as u32;
-                        let mut value_to_store: [u8; 4] = val.to_le_bytes();
+                unsafe {
+                    self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                }
+            }
+            4 => {
+                let val = ctx.regs[instr.rs2 as usize] as u32;
+                let mut value_to_store: [u8; 4] = val.to_le_bytes();
 
-                        unsafe {
-                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
-                        }
-                    }
-                    2 => {
-                        let val = ctx.regs[rs2 as usize] as u16;
-                        let mut value_to_store: [u8; 2] = val.to_le_bytes();
+                unsafe {
+                    self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
+                }
+            }
+            2 => {
+                let val = ctx.regs[instr.rs2 as usize] as u16;
+                let mut value_to_store: [u8; 2] = val.to_le_bytes();
 
-                        unsafe {
-                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
-                        }
-                    }
-                    _ => {
-                        todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", len.to_bytes())
-                    }
+                unsafe {
+                    self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
                 }
             }
             _ => {
-                panic!("Must be a load instruction here")
+                todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", instr.len.to_bytes())
             }
         }
 
