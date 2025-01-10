@@ -162,7 +162,7 @@ fn measure_misaligned() {
     }
 
     let stats = get_statistics(values);
-    let average_measure = trigger_ctx_switch_to_firmware_batched();
+    let average_measure = trigger_misaligned_op_batched();
 
     log::info!("Misaligned cost {} : {}", POLICY_NAME, average_measure);
 

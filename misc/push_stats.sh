@@ -52,7 +52,7 @@ cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latenc
 # Extract the number after "firmware cost:"
 firmware_cost=$(grep -i "Firmware cost default_policy :" "$file"  | sed -E 's/.*Firmware cost default_policy : ([0-9]+).*/\1/')
 payload_cost=$(grep -i "Payload cost default_policy :" "$file" | sed -E 's/.*Payload cost default_policy : ([0-9]+).*/\1/')
-firmware_cost_protect=$(grep -i "Firmware cost protect_payload:" "$file"  | sed -E 's/.*Firmware cost protect_payload : ([0-9]+).*/\1/')
+firmware_cost_protect=$(grep -i "Firmware cost protect_payload :" "$file"  | sed -E 's/.*Firmware cost protect_payload : ([0-9]+).*/\1/')
 payload_cost_protect=$(grep -i "Payload cost protect_payload :" "$file" | sed -E 's/.*Payload cost protect_payload : ([0-9]+).*/\1/')
 misaligned_cost_protect=$(grep -i "Misaligned cost protect_payload :" "$file" | sed -E 's/.*Misaligned cost protect_payload : ([0-9]+).*/\1/')
 
