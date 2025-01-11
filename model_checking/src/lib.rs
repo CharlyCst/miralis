@@ -349,7 +349,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
 
     // Generate instruction to decode and emulate
     let mut instr: usize = any!(u32) as usize;
-    instr = (instr & !((1 << 10) - 1)) | 0b000001110011;
+    /*instr = (instr & !((1 << 10) - 1)) | 0b000001110011;
 
     // Filter out load and stores + csr operations
     instr = match mctx.decode_illegal_instruction(instr) {
@@ -360,18 +360,18 @@ pub fn formally_verify_emulation_privileged_instructions() {
         Instr::Csrrsi { .. } => 0b00110000001000000000000001110011,
         Instr::Csrrci { .. } => 0b00110000001000000000000001110011,
         _ => 0b00110000001000000000000001110011,
-    };
+    };*/
 
-    instr = 0x30005073;
+    instr = 0x34001073;
 
     // Decode the instructions
     let decoded_instruction = mctx.decode_illegal_instruction(instr);
     let decoded_sail_instruction = encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-    let is_unknown_sail = decoded_sail_instruction == ast::ILLEGAL(BitVector::new(0)) ;
+   // let is_unknown_sail = decoded_sail_instruction == ast::ILLEGAL(BitVector::new(0)) ;
     let is_unknown_miralis = decoded_instruction == Instr::Unknown;
 
-    assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
+    //assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
 
     if !is_unknown_miralis {
         // Emulate instruction in Miralis

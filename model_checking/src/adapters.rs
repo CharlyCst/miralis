@@ -78,8 +78,44 @@ pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
     sail_ctx.vtype = BitField::new(ctx.csr.vtype as u64);
     sail_ctx.vlenb = BitVector::new(ctx.csr.vlenb as u64);
 
+    // Transfer the general purpose registers
+    sail_ctx.x1 = BitVector::new(ctx.regs[0] as u64);
+    sail_ctx.x2 = BitVector::new(ctx.regs[1] as u64);
+    sail_ctx.x3 = BitVector::new(ctx.regs[2] as u64);
+    sail_ctx.x4 = BitVector::new(ctx.regs[3] as u64);
+    sail_ctx.x5 = BitVector::new(ctx.regs[4] as u64);
+    sail_ctx.x6 = BitVector::new(ctx.regs[5] as u64);
+    sail_ctx.x7 = BitVector::new(ctx.regs[6] as u64);
+    sail_ctx.x8 = BitVector::new(ctx.regs[7] as u64);
+    sail_ctx.x9 = BitVector::new(ctx.regs[8] as u64);
+    sail_ctx.x10 = BitVector::new(ctx.regs[9] as u64);
+    sail_ctx.x11 = BitVector::new(ctx.regs[10] as u64);
+    sail_ctx.x12 = BitVector::new(ctx.regs[11] as u64);
+    sail_ctx.x13 = BitVector::new(ctx.regs[12] as u64);
+    sail_ctx.x14 = BitVector::new(ctx.regs[13] as u64);
+    sail_ctx.x15 = BitVector::new(ctx.regs[14] as u64);
+    sail_ctx.x16 = BitVector::new(ctx.regs[15] as u64);
+    sail_ctx.x17 = BitVector::new(ctx.regs[16] as u64);
+    sail_ctx.x18 = BitVector::new(ctx.regs[17] as u64);
+    sail_ctx.x19 = BitVector::new(ctx.regs[18] as u64);
+    sail_ctx.x20 = BitVector::new(ctx.regs[19] as u64);
+    sail_ctx.x21 = BitVector::new(ctx.regs[20] as u64);
+    sail_ctx.x22 = BitVector::new(ctx.regs[21] as u64);
+    sail_ctx.x23 = BitVector::new(ctx.regs[22] as u64);
+    sail_ctx.x24 = BitVector::new(ctx.regs[23] as u64);
+    sail_ctx.x25 = BitVector::new(ctx.regs[24] as u64);
+    sail_ctx.x26 = BitVector::new(ctx.regs[25] as u64);
+    sail_ctx.x27 = BitVector::new(ctx.regs[26] as u64);
+    sail_ctx.x28 = BitVector::new(ctx.regs[27] as u64);
+    sail_ctx.x29 = BitVector::new(ctx.regs[28] as u64);
+    sail_ctx.x30 = BitVector::new(ctx.regs[29] as u64);
+    sail_ctx.x31 = BitVector::new(ctx.regs[30] as u64);
+
     sail_ctx
 }
+
+
+
 
 pub fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
     let mut output: [BitField<8>; 64] = [BitField::<8>::new(0); 64];
@@ -350,6 +386,39 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx) -> VirtContext {
     ctx.csr.vl = sail_ctx.vl.bits() as usize;
     ctx.csr.vtype = sail_ctx.vtype.bits.bits() as usize;
     ctx.csr.vlenb = sail_ctx.vlenb.bits() as usize;
+
+    // Transfer the general purpose registers
+    ctx.regs[0] = sail_ctx.x1.bits.bits();
+    ctx.regs[1] = sail_ctx.x2.bits.bits();
+    ctx.regs[2] = sail_ctx.x3.bits.bits();
+    ctx.regs[3] = sail_ctx.x4.bits.bits();
+    ctx.regs[4] = sail_ctx.x5.bits.bits();
+    ctx.regs[5] = sail_ctx.x6.bits.bits();
+    ctx.regs[6] = sail_ctx.x7.bits.bits();
+    ctx.regs[7] = sail_ctx.x8.bits.bits();
+    ctx.regs[8] = sail_ctx.x9.bits.bits();
+    ctx.regs[9] = sail_ctx.x10.bits.bits();
+    ctx.regs[10] = sail_ctx.x11.bits.bits();
+    ctx.regs[11] = sail_ctx.x12.bits.bits();
+    ctx.regs[12] = sail_ctx.x13.bits.bits();
+    ctx.regs[13] = sail_ctx.x14.bits.bits();
+    ctx.regs[14] = sail_ctx.x15.bits.bits();
+    ctx.regs[15] = sail_ctx.x16.bits.bits();
+    ctx.regs[16] = sail_ctx.x17.bits.bits();
+    ctx.regs[17] = sail_ctx.x18.bits.bits();
+    ctx.regs[18] = sail_ctx.x19.bits.bits();
+    ctx.regs[19] = sail_ctx.x20.bits.bits();
+    ctx.regs[20] = sail_ctx.x21.bits.bits();
+    ctx.regs[21] = sail_ctx.x22.bits.bits();
+    ctx.regs[22] = sail_ctx.x23.bits.bits();
+    ctx.regs[23] = sail_ctx.x24.bits.bits();
+    ctx.regs[24] = sail_ctx.x25.bits.bits();
+    ctx.regs[25] = sail_ctx.x26.bits.bits();
+    ctx.regs[26] = sail_ctx.x27.bits.bits();
+    ctx.regs[27] = sail_ctx.x28.bits.bits();
+    ctx.regs[28] = sail_ctx.x29.bits.bits();
+    ctx.regs[29] = sail_ctx.x30.bits.bits();
+    ctx.regs[30] = sail_ctx.x31.bits.bits();
 
     ctx
 }
