@@ -432,7 +432,13 @@ impl MiralisContext {
             }
             0x306 => Csr::Mcounteren,
             0x30a => Csr::Menvcfg,
-            0x747 => Csr::Mseccfg,
+            0x747 => {
+                if !self.hw.extensions.has_tee_extension {
+                    Csr::Unknown
+                } else {
+                    Csr::Mseccfg
+                }
+            }
             0xF15 => Csr::Mconfigptr,
             0x302 => {
                 if !self.hw.extensions.has_s_extension {

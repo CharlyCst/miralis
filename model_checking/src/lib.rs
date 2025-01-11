@@ -7,7 +7,11 @@ use miralis::arch::{mie, write_pmp, Register};
 use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_decoder::encdec_backwards;
-use sail_model::{execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType, Privilege, ast};
+use sail_model::{
+    ast, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET,
+    execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType,
+    Privilege,
+};
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
 use crate::adapters::{
@@ -184,14 +188,14 @@ pub fn write_csr() {
     // Generate a random value
     let mut value_to_write: usize = any!(usize);
 
-    // Write register in Miralis context
-    let decoded_csr = mctx.decode_csr(csr_register as usize);
-    ctx.set_csr(decoded_csr, value_to_write, &mut mctx);
-
     if csr_register == 0b001100000011 {
         value_to_write |= mie::MIDELEG_READ_ONLY_ONE;
         value_to_write &= !mie::MIDELEG_READ_ONLY_ZERO;
     }
+
+    // Write register in Miralis context
+    let decoded_csr = mctx.decode_csr(csr_register as usize);
+    ctx.set_csr(decoded_csr, value_to_write, &mut mctx);
 
     // Write register in Sail context
     writeCSR(
@@ -200,188 +204,80 @@ pub fn write_csr() {
         BitVector::<64>::new(value_to_write as u64),
     );
 
-    // Pmp registers
+    /*assert_eq!(sail_to_miralis(sail_ctx).csr.misa, ctx.csr.misa, "misa");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "mie");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "mip");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mtvec, ctx.csr.mtvec, "mtvec");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mvendorid, ctx.csr.mvendorid, "mvendorid");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.marchid, ctx.csr.marchid, "marchid");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mimpid, ctx.csr.mimpid, "mimpid");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mcycle, ctx.csr.mcycle, "mcycle");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.minstret, ctx.csr.minstret, "minstret");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mscratch, ctx.csr.mscratch, "mscratch");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mcountinhibit, ctx.csr.mcountinhibit, "mcountinhibit");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mcounteren, ctx.csr.mcounteren, "mcounteren");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.menvcfg, ctx.csr.menvcfg, "menvcfg");*/
     assert_eq!(
-        sail_to_miralis(sail_ctx).csr.pmpaddr,
-        ctx.csr.pmpaddr,
-        "Write pmp addr equivalence"
+        sail_to_miralis(sail_ctx).csr,
+        ctx.csr,
+        "csr equivalence"
     );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.pmpcfg,
-        ctx.csr.pmpcfg,
-        "Write pmp cfg equivalence"
-    );
-
-    // Verified and working
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mvendorid,
-        ctx.csr.mvendorid,
-        "Write mvendorid"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mimpid,
-        ctx.csr.mimpid,
-        "Write mimpid"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).hart_id,
-        ctx.hart_id,
-        "Write hart_id"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mconfigptr,
-        ctx.csr.mconfigptr,
-        "Write mconfigptr"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mtvec,
-        ctx.csr.mtvec,
-        "Write mtvec"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mscratch,
-        ctx.csr.mscratch,
-        "wWite mscratch"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mtval,
-        ctx.csr.mtval,
-        "Write mtval"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcycle,
-        ctx.csr.mcycle,
-        "Write mcycle"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.minstret,
-        ctx.csr.minstret,
-        "Write minstret"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.tselect,
-        ctx.csr.tselect,
-        "Write tselect"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.stvec,
-        ctx.csr.stvec,
-        "Write stvec"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.sscratch,
-        ctx.csr.sscratch,
-        "Write sscratch"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.stval,
-        ctx.csr.stval,
-        "Write stval"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.satp,
-        ctx.csr.satp,
-        "Write satp"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.senvcfg,
-        ctx.csr.senvcfg,
-        "Write senvcfg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.scause,
-        ctx.csr.scause,
-        "Write scause"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcause,
-        ctx.csr.mcause,
-        "Write mcause"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mepc,
-        ctx.csr.mepc,
-        "Write mepc"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vstart,
-        ctx.csr.vstart,
-        "Write vstart"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.menvcfg,
-        ctx.csr.menvcfg,
-        "Write menvcfg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcountinhibit,
-        ctx.csr.mcountinhibit,
-        "Write mcountinhibit"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.medeleg,
-        ctx.csr.medeleg,
-        "Write medeleg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vxsat,
-        ctx.csr.vxsat,
-        "Write vxssat"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vxrm,
-        ctx.csr.vxrm,
-        "Write vxrm"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vcsr,
-        ctx.csr.vcsr,
-        "Write vcsr"
-    );
-    assert_eq!(sail_to_miralis(sail_ctx).csr.vl, ctx.csr.vl, "Write vl");
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vtype,
-        ctx.csr.vtype,
-        "Write vtype"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vlenb,
-        ctx.csr.vlenb,
-        "Write vlenb"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.sepc,
-        ctx.csr.sepc,
-        "Write sepc"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.misa,
-        ctx.csr.misa,
-        "Write misa"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mideleg,
-        ctx.csr.mideleg,
-        "Write mideleg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcounteren,
-        ctx.csr.mcounteren,
-        "Write mcountern"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.scounteren,
-        ctx.csr.scounteren,
-        "Write scounteren"
-    );
-    assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "Write mip");
-    assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "Write mie");
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mstatus,
-        ctx.csr.mstatus,
-        "Write mstatus"
-    );
-
+    /*assert_eq!(sail_to_miralis(sail_ctx).csr.mcause, ctx.csr.mcause, "mcause");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.tselect, ctx.csr.tselect, "tselect");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mepc, ctx.csr.mepc, "mepc");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mtval, ctx.csr.mtval, "mtval");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mtval2, ctx.csr.mtval2, "mtval2");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mstatus, ctx.csr.mstatus, "mstatus");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mtinst, ctx.csr.mtinst, "mtinst");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mconfigptr, ctx.csr.mconfigptr, "mconfigptr");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.stvec, ctx.csr.stvec, "stvec");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.scounteren, ctx.csr.scounteren, "scounteren");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.senvcfg, ctx.csr.senvcfg, "senvcfg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.sscratch, ctx.csr.sscratch, "sscratch");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.sepc, ctx.csr.sepc, "sepc");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.scause, ctx.csr.scause, "scause");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.stval, ctx.csr.stval, "stval");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.satp, ctx.csr.satp, "satp");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.scontext, ctx.csr.scontext, "scontext");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.stimecmp, ctx.csr.stimecmp, "stimecmp");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.medeleg, ctx.csr.medeleg, "medeleg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mideleg, ctx.csr.mideleg, "mideleg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hstatus, ctx.csr.hstatus, "hstatus");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hedeleg, ctx.csr.hedeleg, "hedeleg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hideleg, ctx.csr.hideleg, "hideleg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hvip, ctx.csr.hvip, "hvip");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hip, ctx.csr.hip, "hip");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hie, ctx.csr.hie, "hie");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hgeip, ctx.csr.hgeip, "hgeip");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hgeie, ctx.csr.hgeie, "hgeie");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.henvcfg, ctx.csr.henvcfg, "henvcfg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.henvcfgh, ctx.csr.henvcfgh, "henvcfgh");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hcounteren, ctx.csr.hcounteren, "hcounteren");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.htimedelta, ctx.csr.htimedelta, "htimedelta");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.htimedeltah, ctx.csr.htimedeltah, "htimedeltah");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.htval, ctx.csr.htval, "htval");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.htinst, ctx.csr.htinst, "htinst");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.hgatp, ctx.csr.hgatp, "hgatp");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vsstatus, ctx.csr.vsstatus, "vsstatus");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vsie, ctx.csr.vsie, "vsie");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vstvec, ctx.csr.vstvec, "vstvec");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vsscratch, ctx.csr.vsscratch, "vsscratch");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vsepc, ctx.csr.vsepc, "vsepc");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vscause, ctx.csr.vscause, "vscause");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vstval, ctx.csr.vstval, "vstval");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vsip, ctx.csr.vsip, "vsip");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vsatp, ctx.csr.vsatp, "vsatp");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.pmpcfg, ctx.csr.pmpcfg, "pmpcfg");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.pmpaddr, ctx.csr.pmpaddr, "pmpaddr");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mhpmcounter, ctx.csr.mhpmcounter, "mhpmcounter");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mhpmevent, ctx.csr.mhpmevent, "mhpmevent");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vstart, ctx.csr.vstart, "vstart");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vxsat, ctx.csr.vxsat, "vxsat");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vxrm, ctx.csr.vxrm, "vxrm");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vcsr, ctx.csr.vcsr, "vcsr");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vl, ctx.csr.vl, "vl");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vtype, ctx.csr.vtype, "vtype");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.vlenb, ctx.csr.vlenb, "vlenb");*/
 }
 
 #[cfg_attr(kani, kani::proof)]

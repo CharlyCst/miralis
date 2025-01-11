@@ -179,7 +179,7 @@ pub fn encdec_backwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: BitVector<32>)
                 let imm5: BitVector<5> = v__1408.subrange::<7, 12, 5>();
                 match size_enc_backwards(sail_ctx, mapping5_hashtag_) {
                     size if { lteq_int(size_bytes_forwards(sail_ctx, size), 8) } => ast::STORE((
-                        bitvector_concat::<7,5>((imm7 as BitVector<7>), (imm5 as BitVector<5>)),
+                        bitvector_concat::<7, 5>((imm7 as BitVector<7>), (imm5 as BitVector<5>)),
                         rs2,
                         rs1,
                         size,
@@ -191,9 +191,7 @@ pub fn encdec_backwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: BitVector<32>)
                     }
                 }
             }
-            _ => {
-                ast::ILLEGAL(BitVector::new(0x0))
-            }
+            _ => ast::ILLEGAL(BitVector::new(0x0)),
 
             _ => {
                 panic!("Unreachable code")

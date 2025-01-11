@@ -160,6 +160,8 @@ pub struct ExtensionsCapability {
     pub is_sstc_enabled: bool,
     /// Has Zihpm extension
     pub has_zihpm_extension: bool,
+    /// Has Trusted Execution Environment Task Group
+    pub has_tee_extension: bool,
 }
 
 // ———————————————————————————— Privilege Modes ————————————————————————————— //
