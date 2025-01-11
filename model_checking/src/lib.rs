@@ -370,6 +370,24 @@ pub fn formally_verify_emulation_privileged_instructions() {
         _ => 0b00110000001000000000000001110011,
     };
 
+    match decoded_instruction {
+        Instr::Wfi => {}
+        Instr::Csrrw { .. } => {}
+        Instr::Csrrs { .. } => {}
+        Instr::Csrrc { .. } => {}
+        Instr::Csrrwi { .. } => {}
+        Instr::Csrrsi { .. } => {}
+        Instr::Csrrci { .. } => {}
+        Instr::Mret => {}
+        Instr::Sret => {}
+        Instr::Sfencevma { .. } => {}
+        Instr::Hfencevvma { .. } => {}
+        Instr::Hfencegvma { .. } => {}
+        Instr::Load { .. } => {}
+        Instr::Store { .. } => {}
+        Instr::Unknown => {}
+    }
+
     // Emulate instruction in Miralis
     ctx.emulate_illegal_instruction(&mut mctx, instr);
 
