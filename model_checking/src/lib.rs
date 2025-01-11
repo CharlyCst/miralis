@@ -362,8 +362,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
         _ => 0b00110000001000000000000001110011,
     };
 
-    //instr = 0x30005073;
-    instr = 0x30007073;
+    instr = 0x30005073;
 
     // Decode the instructions
     let decoded_instruction = mctx.decode_illegal_instruction(instr);

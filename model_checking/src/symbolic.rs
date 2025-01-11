@@ -62,7 +62,9 @@ pub fn new_ctx() -> VirtContext {
 
     // Mode
     ctx.mode = Mode::M;
-    ctx.pc = any!();
+
+    // We don't want overflows here
+    ctx.pc = any!(usize) % (usize::MAX - 4);
     ctx.nb_pmp = 64;
 
     // Pick a previous privilege mode
