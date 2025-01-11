@@ -138,12 +138,6 @@ pub fn encdec_backwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: BitVector<32>)
             v__7 if { (v__7 == BitVector::<32>::new(0b00010000010100000000000001110011)) } => {
                 ast::WFI(())
             }
-            v__13 if { (v__13 == BitVector::<32>::new(0b00000000000000000000000001110011)) } => {
-                ast::ECALL(())
-            }
-            v__19 if { (v__19 == BitVector::<32>::new(0b00000000000100000000000001110011)) } => {
-                ast::EBREAK(())
-            }
             v__25 if { (v__25 == BitVector::<32>::new(0b00010000001000000000000001110011)) } => {
                 ast::SRET(())
             }

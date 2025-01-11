@@ -352,41 +352,28 @@ pub fn formally_verify_emulation_privileged_instructions() {
     // Generate instruction to decode and emulate
     let mut instr: usize = any!(u32) as usize;
 
-    let decoded_instruction = mctx.decode_illegal_instruction(instr);
+    // Filter out load and stores + csr operations
+    instr = match mctx.decode_illegal_instruction(instr) {
+        Instr::Csrrw { .. } => 0b00110000001000000000000001110011,
+        Instr::Csrrs { .. } => 0b00110000001000000000000001110011,
+        Instr::Csrrc { .. } => 0b00110000001000000000000001110011,
+        Instr::Csrrwi { .. } => 0b00110000001000000000000001110011,
+        Instr::Csrrsi { .. } => 0b00110000001000000000000001110011,
+        Instr::Csrrci { .. } => 0b00110000001000000000000001110011,
+        Instr::Load { .. } => 0b00110000001000000000000001110011,
+        Instr::Store { .. } => 0b00110000001000000000000001110011,
+        _ => instr,
+    };
 
+    // Decode the instructions
+    let decoded_instruction = mctx.decode_illegal_instruction(instr);
     let decoded_sail_instruction = encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
+
 
     if decoded_instruction == Instr::Unknown {
         assert_eq!(decoded_sail_instruction, ast::ILLEGAL(BitVector::new(0)))
     }
 
-    // For the moment, we verify the behavior only for MRET and WFI
-    instr = match instr {
-        // MRET
-        0b00110000001000000000000001110011 => 0b00110000001000000000000001110011,
-        // SRET
-        0b00010000001000000000000001110011 => 0b00010000001000000000000001110011,
-        // WFI
-        _ => 0b00110000001000000000000001110011,
-    };
-
-    match decoded_instruction {
-        Instr::Wfi => {}
-        Instr::Csrrw { .. } => {}
-        Instr::Csrrs { .. } => {}
-        Instr::Csrrc { .. } => {}
-        Instr::Csrrwi { .. } => {}
-        Instr::Csrrsi { .. } => {}
-        Instr::Csrrci { .. } => {}
-        Instr::Mret => {}
-        Instr::Sret => {}
-        Instr::Sfencevma { .. } => {}
-        Instr::Hfencevvma { .. } => {}
-        Instr::Hfencegvma { .. } => {}
-        Instr::Load { .. } => {}
-        Instr::Store { .. } => {}
-        Instr::Unknown => {}
-    }
 
     // Emulate instruction in Miralis
     ctx.emulate_illegal_instruction(&mut mctx, instr);
