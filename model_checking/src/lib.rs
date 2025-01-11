@@ -204,11 +204,7 @@ pub fn write_csr() {
         BitVector::<64>::new(value_to_write as u64),
     );
 
-    assert_eq!(
-        sail_to_miralis(sail_ctx),
-        ctx,
-        "write equivalence"
-    );
+    assert_eq!(sail_to_miralis(sail_ctx), ctx, "write equivalence");
 }
 
 #[cfg_attr(kani, kani::proof)]
@@ -349,42 +345,33 @@ pub fn verify_decoder() {
 pub fn formally_verify_emulation_privileged_instructions() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
+    const SYSTEM_MASK: usize = 0b000001110011;
+
     // Generate instruction to decode and emulate
     let mut instr: usize = any!(u32) as usize;
-
-    // Filter out load and stores + csr operations
-    instr = match mctx.decode_illegal_instruction(instr) {
-        Instr::Csrrw { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrs { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrc { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrwi { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrsi { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrci { .. } => 0b00110000001000000000000001110011,
-        Instr::Load { .. } => 0b00110000001000000000000001110011,
-        Instr::Store { .. } => 0b00110000001000000000000001110011,
-        _ => instr,
-    };
+    instr = (instr & ((1 << 10) - 1)) | SYSTEM_MASK;
 
     // Decode the instructions
     let decoded_instruction = mctx.decode_illegal_instruction(instr);
     let decoded_sail_instruction = encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
+    let is_unknown_sail = decoded_sail_instruction == ast::ILLEGAL(BitVector::new(0)) ;
+    let is_unknown_miralis = decoded_instruction == Instr::Unknown;
 
-    if decoded_instruction == Instr::Unknown {
-        assert_eq!(decoded_sail_instruction, ast::ILLEGAL(BitVector::new(0)))
+    assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
+
+    if !is_unknown_miralis {
+        // Emulate instruction in Miralis
+        ctx.emulate_illegal_instruction(&mut mctx, instr);
+
+        // Execute value in sail
+        execute::execute_ast(&mut sail_ctx, instr);
+
+        // Check the equivalence
+        assert_eq!(
+            ctx,
+            sail_to_miralis(sail_ctx),
+            "emulation of privileged instructions isn't equivalent"
+        );
     }
-
-
-    // Emulate instruction in Miralis
-    ctx.emulate_illegal_instruction(&mut mctx, instr);
-
-    // Execute value in sail
-    execute::execute_ast(&mut sail_ctx, instr);
-
-    // Check the equivalence
-    assert_eq!(
-        ctx,
-        sail_to_miralis(sail_ctx),
-        "emulation of privileged instructions isn't equivalent"
-    );
 }
