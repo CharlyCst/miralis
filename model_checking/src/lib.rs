@@ -354,12 +354,12 @@ pub fn formally_verify_emulation_privileged_instructions() {
     // Filter out load and stores + csr operations
     instr = match mctx.decode_illegal_instruction(instr) {
         Instr::Sfencevma {..} => instr,
-        /*Instr::Csrrw { .. } => instr,
+        Instr::Csrrw { .. } => instr,
         Instr::Csrrs { .. } => instr,
         Instr::Csrrc { .. } => instr,
         Instr::Csrrwi { .. } => instr,
         Instr::Csrrsi { .. } => instr,
-        Instr::Csrrci { .. } => instr,*/
+        Instr::Csrrci { .. } => instr,
         Instr::Hfencevvma { .. } => instr,
         Instr::Hfencegvma { .. } => instr,
         _ =>0b00110000001000000000000001110011,

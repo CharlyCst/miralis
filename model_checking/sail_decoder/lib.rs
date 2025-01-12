@@ -128,7 +128,7 @@ pub fn encdec_backwards(sail_ctx: &mut SailVirtCtx, arg_hashtag_: BitVector<32>)
             }
             v__30
                 if {
-                    ((v__30.subrange::<25, 32, 7>() == BitVector::<7>::new(0b0010001))
+                    ((v__30.subrange::<25, 32, 7>() == BitVector::<7>::new(0b0110001))
                         && (v__30.subrange::<0, 15, 15>()
                             == BitVector::<15>::new(0b000000001110011)))
                 } =>
