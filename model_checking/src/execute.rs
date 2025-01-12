@@ -24,6 +24,7 @@ pub fn execute_ast(sail_virt_ctx: &mut SailVirtCtx, instr: usize) {
         }
         ast::CSR((csr, rs1, rd, is_imm, op)) => {
             sail_model::execute_CSR(sail_virt_ctx, csr, rs1, rd, is_imm, op);
+            sail_virt_ctx.nextPC = BitVector::new(sail_virt_ctx.nextPC.bits.wrapping_add(4));
         }
         _ => {}
     }

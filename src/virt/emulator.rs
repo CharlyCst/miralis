@@ -64,7 +64,7 @@ impl VirtContext {
 
         // All instructions except MRET and SRET increases the pc by 4
         if *instr != Instr::Mret && *instr != Instr::Sret {
-            self.pc += 4;
+            self.pc = self.pc.wrapping_add(4);
         }
     }
 

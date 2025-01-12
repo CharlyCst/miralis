@@ -1,6 +1,6 @@
 //! Symbolic Context and Values
 //!
-//! This modules is responsible for instantiating symbolic values, individually or as a whole
+//! This module is responsible for instantiating symbolic values, individually or as a whole
 //! context. We make sure that this module can compile and be tested even without Kani installed,
 //! in which case concrete values are used in place of symbolic ones.
 
@@ -144,6 +144,8 @@ pub fn new_ctx() -> VirtContext {
 
     // Now we allocate general purpose registers
     ctx.regs = [any!(); 32];
+    // x0 is hardwired to zero
+    ctx.regs[0] = 0;
 
     ctx
 }
