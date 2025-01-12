@@ -352,15 +352,10 @@ pub fn formally_verify_emulation_privileged_instructions() {
     instr = (instr & !((1 << 10) - 1)) | 0b000001110011;
 
     // Filter out load and stores + csr operations
-    /*instr = match mctx.decode_illegal_instruction(instr) {
-        Instr::Csrrw { .. } => instr,
-        Instr::Csrrs { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrc { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrwi { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrsi { .. } => 0b00110000001000000000000001110011,
-        Instr::Csrrci { .. } => 0b00110000001000000000000001110011,
+    instr = match mctx.decode_illegal_instruction(instr) {
+        Instr::Sfencevma {..} => instr,
         _ => 0b00110000001000000000000001110011,
-    };*/
+    };
 
     // Decode the instructions
     let decoded_instruction = mctx.decode_illegal_instruction(instr);
