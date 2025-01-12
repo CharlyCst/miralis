@@ -123,13 +123,13 @@ impl MiralisContext {
                     let rs2 = Register::from(rs2);
                     return Instr::Sfencevma { rs1, rs2 };
                 }
-                _ if func7 == 0b0010001 && (raw & 0x7FFF) == 0b000000001110011 => {
+                _ if func7 == 0b0010001 && (raw & 0b111111111111111) == 0b000000001110011 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
                     return Instr::Hfencevvma { rs1, rs2 };
                 }
-                _ if func7 == 0b0110001 && (raw & 0x7FFF) == 0b000000001110011  => {
+                _ if func7 == 0b0010001 && (raw & 0b111111111111111) == 0b000000001110011  => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
