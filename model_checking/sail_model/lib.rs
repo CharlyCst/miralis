@@ -7,6 +7,7 @@
 )]
 
 use sail_prelude::*;
+use crate::Retired::RETIRE_FAIL;
 
 pub const xlen: usize = 64;
 
@@ -6158,9 +6159,13 @@ pub fn execute_CSR(
         }
     };
     if { !(check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
+        panic!("les 4 saisons");
         handle_illegal(sail_ctx, ());
         Retired::RETIRE_FAIL
-    } else if { !(ext_check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
+    } else {
+        RETIRE_FAIL
+    }
+    /*else if { !(ext_check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
         ext_check_CSR_fail(sail_ctx, ());
         Retired::RETIRE_FAIL
     } else {
@@ -6180,7 +6185,7 @@ pub fn execute_CSR(
         };
         wX_bits(sail_ctx, rd, csr_val);
         Retired::RETIRE_SUCCESS
-    }
+    }*/
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]

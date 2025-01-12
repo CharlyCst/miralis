@@ -65,7 +65,7 @@ pub fn new_ctx() -> VirtContext {
 
     // We don't want overflows here
     ctx.pc = any!(usize) % (usize::MAX - 4);
-    ctx.nb_pmp = 64;
+    ctx.nb_pmp = usize::MAX;
 
     // Pick a previous privilege mode
     let mpp = match any!(u8) % 3 {
@@ -143,7 +143,7 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.misa |= misa::S;
 
     // Now we allocate general purpose registers
-    ctx.regs = [any!(); 32];
+    ctx.regs = [any!(usize); 32];
     // x0 is hardwired to zero
     ctx.regs[0] = 0;
 

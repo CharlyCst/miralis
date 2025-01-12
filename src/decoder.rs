@@ -107,6 +107,10 @@ impl MiralisContext {
     ///
     /// NOTE: for now this function  only support 32 bits instructions.
     pub fn decode_illegal_instruction(&self, raw: usize) -> Instr {
+        if raw & 0b1111111 != 0b1110011 {
+            panic!("Precondition violated");
+        }
+
         let rd = (raw >> 7) & 0b11111;
         let func3 = (raw >> 12) & 0b111;
         let rs1 = (raw >> 15) & 0b11111;

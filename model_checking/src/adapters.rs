@@ -513,6 +513,7 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
 pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
     match ast_entry {
         ast::MRET(()) => Instr::Mret,
+        ast::SRET(()) => Instr::Sret,
         ast::WFI(()) => Instr::Wfi,
         ast::SFENCE_VMA((rs1, rs2)) => Instr::Sfencevma {
             rs1: Register::from(rs1.bits as usize),
