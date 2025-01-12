@@ -114,9 +114,6 @@ pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
     sail_ctx
 }
 
-
-
-
 pub fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
     let mut output: [BitField<8>; 64] = [BitField::<8>::new(0); 64];
 
