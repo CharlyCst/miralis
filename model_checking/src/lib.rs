@@ -482,8 +482,9 @@ pub fn pmp_equivalence_with_miralis() {
         )
     };
 
-    if let Some(_) = virtual_check {
-        // This case is valid, we assume the miralis memory is protected
+    if START_MIRALIS_RANGE <= address_to_check.bits() as usize && (address_to_check.bits() as usize) < START_MIRALIS_RANGE + MIRALIS_SIZE {
+        // Miralis must be protected
+        assert_ne!(virtual_check, None);
     } else {
         // Check pmp equivalence
         assert_eq!(
