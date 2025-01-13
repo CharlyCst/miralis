@@ -481,7 +481,7 @@ pub fn pmp_equivalence_with_miralis() {
         )
     };
 
-    if Some(_) = virtual_check {
+    if let Some(_) = virtual_check {
         // This case is valid, we assume the miralis memory is protected
     } else {
         // Check pmp equivalence
