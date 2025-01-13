@@ -449,12 +449,13 @@ pub fn pmp_equivalence_with_miralis() {
         virtual_firmware_privilege,
     );
 
-    const START_MIRALIS_RANGE: usize = 0x80200000;
-    const END_MIRALIS_RANGE: usize = 0x80400000;
+    const START_MIRALIS_RANGE: usize = 0x80000000;
+    const MIRALIS_SIZE: usize = 0x200000;
 
     let virtual_check: Option<ExceptionType> = {
         // Creation of the PMP group
-        let mut pmp_group = PmpGroup::init_pmp_group(sys_pmp_count(()),START_MIRALIS_RANGE, END_MIRALIS_RANGE);
+        let mut pmp_group =
+            PmpGroup::init_pmp_group(sys_pmp_count(()), START_MIRALIS_RANGE, MIRALIS_SIZE);
         pmp_group.virt_pmp_offset = virtual_offset;
 
         // Physical write of the pmp registers

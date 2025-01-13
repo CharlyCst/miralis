@@ -510,6 +510,10 @@ mod tests {
         assert_eq!(Some(0x400), build_napot(0x1000, 8));
         assert_eq!(Some(0x401), build_napot(0x1000, 16));
         assert_eq!(Some(0x403), build_napot(0x1000, 32));
+
+        if build_napot(0x80000000, 0x200000) == None {
+            panic!("Impossible to build");
+        }
     }
 
     #[test]
