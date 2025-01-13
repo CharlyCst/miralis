@@ -233,7 +233,7 @@ impl PmpGroup {
                     DEVICES_OFFSET + i,
                     device.start_addr,
                     device.size,
-                    pmpcfg::NO_PERMISSIONS,
+                    pmpcfg::INACTIVE,
                 );
             }
 
@@ -247,7 +247,7 @@ impl PmpGroup {
             pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
 
             // Finally, set the last PMP to grant access to the whole memory
-            pmp.set_napot((pmp.nb_pmp - 1) as usize, 0, usize::MAX, pmpcfg::RWX);
+            // pmp.set_napot((pmp.nb_pmp - 1) as usize, 0, usize::MAX, pmpcfg::RWX);
 
             // Compute the number of virtual PMPs available
             // It's whatever is left after setting pmp's for devices, pmp for address translation,
