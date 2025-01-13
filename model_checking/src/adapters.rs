@@ -336,7 +336,7 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx) -> VirtContext {
     // Transfer hart id
     ctx.hart_id = sail_ctx.mhartid.bits() as usize;
 
-    ctx.nb_pmp = 64; // Fixed for now
+    ctx.nb_pmp = usize::MAX; // Fixed for now
 
     // Transfer all csr
     ctx.csr.mstatus = sail_ctx.mstatus.bits.bits() as usize;
