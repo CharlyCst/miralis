@@ -623,10 +623,9 @@ impl VirtContext {
         uimm: usize,
     ) {
         let tmp = self.get(csr);
-        if csr != Csr::Tselect {
-            panic!("Is not tselect");
+        if uimm != 0 {
+            self.set_csr(csr, tmp | uimm, mctx);
         }
-        self.set_csr(csr, tmp | uimm, mctx);
         self.set(rd, tmp);
     }
 
@@ -658,7 +657,9 @@ impl VirtContext {
         uimm: usize,
     ) {
         let tmp = self.get(csr);
-        self.set_csr(csr, tmp & !uimm, mctx);
+        if uimm != 0 {
+            self.set_csr(csr, tmp & !uimm, mctx);
+        }
         self.set(rd, tmp);
     }
 

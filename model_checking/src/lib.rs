@@ -4,7 +4,7 @@ use miralis::decoder::Instr;
 use miralis::host::MiralisContext;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter};
 use sail_decoder::encdec_backwards;
-use sail_model::{ast, check_CSR, Privilege, SailVirtCtx, writeCSR};
+use sail_model::{ast, check_CSR, Privilege, readCSR, SailVirtCtx, writeCSR};
 use sail_prelude::{BitVector};
 
 use crate::adapters::{ast_to_miralis_instr, decode_csr_register, sail_to_miralis};
@@ -54,20 +54,14 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
     let mut instr: usize = ((any!(u32) & !0b1111111) | SYSTEM_MASK) as usize;
 
     instr = match mctx.decode_illegal_instruction(instr) {
-        /*Instr::Csrrw {.. } | Instr::Csrrwi {  ..} => {
+        Instr::Csrrw {.. } | Instr::Csrrwi {  ..} => {
             ((generate_csr_register(sail_virt_ctx, true) << 20) | (instr & 0xfffff) as u64) as usize
-        }*/
-        /*Instr::Csrrc { csr, rd, rs1 } | Instr::Csrrs { csr, rd, rs1 }=> {
+        }
+        Instr::Csrrc { csr, rd, rs1 } | Instr::Csrrs { csr, rd, rs1 }=> {
             ((generate_csr_register(sail_virt_ctx, rs1 != Register::X0) << 20) | (instr & 0xfffff) as u64) as usize
-        }*/
-        /*Instr::Csrrci { csr, rd, uimm } |*/  Instr::Csrrsi { csr, rd, uimm } => {
-            let mut tmp = ((generate_csr_register(sail_virt_ctx, uimm != 0) << 20) | (instr & 0xfffff) as u64) as usize;
-
-            tmp = (tmp & (!(0b11111 << 7)) | (10 << 7));
-            tmp = (tmp & (!(0b11111 << 15)) | ((any!(usize) & 0b11111) << 15));
-
-            tmp
-
+        }
+        Instr::Csrrci { csr, rd, uimm } |  Instr::Csrrsi { csr, rd, uimm } => {
+            ((generate_csr_register(sail_virt_ctx, uimm != 0) << 20) | (instr & 0xfffff) as u64) as usize
         }
         _ => {0b00110000001000000000000001110011}
     };
@@ -94,10 +88,10 @@ pub fn formally_verify_emulation_privileged_instructions() {
     let is_unknown_sail = decoded_sail_instruction == ast::ILLEGAL(BitVector::new(0));
     let is_unknown_miralis = decoded_instruction == Instr::Unknown;
 
-    //assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
+    assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
 
     if !is_unknown_miralis {
-       // assert_eq!(decoded_instruction, ast_to_miralis_instr(decoded_sail_instruction), "instruction are decoded not similar");
+        assert_eq!(decoded_instruction, ast_to_miralis_instr(decoded_sail_instruction), "instruction are decoded not similar");
 
         // Emulate instruction in Miralis
         ctx.emulate_illegal_instruction(&mut mctx, instr);
@@ -105,7 +99,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
         // Execute value in sail
         execute::execute_ast(&mut sail_ctx, instr);
 
-        assert_eq!(sail_to_miralis(sail_ctx).csr.tselect, ctx.csr.tselect, "tselect");
+        assert_eq!(sail_to_miralis(sail_ctx), ctx, "tselect");
 
         /*assert_eq!(sail_to_miralis(sail_ctx).csr.misa, ctx.csr.misa, "misa");
         assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "mie");
