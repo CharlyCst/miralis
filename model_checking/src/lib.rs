@@ -40,8 +40,6 @@ pub fn generate_csr_register(sail_virt_ctx: &mut SailVirtCtx, isWrite: bool) -> 
         csr = 0x341;
     }
 
-    csr = 0x7a0;
-
     return csr;
 }
 
