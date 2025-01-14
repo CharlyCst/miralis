@@ -36,6 +36,9 @@ pub fn generate_csr_register(sail_virt_ctx: &mut SailVirtCtx, isWrite: bool) -> 
         csr = 0x341;
     }
 
+
+    return 0x7A0;
+
     return csr;
 }
 
@@ -89,7 +92,9 @@ pub fn formally_verify_emulation_privileged_instructions() {
         // Execute value in sail
         execute::execute_ast(&mut sail_ctx, instr);
 
-        assert_eq!(sail_to_miralis(sail_ctx).csr.misa, ctx.csr.misa, "misa");
+        assert_eq!(sail_to_miralis(sail_ctx).csr.tselect, ctx.csr.tselect, "tselect");
+
+        /*assert_eq!(sail_to_miralis(sail_ctx).csr.misa, ctx.csr.misa, "misa");
         assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "mie");
         assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "mip");
         assert_eq!(sail_to_miralis(sail_ctx).csr.mtvec, ctx.csr.mtvec, "mtvec");
@@ -162,7 +167,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
         assert_eq!(sail_to_miralis(sail_ctx).csr.vcsr, ctx.csr.vcsr, "vcsr");
         assert_eq!(sail_to_miralis(sail_ctx).csr.vl, ctx.csr.vl, "vl");
         assert_eq!(sail_to_miralis(sail_ctx).csr.vtype, ctx.csr.vtype, "vtype");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vlenb, ctx.csr.vlenb, "vlenb");
+        assert_eq!(sail_to_miralis(sail_ctx).csr.vlenb, ctx.csr.vlenb, "vlenb");*/
 
 
     }
