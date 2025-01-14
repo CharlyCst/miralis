@@ -51,6 +51,7 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
     // Generate instruction to decode and emulate
     let mut instr: usize = ((any!(u32) & !0b1111111) | SYSTEM_MASK) as usize;
 
+    // For the moment, we simply avoid the csr with illegal instructions, I will handle it in a second case
     instr = match mctx.decode_illegal_instruction(instr) {
         Instr::Csrrw {.. } | Instr::Csrrwi {  ..} => {
             ((generate_csr_register(sail_virt_ctx, true) << 20) | (instr & 0xfffff) as u64) as usize
@@ -63,7 +64,6 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
         }
         _ => {0b00110000001000000000000001110011}
     };
-
 
     return instr;
 }
@@ -79,10 +79,6 @@ pub fn formally_verify_emulation_privileged_instructions() {
     let decoded_instruction = mctx.decode_illegal_instruction(instr);
     let decoded_sail_instruction = encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-    if decoded_instruction == Instr::Mret {
-        return;
-    }
-
     let is_unknown_sail = decoded_sail_instruction == ast::ILLEGAL(BitVector::new(0));
     let is_unknown_miralis = decoded_instruction == Instr::Unknown;
 
@@ -97,6 +93,22 @@ pub fn formally_verify_emulation_privileged_instructions() {
         // Execute value in sail
         execute::execute_ast(&mut sail_ctx, instr);
 
-        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr");
+        match decoded_instruction {
+            Instr::Wfi => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "wfi");}
+            Instr::Csrrw { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr1");}
+            Instr::Csrrs { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr2");}
+            Instr::Csrrc { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr3");}
+            Instr::Csrrwi { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr4");}
+            Instr::Csrrsi { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr5");}
+            Instr::Csrrci { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "csr6");}
+            Instr::Mret => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "mret");}
+            Instr::Sret => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "sret");}
+            Instr::Sfencevma { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "sfencevma");}
+            Instr::Hfencevvma { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "hfence1");}
+            Instr::Hfencegvma { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "hfence2");}
+            Instr::Load { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "load");}
+            Instr::Store { .. } => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "store");}
+            Instr::Unknown => {        assert_eq!(sail_to_miralis(sail_ctx), ctx, "unknown");}
+        }
     }
 }
