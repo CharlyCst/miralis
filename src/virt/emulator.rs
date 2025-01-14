@@ -41,7 +41,6 @@ impl VirtContext {
             | Instr::Csrrci { csr, .. }
                 if csr.is_unknown() =>
             {
-                panic!("This case doens't happen");
                 self.emulate_jump_trap_handler();
             }
             Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
@@ -225,7 +224,6 @@ impl VirtContext {
     }
 
     pub fn emulate_jump_trap_handler(&mut self) {
-        panic!("This statement should not be reachable at the moment");
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;

@@ -2,10 +2,9 @@ use miralis::arch::{mie, Register, write_pmp};
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
 use miralis::arch::userspace::return_userspace_ctx;
-use miralis::debug;
 use miralis::decoder::Instr;
 use miralis::host::MiralisContext;
-use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter, RegisterContextSetter};
+use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use sail_decoder::encdec_backwards;
 use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, Privilege, readCSR, SailVirtCtx, step_interrupts_only, writeCSR};
 use sail_prelude::{BitField, BitVector, sys_pmp_count};
@@ -340,7 +339,7 @@ pub fn verify_decoder() {
     }
 }
 
-pub fn generate_csr_register_fancy(sail_virt_ctx: &mut SailVirtCtx, isWrite: bool) -> u64 {
+pub fn generate_csr_register_fancy(sail_virt_ctx: &mut SailVirtCtx, is_write: bool) -> u64 {
     // We want only 12 bits
     let mut csr: u64 = any!(u64) & 0xFFF;
 
@@ -354,11 +353,11 @@ pub fn generate_csr_register_fancy(sail_virt_ctx: &mut SailVirtCtx, isWrite: boo
         csr &= !0b1;
     }
 
-    if !check_CSR(sail_virt_ctx, BitVector::new(csr), Privilege::Machine, isWrite) {
+    if !check_CSR(sail_virt_ctx, BitVector::new(csr), Privilege::Machine, is_write) {
         csr = 0x341;
     }
 
-    if !check_CSR(sail_virt_ctx, BitVector::new(0x341), Privilege::Machine, isWrite) {
+    if !check_CSR(sail_virt_ctx, BitVector::new(0x341), Privilege::Machine, is_write) {
         panic!("BIzzare condition here");
     }
 
@@ -371,7 +370,6 @@ pub fn generate_csr_register_fancy(sail_virt_ctx: &mut SailVirtCtx, isWrite: boo
 
 fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailVirtCtx) -> usize {
     const SYSTEM_MASK: u32 = 0b1110011;
-    const DEFAULT_INSTRUCTION: usize = 0b00110000001000000000000001110011;
 
     // Generate instruction to decode and emulate
     let mut instr: usize = ((any!(u32) & !0b1111111) | SYSTEM_MASK) as usize;
@@ -381,10 +379,10 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
         Instr::Csrrw {.. } | Instr::Csrrwi {  ..} => {
             ((generate_csr_register_fancy(sail_virt_ctx, true) << 20) | (instr & 0xfffff) as u64) as usize
         }
-        Instr::Csrrc { csr, rd, rs1 } | Instr::Csrrs { csr, rd, rs1 }=> {
+        Instr::Csrrc { csr: _, rd: _, rs1 } | Instr::Csrrs { csr: _, rd: _, rs1 }=> {
             ((generate_csr_register_fancy(sail_virt_ctx, rs1 != Register::X0) << 20) | (instr & 0xfffff) as u64) as usize
         }
-        Instr::Csrrci { csr, rd, uimm } |  Instr::Csrrsi { csr, rd, uimm } => {
+        Instr::Csrrci { csr: _, rd: _, uimm } |  Instr::Csrrsi { csr: _, rd: _, uimm } => {
             ((generate_csr_register_fancy(sail_virt_ctx, uimm != 0) << 20) | (instr & 0xfffff) as u64) as usize
         }
         _ => {instr}
@@ -398,7 +396,7 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
 pub fn formally_verify_emulation_privileged_instructions() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-    let mut instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
+    let instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
 
     // Decode the instructions
     let decoded_instruction = mctx.decode_illegal_instruction(instr);
