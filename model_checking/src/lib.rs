@@ -100,9 +100,5 @@ pub fn formally_verify_emulation_privileged_instructions() {
         ctx.is_wfi = true;
 
         assert_eq!(sail_ctx_generated, ctx, "equivalence");
-
-        assert_eq!(sail_to_miralis(sail_ctx).regs, ctx.regs, "context");
-        assert_eq!(sail_to_miralis(sail_ctx).pc, ctx.pc, "context1");
-        assert_eq!(sail_to_miralis(sail_ctx).is_wfi, ctx.is_wfi, "context2");
     }
 }

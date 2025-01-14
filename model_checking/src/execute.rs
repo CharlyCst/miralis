@@ -16,12 +16,15 @@ pub fn execute_ast(sail_virt_ctx: &mut SailVirtCtx, instr: usize) {
         }
         ast::SFENCE_VMA((rs1, rs2)) => {
             sail_model::execute_SFENCE_VMA(sail_virt_ctx, rs1, rs2);
+            sail_virt_ctx.nextPC = BitVector::new(sail_virt_ctx.nextPC.bits.wrapping_add(4));
         }
         ast::HFENCE_VVMA((rs1, rs2)) => {
             sail_model::execute_HFENCE_VVMA(sail_virt_ctx, rs1, rs2);
+            sail_virt_ctx.nextPC = BitVector::new(sail_virt_ctx.nextPC.bits.wrapping_add(4));
         }
         ast::HFENCE_GVMA((rs1, rs2)) => {
             sail_model::execute_HFENCE_GVMA(sail_virt_ctx, rs1, rs2);
+            sail_virt_ctx.nextPC = BitVector::new(sail_virt_ctx.nextPC.bits.wrapping_add(4));
         }
         ast::CSR((csr, rs1, rd, is_imm, op)) => {
             sail_model::execute_CSR(sail_virt_ctx, csr, rs1, rd, is_imm, op);
