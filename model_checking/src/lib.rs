@@ -194,7 +194,7 @@ pub fn write_csr() {
         BitVector::<64>::new(value_to_write as u64),
     );
 
-    assert_eq!(sail_to_miralis(sail_ctx), ctx, "write equivalence");
+    assert_eq!(adapters::sail_to_miralis(sail_ctx), ctx, "write equivalence");
 }
 
 #[cfg_attr(kani, kani::proof)]
@@ -353,10 +353,6 @@ pub fn generate_csr_register_fancy(sail_virt_ctx: &mut SailVirtCtx, is_write: bo
 
     if !check_CSR(sail_virt_ctx, BitVector::new(csr), Privilege::Machine, is_write) {
         csr = 0x341;
-    }
-
-    if !check_CSR(sail_virt_ctx, BitVector::new(0x341), Privilege::Machine, is_write) {
-        panic!("BIzzare condition here");
     }
 
     if 0x303 == csr {
