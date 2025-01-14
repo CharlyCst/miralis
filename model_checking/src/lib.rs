@@ -62,7 +62,7 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
         Instr::Csrrci { csr, rd, uimm } |  Instr::Csrrsi { csr, rd, uimm } => {
             ((generate_csr_register(sail_virt_ctx, uimm != 0) << 20) | (instr & 0xfffff) as u64) as usize
         }
-        _ => {0b00110000001000000000000001110011}
+        _ => {instr}
     };
 
     return instr;
