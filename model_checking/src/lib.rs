@@ -9,8 +9,6 @@ use sail_decoder::encdec_backwards;
 use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, Privilege, readCSR, SailVirtCtx, step_interrupts_only, writeCSR};
 use sail_prelude::{BitField, BitVector, sys_pmp_count};
 
-use crate::adapters::{ast_to_miralis_instr, decode_csr_register, pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis, sail_to_miralis};
-
 #[macro_use]
 mod symbolic;
 mod adapters;
@@ -215,7 +213,7 @@ pub fn interrupt_virtualization() {
     // Verify the results
     assert_eq!(
         ctx,
-        sail_to_miralis(sail_ctx),
+        adapters::sail_to_miralis(sail_ctx),
         "Interrupt virtualisation doesn't work properly"
     )
 }
@@ -262,8 +260,8 @@ pub fn pmp_equivalence() {
 
         // Physical write of the pmp registers
         pmp_group.load_with_offset(
-            &pmpaddr_sail_to_miralis(sail_ctx.pmpaddr_n),
-            &pmpcfg_sail_to_miralis(sail_ctx.pmpcfg_n),
+            &adapters::pmpaddr_sail_to_miralis(sail_ctx.pmpaddr_n),
+            &adapters::pmpcfg_sail_to_miralis(sail_ctx.pmpcfg_n),
             virtual_offset,
             number_virtual_pmps,
         );
@@ -299,7 +297,7 @@ pub fn verify_csr_decoder() {
     let register = any!(usize) % 0xFFF;
 
     // Decode values
-    let decoded_value_sail = decode_csr_register(BitVector::new(register as u64));
+    let decoded_value_sail = adapters::decode_csr_register(BitVector::new(register as u64));
     let decoded_value_miralis = mctx.decode_csr(register);
 
     assert_eq!(
@@ -317,7 +315,7 @@ pub fn verify_decoder() {
     let instr = any!(u32);
 
     // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(encdec_backwards(
+    let decoded_value_sail = adapters::ast_to_miralis_instr(encdec_backwards(
         &mut sail_ctx,
         BitVector::new(instr as u64),
     ));
@@ -408,7 +406,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
     assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
 
     if !is_unknown_miralis {
-        assert_eq!(decoded_instruction, ast_to_miralis_instr(decoded_sail_instruction), "instruction are decoded not similar");
+        assert_eq!(decoded_instruction, adapters::ast_to_miralis_instr(decoded_sail_instruction), "instruction are decoded not similar");
 
         // Emulate instruction in Miralis
         ctx.emulate_illegal_instruction(&mut mctx, instr);
@@ -416,7 +414,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
         // Execute value in sail
         execute::execute_ast(&mut sail_ctx, instr);
 
-        let mut sail_ctx_generated = sail_to_miralis(sail_ctx);
+        let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);
 
         // We don't care about this field
         sail_ctx_generated.is_wfi = true;
