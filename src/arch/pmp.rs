@@ -216,13 +216,13 @@ impl PmpGroup {
         // Configure PMP registers, if available
         if pmp.nb_pmp >= 8 {
             // By activating this entry it's possible to catch all memory accesses
-            pmp.set_inactive(ALL_CATCH_OFFSET, 0);
+            //pmp.set_inactive(ALL_CATCH_OFFSET, 0);
 
             // Protect Miralis
             pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
 
             // Protect virtual devices
-            for (i, device) in virtual_devices.iter().enumerate() {
+            /*for (i, device) in virtual_devices.iter().enumerate() {
                 log::debug!(
                     "PMP protect device {} at [0x{:x}, 0x{:x}]",
                     device.name,
@@ -241,10 +241,10 @@ impl PmpGroup {
             #[allow(clippy::reversed_empty_ranges)]
             for idx in 0..POLICY_SIZE {
                 pmp.set_inactive(POLICY_OFFSET + idx, 0);
-            }
+            }*/
 
             // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-            pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
+            //pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
 
             // Finally, set the last PMP to grant access to the whole memory
             // pmp.set_napot((pmp.nb_pmp - 1) as usize, 0, usize::MAX, pmpcfg::RWX);
