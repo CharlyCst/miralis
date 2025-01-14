@@ -12,6 +12,7 @@ pub fn execute_ast(sail_virt_ctx: &mut SailVirtCtx, instr: usize) {
         }
         ast::WFI(()) => {
             sail_model::execute_WFI(sail_virt_ctx);
+            sail_virt_ctx.nextPC = BitVector::new(sail_virt_ctx.nextPC.bits.wrapping_add(4));
         }
         ast::SFENCE_VMA((rs1, rs2)) => {
             sail_model::execute_SFENCE_VMA(sail_virt_ctx, rs1, rs2);

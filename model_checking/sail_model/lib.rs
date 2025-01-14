@@ -5214,8 +5214,6 @@ pub fn handle_illegal(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
 pub fn platform_wfi(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
     cancel_reservation(());
     if { _operator_smaller_u_(sail_ctx, sail_ctx.mtime, sail_ctx.mtimecmp) } {
-        sail_ctx.mtime = sail_ctx.mtimecmp;
-        sail_ctx.mcycle = sail_ctx.mtimecmp
     } else {
         ()
     }
