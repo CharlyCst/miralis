@@ -52,7 +52,7 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
     let mut instr: usize = ((any!(u32) & !0b1111111) | SYSTEM_MASK) as usize;
 
     // For the moment, we simply avoid the csr with illegal instructions, I will handle it in a second case
-    /*instr = match mctx.decode_illegal_instruction(instr) {
+    instr = match mctx.decode_illegal_instruction(instr) {
         Instr::Csrrw {.. } | Instr::Csrrwi {  ..} => {
             ((generate_csr_register(sail_virt_ctx, true) << 20) | (instr & 0xfffff) as u64) as usize
         }
@@ -63,9 +63,7 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
             ((generate_csr_register(sail_virt_ctx, uimm != 0) << 20) | (instr & 0xfffff) as u64) as usize
         }
         _ => {instr}
-    };*/
-
-    instr = 0b00010000010100000000000001110011;
+    };
 
     return instr;
 }
@@ -84,10 +82,10 @@ pub fn formally_verify_emulation_privileged_instructions() {
     let is_unknown_sail = decoded_sail_instruction == ast::ILLEGAL(BitVector::new(0));
     let is_unknown_miralis = decoded_instruction == Instr::Unknown;
 
-    //assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
+    assert_eq!(is_unknown_sail, is_unknown_miralis, "Both decoder don't decode the same instruction set");
 
     if !is_unknown_miralis {
-        //assert_eq!(decoded_instruction, ast_to_miralis_instr(decoded_sail_instruction), "instruction are decoded not similar");
+        assert_eq!(decoded_instruction, ast_to_miralis_instr(decoded_sail_instruction), "instruction are decoded not similar");
 
         // Emulate instruction in Miralis
         ctx.emulate_illegal_instruction(&mut mctx, instr);
@@ -96,6 +94,8 @@ pub fn formally_verify_emulation_privileged_instructions() {
         execute::execute_ast(&mut sail_ctx, instr);
 
         let mut sail_ctx_generated = sail_to_miralis(sail_ctx);
+
+        // We don't care about this field
         sail_ctx_generated.is_wfi = true;
         ctx.is_wfi = true;
 
