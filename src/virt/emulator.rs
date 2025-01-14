@@ -584,6 +584,17 @@ impl VirtContext {
         self.set(rd, tmp);
     }
 
+    pub fn emulate_csrrwi(
+        &mut self,
+        mctx: &mut MiralisContext,
+        csr: Csr,
+        rd: Register,
+        uimm: usize,
+    ) {
+        self.set(rd, self.get(csr));
+        self.set_csr(csr, uimm, mctx);
+    }
+
     pub fn emulate_csrrs(
         &mut self,
         mctx: &mut MiralisContext,
@@ -602,17 +613,6 @@ impl VirtContext {
         }
 
         self.set(rd, tmp);
-    }
-
-    pub fn emulate_csrrwi(
-        &mut self,
-        mctx: &mut MiralisContext,
-        csr: Csr,
-        rd: Register,
-        uimm: usize,
-    ) {
-        self.set(rd, self.get(csr));
-        self.set_csr(csr, uimm, mctx);
     }
 
     pub fn emulate_csrrsi(
