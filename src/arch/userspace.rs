@@ -25,6 +25,7 @@ pub static HOST_CTX: Mutex<VirtContext> = Mutex::new(VirtContext::new(
         has_crypto_extension: false,
         has_zicntr: true,
         has_zihpm_extension: true,
+        has_tee_extension: false,
     },
 ));
 
@@ -88,6 +89,7 @@ impl Architecture for HostArch {
                 has_sstc_extension: false,
                 is_sstc_enabled: false,
                 has_zihpm_extension: false,
+                has_tee_extension: false,
             },
         }
     }
