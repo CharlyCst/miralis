@@ -252,12 +252,12 @@ impl PmpGroup {
             // Compute the number of virtual PMPs available
             // It's whatever is left after setting pmp's for devices, pmp for address translation,
             // inactive entry and the last pmp to allow all the access
-            let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
+            /*let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
             if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
                 pmp.nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
             } else {
                 pmp.nb_virt_pmp = remaining_pmp_entries;
-            }
+            }*/
         } else {
             pmp.nb_virt_pmp = 0;
         }
