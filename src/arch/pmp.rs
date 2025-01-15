@@ -219,7 +219,7 @@ impl PmpGroup {
             //pmp.set_inactive(ALL_CATCH_OFFSET, 0);
 
             // Protect Miralis
-            pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
+            // pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
 
             // Protect virtual devices
             /*for (i, device) in virtual_devices.iter().enumerate() {
@@ -235,16 +235,16 @@ impl PmpGroup {
                     device.size,
                     pmpcfg::INACTIVE,
                 );
-            }
+            }*/
 
             // This PMP entry is used by the policy module for its own purpose
-            #[allow(clippy::reversed_empty_ranges)]
+            /*#[allow(clippy::reversed_empty_ranges)]
             for idx in 0..POLICY_SIZE {
                 pmp.set_inactive(POLICY_OFFSET + idx, 0);
             }*/
 
             // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-            //pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
+            pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
 
             // Finally, set the last PMP to grant access to the whole memory
             // pmp.set_napot((pmp.nb_pmp - 1) as usize, 0, usize::MAX, pmpcfg::RWX);
@@ -252,12 +252,12 @@ impl PmpGroup {
             // Compute the number of virtual PMPs available
             // It's whatever is left after setting pmp's for devices, pmp for address translation,
             // inactive entry and the last pmp to allow all the access
-            /*let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
+            let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
             if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
                 pmp.nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
             } else {
                 pmp.nb_virt_pmp = remaining_pmp_entries;
-            }*/
+            }
         } else {
             pmp.nb_virt_pmp = 0;
         }
