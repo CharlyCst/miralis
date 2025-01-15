@@ -640,7 +640,12 @@ impl VirtContext {
         uimm: usize,
     ) {
         let tmp = self.get(csr);
-        self.set_csr(csr, tmp | uimm, mctx);
+
+        // In the Sail specification writes with 0 as immediate are ignored
+        if uimm != 0 {
+            self.set_csr(csr, tmp | uimm, mctx);
+        }
+
         self.set(rd, tmp);
     }
 
@@ -672,7 +677,12 @@ impl VirtContext {
         uimm: usize,
     ) {
         let tmp = self.get(csr);
-        self.set_csr(csr, tmp & !uimm, mctx);
+
+        // In the Sail specification writes with 0 as immediate are ignored
+        if uimm != 0 {
+            self.set_csr(csr, tmp & !uimm, mctx);
+        }
+
         self.set(rd, tmp);
     }
 
