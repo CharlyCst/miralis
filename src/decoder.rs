@@ -108,25 +108,23 @@ impl MiralisContext {
         let imm = (raw >> 20) & 0b111111111111;
         let func7 = (raw >> 25) & 0b1111111;
         if func3 == 0b000 {
-            return match imm {
-                0b000000000000 => Instr::Ecall,
-                0b000000000001 => Instr::Ebreak,
-                0b000100000101 => Instr::Wfi,
-                0b001100000010 => Instr::Mret,
-                0b000100000010 => Instr::Sret,
-                _ if func7 == 0b0001001 => {
+            return match raw {
+                0b00010000010100000000000001110011 => Instr::Wfi,
+                0b00110000001000000000000001110011 => Instr::Mret,
+                0b00010000001000000000000001110011 => Instr::Sret,
+                _ if func7 == 0b0001001 && (raw & 0b111111111111111) == 0b000000001110011 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
                     return Instr::Sfencevma { rs1, rs2 };
                 }
-                _ if func7 == 0b0010001 => {
+                _ if func7 == 0b0010001 && (raw & 0b111111111111111) == 0b000000001110011 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
                     return Instr::Hfencevvma { rs1, rs2 };
                 }
-                _ if func7 == 0b0110001 => {
+                _ if func7 == 0b0110001 && (raw & 0b111111111111111) == 0b000000001110011 => {
                     let rs1 = Register::from(rs1);
                     let rs2 = (raw >> 20) & 0b11111;
                     let rs2 = Register::from(rs2);
@@ -871,10 +869,6 @@ mod tests {
     #[test]
     fn system_instructions() {
         let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x100000, 0x2000);
-        // ECALL: Environment call.
-        assert_eq!(mctx.decode_illegal_instruction(0x00000073), Instr::Ecall);
-        // EBREAK: Environment break.
-        assert_eq!(mctx.decode_illegal_instruction(0x00100073), Instr::Ebreak);
         // MRET: Return from machine mode.
         assert_eq!(mctx.decode_illegal_instruction(0x30200073), Instr::Mret);
         // SRET: Return from supervisor mode.
