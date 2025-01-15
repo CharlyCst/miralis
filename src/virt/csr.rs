@@ -4,6 +4,7 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::SSIE_FILTER;
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
@@ -575,10 +576,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Scause => self.csr.scause = value,
             Csr::Stval => self.csr.stval = value,
             Csr::Sip => {
-                // Clear S bits
-                let mip = self.get(Csr::Mip) & !mie::SIE_FILTER;
-                // Set S bits to new value
-                self.set_csr(Csr::Mip, mip | (value & mie::SIE_FILTER), mctx);
+                if self.csr.mideleg & SSIE_FILTER != 0 {
+                    self.csr.mip = (self.csr.mip & !SSIE_FILTER) | (SSIE_FILTER & value);
+                }
             }
             Csr::Satp => {
                 let satp_mode = (value >> 60) & 0b1111;
