@@ -541,10 +541,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
             }
             Csr::Sie => {
-                // Clear S bits
-                let mie = self.get(Csr::Mie) & !mie::SIE_FILTER;
-                // Set S bits to new value
-                self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), mctx);
+                // Only delegated interrupts can be enabled through `sie`
+                let mideleg = self.get(Csr::Mideleg);
+                self.csr.mie = (self.csr.mie & !mideleg) | (mideleg & value);
             }
             Csr::Stvec => {
                 match value & 0b11 {
