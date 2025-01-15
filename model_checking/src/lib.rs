@@ -525,7 +525,7 @@ pub fn verify_decoder() {
     let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
     // Generate an instruction to decode
-    let instr = any!(u32);
+    let instr = any!(u32, 0x30001073);
 
     // Decode values
     let decoded_value_sail = ast_to_miralis_instr(encdec_backwards(
