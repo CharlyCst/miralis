@@ -15,10 +15,12 @@ use crate::adapters;
 /// Generates an arbitrary value.
 ///
 /// A type can be provided as argument, otherwise it will be inferred if possible.
+/// A default value can be provided in addition to the type, it will be used during concrete
+/// execution.
 ///
-/// This macro either generate the default value of a type, or an arbitrary Kani value during model
-/// checking. We use this macro to make our Kani proofs runnable as simple tests, which ensures
-/// that we don't break the Kani verification harnesses.
+/// This macro either generate a value of a type, or an arbitrary Kani value during model checking.
+/// We use this macro to make our Kani proofs runnable as simple tests, which ensures that we don't
+/// break the Kani verification harnesses.
 macro_rules! any {
     () => {{
         #[cfg(kani)]
@@ -38,6 +40,17 @@ macro_rules! any {
         #[cfg(not(kani))]
         {
             <$t>::default()
+        }
+    }};
+    ($t:ty, $value:tt) => {{
+        #[cfg(kani)]
+        {
+            kani::any::<$t>()
+        }
+        #[cfg(not(kani))]
+        {
+            let val: $t = $value;
+            val
         }
     }};
 }

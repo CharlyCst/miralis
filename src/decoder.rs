@@ -3,6 +3,14 @@ use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
 use crate::logger;
 
+const ILLEGAL_OPCODE_MASK: usize = 0b1110011;
+const SFENCE_INSTR_VMA_MASK: usize = 0b0001001 << 25;
+const HFENCE_INSTR_VVMA_MASK: usize = 0b0010001 << 25;
+const HFENCE_INSTR_GVMA_MASK: usize = 0b0110001 << 25;
+
+const RS1_RS1_INSTR_TYPE_MASK: usize = 0b1111111111000000001111111;
+const FUNC3_MASK: usize = 0b111000000000000;
+
 /// A RISC-V instruction.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instr {
@@ -100,60 +108,41 @@ impl MiralisContext {
     }
 
     /// Decodes a raw illegal instruction
-    pub fn decode_illegal_instruction(&self, raw: usize) -> Instr {
-        let rd = (raw >> 7) & 0b11111;
-        let func3 = (raw >> 12) & 0b111;
-        let rs1 = (raw >> 15) & 0b11111;
-        let imm = (raw >> 20) & 0b111111111111;
-        let func7 = (raw >> 25) & 0b1111111;
-        if func3 == 0b000 {
-            return match imm {
-                0b000100000101 => Instr::Wfi,
-                0b001100000010 => Instr::Mret,
-                0b000100000010 => Instr::Sret,
-                _ if func7 == 0b0001001 => {
-                    let rs1 = Register::from(rs1);
-                    let rs2 = (raw >> 20) & 0b11111;
-                    let rs2 = Register::from(rs2);
-                    return Instr::Sfencevma { rs1, rs2 };
-                }
-                _ if func7 == 0b0010001 => {
-                    let rs1 = Register::from(rs1);
-                    let rs2 = (raw >> 20) & 0b11111;
-                    let rs2 = Register::from(rs2);
-                    return Instr::Hfencevvma { rs1, rs2 };
-                }
-                _ if func7 == 0b0110001 => {
-                    let rs1 = Register::from(rs1);
-                    let rs2 = (raw >> 20) & 0b11111;
-                    let rs2 = Register::from(rs2);
-                    return Instr::Hfencegvma { rs1, rs2 };
-                }
-                _ => Instr::Unknown,
-            };
+    pub fn decode_illegal_instruction(&self, raw_instr: usize) -> Instr {
+        assert_eq!(
+            raw_instr & 0b1111111,
+            ILLEGAL_OPCODE_MASK,
+            "Precondition violated, this is not an illegal instruction"
+        );
+
+        match raw_instr {
+            0b00010000010100000000000001110011 => return Instr::Wfi,
+            0b00110000001000000000000001110011 => return Instr::Mret,
+            0b00010000001000000000000001110011 => return Instr::Sret,
+            _ => {}
         }
 
-        let csr = self.decode_csr(imm);
-        let rd = Register::from(rd);
-        match func3 {
-            0b001 => Instr::Csrrw {
-                csr,
-                rd,
-                rs1: Register::from(rs1),
-            },
-            0b010 => Instr::Csrrs {
-                csr,
-                rd,
-                rs1: Register::from(rs1),
-            },
-            0b011 => Instr::Csrrc {
-                csr,
-                rd,
-                rs1: Register::from(rs1),
-            },
-            0b101 => Instr::Csrrwi { csr, rd, uimm: rs1 },
-            0b110 => Instr::Csrrsi { csr, rd, uimm: rs1 },
-            0b111 => Instr::Csrrci { csr, rd, uimm: rs1 },
+        let uimm = (raw_instr >> 15) & 0b11111;
+        let rs1 = Register::from(uimm);
+        let rs2 = Register::from((raw_instr >> 20) & 0b11111);
+
+        match raw_instr & !RS1_RS1_INSTR_TYPE_MASK {
+            SFENCE_INSTR_VMA_MASK => return Instr::Sfencevma { rs1, rs2 },
+            HFENCE_INSTR_VVMA_MASK => return Instr::Hfencevvma { rs1, rs2 },
+            HFENCE_INSTR_GVMA_MASK => return Instr::Hfencegvma { rs1, rs2 },
+            _ => {}
+        }
+
+        let csr = self.decode_csr((raw_instr >> 20) & 0b111111111111);
+        let rd = Register::from((raw_instr >> 7) & 0b11111);
+
+        match raw_instr & FUNC3_MASK {
+            0x1000 => Instr::Csrrw { csr, rd, rs1 },
+            0x2000 => Instr::Csrrs { csr, rd, rs1 },
+            0x3000 => Instr::Csrrc { csr, rd, rs1 },
+            0x5000 => Instr::Csrrwi { csr, rd, uimm },
+            0x6000 => Instr::Csrrsi { csr, rd, uimm },
+            0x7000 => Instr::Csrrci { csr, rd, uimm },
             _ => Instr::Unknown,
         }
     }
