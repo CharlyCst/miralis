@@ -4,6 +4,7 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
+use crate::arch::mie::{SEIE_FILTER, SSIE_FILTER, STIE_FILTER};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
@@ -540,10 +541,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
             }
             Csr::Sie => {
-                // Clear S bits
-                let mie = self.get(Csr::Mie) & !mie::SIE_FILTER;
-                // Set S bits to new value
-                self.set_csr(Csr::Mie, mie | (value & mie::SIE_FILTER), mctx);
+                if SEIE_FILTER & self.get(Csr::Mideleg) != 0 {
+                    self.csr.mie = (self.csr.mie & !SEIE_FILTER) | (SEIE_FILTER & value);
+                }
+                if STIE_FILTER & self.get(Csr::Mideleg) != 0 {
+                    self.csr.mie = (self.csr.mie & !STIE_FILTER) | (STIE_FILTER & value);
+                }
+                if SSIE_FILTER & self.get(Csr::Mideleg) != 0 {
+                    self.csr.mie = (self.csr.mie & !SSIE_FILTER) | (SSIE_FILTER & value);
+                }
             }
             Csr::Stvec => {
                 match value & 0b11 {
