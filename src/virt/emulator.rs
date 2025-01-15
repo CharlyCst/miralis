@@ -603,9 +603,7 @@ impl VirtContext {
         let tmp = self.get(csr);
 
         // Skip the write if the mask is x0.
-        //
-        // This makes the emulator simpler as some pseudo-instructions (such as RDTIME) translate
-        // to CSRRS with x0 as the mask.
+        // This is required by the sail specification
         if rs1 != Register::X0 {
             self.set_csr(csr, tmp | self.get(rs1), mctx);
         }
@@ -632,7 +630,11 @@ impl VirtContext {
         uimm: usize,
     ) {
         let tmp = self.get(csr);
-        self.set_csr(csr, tmp | uimm, mctx);
+
+        if uimm != 0 {
+            self.set_csr(csr, tmp | uimm, mctx);
+        }
+
         self.set(rd, tmp);
     }
 
@@ -646,9 +648,7 @@ impl VirtContext {
         let tmp = self.get(csr);
 
         // Skip the write if the mask is x0.
-        //
-        // This makes the emulator simpler as some pseudo-instructions translate to CSRRC with x0
-        // as the mask.
+        // This is required by the sail specification
         if rs1 != Register::X0 {
             self.set_csr(csr, tmp & !self.get(rs1), mctx);
         }
@@ -664,7 +664,11 @@ impl VirtContext {
         uimm: usize,
     ) {
         let tmp = self.get(csr);
-        self.set_csr(csr, tmp & !uimm, mctx);
+
+        if uimm != 0 {
+            self.set_csr(csr, tmp & !uimm, mctx);
+        }
+
         self.set(rd, tmp);
     }
 
