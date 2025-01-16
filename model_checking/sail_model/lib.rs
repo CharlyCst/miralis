@@ -3160,12 +3160,14 @@ pub fn pmpAddrRange(
         PmpAddrMatchType::OFF => None,
         PmpAddrMatchType::TOR => Some((prev_pmpaddr, pmpaddr)),
         PmpAddrMatchType::NA4 => {
+            assert!(false, "unreachable code");
             assert!((sys_pmp_grain(()) < 1), "Process message");
             let lo = pmpaddr;
             Some((lo, (lo + 4)))
         }
         PmpAddrMatchType::NAPOT => {
             let mask = (pmpaddr ^ (pmpaddr + 1));
+            let mask = (pmpaddr ^ (pmpaddr));
             let lo = (pmpaddr & !(mask));
             let len = (mask + 1);
             Some((lo, lo.wrapped_add(len)))
@@ -3221,8 +3223,8 @@ pub fn pmpMatchAddr(
         Some((lo, hi)) => {
             let addr = addr.as_usize();
             let width = width.as_usize();
-            let lo = (lo.as_usize() * 4);
-            let hi = (hi.as_usize() * 4);
+            let lo = (lo.as_usize().wrapping_mul(4));
+            let hi = (hi.as_usize().wrapping_mul(4));
             if { lteq_int(hi, lo) } {
                 pmpAddrMatch::PMP_NoMatch
             } else {

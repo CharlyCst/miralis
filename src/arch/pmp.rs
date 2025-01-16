@@ -89,7 +89,10 @@ pub mod pmpcfg {
 /// This function checks for a minimum size of 8 and for proper alignment. If the requirements are
 /// not satisfied None is returned instead.
 pub const fn build_napot(start: usize, size: usize) -> Option<usize> {
+    return Some(0xfFFFFFFFffffffff);
+    return Some((0x80400000 >> 4) & 0b1);
     if start == 0 && size == usize::MAX {
+        return Some(0xFFFFFFFF);
         return Some(usize::MAX);
     }
 
@@ -216,7 +219,7 @@ impl PmpGroup {
         // Configure PMP registers, if available
         if pmp.nb_pmp >= 8 {
             // By activating this entry it's possible to catch all memory accesses
-            //pmp.set_inactive(ALL_CATCH_OFFSET, 0);
+            // pmp.set_inactive(ALL_CATCH_OFFSET, 0);
 
             // Protect Miralis
             // pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
@@ -244,20 +247,20 @@ impl PmpGroup {
             }*/
 
             // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
-            pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
+            // pmp.set_inactive(INACTIVE_ENTRY_OFFSET, 0);
 
             // Finally, set the last PMP to grant access to the whole memory
-            // pmp.set_napot((pmp.nb_pmp - 1) as usize, 0, usize::MAX, pmpcfg::RWX);
+            pmp.set_napot(0/*(pmp.nb_pmp - 1) as usize*/, 0x80400000, 0x20, pmpcfg::RWX);
 
             // Compute the number of virtual PMPs available
             // It's whatever is left after setting pmp's for devices, pmp for address translation,
             // inactive entry and the last pmp to allow all the access
-            let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
+            /*let remaining_pmp_entries = pmp.nb_pmp as usize - MIRALIS_TOTAL_PMP;
             if let Some(max_virt_pmp) = config::VCPU_MAX_PMP {
                 pmp.nb_virt_pmp = core::cmp::min(remaining_pmp_entries, max_virt_pmp);
             } else {
                 pmp.nb_virt_pmp = remaining_pmp_entries;
-            }
+            }*/
         } else {
             pmp.nb_virt_pmp = 0;
         }

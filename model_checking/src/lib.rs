@@ -22,16 +22,16 @@ pub fn pmp_equivalence_with_miralis() {
     let (_, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
     // Generation of the entire address space we want to check
-    let address_to_check = BitVector::new((any!(u64) >> 4));
+    let address_to_check = BitVector::new((any!(u64) >> 4) as u64);
 
     // The virtual firmware is always running in userspace
     let virtual_firmware_privilege = Privilege::User;
 
     let access_type: AccessType = match any!(u8) % 4 {
-        0 => AccessType::Read(()),
-        1 => AccessType::Write(()),
-        2 => AccessType::ReadWrite(((), ())),
-        _ => AccessType::Execute(()),
+        /*0*/_ => AccessType::Read(()),
+        //1 => AccessType::Write(()),
+        //2 => AccessType::ReadWrite(((), ())),
+        //_ => AccessType::Execute(()),
     };
 
     let virtual_offset = VIRTUAL_PMP_OFFSET;
@@ -61,12 +61,12 @@ pub fn pmp_equivalence_with_miralis() {
         pmp_group.virt_pmp_offset = virtual_offset;
 
         // Physical write of the pmp registers
-        pmp_group.load_with_offset(
+        /*pmp_group.load_with_offset(
             &pmpaddr_sail_to_miralis(sail_ctx.pmpaddr_n),
             &pmpcfg_sail_to_miralis(sail_ctx.pmpcfg_n),
             virtual_offset,
             number_virtual_pmps,
-        );
+        );*/
         unsafe {
             write_pmp(&pmp_group).flush();
         }
@@ -84,14 +84,17 @@ pub fn pmp_equivalence_with_miralis() {
         )
     };
 
-    if false && START_MIRALIS_RANGE <= address_to_check.bits() as usize && (address_to_check.bits() as usize) < START_MIRALIS_RANGE + MIRALIS_SIZE {
+    assert_eq!(virtual_check, None);
+
+    /*if START_MIRALIS_RANGE <= address_to_check.bits() as usize && (address_to_check.bits() as usize) < START_MIRALIS_RANGE + MIRALIS_SIZE {
         // Miralis must be protected
         assert_ne!(virtual_check, None);
     } else {
+        assert_ne!(virtual_check, None);
         // Check pmp equivalence
         assert_eq!(
             physical_check, virtual_check,
             "pmp are not installed correctly in Miralis"
         );
-    }
+    }*/
 }

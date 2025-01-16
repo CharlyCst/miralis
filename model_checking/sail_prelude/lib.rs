@@ -399,7 +399,7 @@ impl<const N: usize> std::ops::Add<i64> for BitVector<N> {
     type Output = Self;
 
     fn add(self, rhs: i64) -> BitVector<N> {
-        let result = self.bits as i64 + rhs;
+        let result = self.bits.wrapping_add(rhs as u64);
         // If the result is out of bounds, we may want to handle overflow
         BitVector::<N>::new(result as u64) // Returning the result as BitVector
     }
@@ -409,7 +409,8 @@ impl<const N: usize> std::ops::Add<i32> for BitVector<N> {
     type Output = Self;
 
     fn add(self, rhs: i32) -> BitVector<N> {
-        let result = self.bits as i64 + rhs as i64;
+        assert!(rhs >= 0, "otherwise false");
+        let result:u64 = (self.bits as u64).wrapping_add(rhs as u64);
         // If the result is out of bounds, we may want to handle overflow
         BitVector::<N>::new(result as u64) // Returning the result as BitVector
     }
