@@ -9,7 +9,7 @@ use crate::virt::traits::*;
 use crate::virt::VirtContext;
 
 // We use this structure to avoid false sharing in the benchmark.
-// The typical size of a cache line is 64 bits
+// The typical size of a cache line is 64 bytes
 #[repr(C, align(64))]
 #[derive(Debug)]
 struct PaddedCounter {
@@ -27,6 +27,9 @@ const ZEROED_COUNTER: PaddedCounter = PaddedCounter {
 
 static NB_WORLD_SWITCHES: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_NB_HARTS];
 static NB_FIRMWARE_EXIT: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_NB_HARTS];
+
+const SINGLE_CORE_BENCHMARK: usize = 0;
+const ALL_CORES_BENCHMARK: usize = 1;
 
 /// A simple and efficient benchmark module based on atomic counters.
 ///
@@ -68,9 +71,25 @@ impl BenchmarkModule for CounterBenchmark {
     }
 
     fn read_counters(ctx: &mut VirtContext) {
-        let current = hard_id();
-        ctx.set(Register::X10, get_nb_firmware_exits(current) as usize);
-        ctx.set(Register::X11, get_nb_world_switch(current) as usize);
+        let mut nb_firmware_exits: usize = 0;
+        let mut nb_world_switch: usize = 0;
+
+        match ctx.get(Register::X10) {
+            SINGLE_CORE_BENCHMARK => {
+                nb_firmware_exits = get_nb_firmware_exits(0) as usize;
+                nb_world_switch = get_nb_world_switch(0) as usize;
+            }
+            ALL_CORES_BENCHMARK => {
+                for current_hart in 0..PLATFORM_NB_HARTS {
+                    nb_firmware_exits += get_nb_firmware_exits(current_hart) as usize;
+                    nb_world_switch += get_nb_world_switch(current_hart) as usize;
+                }
+            }
+            _ => unreachable!(),
+        }
+
+        ctx.set(Register::X10, nb_firmware_exits);
+        ctx.set(Register::X11, nb_world_switch);
     }
 
     fn display_counters() {
