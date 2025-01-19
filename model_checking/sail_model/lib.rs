@@ -4862,6 +4862,7 @@ pub fn trap_handler(
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.mcause)
         }
         Privilege::Supervisor => {
+            panic!("In supervisor");
             assert!(haveSupMode(sail_ctx, ()), "Process message");
             sail_ctx.scause = {
                 let var_5 = bool_to_bits(sail_ctx, intr);
@@ -4909,6 +4910,7 @@ pub fn trap_handler(
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.scause)
         }
         Privilege::User => {
+            panic!("In user mode");
             assert!(haveUsrMode(sail_ctx, ()), "Process message");
             sail_ctx.ucause = {
                 let var_8 = bool_to_bits(sail_ctx, intr);
@@ -6156,7 +6158,6 @@ pub fn execute_CSR(
         }
     };
     if { !(check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {
-        panic!("les 4 saisons");
         handle_illegal(sail_ctx, ());
         Retired::RETIRE_FAIL
     } else if { !(ext_check_CSR(sail_ctx, csr, sail_ctx.cur_privilege, isWrite)) } {

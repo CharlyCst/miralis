@@ -224,6 +224,9 @@ impl VirtContext {
     }
 
     pub fn emulate_jump_trap_handler(&mut self) {
+        // Precondition to emulate a jump, we must be in a trap
+        assert_eq!(self.trap_info.mcause & (1 << 63), 0, "Mcause should represent a trap, not an interrupt");
+
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
@@ -231,17 +234,20 @@ impl VirtContext {
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
 
-        // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
-        // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
-        // controller. (refer to documentation for further detail).
-        // MSIE and MEIE could not be set by payload so it should be 0. The real value is read from hardware when
-        // the firmware want to read virtual mip.
-        //
-        // We also preserve the virtualized interrupt bits from the virtual mip, as those are pure
-        // software and might not match the physical mip.
-        let hw_mip_bits = self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
-        let sw_mip_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
-        self.csr.mip = hw_mip_bits | sw_mip_bits;
+        #[cfg(not(kani))]
+        {
+            // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
+            // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
+            // controller. (refer to documentation for further detail).
+            // MSIE and MEIE could not be set by payload so it should be 0. The real value is read from hardware when
+            // the firmware want to read virtual mip.
+            //
+            // We also preserve the virtualized interrupt bits from the virtual mip, as those are pure
+            // software and might not match the physical mip.
+            let hw_mip_bits = self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+            let sw_mip_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+            self.csr.mip = hw_mip_bits | sw_mip_bits;
+        }
 
         match self.mode {
             Mode::M => {
