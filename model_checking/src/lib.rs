@@ -84,6 +84,8 @@ pub fn formally_verify_emulation_privileged_instructions() {
     ctx.trap_info.mstatus = ctx.trap_info.mstatus & !((1 << 7) - 1) | ((ctx.trap_info.mstatus & 0b1000) << 4);
     ctx.trap_info.mstatus &= !(1<<3);
 
+    // MPP is u-mode here if we have an illegal instruction
+    ctx.trap_info.mstatus |= 0b11 << 11;
 
     // let instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
 
