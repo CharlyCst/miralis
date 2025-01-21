@@ -36,6 +36,7 @@ extern "C" {
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
+
     let hart_id = Arch::read_csr(Csr::Mhartid);
 
     init();
@@ -53,6 +54,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     log::info!("Preparing jump into firmware");
+
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
@@ -139,6 +141,10 @@ r#"
 .text
 .global _start
 _start:
+    // Before doing anything we disable interrupts on the hart, as the previous stage might have
+    // enabled them.
+    csrrwi x0, mie, 0
+
     // We start by setting up the stack:
     // First we find where the stack is for that hart
     ld t0, __stack_start
