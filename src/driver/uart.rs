@@ -1,4 +1,4 @@
-//! # UART Driver
+//! UART Driver
 //!
 //! This module implements a driver for the UART driver. This driver allows Miralis to communicate with the UART.
 

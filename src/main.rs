@@ -36,6 +36,7 @@ extern "C" {
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
+
     let hart_id = Arch::read_csr(Csr::Mhartid);
 
     init();
@@ -53,6 +54,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
 
     log::info!("Preparing jump into firmware");
+
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 

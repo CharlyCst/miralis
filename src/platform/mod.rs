@@ -1,4 +1,5 @@
 mod miralis;
+mod premierp550;
 pub mod virt;
 pub mod visionfive2;
 
@@ -22,9 +23,10 @@ use crate::{device, logger};
 pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
     "miralis"     => miralis::MiralisPlatform
     "visionfive2" => visionfive2::VisionFive2Platform
+    "premierp550"             => premierp550::PremierP550Platform
     _             => virt::VirtPlatform
-];
 
+];
 pub trait Platform {
     fn name() -> &'static str;
     fn init();
