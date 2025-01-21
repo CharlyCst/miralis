@@ -1,4 +1,5 @@
 mod miralis;
+mod premierp550;
 pub mod virt;
 pub mod visionfive2;
 
