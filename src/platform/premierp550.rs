@@ -1,7 +1,6 @@
 //! QEMU Virt board
 
-use core::fmt::Write;
-use core::{fmt, hint, ptr};
+use core::{fmt, hint};
 
 use log::Level;
 use spin::Mutex;
@@ -17,11 +16,14 @@ use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
-const UART_SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
-const UART_SIZE_PER_REGISTER: usize = 4;
+const EIC770X_UART0_ADDR: usize = 0x50900000;
+const EIC770X_REGISTER_SIZE: usize = 0x4;
+
+// TODO: Check about that if it is the case or not
 const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 
+// TODO: What is the base of the clint device?
 const CLINT_BASE: usize = 0x2000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
 
@@ -39,10 +41,8 @@ static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
 
-pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
-    UART_SERIAL_PORT_BASE_ADDRESS,
-    UART_SIZE_PER_REGISTER,
-));
+pub static WRITER: Mutex<UartDriver> =
+    Mutex::new(UartDriver::new(EIC770X_UART0_ADDR, EIC770X_REGISTER_SIZE));
 
 /// The list of virtual devices exposed on the platform.
 static VIRT_DEVICES: &[VirtDevice; 2] = &[
@@ -62,28 +62,29 @@ static VIRT_DEVICES: &[VirtDevice; 2] = &[
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
-pub struct VisionFive2Platform {}
+pub struct PremierP550Platform {}
 
-impl Platform for VisionFive2Platform {
+impl Platform for PremierP550Platform {
+    // TODO: Change this number
     const NB_HARTS: usize = 5;
+    // TODO: Check this number
     const NB_VIRT_DEVICES: usize = 2;
 
     fn name() -> &'static str {
-        "VisionFive 2 board"
+        "Premier P550 board"
     }
 
     fn init() {
         let mut writer = WRITER.lock();
         // NOTE: for now we assume the uart has been initialized by the previous boot stage (U-boot
         // SPL)
-        // uart_init(SERIAL_PORT_BASE_ADDRESS);
-        writer.write_char('\n');
+        writer.write_char('\n')
     }
 
     fn debug_print(_level: Level, args: fmt::Arguments) {
-        let mut writer = WRITER.lock();
+        /*let mut writer = WRITER.lock();
         writer.write_fmt(args).unwrap();
-        writer.write_str("\r\n").unwrap();
+        writer.write_str("\r\n").unwrap();*/
     }
 
     fn exit_success() -> ! {
@@ -122,70 +123,5 @@ impl Platform for VisionFive2Platform {
 
     fn get_vclint() -> &'static VirtClint {
         &VIRT_CLINT
-    }
-}
-
-// NOTE: for now this function is not used, as we assume the previous boot stage (U-boot SPL) will
-// initialize the uart for us.
-#[allow(dead_code)]
-fn uart_init(serial_port_base_addr: usize) {
-    let reg_lcr = 0x03;
-    let reg_brdl = 0x00;
-    let reg_brdh = 0x01;
-    let reg_mdc = 0x04;
-    let reg_fcr = 0x02;
-    let reg_ier = 0x01;
-
-    let lcr_dlab = 0x80;
-    let lcr_cs8 = 0x03;
-    let lcr_1_stb = 0x00;
-    let lcr_pdis = 0x00;
-    let fcr_fifo = 0x01;
-    let fcr_mode1 = 0x08;
-    let fcr_fifo_8 = 0x80;
-    let fcr_rcvrclr = 0x02;
-    let fcr_xmitclr = 0x04;
-
-    let divisor = 0x01;
-
-    // Read LCR and cache its value
-    let lcr_cache = unsafe { ptr::read_volatile((serial_port_base_addr + reg_lcr) as *const u8) };
-
-    // Enable DLAB (Divisor Latch Access Bit) to set the baud rate divisor
-    unsafe {
-        ptr::write_volatile(
-            (serial_port_base_addr + reg_lcr) as *mut u8,
-            lcr_dlab | lcr_cache,
-        );
-        ptr::write_volatile(
-            (serial_port_base_addr + reg_brdl) as *mut u8,
-            (divisor & 0xFF) as u8,
-        );
-        ptr::write_volatile(
-            (serial_port_base_addr + reg_brdh) as *mut u8,
-            ((divisor >> 8) & 0xFF) as u8,
-        );
-        ptr::write_volatile((serial_port_base_addr + reg_lcr) as *mut u8, lcr_cache);
-        // Restore LCR
-    }
-
-    // Configure UART: 8 data bits, 1 stop bit, no parity
-    unsafe {
-        ptr::write_volatile(
-            (serial_port_base_addr + reg_lcr) as *mut u8,
-            lcr_cs8 | lcr_1_stb | lcr_pdis,
-        );
-
-        // Disable flow control
-        ptr::write_volatile((serial_port_base_addr + reg_mdc) as *mut u8, 0);
-
-        // Configure FIFO: enabled, mode 0, generate interrupt at 8th byte, clear receive and transmit buffers
-        ptr::write_volatile(
-            (serial_port_base_addr + reg_fcr) as *mut u8,
-            fcr_fifo | fcr_mode1 | fcr_fifo_8 | fcr_rcvrclr | fcr_xmitclr,
-        );
-
-        // Disable UART interrupts
-        ptr::write_volatile((serial_port_base_addr + reg_ier) as *mut u8, 0);
     }
 }
