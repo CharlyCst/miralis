@@ -59,8 +59,8 @@ pub fn run(args: &RunArgs) -> ExitCode {
     let cmd = match cfg.platform.name.unwrap_or(Platforms::QemuVirt) {
         Platforms::QemuVirt => get_qemu_cmd(&cfg, miralis, firmware, None, args.debug, args.stop),
         Platforms::Spike => get_spike_cmd(&cfg, miralis, firmware),
-        Platforms::VisionFive2 => {
-            log::error!("We can't run VisionFive2 on simulator.");
+        Platforms::VisionFive2 | Platforms::PremierP550 => {
+            log::error!("We can't run real hardware on simulator.");
             return ExitCode::FAILURE;
         }
     };
