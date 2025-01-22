@@ -1,0 +1,4 @@
+# A configuration to test the benchmark module used for the benchmark on the boards
+
+[benchmark]
+benchmark_type = "counter"

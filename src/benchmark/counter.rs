@@ -76,8 +76,9 @@ impl BenchmarkModule for CounterBenchmark {
 
         match ctx.get(Register::X10) {
             SINGLE_CORE_BENCHMARK => {
-                nb_firmware_exits = get_nb_firmware_exits(0) as usize;
-                nb_world_switch = get_nb_world_switch(0) as usize;
+                let hart = hard_id();
+                nb_firmware_exits = get_nb_firmware_exits(hart) as usize;
+                nb_world_switch = get_nb_world_switch(hart) as usize;
             }
             ALL_CORES_BENCHMARK => {
                 for current_hart in 0..PLATFORM_NB_HARTS {
@@ -85,7 +86,10 @@ impl BenchmarkModule for CounterBenchmark {
                     nb_world_switch += get_nb_world_switch(current_hart) as usize;
                 }
             }
-            _ => unreachable!(),
+            _ => log::error!(
+                "Invalid argument for register a0 [0 ==> Core 0 | 1 ==> All cores] {}",
+                ctx.get(Register::X10)
+            ),
         }
 
         ctx.set(Register::X10, nb_firmware_exits);

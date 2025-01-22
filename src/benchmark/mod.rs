@@ -13,6 +13,7 @@ use crate::virt::VirtContext;
 
 pub type Benchmark = select_env!["MIRALIS_BENCHMARK_TYPE":
     "default"      => default::DefaultBenchmark
+    "counter"      => counter::CounterBenchmark
     _ => empty::EmptyBenchmark
 ];
 

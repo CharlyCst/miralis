@@ -23,3 +23,6 @@ profile = "release"
 
 [policy]
 name = "protect_payload"
+
+[benchmark]
+benchmark_type = "counter"
