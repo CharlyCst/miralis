@@ -90,18 +90,11 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
 pub fn formally_verify_emulation_privileged_instructions() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-    // In this scenario, we are facing illegal instructions
-    ctx.trap_info.mcause = IllegalInstr as usize;
-
     // We don't delegate any interrupts in the formal verification
     sail_ctx.mideleg = BitField::new(0);
     ctx.csr.mideleg = 0;
 
-    // Create the precondition for the trap handler
-    ctx.trap_info.mcause = IllegalInstr as usize;
-    ctx.trap_info.mepc = ctx.pc;
-
-    // TODO: Then remove the mstatus part as well
+    // Generate the trap handler
     fill_trap_info_structure(&mut ctx, IllegalInstr);
 
     // let instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
@@ -127,20 +120,10 @@ pub fn formally_verify_emulation_privileged_instructions() {
 
         let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);
 
-        // We don't care about this field
-        sail_ctx_generated.is_wfi = true;
-        ctx.is_wfi = true;
+        // These fields are used only in the miralis context and are irrelevant
+        sail_ctx_generated.is_wfi = ctx.is_wfi.clone();
+        sail_ctx_generated.trap_info = ctx.trap_info.clone();
 
-        assert_eq!(sail_ctx_generated, ctx, "tout");
-        assert_eq!(sail_ctx_generated.csr, ctx.csr, "csr");
-        assert_eq!(sail_ctx_generated.mode, ctx.mode, "mode");
-        assert_eq!(sail_ctx_generated.regs, ctx.regs, "regs");
-        assert_eq!(sail_ctx_generated.pc, ctx.pc, "pc");
-        assert_eq!(sail_ctx_generated.trap_info, ctx.trap_info, "trap_info");
-        assert_eq!(sail_ctx_generated.nb_pmp, ctx.nb_pmp, "nb_pmp");
-        assert_eq!(sail_ctx_generated.is_wfi, ctx.is_wfi, "wfi");
-        assert_eq!(sail_ctx_generated.hart_id, ctx.hart_id, "hart_id");
-        assert_eq!(sail_ctx_generated.extensions, ctx.extensions, "extensions");
-        assert_eq!(sail_ctx_generated.nb_exits, ctx.nb_exits, "nb-exits");
+        assert_eq!(sail_ctx_generated, ctx, "Overall");
     }
 }
