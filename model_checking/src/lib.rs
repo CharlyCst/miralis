@@ -1,4 +1,4 @@
-use miralis::arch::{mie, Register, write_pmp};
+use miralis::arch::{MCause, mie, Register, write_pmp};
 use miralis::arch::MCause::IllegalInstr;
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
@@ -6,10 +6,11 @@ use miralis::arch::userspace::return_userspace_ctx;
 use miralis::decoder::Instr;
 use miralis::host::MiralisContext;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
+use miralis::virt::VirtContext;
 use sail_decoder::encdec_backwards;
-use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, Privilege, readCSR, SailVirtCtx, step_interrupts_only, writeCSR};
+use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, Privilege, readCSR, SailVirtCtx, step_interrupts_only, trap_handler, writeCSR};
 use sail_prelude::{BitField, BitVector, sys_pmp_count};
-use crate::adapters::sail_to_miralis;
+use crate::adapters::{miralis_to_sail, sail_to_miralis};
 
 #[macro_use]
 mod symbolic;
@@ -65,6 +66,25 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
     return instr;
 }
 
+
+fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
+
+    let mut sail_ctx = miralis_to_sail(ctx);
+
+    // Inject trap
+    // TODO: adapt cause
+    let pc_argument = sail_ctx.PC;
+    trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(cause as u64), pc_argument, None, None);
+
+    let new_miralis_ctx =  sail_to_miralis(sail_ctx);
+
+    // TODO: Add
+    ctx.trap_info.mcause = new_miralis_ctx.csr.mcause;
+    ctx.trap_info.mstatus = new_miralis_ctx.csr.mstatus;
+    ctx.trap_info.mtval  = new_miralis_ctx.csr.mtval;
+    ctx.trap_info.mepc = new_miralis_ctx.csr.mepc;
+}
+
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn formally_verify_emulation_privileged_instructions() {
@@ -81,11 +101,8 @@ pub fn formally_verify_emulation_privileged_instructions() {
     ctx.trap_info.mcause = IllegalInstr as usize;
     ctx.trap_info.mepc = ctx.pc;
 
-    ctx.trap_info.mstatus = ctx.trap_info.mstatus & !((1 << 7) - 1) | ((ctx.trap_info.mstatus & 0b1000) << 4);
-    ctx.trap_info.mstatus &= !(1<<3);
-
-    // MPP is u-mode here if we have an illegal instruction
-    ctx.trap_info.mstatus |= 0b11 << 11;
+    // TODO: Then remove the mstatus part as well
+    fill_trap_info_structure(&mut ctx, IllegalInstr);
 
     // let instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
 
@@ -114,87 +131,16 @@ pub fn formally_verify_emulation_privileged_instructions() {
         sail_ctx_generated.is_wfi = true;
         ctx.is_wfi = true;
 
-        // assert_eq!(sail_ctx_generated, ctx, "equivalence");
-        // assert_eq!(sail_ctx_generated.csr, ctx.csr, "mcause");
-        assert_eq!(sail_ctx_generated.csr.mstatus, ctx.csr.mstatus, "mstatus");
-
-        /*assert_eq!(sail_to_miralis(sail_ctx).csr.misa, ctx.csr.misa, "misa");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "mie");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "mip");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mtvec, ctx.csr.mtvec, "mtvec");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mvendorid, ctx.csr.mvendorid, "mvendorid");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.marchid, ctx.csr.marchid, "marchid");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mimpid, ctx.csr.mimpid, "mimpid");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mcycle, ctx.csr.mcycle, "mcycle");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.minstret, ctx.csr.minstret, "minstret");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mscratch, ctx.csr.mscratch, "mscratch");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mcountinhibit, ctx.csr.mcountinhibit, "mcountinhibit");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mcounteren, ctx.csr.mcounteren, "mcounteren");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.menvcfg, ctx.csr.menvcfg, "menvcfg");
-        assert_eq!(
-            sail_to_miralis(sail_ctx).csr.mseccfg,
-            ctx.csr.mseccfg,
-            "mseccfg"
-        );
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mcause, ctx.csr.mcause, "mcause");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.tselect, ctx.csr.tselect, "tselect");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mepc, ctx.csr.mepc, "mepc");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mtval, ctx.csr.mtval, "mtval");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mtval2, ctx.csr.mtval2, "mtval2");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mstatus, ctx.csr.mstatus, "mstatus");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mtinst, ctx.csr.mtinst, "mtinst");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mconfigptr, ctx.csr.mconfigptr, "mconfigptr");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.stvec, ctx.csr.stvec, "stvec");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.scounteren, ctx.csr.scounteren, "scounteren");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.senvcfg, ctx.csr.senvcfg, "senvcfg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.sscratch, ctx.csr.sscratch, "sscratch");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.sepc, ctx.csr.sepc, "sepc");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.scause, ctx.csr.scause, "scause");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.stval, ctx.csr.stval, "stval");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.satp, ctx.csr.satp, "satp");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.scontext, ctx.csr.scontext, "scontext");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.stimecmp, ctx.csr.stimecmp, "stimecmp");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.medeleg, ctx.csr.medeleg, "medeleg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mideleg, ctx.csr.mideleg, "mideleg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hstatus, ctx.csr.hstatus, "hstatus");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hedeleg, ctx.csr.hedeleg, "hedeleg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hideleg, ctx.csr.hideleg, "hideleg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hvip, ctx.csr.hvip, "hvip");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hip, ctx.csr.hip, "hip");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hie, ctx.csr.hie, "hie");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hgeip, ctx.csr.hgeip, "hgeip");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hgeie, ctx.csr.hgeie, "hgeie");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.henvcfg, ctx.csr.henvcfg, "henvcfg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.henvcfgh, ctx.csr.henvcfgh, "henvcfgh");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hcounteren, ctx.csr.hcounteren, "hcounteren");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.htimedelta, ctx.csr.htimedelta, "htimedelta");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.htimedeltah, ctx.csr.htimedeltah, "htimedeltah");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.htval, ctx.csr.htval, "htval");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.htinst, ctx.csr.htinst, "htinst");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.hgatp, ctx.csr.hgatp, "hgatp");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vsstatus, ctx.csr.vsstatus, "vsstatus");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vsie, ctx.csr.vsie, "vsie");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vstvec, ctx.csr.vstvec, "vstvec");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vsscratch, ctx.csr.vsscratch, "vsscratch");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vsepc, ctx.csr.vsepc, "vsepc");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vscause, ctx.csr.vscause, "vscause");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vstval, ctx.csr.vstval, "vstval");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vsip, ctx.csr.vsip, "vsip");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vsatp, ctx.csr.vsatp, "vsatp");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.pmpcfg, ctx.csr.pmpcfg, "pmpcfg");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.pmpaddr, ctx.csr.pmpaddr, "pmpaddr");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mhpmcounter, ctx.csr.mhpmcounter, "mhpmcounter");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.mhpmevent, ctx.csr.mhpmevent, "mhpmevent");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vstart, ctx.csr.vstart, "vstart");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vxsat, ctx.csr.vxsat, "vxsat");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vxrm, ctx.csr.vxrm, "vxrm");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vcsr, ctx.csr.vcsr, "vcsr");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vl, ctx.csr.vl, "vl");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vtype, ctx.csr.vtype, "vtype");
-        assert_eq!(sail_to_miralis(sail_ctx).csr.vlenb, ctx.csr.vlenb, "vlenb");*/
-
-
-
-
+        assert_eq!(sail_ctx_generated, ctx, "tout");
+        assert_eq!(sail_ctx_generated.csr, ctx.csr, "csr");
+        assert_eq!(sail_ctx_generated.mode, ctx.mode, "mode");
+        assert_eq!(sail_ctx_generated.regs, ctx.regs, "regs");
+        assert_eq!(sail_ctx_generated.pc, ctx.pc, "pc");
+        assert_eq!(sail_ctx_generated.trap_info, ctx.trap_info, "trap_info");
+        assert_eq!(sail_ctx_generated.nb_pmp, ctx.nb_pmp, "nb_pmp");
+        assert_eq!(sail_ctx_generated.is_wfi, ctx.is_wfi, "wfi");
+        assert_eq!(sail_ctx_generated.hart_id, ctx.hart_id, "hart_id");
+        assert_eq!(sail_ctx_generated.extensions, ctx.extensions, "extensions");
+        assert_eq!(sail_ctx_generated.nb_exits, ctx.nb_exits, "nb-exits");
     }
 }

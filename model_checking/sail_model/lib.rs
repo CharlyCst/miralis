@@ -4849,16 +4849,7 @@ pub fn trap_handler(
             sail_ctx.mtval = tval(sail_ctx, info);
             sail_ctx.mepc = pc;
             sail_ctx.cur_privilege = del_priv;
-            handle_trap_extension(sail_ctx, del_priv, pc, ext);
-            if { get_config_print_reg(sail_ctx, ()) } {
-                print_reg(format!(
-                    "{}{}",
-                    String::from("CSR mstatus <- "),
-                    bits_str(sail_ctx.mstatus.bits)
-                ))
-            } else {
-                ()
-            };
+
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.mcause)
         }
         Privilege::Supervisor => {

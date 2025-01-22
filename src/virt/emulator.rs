@@ -230,12 +230,19 @@ impl VirtContext {
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
 
+        #[cfg(kani)]
+        {
+            self.csr.mstatus &= !0b10000000;
+            self.csr.mstatus |= (self.csr.mstatus & 0b1000) << 4;
+            self.csr.mstatus &= !0b1000;
+        }
+
         #[cfg(not(kani))]
         {
+            self.csr.mstatus = self.trap_info.mstatus;
             // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
             // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
             // controller. (refer to documentation for further detail).
