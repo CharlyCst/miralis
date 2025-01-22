@@ -12,6 +12,7 @@ use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA,
 use sail_prelude::{BitField, BitVector, sys_pmp_count};
 use crate::adapters::{miralis_to_sail, sail_to_miralis};
 
+
 #[macro_use]
 mod symbolic;
 mod adapters;
@@ -87,6 +88,36 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
+pub fn verify_trap_logic() {
+    let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // We don't delegate any interrupts in the formal verification
+    sail_ctx.mideleg = BitField::new(0);
+    ctx.csr.mideleg = 0;
+
+    let cause = any!(u8);
+
+    // Generate the trap handler
+    fill_trap_info_structure(&mut ctx, MCause::new(cause as usize));
+
+    ctx.emulate_jump_trap_handler();
+
+    {
+        let pc = sail_ctx.PC;
+        trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(cause as u64), pc, None,None);
+    }
+
+    let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);
+
+    sail_ctx_generated.is_wfi = ctx.is_wfi.clone();
+    sail_ctx_generated.trap_info = ctx.trap_info.clone();
+
+    assert_eq!(sail_ctx_generated.csr.mcause, ctx.csr.mcause, "Trap emulation is not equivalent");
+}
+
+
+// #[cfg_attr(kani, kani::proof)]
+// #[cfg_attr(test, test)]
 pub fn formally_verify_emulation_privileged_instructions() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
@@ -97,9 +128,8 @@ pub fn formally_verify_emulation_privileged_instructions() {
     // Generate the trap handler
     fill_trap_info_structure(&mut ctx, IllegalInstr);
 
-    // let instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
+    let instr = generate_raw_instruction(&mut mctx, &mut sail_ctx);
 
-    let instr = 0x00001073;
     // Decode the instructions
     let decoded_instruction = mctx.decode_illegal_instruction(instr);
     let decoded_sail_instruction = encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
