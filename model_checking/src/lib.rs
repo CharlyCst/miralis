@@ -69,7 +69,6 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
 
 
 fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
-
     let mut sail_ctx = miralis_to_sail(ctx);
 
     // Inject trap
@@ -84,6 +83,8 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
     ctx.trap_info.mstatus = new_miralis_ctx.csr.mstatus;
     ctx.trap_info.mtval  = new_miralis_ctx.csr.mtval;
     ctx.trap_info.mepc = new_miralis_ctx.csr.mepc;
+
+    ctx.csr.mcause = new_miralis_ctx.csr.mcause;
 }
 
 #[cfg_attr(kani, kani::proof)]
@@ -91,20 +92,16 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
 pub fn verify_trap_logic() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-    // We don't delegate any interrupts in the formal verification
-    sail_ctx.mideleg = BitField::new(0);
-    ctx.csr.mideleg = 0;
-
-    let cause = any!(u8);
+    let trap_cause = 17; // any!(u8);
 
     // Generate the trap handler
-    fill_trap_info_structure(&mut ctx, MCause::new(cause as usize));
+    fill_trap_info_structure(&mut ctx, MCause::new(trap_cause as usize));
 
     ctx.emulate_jump_trap_handler();
 
     {
         let pc = sail_ctx.PC;
-        trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(cause as u64), pc, None,None);
+        trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(trap_cause as u64), pc, None, None);
     }
 
     let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);

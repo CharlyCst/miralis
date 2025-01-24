@@ -9,6 +9,7 @@ use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
 use sail_model::SailVirtCtx;
+use sail_prelude::BitField;
 
 use crate::adapters;
 
@@ -146,6 +147,9 @@ pub fn new_ctx() -> VirtContext {
     ctx.regs = [any!(usize); 32];
     // x0 is hardwired to zero
     ctx.regs[0] = 0;
+
+    // We don't delegate any interrupts in the formal verification
+    ctx.csr.mideleg = 0;
 
     ctx
 }

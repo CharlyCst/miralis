@@ -229,7 +229,7 @@ impl VirtContext {
 
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
-        // self.csr.mcause = self.trap_info.mcause;
+        self.csr.mcause = self.trap_info.mcause;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
         self.csr.mstatus = self.trap_info.mstatus;
