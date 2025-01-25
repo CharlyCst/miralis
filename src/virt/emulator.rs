@@ -257,6 +257,13 @@ impl VirtContext {
     }
 
     pub fn emulate_jump_trap_handler(&mut self) {
+        // Precondition to emulate a jump, we must be in a trap
+        assert_eq!(
+            self.trap_info.mcause & (1 << 63),
+            0,
+            "Mcause should represent a trap, not an interrupt"
+        );
+
         // We are now emulating a trap, registers need to be updated
         logger::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
