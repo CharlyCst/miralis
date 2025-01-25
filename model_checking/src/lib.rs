@@ -1,20 +1,21 @@
 use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::userspace::return_userspace_ctx;
-use miralis::arch::{mie, write_pmp, Register};
+use miralis::arch::{mie, write_pmp, MCause, Register};
 use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
+use miralis::virt::VirtContext;
 use sail_decoder::encdec_backwards;
 use sail_model::{
     execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET,
-    execute_WFI, pmpCheck, readCSR, step_interrupts_only, writeCSR, AccessType, ExceptionType,
-    Privilege,
+    execute_WFI, pmpCheck, readCSR, set_next_pc, step_interrupts_only, trap_handler, writeCSR,
+    AccessType, ExceptionType, Privilege,
 };
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
 use crate::adapters::{
-    ast_to_miralis_instr, decode_csr_register, pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis,
-    sail_to_miralis,
+    ast_to_miralis_instr, decode_csr_register, miralis_to_sail, pmpaddr_sail_to_miralis,
+    pmpcfg_sail_to_miralis, sail_to_miralis,
 };
 
 #[macro_use]
@@ -426,6 +427,81 @@ pub fn interrupt_virtualization() {
         sail_to_miralis(sail_ctx),
         "Interrupt virtualisation doesn't work properly"
     )
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn exception_virtualization() {
+    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    let trap_cause = generate_exception_cause();
+
+    // Generate the trap handler
+    fill_trap_info_structure(&mut ctx, MCause::new(trap_cause as usize));
+
+    // Emulate jump to trap handler in Miralis
+    ctx.emulate_jump_trap_handler();
+
+    // Emulate jump to trap handler in Sail
+    let pc = sail_ctx.PC;
+    let new_pc = trap_handler(
+        &mut sail_ctx,
+        Privilege::Machine,
+        false,
+        BitVector::new(trap_cause as u64),
+        pc,
+        None,
+        None,
+    );
+    set_next_pc(&mut sail_ctx, new_pc);
+
+    let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);
+    // Update some meta-data maintained by Miralis
+    sail_ctx_generated.is_wfi = ctx.is_wfi.clone();
+    sail_ctx_generated.trap_info = ctx.trap_info.clone();
+
+    assert_eq!(
+        sail_ctx_generated, ctx,
+        "Injection of trap doesn't work properly"
+    );
+}
+
+/// Returns an arbitrary exception cause among the exceptions known to Miralis.
+fn generate_exception_cause() -> usize {
+    let code = any!(usize) & 0xF;
+    if MCause::new(code) == MCause::UnknownException {
+        0
+    } else {
+        code
+    }
+}
+
+/// Simulate a hardware trap to fill the `trap_info` in the [VirtContext] with valid valued.
+///
+/// The simulation is done by instantiating a new Sail context and emulating a trap using the Sail
+/// emulator.
+fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
+    let mut sail_ctx = miralis_to_sail(ctx);
+
+    // Inject through the Sail emulator.
+    let pc_argument = sail_ctx.PC;
+    trap_handler(
+        &mut sail_ctx,
+        Privilege::Machine,
+        false,
+        BitVector::new(cause as u64),
+        pc_argument,
+        None,
+        None,
+    );
+
+    let new_miralis_ctx = sail_to_miralis(sail_ctx);
+
+    ctx.trap_info.mcause = new_miralis_ctx.csr.mcause;
+    ctx.trap_info.mstatus = new_miralis_ctx.csr.mstatus;
+    ctx.trap_info.mtval = new_miralis_ctx.csr.mtval;
+    ctx.trap_info.mepc = new_miralis_ctx.csr.mepc;
+    ctx.trap_info.mip = new_miralis_ctx.csr.mip;
 }
 
 #[cfg_attr(kani, kani::proof)]
