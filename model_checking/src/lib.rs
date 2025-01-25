@@ -67,8 +67,13 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
     return instr;
 }
 
-fn generate_trap_cause() -> u8 {
-    any!(u8) & 0xFF
+fn generate_trap_cause() -> usize {
+   let code = any!(usize) & 0xF;
+    if MCause::new(code) == MCause::UnknownException {
+        0
+    } else {
+        code
+    }
 }
 
 
