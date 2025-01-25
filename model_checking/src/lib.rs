@@ -67,6 +67,10 @@ fn generate_raw_instruction(mctx: &mut MiralisContext, sail_virt_ctx: &mut SailV
     return instr;
 }
 
+fn generate_trap_cause() -> u8 {
+    any!(u8) & 0xFF
+}
+
 
 fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
     let mut sail_ctx = miralis_to_sail(ctx);
@@ -83,8 +87,6 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
     ctx.trap_info.mstatus = new_miralis_ctx.csr.mstatus;
     ctx.trap_info.mtval  = new_miralis_ctx.csr.mtval;
     ctx.trap_info.mepc = new_miralis_ctx.csr.mepc;
-
-    ctx.csr.mcause = new_miralis_ctx.csr.mcause;
 }
 
 #[cfg_attr(kani, kani::proof)]
@@ -92,7 +94,7 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
 pub fn verify_trap_logic() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-    let trap_cause = 17; // any!(u8);
+    let trap_cause = generate_trap_cause();
 
     // Generate the trap handler
     fill_trap_info_structure(&mut ctx, MCause::new(trap_cause as usize));
