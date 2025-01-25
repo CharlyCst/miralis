@@ -8,7 +8,7 @@ use miralis::host::MiralisContext;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use miralis::virt::VirtContext;
 use sail_decoder::encdec_backwards;
-use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, Privilege, readCSR, SailVirtCtx, step_interrupts_only, trap_handler, writeCSR};
+use sail_model::{AccessType, ast, check_CSR, ExceptionType, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET, execute_WFI, pmpCheck, Privilege, readCSR, SailVirtCtx, set_next_pc, step_interrupts_only, trap_handler, writeCSR};
 use sail_prelude::{BitField, BitVector, sys_pmp_count};
 use crate::adapters::{miralis_to_sail, sail_to_miralis};
 
@@ -108,7 +108,8 @@ pub fn verify_trap_logic() {
 
     {
         let pc = sail_ctx.PC;
-        trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(trap_cause as u64), pc, None, None);
+        let new_pc = trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(trap_cause as u64), pc, None, None);
+        set_next_pc(&mut sail_ctx, new_pc);
     }
 
     let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);
@@ -116,7 +117,7 @@ pub fn verify_trap_logic() {
     sail_ctx_generated.is_wfi = ctx.is_wfi.clone();
     sail_ctx_generated.trap_info = ctx.trap_info.clone();
 
-    assert_eq!(sail_ctx_generated.csr.mcause, ctx.csr.mcause, "Trap emulation is not equivalent");
+    assert_eq!(sail_ctx_generated, ctx, "Injection of trap doesn't work properly");
 }
 
 
