@@ -81,13 +81,11 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
     let mut sail_ctx = miralis_to_sail(ctx);
 
     // Inject trap
-    // TODO: adapt cause
     let pc_argument = sail_ctx.PC;
     trap_handler(&mut sail_ctx, Privilege::Machine, false, BitVector::new(cause as u64), pc_argument, None, None);
 
     let new_miralis_ctx =  sail_to_miralis(sail_ctx);
 
-    // TODO: Add
     ctx.trap_info.mcause = new_miralis_ctx.csr.mcause;
     ctx.trap_info.mstatus = new_miralis_ctx.csr.mstatus;
     ctx.trap_info.mtval  = new_miralis_ctx.csr.mtval;
