@@ -29,7 +29,6 @@ extern "C" {
     static _stack_start: u8;
     static _bss_start: u8;
     static _bss_stop: u8;
-    static _stack_top: u8;
     static _start_address: u8;
 }
 
