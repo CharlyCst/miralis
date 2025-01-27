@@ -225,7 +225,11 @@ impl VirtContext {
 
     pub fn emulate_jump_trap_handler(&mut self) {
         // Precondition to emulate a jump, we must be in a trap
-        assert_eq!(self.trap_info.mcause & (1 << 63), 0, "Mcause should represent a trap, not an interrupt");
+        assert_eq!(
+            self.trap_info.mcause & (1 << 63),
+            0,
+            "Mcause should represent a trap, not an interrupt"
+        );
 
         // We are now emulating a trap, registers need to be updated
         log::trace!("Emulating jump to trap handler");
@@ -244,7 +248,8 @@ impl VirtContext {
             //
             // We also preserve the virtualized interrupt bits from the virtual mip, as those are pure
             // software and might not match the physical mip.
-            let hw_mip_bits = self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+            let hw_mip_bits =
+                self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
             let sw_mip_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
             self.csr.mip = hw_mip_bits | sw_mip_bits;
         }
