@@ -56,7 +56,7 @@ pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy
         }
 
         Benchmark::stop_interval_counters(Scope::HandleTrap);
-        Benchmark::increment_counter(Counter::TotalExits);
+        Benchmark::increment_counter(ctx, Counter::TotalExits);
     }
 }
 
@@ -93,11 +93,11 @@ fn handle_trap(
     };
 
     if exec_mode == ExecutionMode::Payload && ctx.mode.to_exec_mode() == ExecutionMode::Firmware {
-        Benchmark::increment_counter(Counter::WorldSwitches);
+        Benchmark::increment_counter(ctx, Counter::WorldSwitches);
     } else if exec_mode == ExecutionMode::Firmware
         && ctx.mode.to_exec_mode() == ExecutionMode::Firmware
     {
-        Benchmark::increment_counter(Counter::FirmwareExits);
+        Benchmark::increment_counter(ctx, Counter::FirmwareExits);
     }
 
     // Inject interrupts if required
