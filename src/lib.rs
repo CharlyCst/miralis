@@ -92,7 +92,7 @@ fn handle_trap(
         ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
     };
 
-    if exec_mode == ExecutionMode::Firmware && ctx.mode.to_exec_mode() == ExecutionMode::Firmware {
+    if exec_mode == ExecutionMode::Payload && ctx.mode.to_exec_mode() == ExecutionMode::Firmware {
         Benchmark::increment_counter(Counter::WorldSwitches);
     } else if exec_mode == ExecutionMode::Firmware
         && ctx.mode.to_exec_mode() == ExecutionMode::Firmware
