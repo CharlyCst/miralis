@@ -2594,6 +2594,10 @@ pub fn Mk_Sinterrupts(sail_ctx: &mut SailVirtCtx, v: BitVector<64>) -> Sinterrup
     Sinterrupts { bits: v }
 }
 
+pub fn _get_Sinterrupts_LCOFIE(sail_ctx: &mut SailVirtCtx, v: Sinterrupts) -> BitVector<1> {
+    v.subrange::<13, 14, 1>()
+}
+
 pub fn _update_Sinterrupts_LCOFIE(
     sail_ctx: &mut SailVirtCtx,
     v: Sinterrupts,
@@ -2778,27 +2782,36 @@ pub fn lift_sie(
     let m: Minterrupts = o;
     let m = if { (_get_Minterrupts_SEI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
         {
-            let var_11 = m;
-            let var_12 = _get_Sinterrupts_SEI(sail_ctx, s);
-            _update_Minterrupts_SEI(sail_ctx, var_11, var_12)
+            let var_13 = m;
+            let var_14 = _get_Sinterrupts_SEI(sail_ctx, s);
+            _update_Minterrupts_SEI(sail_ctx, var_13, var_14)
         }
     } else {
         m
     };
     let m = if { (_get_Minterrupts_STI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
         {
-            let var_9 = m;
-            let var_10 = _get_Sinterrupts_STI(sail_ctx, s);
-            _update_Minterrupts_STI(sail_ctx, var_9, var_10)
+            let var_11 = m;
+            let var_12 = _get_Sinterrupts_STI(sail_ctx, s);
+            _update_Minterrupts_STI(sail_ctx, var_11, var_12)
         }
     } else {
         m
     };
     let m = if { (_get_Minterrupts_SSI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
         {
+            let var_9 = m;
+            let var_10 = _get_Sinterrupts_SSI(sail_ctx, s);
+            _update_Minterrupts_SSI(sail_ctx, var_9, var_10)
+        }
+    } else {
+        m
+    };
+    let m = if { (_get_Minterrupts_LCOFIE(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
+        {
             let var_7 = m;
-            let var_8 = _get_Sinterrupts_SSI(sail_ctx, s);
-            _update_Minterrupts_SSI(sail_ctx, var_7, var_8)
+            let var_8 = _get_Sinterrupts_LCOFIE(sail_ctx, s);
+            _update_Minterrupts_LCOFIE(sail_ctx, var_7, var_8)
         }
     } else {
         m
@@ -4849,11 +4862,19 @@ pub fn trap_handler(
             sail_ctx.mtval = tval(sail_ctx, info);
             sail_ctx.mepc = pc;
             sail_ctx.cur_privilege = del_priv;
-
+            handle_trap_extension(sail_ctx, del_priv, pc, ext);
+            if { get_config_print_reg(sail_ctx, ()) } {
+                print_reg(format!(
+                    "{}{}",
+                    String::from("CSR mstatus <- "),
+                    bits_str(sail_ctx.mstatus.bits)
+                ))
+            } else {
+                ()
+            };
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.mcause)
         }
         Privilege::Supervisor => {
-            panic!("In supervisor");
             assert!(haveSupMode(sail_ctx, ()), "Process message");
             sail_ctx.scause = {
                 let var_5 = bool_to_bits(sail_ctx, intr);
@@ -4901,7 +4922,6 @@ pub fn trap_handler(
             prepare_trap_vector(sail_ctx, del_priv, sail_ctx.scause)
         }
         Privilege::User => {
-            panic!("In user mode");
             assert!(haveUsrMode(sail_ctx, ()), "Process message");
             sail_ctx.ucause = {
                 let var_8 = bool_to_bits(sail_ctx, intr);
@@ -5205,11 +5225,7 @@ pub fn handle_illegal(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
 }
 
 pub fn platform_wfi(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
-    cancel_reservation(());
-    if { _operator_smaller_u_(sail_ctx, sail_ctx.mtime, sail_ctx.mtimecmp) } {
-    } else {
-        ()
-    }
+    cancel_reservation(())
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]

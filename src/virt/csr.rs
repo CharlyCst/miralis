@@ -549,15 +549,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
             }
             Csr::Sie => {
-                if SEIE_FILTER & self.get(Csr::Mideleg) != 0 {
-                    self.csr.mie = (self.csr.mie & !SEIE_FILTER) | (SEIE_FILTER & value);
-                }
-                if STIE_FILTER & self.get(Csr::Mideleg) != 0 {
-                    self.csr.mie = (self.csr.mie & !STIE_FILTER) | (STIE_FILTER & value);
-                }
-                if SSIE_FILTER & self.get(Csr::Mideleg) != 0 {
-                    self.csr.mie = (self.csr.mie & !SSIE_FILTER) | (SSIE_FILTER & value);
-                }
+                // Only delegated interrupts can be enabled through `sie`
+                let mideleg = self.get(Csr::Mideleg);
+                self.csr.mie = (self.csr.mie & !mideleg) | (mideleg & value);
             }
             Csr::Stvec => {
                 match value & 0b11 {
