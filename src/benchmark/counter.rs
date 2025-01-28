@@ -50,7 +50,7 @@ impl BenchmarkModule for CounterBenchmark {
 
     fn stop_interval_counters(_scope: Scope) {}
 
-    fn increment_counter(counter: Counter) {
+    fn increment_counter(_ctx: &mut VirtContext, counter: Counter) {
         if counter == FirmwareExits {
             NB_FIRMWARE_EXIT[hard_id()]
                 .counter
