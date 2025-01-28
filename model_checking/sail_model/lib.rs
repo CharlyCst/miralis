@@ -1766,6 +1766,16 @@ pub fn _get_Minterrupts_LCOFIE(sail_ctx: &mut SailVirtCtx, v: Minterrupts) -> Bi
     v.subrange::<13, 14, 1>()
 }
 
+pub fn _update_Minterrupts_LCOFIE(
+    sail_ctx: &mut SailVirtCtx,
+    v: Minterrupts,
+    x: BitVector<1>,
+) -> Minterrupts {
+    BitField {
+        bits: update_subrange_bits(v.bits, 13, 13, x),
+    }
+}
+
 pub fn _get_Minterrupts_MEI(sail_ctx: &mut SailVirtCtx, v: Minterrupts) -> BitVector<1> {
     v.subrange::<11, 12, 1>()
 }
@@ -1934,24 +1944,28 @@ pub fn legalize_mie(sail_ctx: &mut SailVirtCtx, o: Minterrupts, v: BitVector<64>
                 let var_11 = {
                     let var_13 = {
                         let var_15 = {
-                            let var_17 = o;
-                            let var_18 = _get_Minterrupts_MEI(sail_ctx, v);
-                            _update_Minterrupts_MEI(sail_ctx, var_17, var_18)
+                            let var_17 = {
+                                let var_19 = o;
+                                let var_20 = _get_Minterrupts_MEI(sail_ctx, v);
+                                _update_Minterrupts_MEI(sail_ctx, var_19, var_20)
+                            };
+                            let var_18 = _get_Minterrupts_MTI(sail_ctx, v);
+                            _update_Minterrupts_MTI(sail_ctx, var_17, var_18)
                         };
-                        let var_16 = _get_Minterrupts_MTI(sail_ctx, v);
-                        _update_Minterrupts_MTI(sail_ctx, var_15, var_16)
+                        let var_16 = _get_Minterrupts_MSI(sail_ctx, v);
+                        _update_Minterrupts_MSI(sail_ctx, var_15, var_16)
                     };
-                    let var_14 = _get_Minterrupts_MSI(sail_ctx, v);
-                    _update_Minterrupts_MSI(sail_ctx, var_13, var_14)
+                    let var_14 = _get_Minterrupts_SEI(sail_ctx, v);
+                    _update_Minterrupts_SEI(sail_ctx, var_13, var_14)
                 };
-                let var_12 = _get_Minterrupts_SEI(sail_ctx, v);
-                _update_Minterrupts_SEI(sail_ctx, var_11, var_12)
+                let var_12 = _get_Minterrupts_STI(sail_ctx, v);
+                _update_Minterrupts_STI(sail_ctx, var_11, var_12)
             };
-            let var_10 = _get_Minterrupts_STI(sail_ctx, v);
-            _update_Minterrupts_STI(sail_ctx, var_9, var_10)
+            let var_10 = _get_Minterrupts_SSI(sail_ctx, v);
+            _update_Minterrupts_SSI(sail_ctx, var_9, var_10)
         };
-        let var_8 = _get_Minterrupts_SSI(sail_ctx, v);
-        _update_Minterrupts_SSI(sail_ctx, var_7, var_8)
+        let var_8 = _get_Minterrupts_LCOFIE(sail_ctx, v);
+        _update_Minterrupts_LCOFIE(sail_ctx, var_7, var_8)
     };
     if { (haveUsrMode(sail_ctx, ()) && haveNExt(sail_ctx, ())) } {
         {
@@ -2580,6 +2594,10 @@ pub fn Mk_Sinterrupts(sail_ctx: &mut SailVirtCtx, v: BitVector<64>) -> Sinterrup
     Sinterrupts { bits: v }
 }
 
+pub fn _get_Sinterrupts_LCOFIE(sail_ctx: &mut SailVirtCtx, v: Sinterrupts) -> BitVector<1> {
+    v.subrange::<13, 14, 1>()
+}
+
 pub fn _update_Sinterrupts_LCOFIE(
     sail_ctx: &mut SailVirtCtx,
     v: Sinterrupts,
@@ -2764,27 +2782,36 @@ pub fn lift_sie(
     let m: Minterrupts = o;
     let m = if { (_get_Minterrupts_SEI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
         {
-            let var_11 = m;
-            let var_12 = _get_Sinterrupts_SEI(sail_ctx, s);
-            _update_Minterrupts_SEI(sail_ctx, var_11, var_12)
+            let var_13 = m;
+            let var_14 = _get_Sinterrupts_SEI(sail_ctx, s);
+            _update_Minterrupts_SEI(sail_ctx, var_13, var_14)
         }
     } else {
         m
     };
     let m = if { (_get_Minterrupts_STI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
         {
-            let var_9 = m;
-            let var_10 = _get_Sinterrupts_STI(sail_ctx, s);
-            _update_Minterrupts_STI(sail_ctx, var_9, var_10)
+            let var_11 = m;
+            let var_12 = _get_Sinterrupts_STI(sail_ctx, s);
+            _update_Minterrupts_STI(sail_ctx, var_11, var_12)
         }
     } else {
         m
     };
     let m = if { (_get_Minterrupts_SSI(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
         {
+            let var_9 = m;
+            let var_10 = _get_Sinterrupts_SSI(sail_ctx, s);
+            _update_Minterrupts_SSI(sail_ctx, var_9, var_10)
+        }
+    } else {
+        m
+    };
+    let m = if { (_get_Minterrupts_LCOFIE(sail_ctx, d) == BitVector::<1>::new(0b1)) } {
+        {
             let var_7 = m;
-            let var_8 = _get_Sinterrupts_SSI(sail_ctx, s);
-            _update_Minterrupts_SSI(sail_ctx, var_7, var_8)
+            let var_8 = _get_Sinterrupts_LCOFIE(sail_ctx, s);
+            _update_Minterrupts_LCOFIE(sail_ctx, var_7, var_8)
         }
     } else {
         m
@@ -5141,6 +5168,21 @@ pub fn exception_handler(
     }
 }
 
+pub fn handle_mem_exception(sail_ctx: &mut SailVirtCtx, addr: BitVector<64>, e: ExceptionType) {
+    let t: sync_exception = sync_exception {
+        trap: e,
+        excinfo: Some(addr),
+        ext: None,
+    };
+    let var_1 = {
+        let var_2 = sail_ctx.cur_privilege;
+        let var_3 = ctl_result::CTL_TRAP(t);
+        let var_4 = sail_ctx.PC;
+        exception_handler(sail_ctx, var_2, var_3, var_4)
+    };
+    set_next_pc(sail_ctx, var_1)
+}
+
 pub fn handle_interrupt(sail_ctx: &mut SailVirtCtx, i: InterruptType, del_priv: Privilege) {
     let var_1 = {
         let var_2 = del_priv;
@@ -5183,13 +5225,7 @@ pub fn handle_illegal(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
 }
 
 pub fn platform_wfi(sail_ctx: &mut SailVirtCtx, unit_arg: ()) {
-    cancel_reservation(());
-    if { _operator_smaller_u_(sail_ctx, sail_ctx.mtime, sail_ctx.mtimecmp) } {
-        sail_ctx.mtime = sail_ctx.mtimecmp;
-        sail_ctx.mcycle = sail_ctx.mtimecmp
-    } else {
-        ()
-    }
+    cancel_reservation(())
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -6046,6 +6082,15 @@ pub fn execute_SRET(sail_ctx: &mut SailVirtCtx) -> Retired {
         };
         Retired::RETIRE_SUCCESS
     }
+}
+
+pub fn execute_EBREAK(sail_ctx: &mut SailVirtCtx) -> Retired {
+    {
+        let var_1 = sail_ctx.PC;
+        let var_2 = ExceptionType::E_Breakpoint(());
+        handle_mem_exception(sail_ctx, var_1, var_2)
+    };
+    Retired::RETIRE_FAIL
 }
 
 pub fn execute_WFI(sail_ctx: &mut SailVirtCtx) -> Retired {

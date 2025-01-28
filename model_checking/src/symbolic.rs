@@ -4,7 +4,7 @@
 //! context. We make sure that this module can compile and be tested even without Kani installed,
 //! in which case concrete values are used in place of symbolic ones.
 
-use miralis::arch::{misa, mstatus, Arch, Architecture, ExtensionsCapability, Mode};
+use miralis::arch::{misa, mstatus, Arch, Architecture, ExtensionsCapability, Mode, mie};
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
@@ -75,7 +75,9 @@ pub fn new_ctx() -> VirtContext {
 
     // Mode
     ctx.mode = Mode::M;
-    ctx.pc = any!();
+
+    // We don't want overflows here
+    ctx.pc = any!(usize) % (usize::MAX - 4);
     ctx.nb_pmp = 64;
 
     // Pick a previous privilege mode
@@ -90,7 +92,7 @@ pub fn new_ctx() -> VirtContext {
     // Add other csr
     ctx.hart_id = any!();
     ctx.csr.misa = any!();
-    ctx.csr.mie = any!();
+    ctx.csr.mie = any!(usize) & mie::ALL_INT;
     ctx.csr.mip = any!();
     ctx.csr.mtvec = any!(usize) & !0b10; // 10 is  an illegal trap vector
     ctx.csr.mscratch = any!();
@@ -127,7 +129,7 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.satp = any!();
     //ctx.csr.scontext = any!(); // TODO: What should we do with this?
     ctx.csr.medeleg = any!();
-    ctx.csr.mideleg = any!();
+    ctx.csr.mideleg = (any!(usize) & mie::ALL_INT) | mie::MIDELEG_READ_ONLY_ONE;
     ctx.csr.pmpcfg = [any!(); 8];
     ctx.csr.pmpaddr = [any!(usize) >> 4; 64];
     // ctx.csr.mhpmcounter = [any!(); 29]; todo: What should we do?
@@ -152,6 +154,14 @@ pub fn new_ctx() -> VirtContext {
     // We must have support for U and S modes in Miralis
     ctx.csr.misa |= misa::U;
     ctx.csr.misa |= misa::S;
+
+    // Now we allocate general purpose registers
+    ctx.regs = [any!(usize); 32];
+    // x0 is hardwired to zero
+    ctx.regs[0] = 0;
+
+    // We don't delegate any interrupts in the formal verification
+    ctx.csr.mideleg = 0;
 
     ctx
 }
