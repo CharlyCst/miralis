@@ -201,7 +201,7 @@ pub fn write_csr() {
         BitVector::<12>::new(csr_register),
         BitVector::<64>::new(value_to_write as u64),
     );
-
+    // assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "mie");
     assert_eq!(sail_to_miralis(sail_ctx), ctx, "write equivalence");
 }
 
