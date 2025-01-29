@@ -78,7 +78,7 @@ impl Platform for VisionFive2Platform {
     fn debug_print(_level: Level, args: fmt::Arguments) {
         let mut writer = WRITER.lock();
         writer.write_fmt(args).unwrap();
-        writer.write_str("\r\n").unwrap();
+        writer.write_str("\r").unwrap();
     }
 
     fn exit_success() -> ! {
