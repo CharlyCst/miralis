@@ -170,7 +170,7 @@ impl BenchmarkModule for DefaultBenchmark {
     }
 
     /// Increment counter's value.
-    fn increment_counter(counter: Counter) {
+    fn increment_counter(_ctx: &mut VirtContext, counter: Counter) {
         let index = counter as usize;
 
         let wrapped_counter = Either::Counter(counter);

@@ -3,6 +3,7 @@
 //! This modules holds the different values for the benchmarks
 
 mod counter;
+mod counter_per_code;
 mod default;
 mod empty;
 
@@ -14,6 +15,7 @@ use crate::virt::VirtContext;
 pub type Benchmark = select_env!["MIRALIS_BENCHMARK_TYPE":
     "default"      => default::DefaultBenchmark
     "counter"      => counter::CounterBenchmark
+    "counter_per_code" => counter_per_code::CounterPerCodeBenchmark
     _ => empty::EmptyBenchmark
 ];
 
@@ -23,7 +25,7 @@ pub trait BenchmarkModule {
 
     fn start_interval_counters(scope: Scope);
     fn stop_interval_counters(scope: Scope);
-    fn increment_counter(counter: Counter);
+    fn increment_counter(ctx: &mut VirtContext, counter: Counter);
 
     fn update_inteval_counter_stats(
         &mut self,

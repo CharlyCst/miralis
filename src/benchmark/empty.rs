@@ -17,7 +17,7 @@ impl BenchmarkModule for EmptyBenchmark {
 
     fn stop_interval_counters(_scope: Scope) {}
 
-    fn increment_counter(_counter: Counter) {}
+    fn increment_counter(_ctx: &mut VirtContext, _counter: Counter) {}
 
     fn update_inteval_counter_stats(
         &mut self,

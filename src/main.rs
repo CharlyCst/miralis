@@ -81,6 +81,9 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
             Arch::write_csr(Csr::Mcounteren, 0x1);
             Arch::write_csr(Csr::Scounteren, 0x1);
         }
+
+        Arch::write_csr(Csr::Mcounteren, 0x1);
+        assert!(Arch::read_csr(Csr::Mcounteren) == 0x1, "no delegation perf counters");
     }
 
     // In case we compile Miralis as firmware, we stop execution at that point for the moment
