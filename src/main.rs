@@ -12,6 +12,7 @@
 
 use core::arch::global_asm;
 
+use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
 use miralis::benchmark::{Benchmark, BenchmarkModule};
 use miralis::config::{
@@ -78,8 +79,8 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         ctx.pc = firmware_addr;
 
         if DELEGATE_PERF_COUNTER {
-            Arch::write_csr(Csr::Mcounteren, 0x1);
-            Arch::write_csr(Csr::Scounteren, 0x1);
+            Arch::write_csr(Csr::Mcounteren, DELGATE_PERF_COUNTERS_MASK);
+            Arch::write_csr(Csr::Scounteren, DELGATE_PERF_COUNTERS_MASK);
         }
     }
 
