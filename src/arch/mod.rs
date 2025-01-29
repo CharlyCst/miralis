@@ -516,6 +516,17 @@ pub mod hstatus {
     pub const VSXL_FILTER: usize = 0b11 << VSXL_OFFSET;
 }
 
+// ———————————————————————— Performance counters ——————————————————————— //
+
+pub mod perf_counters {
+    pub const DELEGATE_CYCLE_MASK: usize = 0x1;
+    pub const DELEGATE_TIME_MASK: usize = 0x2;
+    pub const DELEGATE_INSTRET_MASK: usize = 0x4;
+
+    pub const DELGATE_PERF_COUNTERS_MASK: usize =
+        DELEGATE_INSTRET_MASK | DELEGATE_TIME_MASK | DELEGATE_CYCLE_MASK;
+}
+
 // ——————————————————————— Width of Access Instructions —————————————————————— //
 
 /// Represents different data widths:
