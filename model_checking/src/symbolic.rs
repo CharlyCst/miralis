@@ -153,6 +153,11 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.misa |= misa::U;
     ctx.csr.misa |= misa::S;
 
+    // Now we allocate general purpose registers
+    ctx.regs = [any!(usize); 32];
+    // x0 is hardwired to zero
+    ctx.regs[0] = 0;
+
     ctx
 }
 
