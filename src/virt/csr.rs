@@ -91,7 +91,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
                     log::warn!("Invalid pmpcfg {}", pmp_cfg_idx);
                     return 0;
                 }
-                if pmp_cfg_idx >= self.nb_pmp / 8 {
+                if pmp_cfg_idx >= 2 * self.nb_pmp / 8 {
                     // This PMP is not emulated
                     return 0;
                 }
