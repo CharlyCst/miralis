@@ -525,7 +525,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.mepc = value & !0b1 // First bit is always zero
+                if self.get(Csr::Misa) & misa::C != 0 {
+                    self.csr.mepc = value & !0b1
+                } else {
+                    self.csr.mepc = value & !0b11
+                }
             }
             Csr::Mcause => self.csr.mcause = value,
             Csr::Mtval => self.csr.mtval = value,
@@ -570,7 +574,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                self.csr.sepc = value & !0b1 // First bit is always zero
+                if self.get(Csr::Misa) & misa::C != 0 {
+                    self.csr.sepc = value & !0b1
+                } else {
+                    self.csr.sepc = value & !0b11
+                }
             }
             Csr::Scause => self.csr.scause = value,
             Csr::Stval => self.csr.stval = value,
