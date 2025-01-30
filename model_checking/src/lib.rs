@@ -158,10 +158,7 @@ pub fn fences() {
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn read_csr() {
-    let (mut ctx, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
-
-    // Infinite number of pmps for the formal verification
-    ctx.nb_pmp = usize::MAX;
+    let (ctx, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
     let csr_register = generate_csr_register();
 
