@@ -4,10 +4,10 @@
 //! specification.
 
 use super::{VirtContext, VirtCsr};
-use crate::arch::mie::SSIE_FILTER;
+use crate::arch::mie::{MIP_WRITE_FILTER, SSIE_FILTER};
 use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
+use crate::arch::{hstatus, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, logger, MiralisContext, Plat, Platform};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -399,25 +399,32 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     & ((value & mie::MIE_WRITE_FILTER) | (self.csr.mie & !mie::MIE_WRITE_FILTER))
             }
             Csr::Mip => {
-                let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
+                #[cfg(not(kani))]
+                {
+                    let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
 
-                // If the firmware wants to read the mip register after cleaning vmip.SEIP, and we don't sync
-                // vmip.SEIP with mip.SEIP, it can't know if there is an interrupt signal from the interrupt
-                // controller as the CSR read will be a logical-OR of the signal and mip.SEIP (which is one)
-                // so always 1. If vmip.SEIP is 0, CSR read of mip.SEIP should return the interrupt signal.
-                // Then, we need to synchronize vmip.SEIP with mip.SEIP.
-                if (self.csr.mip ^ value) & mie::SEIE_FILTER != 0 {
-                    if value & mie::SEIE_FILTER == 0 {
-                        unsafe {
-                            Arch::clear_csr_bits(Csr::Mip, mie::SEIE_FILTER);
-                        }
-                    } else {
-                        unsafe {
-                            Arch::set_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                    // If the firmware wants to read the mip register after cleaning vmip.SEIP, and we don't sync
+                    // vmip.SEIP with mip.SEIP, it can't know if there is an interrupt signal from the interrupt
+                    // controller as the CSR read will be a logical-OR of the signal and mip.SEIP (which is one)
+                    // so always 1. If vmip.SEIP is 0, CSR read of mip.SEIP should return the interrupt signal.
+                    // Then, we need to synchronize vmip.SEIP with mip.SEIP.
+                    if (self.csr.mip ^ value) & mie::SEIE_FILTER != 0 {
+                        if value & mie::SEIE_FILTER == 0 {
+                            unsafe {
+                                Arch::clear_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                            }
+                        } else {
+                            unsafe {
+                                Arch::set_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                            }
                         }
                     }
+                    self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
                 }
-                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
+                #[cfg(kani)]
+                {
+                    self.csr.mip = (self.csr.mip & !MIP_WRITE_FILTER) | (value & MIP_WRITE_FILTER);
+                }
             }
             Csr::Mtvec => {
                 match value & 0b11 {
@@ -481,19 +488,28 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
             }
             Csr::Menvcfg => {
-                let mut mask: usize = usize::MAX;
-                if !mctx.hw.extensions.has_sstc_extension {
-                    mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
+                #[cfg(kani)]
+                {
+                    self.csr.menvcfg = (value & 0b1) | (self.csr.menvcfg & !0b1);
                 }
 
-                self.csr.menvcfg = value & mask;
-                mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
+                #[cfg(not(kani))]
+                {
+                    let mut mask: usize = usize::MAX;
+                    if !mctx.hw.extensions.has_sstc_extension {
+                        mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
+                    }
+
+                    self.csr.menvcfg = value & mask;
+                    mctx.hw.extensions.is_sstc_enabled =
+                        self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
+                }
             }
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (), // Read-only
             Csr::Medeleg => self.csr.medeleg = value & !(1 << 11),
             Csr::Mideleg => {
-                self.csr.mideleg = (value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO)
+                self.csr.mideleg = (value & !mie::MIDELEG_READ_ONLY_ZERO)
                     | mie::MIDELEG_READ_ONLY_ONE;
             }
             Csr::Mtinst => {
