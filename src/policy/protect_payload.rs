@@ -9,7 +9,6 @@ use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
-use crate::arch::MCause::EcallFromSMode;
 use crate::arch::{
     get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register,
     TrapInfo,
@@ -38,19 +37,17 @@ static FIRST_JUMP: AtomicBool = AtomicBool::new(true);
 /// The protect payload policy module, which allow the payload to protect himself from the firmware at some point in time and enfore a boundary between the two components.
 pub struct ProtectPayloadPolicy {
     protected: bool,
-    general_register: [usize; 32],
-    rules: [ForwardingRule; ForwardingRule::NB_RULES],
-    forward_back: ForwardingRule,
+    general_registers: [usize; 32],
+    forward_register_value_to_payload: [bool; 32],
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
     fn init() -> Self {
         ProtectPayloadPolicy {
             protected: false,
-            general_register: [0; 32],
-            rules: ForwardingRule::build_forwarding_rules(),
+            general_registers: [0; 32],
             // The firmware must be able to pass information such as the device tree to the operating system. We allow all registers to pass during the first transition
-            forward_back: ForwardingRule::new_allow_everything(MCause::EcallFromSMode),
+            forward_register_value_to_payload: [true; 32],
         }
     }
     fn name() -> &'static str {
@@ -78,28 +75,42 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
-        // Clear general purpose registers
-        let filter_rule = ForwardingRule::match_rule(&mut ctx.trap_info, &mut self.rules);
+        let mut forward_register_value_to_firmware = [false; 32];
+        self.forward_register_value_to_payload = [false; 32];
 
-        self.forward_back.allow_out = filter_rule.allow_out;
-
-        for i in 0..self.general_register.len() {
-            self.general_register[i] = ctx.regs[i];
-            // We don't clear ecall registers
-            if !filter_rule.allow_in[i] {
-                ctx.regs[i] = 0;
+        if ctx.trap_info.get_cause() == MCause::EcallFromSMode {
+            // This function forwards only the registers necessary for the call determined by the (eid, fid) pair
+            for i in 0..check_nb_registers_to_forward_per_eid_fid(
+                ctx.get(Register::X17),
+                ctx.get(Register::X16),
+            ) {
+                forward_register_value_to_firmware[Register::X10 as usize + i] = true;
             }
+
+            // We pass the (eid, fid) pair to the firmware
+            forward_register_value_to_firmware[Register::X16 as usize] = true;
+            forward_register_value_to_firmware[Register::X17 as usize] = true;
+
+            // We allow to the firmware to pass registers a0 & a1 in the case of an ecall
+            self.forward_register_value_to_payload[Register::X10 as usize] = true;
+            self.forward_register_value_to_payload[Register::X11 as usize] = true;
         }
 
-        // Unfortunately, it seems that automatic generation of filtering rules for the SBI doesn't work well at the moment with the VisionFive2 board
-        // TODO: Investigate why is it the case at the moment
-        if Plat::name() != "VisionFive 2 board" {
-            // If this is an ecall from S-mode, we apply an extra filter according to the specification
-            if MCause::try_from(ctx.trap_info.mcause) == Ok(EcallFromSMode) {
-                let nb_allowed = get_nb_input_args(ctx.get(Register::X17), ctx.get(Register::X16));
-                for i in nb_allowed..6 {
-                    ctx.regs[i] = 0
-                }
+        // If the illegal instruction is whitelisted, we allow every register to be modified
+        if ctx.trap_info.get_cause() == MCause::IllegalInstr
+            && Self::is_whitelisted_illegal_instruction(&mut ctx.trap_info)
+        {
+            self.forward_register_value_to_payload = [true; 32];
+            forward_register_value_to_firmware = [true; 32];
+        }
+
+        // The code becomes harder with the linter suggestion
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..self.general_registers.len() {
+            self.general_registers[i] = ctx.regs[i];
+            // Clear the value if not allowed to forward
+            if !forward_register_value_to_firmware[i] {
+                ctx.regs[i] = 0;
             }
         }
 
@@ -115,9 +126,10 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx: &mut MiralisContext,
     ) {
         // Restore general purpose registers
-        for i in 0..self.general_register.len() {
-            if !self.forward_back.allow_out[i] {
-                ctx.regs[i] = self.general_register[i];
+        for i in 0..self.general_registers.len() {
+            // Restore registers where the value is not forwarded
+            if !self.forward_register_value_to_payload[i] {
+                ctx.regs[i] = self.general_registers[i];
             }
         }
 
@@ -180,6 +192,20 @@ impl ProtectPayloadPolicy {
             MCause::EcallFromSMode => self.handle_ecall(ctx, mctx),
             _ => PolicyHookResult::Ignore,
         }
+    }
+
+    const _WHITE_LIST_ILLEGAL_INSTR: [usize; 0] = [];
+
+    fn is_whitelisted_illegal_instruction(trap_info: &mut TrapInfo) -> bool {
+        let instr = unsafe { get_raw_faulting_instr(trap_info) };
+
+        for raw_instr in Self::_WHITE_LIST_ILLEGAL_INSTR {
+            if raw_instr == instr {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn emulate_misaligned_read(
@@ -357,97 +383,6 @@ impl ProtectPayloadPolicy {
     }
 }
 
-// ———————————————————————————————— Explicit Forwarding Rules ———————————————————————————————— //
-
-#[derive(Clone)]
-pub struct ForwardingRule {
-    mcause: MCause,
-    allow_in: [bool; 32],
-    allow_out: [bool; 32],
-}
-
-// TODO: Fill with the values
-const _WHITE_LIST_ILLEGAL_INSTR: [usize; 0] = [];
-
-impl ForwardingRule {
-    pub const NB_RULES: usize = 1;
-
-    fn match_rule(
-        trap_info: &mut TrapInfo,
-        rules: &mut [ForwardingRule; Self::NB_RULES],
-    ) -> ForwardingRule {
-        for rule in rules {
-            if MCause::try_from(trap_info.mcause).unwrap() == rule.mcause {
-                return rule.clone();
-            }
-        }
-
-        // Some instructions must be explicitly whitelisted on the VisionFive2 board
-        if Self::is_whitelisted_illegal_instruction(trap_info) {
-            Self::new_allow_everything(MCause::try_from(trap_info.mcause).unwrap())
-        } else {
-            Self::new_allow_nothing(MCause::try_from(trap_info.mcause).unwrap())
-        }
-    }
-
-    fn is_whitelisted_illegal_instruction(trap_info: &mut TrapInfo) -> bool {
-        let instr = unsafe { get_raw_faulting_instr(trap_info) };
-
-        for raw_instr in _WHITE_LIST_ILLEGAL_INSTR {
-            if raw_instr == instr {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    fn build_forwarding_rules() -> [ForwardingRule; Self::NB_RULES] {
-        let mut rules = [Self::new_allow_nothing(MCause::EcallFromSMode); 1];
-
-        // Build Ecall rule
-        rules[0]
-            .allow_register_in(Register::X10)
-            .allow_register_in(Register::X11)
-            .allow_register_in(Register::X12)
-            .allow_register_in(Register::X13)
-            .allow_register_in(Register::X14)
-            .allow_register_in(Register::X15)
-            .allow_register_in(Register::X16)
-            .allow_register_in(Register::X17)
-            .allow_register_out(Register::X10)
-            .allow_register_out(Register::X11);
-
-        rules
-    }
-
-    fn new_allow_everything(mcause: MCause) -> Self {
-        ForwardingRule {
-            mcause,
-            allow_in: [true; 32],
-            allow_out: [true; 32],
-        }
-    }
-
-    fn new_allow_nothing(mcause: MCause) -> Self {
-        ForwardingRule {
-            mcause,
-            allow_in: [false; 32],
-            allow_out: [false; 32],
-        }
-    }
-
-    fn allow_register_in(&mut self, reg: Register) -> &mut Self {
-        self.allow_in[reg as usize] = true;
-        self
-    }
-
-    fn allow_register_out(&mut self, reg: Register) -> &mut Self {
-        self.allow_out[reg as usize] = true;
-        self
-    }
-}
-
 // ———————————————————————————————— Hash primitive ———————————————————————————————— //
 
 fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
@@ -477,7 +412,12 @@ fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
 
 // ———————————————————————————————— Filtering rules for ecall - automatically generated ———————————————————————————————— //
 
-fn get_nb_input_args(eid: usize, fid: usize) -> usize {
+#[allow(unused)]
+fn check_nb_registers_to_forward_per_eid_fid(eid: usize, fid: usize) -> usize {
+    // TODO: Currently forwarding only the registers required by the SBI doesn't work, investigate why
+    return 6;
+
+    #[allow(dead_code)]
     match (eid, fid) {
         (0x10, 0) => 0,
         (0x10, 1) => 0,
