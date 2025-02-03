@@ -10,7 +10,10 @@ use tiny_keccak::{Hasher, Sha3};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::MCause::EcallFromSMode;
-use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register};
+use crate::arch::{
+    get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register,
+    TrapInfo,
+};
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::decoder::Instr;
 use crate::host::MiralisContext;
@@ -37,7 +40,7 @@ pub struct ProtectPayloadPolicy {
     protected: bool,
     general_register: [usize; 32],
     rules: [ForwardingRule; ForwardingRule::NB_RULES],
-    last_cause: MCause,
+    forward_back: ForwardingRule,
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
@@ -46,9 +49,8 @@ impl PolicyModule for ProtectPayloadPolicy {
             protected: false,
             general_register: [0; 32],
             rules: ForwardingRule::build_forwarding_rules(),
-            // It is important to let the first mode be EcallFromSMode as the firmware passes some information to the OS.
-            // Setting this last_cause allows to pass the arguments during the first call.
-            last_cause: MCause::EcallFromSMode,
+            // The firmware must be able to pass information such as the device tree to the operating system. We allow all registers to pass during the first transition
+            forward_back: ForwardingRule::new_allow_everything(MCause::EcallFromSMode),
         }
     }
     fn name() -> &'static str {
@@ -77,8 +79,9 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx: &mut MiralisContext,
     ) {
         // Clear general purpose registers
-        let trap_cause = MCause::try_from(ctx.trap_info.mcause).unwrap();
-        let filter_rule = ForwardingRule::match_rule(trap_cause, &mut self.rules);
+        let filter_rule = ForwardingRule::match_rule(&mut ctx.trap_info, &mut self.rules);
+
+        self.forward_back.allow_out = filter_rule.allow_out;
 
         for i in 0..self.general_register.len() {
             self.general_register[i] = ctx.regs[i];
@@ -88,11 +91,15 @@ impl PolicyModule for ProtectPayloadPolicy {
             }
         }
 
-        // If this is an ecall from S-mode, we apply an extra filter according to the specification
-        if MCause::try_from(ctx.trap_info.mcause) == Ok(EcallFromSMode) {
-            let nb_allowed = get_nb_input_args(ctx.get(Register::X17), ctx.get(Register::X16));
-            for i in nb_allowed..6 {
-                ctx.regs[i] = 0
+        // Unfortunately, it seems that automatic generation of filtering rules for the SBI doesn't work well at the moment with the VisionFive2 board
+        // TODO: Investigate why is it the case at the moment
+        if Plat::name() != "VisionFive 2 board" {
+            // If this is an ecall from S-mode, we apply an extra filter according to the specification
+            if MCause::try_from(ctx.trap_info.mcause) == Ok(EcallFromSMode) {
+                let nb_allowed = get_nb_input_args(ctx.get(Register::X17), ctx.get(Register::X16));
+                for i in nb_allowed..6 {
+                    ctx.regs[i] = 0
+                }
             }
         }
 
@@ -100,8 +107,6 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp
             .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
-
-        self.last_cause = trap_cause;
     }
 
     fn switch_from_firmware_to_payload(
@@ -109,11 +114,9 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
-        let register_filter = ForwardingRule::match_rule(self.last_cause, &mut self.rules);
-
         // Restore general purpose registers
         for i in 0..self.general_register.len() {
-            if !register_filter.allow_out[i] {
+            if !self.forward_back.allow_out[i] {
                 ctx.regs[i] = self.general_register[i];
             }
         }
@@ -363,17 +366,40 @@ pub struct ForwardingRule {
     allow_out: [bool; 32],
 }
 
+// TODO: Fill with the values
+const _WHITE_LIST_ILLEGAL_INSTR: [usize; 0] = [];
+
 impl ForwardingRule {
     pub const NB_RULES: usize = 1;
 
-    fn match_rule(trap_cause: MCause, rules: &mut [ForwardingRule; 1]) -> ForwardingRule {
+    fn match_rule(
+        trap_info: &mut TrapInfo,
+        rules: &mut [ForwardingRule; Self::NB_RULES],
+    ) -> ForwardingRule {
         for rule in rules {
-            if trap_cause == rule.mcause {
+            if MCause::try_from(trap_info.mcause).unwrap() == rule.mcause {
                 return rule.clone();
             }
         }
 
-        Self::new_allow_nothing(trap_cause)
+        // Some instructions must be explicitly whitelisted on the VisionFive2 board
+        if Self::is_whitelisted_illegal_instruction(trap_info) {
+            Self::new_allow_everything(MCause::try_from(trap_info.mcause).unwrap())
+        } else {
+            Self::new_allow_nothing(MCause::try_from(trap_info.mcause).unwrap())
+        }
+    }
+
+    fn is_whitelisted_illegal_instruction(trap_info: &mut TrapInfo) -> bool {
+        let instr = unsafe { get_raw_faulting_instr(trap_info) };
+
+        for raw_instr in _WHITE_LIST_ILLEGAL_INSTR {
+            if raw_instr == instr {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn build_forwarding_rules() -> [ForwardingRule; Self::NB_RULES] {
@@ -395,7 +421,14 @@ impl ForwardingRule {
         rules
     }
 
-    #[allow(unused)]
+    fn new_allow_everything(mcause: MCause) -> Self {
+        ForwardingRule {
+            mcause,
+            allow_in: [true; 32],
+            allow_out: [true; 32],
+        }
+    }
+
     fn new_allow_nothing(mcause: MCause) -> Self {
         ForwardingRule {
             mcause,
