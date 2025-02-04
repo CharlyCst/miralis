@@ -417,7 +417,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         }
                     }
                 }
-                self.csr.mip = value | (self.csr.mip & mie::MIDELEG_READ_ONLY_ZERO);
+
+                // Keep all the non-writeable bits
+                self.csr.mip = value | (self.csr.mip & !mie::MIP_WRITE_FILTER);
             }
             Csr::Mtvec => {
                 match value & 0b11 {
