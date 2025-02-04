@@ -4,37 +4,69 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Register {
+    /// zero - Hard-wired zero register
     X0 = 0,
+    /// ra - Return address
     X1 = 1,
+    /// sp - Stack pointer
     X2 = 2,
+    /// gp - Global pointer
     X3 = 3,
+    /// tp - Thread pointer
     X4 = 4,
+    /// t0 - Temporary register
     X5 = 5,
+    /// t1 - Temporary register
     X6 = 6,
+    /// t2 - Temporary register
     X7 = 7,
+    /// s0 / fp Saved register / frame pointer
     X8 = 8,
+    /// s1 - Saved register
     X9 = 9,
+    /// a0 - Function argument / return value
     X10 = 10,
+    /// a1 - Function argument / return value
     X11 = 11,
+    /// a2 - Function argument
     X12 = 12,
+    /// a3 - Function argument
     X13 = 13,
+    /// a4 - Function argument
     X14 = 14,
+    /// a5 - Function argument
     X15 = 15,
+    /// a6 - Function argument
     X16 = 16,
+    /// a7 - Function argument
     X17 = 17,
+    /// s2 - Saved register
     X18 = 18,
+    /// s3 - Saved register
     X19 = 19,
+    /// s4 - Saved register
     X20 = 20,
+    /// s5 - Saved register
     X21 = 21,
+    /// s6 - Saved register
     X22 = 22,
+    /// s7 - Saved register
     X23 = 23,
+    /// s8 - Saved register
     X24 = 24,
+    /// s9 - Saved register
     X25 = 25,
+    /// s10 - Saved register
     X26 = 26,
+    /// s11 - Saved register
     X27 = 27,
+    /// t3 - Temporary register
     X28 = 28,
+    /// t4 - Temporary register
     X29 = 29,
+    /// t5 - Temporary register
     X30 = 30,
+    /// t6 - Temporary register
     X31 = 31,
 }
 
