@@ -38,6 +38,7 @@ static FIRST_JUMP: AtomicBool = AtomicBool::new(true);
 pub struct ProtectPayloadPolicy {
     protected: bool,
     general_registers: [usize; 32],
+    forward_register_value_to_firmware: [bool; 32],
     forward_register_value_to_payload: [bool; 32],
 }
 
@@ -47,6 +48,7 @@ impl PolicyModule for ProtectPayloadPolicy {
             protected: false,
             general_registers: [0; 32],
             // The firmware must be able to pass information such as the device tree to the operating system. We allow all registers to pass during the first transition
+            forward_register_value_to_firmware: [true; 32],
             forward_register_value_to_payload: [true; 32],
         }
     }
@@ -75,7 +77,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) {
-        let mut forward_register_value_to_firmware = [false; 32];
+        self.forward_register_value_to_firmware = [false; 32];
         self.forward_register_value_to_payload = [false; 32];
 
         if ctx.trap_info.get_cause() == MCause::EcallFromSMode {
@@ -84,12 +86,12 @@ impl PolicyModule for ProtectPayloadPolicy {
                 ctx.get(Register::X17),
                 ctx.get(Register::X16),
             ) {
-                forward_register_value_to_firmware[Register::X10 as usize + i] = true;
+                self.forward_register_value_to_firmware[Register::X10 as usize + i] = true;
             }
 
             // We pass the (eid, fid) pair to the firmware
-            forward_register_value_to_firmware[Register::X16 as usize] = true;
-            forward_register_value_to_firmware[Register::X17 as usize] = true;
+            self.forward_register_value_to_firmware[Register::X16 as usize] = true;
+            self.forward_register_value_to_firmware[Register::X17 as usize] = true;
 
             // We allow to the firmware to pass registers a0 & a1 in the case of an ecall
             self.forward_register_value_to_payload[Register::X10 as usize] = true;
@@ -97,11 +99,8 @@ impl PolicyModule for ProtectPayloadPolicy {
         }
 
         // If the illegal instruction is whitelisted, we allow every register to be modified
-        if ctx.trap_info.get_cause() == MCause::IllegalInstr
-            && Self::is_whitelisted_illegal_instruction(&mut ctx.trap_info)
-        {
-            self.forward_register_value_to_payload = [true; 32];
-            forward_register_value_to_firmware = [true; 32];
+        if ctx.trap_info.get_cause() == MCause::IllegalInstr {
+            self.check_illegal_instruction(&mut ctx.trap_info);
         }
 
         // The code becomes harder with the linter suggestion
@@ -109,7 +108,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         for i in 0..self.general_registers.len() {
             self.general_registers[i] = ctx.regs[i];
             // Clear the value if not allowed to forward
-            if !forward_register_value_to_firmware[i] {
+            if !self.forward_register_value_to_firmware[i] {
                 ctx.regs[i] = 0;
             }
         }
@@ -194,18 +193,30 @@ impl ProtectPayloadPolicy {
         }
     }
 
-    const _WHITE_LIST_ILLEGAL_INSTR: [usize; 0] = [];
-
-    fn is_whitelisted_illegal_instruction(trap_info: &mut TrapInfo) -> bool {
+    fn check_illegal_instruction(&mut self, trap_info: &mut TrapInfo) {
         let instr = unsafe { get_raw_faulting_instr(trap_info) };
 
-        for raw_instr in Self::_WHITE_LIST_ILLEGAL_INSTR {
-            if raw_instr == instr {
-                return true;
-            }
-        }
+        let is_privileged_op: bool = instr & 0x7f == 0b111_0011;
+        let is_time_register: bool = (instr >> 20) == 0b1100_0000_0001;
 
-        false
+        if is_privileged_op && is_time_register {
+            match (instr >> 12) & 0b111 {
+                1..=3 => {
+                    let r1 = (instr >> 7) & 0b11111;
+                    let r2 = (instr >> 15) & 0b11111;
+                    self.forward_register_value_to_firmware[r1] = true;
+                    self.forward_register_value_to_firmware[r2] = true;
+                    self.forward_register_value_to_payload[r1] = true;
+                    self.forward_register_value_to_payload[r2] = true;
+                }
+                5..=7 => {
+                    let r1 = (instr >> 7) & 0b11111;
+                    self.forward_register_value_to_firmware[r1] = true;
+                    self.forward_register_value_to_payload[r1] = true;
+                }
+                _ => {}
+            };
+        }
     }
 
     fn emulate_misaligned_read(
