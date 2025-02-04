@@ -181,20 +181,11 @@ pub fn write_csr() {
 
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-    let is_mstatus = csr_register == 0b001100000000;
     let is_mideleg = csr_register == 0b001100000011;
-    let is_mie = csr_register == 0b001100000100;
     let is_menvcfg = csr_register == 0b001100001010;
-    let is_mepc = csr_register == 0b001101000001;
-    let is_mip = csr_register == 0b001101000100;
-    let is_sstatus = csr_register == 0b000100000000;
-    let is_sie = csr_register == 0b000100000100;
 
-    // TODO: Adapt the last 8 registers for the symbolic verification
-    if is_mstatus || is_mideleg || is_mie || is_menvcfg {
-        csr_register = 0;
-    }
-    if is_mepc || is_mip || is_sstatus || is_sie {
+    // TODO: Handle the last few registers
+    if is_menvcfg || is_mideleg {
         csr_register = 0;
     }
 
@@ -374,11 +365,11 @@ pub fn write_csr() {
         ctx.csr.vlenb,
         "Write vlenb"
     );
-    /*assert_eq!(
+    assert_eq!(
         sail_to_miralis(sail_ctx).csr.sepc,
         ctx.csr.sepc,
         "Write sepc"
-    );*/
+    );
     assert_eq!(
         sail_to_miralis(sail_ctx).csr.misa,
         ctx.csr.misa,
@@ -399,8 +390,8 @@ pub fn write_csr() {
         ctx.csr.scounteren,
         "Write scounteren"
     );
-    // assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "Write mip");
-    // assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "Write mie");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "Write mip");
+    assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "Write mie");
     assert_eq!(
         sail_to_miralis(sail_ctx).csr.mstatus,
         ctx.csr.mstatus,
