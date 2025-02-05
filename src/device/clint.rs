@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use spin::Mutex;
 
@@ -24,6 +24,10 @@ pub struct VirtClint {
     vmsi: [AtomicBool; PLATFORM_NB_HARTS],
     /// Policy Machine Software Interrupt (MSI) map
     policy_msi: [AtomicBool; PLATFORM_NB_HARTS],
+    /// Next interrupts for the virtual firmware
+    next_timestamp_firmware: [AtomicUsize; PLATFORM_NB_HARTS],
+    /// Next interrupts for the payload
+    next_timestamp_payload: [AtomicUsize; PLATFORM_NB_HARTS],
 }
 
 impl DeviceAccess for VirtClint {

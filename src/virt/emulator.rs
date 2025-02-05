@@ -340,6 +340,8 @@ impl VirtContext {
             .expect("Failed to write mtimecmp");
         drop(clint); // Release the lock early
 
+        // TODO: Change this logic
+
         self.csr.mip |= mie::MTIE_FILTER;
     }
 

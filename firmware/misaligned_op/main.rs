@@ -15,7 +15,7 @@ fn main() -> ! {
     let misaligned_address_8_bytes: usize = 0x80400301;
     let value_2_bytes: u16 = 0xabcd;
     let value_4_bytes: u32 = 0xdeadbeef;
-    let value_8_bytes: u64 = 0x1234567887654321;
+    let value_8_bytes: u64 = 0x6482126578324968;
 
     // 2 bytes operations
     // Error code 4 - LoadAddrMisaligned

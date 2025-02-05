@@ -59,4 +59,8 @@ pub mod sbi_codes {
     // SBI EIDs and FIDs
     /// The debug console extension defines a generic mechanism for boot-time early prints.
     pub const SBI_DEBUG_CONSOLE_EXTENSION_EID: usize = 0x4442434E;
+
+    pub const SBI_TIMER_EID: usize = 6;
+
+    pub const SBI_TIMER_FID: usize = 0;
 }
