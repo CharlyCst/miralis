@@ -4,7 +4,7 @@
 //! context. We make sure that this module can compile and be tested even without Kani installed,
 //! in which case concrete values are used in place of symbolic ones.
 
-use miralis::arch::{mie, misa, mstatus, Arch, Architecture, ExtensionsCapability, Mode};
+use miralis::arch::{menvcfg, mie, misa, mstatus, Arch, Architecture, ExtensionsCapability, Mode};
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
@@ -69,6 +69,8 @@ pub fn new_ctx() -> VirtContext {
             has_s_extension: false,
             has_v_extension: true,
             has_zihpm_extension: true,
+            has_zicbom_extension: false,
+            has_zicboz_extension: false,
             has_tee_extension: false,
         },
     );
@@ -103,7 +105,7 @@ pub fn new_ctx() -> VirtContext {
     ctx.csr.minstret = any!();
     ctx.csr.mcountinhibit = any!();
     ctx.csr.mcounteren = any!();
-    ctx.csr.menvcfg = any!();
+    ctx.csr.menvcfg = any!(usize) & (menvcfg::FIOM_FILTER | menvcfg::STCE_FILTER);
     // ctx.csr.mseccfg = any!();
     ctx.csr.mcause = any!();
     ctx.csr.mepc = any!(usize) & (!0b11);

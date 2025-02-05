@@ -483,9 +483,17 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
             }
             Csr::Menvcfg => {
-                let mut mask: usize = usize::MAX;
+                let mut mask: usize = menvcfg::ALL;
+
+                // Filter valid values based on implemented extensions.
                 if !mctx.hw.extensions.has_sstc_extension {
                     mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
+                }
+                if !mctx.hw.extensions.has_zicbom_extension {
+                    mask &= !(menvcfg::CBIE_FILTER | menvcfg::CBCFE_FILTER);
+                }
+                if !mctx.hw.extensions.has_zicboz_extension {
+                    mask &= !menvcfg::CBZE_FILTER;
                 }
 
                 self.csr.menvcfg = value & mask;
