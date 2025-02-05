@@ -182,10 +182,9 @@ pub fn write_csr() {
     let (mut ctx, mut mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
     let is_mideleg = csr_register == 0b001100000011;
-    let is_menvcfg = csr_register == 0b001100001010;
 
     // TODO: Handle the last few registers
-    if is_menvcfg || is_mideleg {
+    if is_mideleg {
         csr_register = 0;
     }
 

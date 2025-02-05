@@ -1386,6 +1386,18 @@ pub fn _get_Misa_U(sail_ctx: &mut SailVirtCtx, v: Misa) -> BitVector<1> {
     v.subrange::<20, 21, 1>()
 }
 
+pub fn sys_enable_sstc(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> bool {
+    false
+}
+
+pub fn sys_has_zicbom(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> bool {
+    false
+}
+
+pub fn sys_has_zicboz(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> bool {
+    false
+}
+
 pub fn legalize_misa(sail_ctx: &mut SailVirtCtx, m: Misa, v: BitVector<64>) -> Misa {
     let v = Mk_Misa(sail_ctx, v);
     if {
@@ -1749,7 +1761,7 @@ pub fn cur_Architecture(sail_ctx: &mut SailVirtCtx, unit_arg: ()) -> Architectur
         Some(a) => a,
         None => internal_error(
             String::from("../miralis-sail-riscv/model/riscv_sys_regs.sail"),
-            323,
+            327,
             String::from("Invalid current architecture"),
         ),
         _ => {
@@ -2940,6 +2952,36 @@ pub fn Mk_MEnvcfg(sail_ctx: &mut SailVirtCtx, v: BitVector<64>) -> MEnvcfg {
     MEnvcfg { bits: v }
 }
 
+pub fn _get_MEnvcfg_CBCFE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg) -> BitVector<1> {
+    v.subrange::<6, 7, 1>()
+}
+
+pub fn _update_MEnvcfg_CBCFE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg, x: BitVector<1>) -> MEnvcfg {
+    BitField {
+        bits: update_subrange_bits(v.bits, 6, 6, x),
+    }
+}
+
+pub fn _get_MEnvcfg_CBIE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg) -> BitVector<2> {
+    v.subrange::<4, 6, 2>()
+}
+
+pub fn _update_MEnvcfg_CBIE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg, x: BitVector<2>) -> MEnvcfg {
+    BitField {
+        bits: update_subrange_bits(v.bits, 5, 4, x),
+    }
+}
+
+pub fn _get_MEnvcfg_CBZE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg) -> BitVector<1> {
+    v.subrange::<7, 8, 1>()
+}
+
+pub fn _update_MEnvcfg_CBZE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg, x: BitVector<1>) -> MEnvcfg {
+    BitField {
+        bits: update_subrange_bits(v.bits, 7, 7, x),
+    }
+}
+
 pub fn _get_MEnvcfg_FIOM(sail_ctx: &mut SailVirtCtx, v: MEnvcfg) -> BitVector<1> {
     v.subrange::<0, 1, 1>()
 }
@@ -2947,6 +2989,16 @@ pub fn _get_MEnvcfg_FIOM(sail_ctx: &mut SailVirtCtx, v: MEnvcfg) -> BitVector<1>
 pub fn _update_MEnvcfg_FIOM(sail_ctx: &mut SailVirtCtx, v: MEnvcfg, x: BitVector<1>) -> MEnvcfg {
     BitField {
         bits: update_subrange_bits(v.bits, 0, 0, x),
+    }
+}
+
+pub fn _get_MEnvcfg_STCE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg) -> BitVector<1> {
+    v.subrange::<63, 64, 1>()
+}
+
+pub fn _update_MEnvcfg_STCE(sail_ctx: &mut SailVirtCtx, v: MEnvcfg, x: BitVector<1>) -> MEnvcfg {
+    BitField {
+        bits: update_subrange_bits(v.bits, 63, 63, x),
     }
 }
 
@@ -2967,13 +3019,49 @@ pub fn _update_SEnvcfg_FIOM(sail_ctx: &mut SailVirtCtx, v: SEnvcfg, x: BitVector
 pub fn legalize_menvcfg(sail_ctx: &mut SailVirtCtx, o: MEnvcfg, v: BitVector<64>) -> MEnvcfg {
     let v = Mk_MEnvcfg(sail_ctx, v);
     let o = {
-        let var_1 = o;
-        let var_2 = if { sys_enable_writable_fiom(()) } {
-            _get_MEnvcfg_FIOM(sail_ctx, v)
+        let var_1 = {
+            let var_3 = {
+                let var_5 = {
+                    let var_7 = {
+                        let var_9 = o;
+                        let var_10 = if { sys_enable_writable_fiom(()) } {
+                            _get_MEnvcfg_FIOM(sail_ctx, v)
+                        } else {
+                            BitVector::<1>::new(0b0)
+                        };
+                        _update_MEnvcfg_FIOM(sail_ctx, var_9, var_10)
+                    };
+                    let var_8 = if { sys_has_zicboz(sail_ctx, ()) } {
+                        _get_MEnvcfg_CBZE(sail_ctx, v)
+                    } else {
+                        BitVector::<1>::new(0b0)
+                    };
+                    _update_MEnvcfg_CBZE(sail_ctx, var_7, var_8)
+                };
+                let var_6 = if { sys_has_zicbom(sail_ctx, ()) } {
+                    _get_MEnvcfg_CBCFE(sail_ctx, v)
+                } else {
+                    BitVector::<1>::new(0b0)
+                };
+                _update_MEnvcfg_CBCFE(sail_ctx, var_5, var_6)
+            };
+            let var_4 = if { sys_has_zicbom(sail_ctx, ()) } {
+                if { (_get_MEnvcfg_CBIE(sail_ctx, v) != BitVector::<2>::new(0b10)) } {
+                    _get_MEnvcfg_CBIE(sail_ctx, v)
+                } else {
+                    BitVector::<2>::new(0b00)
+                }
+            } else {
+                BitVector::<2>::new(0b00)
+            };
+            _update_MEnvcfg_CBIE(sail_ctx, var_3, var_4)
+        };
+        let var_2 = if { sys_enable_sstc(sail_ctx, ()) } {
+            _get_MEnvcfg_STCE(sail_ctx, v)
         } else {
             BitVector::<1>::new(0b0)
         };
-        _update_MEnvcfg_FIOM(sail_ctx, var_1, var_2)
+        _update_MEnvcfg_STCE(sail_ctx, var_1, var_2)
     };
     o
 }

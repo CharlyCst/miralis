@@ -160,6 +160,10 @@ pub struct ExtensionsCapability {
     pub is_sstc_enabled: bool,
     /// Has Zihpm extension
     pub has_zihpm_extension: bool,
+    /// Has Zicbom extension
+    pub has_zicbom_extension: bool,
+    /// Has Zicboz extension
+    pub has_zicboz_extension: bool,
     /// Has Trusted Execution Environment Task Group
     pub has_tee_extension: bool,
 }
@@ -458,8 +462,31 @@ pub mod mtvec {
 }
 
 pub mod menvcfg {
+    /// Fence I/O Implies Memoru
+    pub const FIOM_OFFSET: usize = 0;
+    pub const FIOM_FILTER: usize = 0b1 << FIOM_OFFSET;
+
+    /// CBIE from Zicbom extension
+    pub const CBIE_OFFSET: usize = 4;
+    pub const CBIE_FILTER: usize = 0b11 << CBIE_OFFSET;
+
+    // CBCFE from Zicbom extension
+    pub const CBCFE_OFFSET: usize = 6;
+    pub const CBCFE_FILTER: usize = 0b1 << CBCFE_OFFSET;
+
+    // CBZE from Zicboz extension
+    pub const CBZE_OFFSET: usize = 7;
+    pub const CBZE_FILTER: usize = 0b1 << CBZE_OFFSET;
+
+    /// Supervisor Timer Extension
     pub const STCE_OFFSET: usize = 63;
     pub const STCE_FILTER: usize = 0b1 << STCE_OFFSET;
+
+    /// All valid bits in menvcfg.
+    ///
+    /// Note that not all bits might be available on a given hart, depending on the implemented
+    /// extensions.
+    pub const ALL: usize = FIOM_FILTER | CBIE_FILTER | CBCFE_FILTER | CBZE_FILTER | STCE_FILTER;
 }
 
 // ————————————————————————————— Hypervisor Status ————————————————————————————— //

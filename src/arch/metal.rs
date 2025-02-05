@@ -394,16 +394,27 @@ impl Architecture for MetalArch {
             is_senvcfg_present,
         );
 
-        // Check if the Sstc extension is supported by checking if menvcfg.STCE is hardwired to 0.
-        let has_sstc_extension = match is_menvcfg_present {
-            false => false,
-            true => {
-                let prev_menvcfg = Self::set_csr_bits(Csr::Menvcfg, menvcfg::STCE_FILTER);
-                let new_menvcfg = Self::read_csr(Csr::Menvcfg);
-                Self::write_csr(Csr::Menvcfg, prev_menvcfg);
-                (new_menvcfg & menvcfg::STCE_FILTER) > 0
+        // Check extension that enables bits in menvcfg
+        let mut has_sstc_extension = false;
+        let mut has_zicbom_extension = false;
+        let mut has_zicboz_extension = false;
+        if is_menvcfg_present {
+            // Write bits for all known extensions to check if they are hardwired to 0
+            let prev_menvcfg = Self::set_csr_bits(Csr::Menvcfg, menvcfg::ALL);
+            let menvcfg_all = Self::read_csr(Csr::Menvcfg);
+            Self::write_csr(Csr::Menvcfg, prev_menvcfg);
+
+            // If a bit is not hardwired to 0 the corresponding extension is available
+            if (menvcfg_all & menvcfg::STCE_FILTER) != 0 {
+                has_sstc_extension = true;
             }
-        };
+            if (menvcfg_all & (menvcfg::CBIE_FILTER | menvcfg::CBCFE_FILTER)) != 0 {
+                has_zicbom_extension = true;
+            }
+            if (menvcfg_all & menvcfg::CBZE_FILTER) != 0 {
+                has_zicboz_extension = true;
+            }
+        }
 
         // Detect available PMP registers:
         // - On RV64 platforms only even-numbered pmpcfg registers are present
@@ -466,6 +477,8 @@ impl Architecture for MetalArch {
                 has_h_extension: (misa as usize & misa::H) != 0,
                 has_s_extension: (misa as usize & misa::S) != 0,
                 has_sstc_extension,
+                has_zicbom_extension,
+                has_zicboz_extension,
                 is_sstc_enabled: false, // Since the virtual menvcfg is initialized with 0
                 has_v_extension: false,
                 has_crypto_extension: false,

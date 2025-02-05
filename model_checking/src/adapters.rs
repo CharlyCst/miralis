@@ -321,6 +321,8 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx) -> VirtContext {
             has_s_extension: false,
             has_v_extension: true,
             has_zihpm_extension: true,
+            has_zicboz_extension: false,
+            has_zicbom_extension: false,
             has_tee_extension: false,
         },
     );

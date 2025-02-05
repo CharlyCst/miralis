@@ -342,18 +342,18 @@ fn test_mconfigptr() {
 // —————————————————— Machine Environment Config registers —————————————————— //
 
 fn test_menvcfg() {
-    const VALUE: usize = 0x42;
+    let target_val = 0x80000000000000f0;
     let mut res: usize;
     unsafe {
         asm!(
-            "li {0}, 0x42",
+            "li {0}, 0x80000000000000f0",
             "csrw menvcfg, {0}",
             "csrr {1}, menvcfg",
             out(reg) _,
             out(reg) res,
         );
     }
-    assert_eq!(res, VALUE);
+    assert_eq!(res, target_val);
 
     unsafe {
         asm!(
@@ -364,5 +364,5 @@ fn test_menvcfg() {
             out(reg) res,
         );
     }
-    assert_eq!(res, VALUE);
+    assert_eq!(res, 0x42);
 }
