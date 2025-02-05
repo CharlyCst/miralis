@@ -1,5 +1,4 @@
 //! The protect payload policy, it protects the payload.
-
 use core::slice;
 use core::sync::atomic::{AtomicBool, Ordering};
 
@@ -177,12 +176,11 @@ impl ProtectPayloadPolicy {
         match cause {
             MCause::LoadAddrMisaligned => self.emulate_misaligned_read(ctx, mctx),
             MCause::StoreAddrMisaligned => self.emulate_misaligned_write(ctx, mctx),
-            // TODO: In the future, we want to have a more elaborate way of handling this kind of calls with a bounce buffer for example....
             // In the meantime, we must explicitly disable this feature to run Ubuntu with the protect payload policy
             MCause::EcallFromSMode
                 if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
             {
-                logger::debug!("Ignoring console ecall to the debug_console_extension");
+                logger::debug!("Ignoring console ecall to the debug_console_extension, please implement a bounce buffer if the feature is required");
                 // Explicitly tell the payload this feature is not available
                 ctx.set(Register::X10, SBI_ERR_DENIED);
                 ctx.pc += 4;
@@ -226,8 +224,6 @@ impl ProtectPayloadPolicy {
     ) -> PolicyHookResult {
         let instr_ptr = ctx.trap_info.mepc as *const u8;
 
-        // With compressed instruction extention ("C") instructions can be misaligned.
-        // TODO: add support for 16 bits instructions
         let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
         unsafe {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
@@ -272,12 +268,12 @@ impl ProtectPayloadPolicy {
                         ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
                     }
                     _ => {
-                        todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", len.to_bytes())
+                        unreachable!("Misaligned read with a unexpected byte length")
                     }
                 }
             }
             _ => {
-                panic!("Must be a load instruction here")
+                unreachable!("Must be a load instruction here")
             }
         }
 
@@ -292,8 +288,6 @@ impl ProtectPayloadPolicy {
     ) -> PolicyHookResult {
         let instr_ptr = ctx.trap_info.mepc as *const u8;
 
-        // With compressed instruction extention ("C") instructions can be misaligned.
-        // TODO: add support for 16 bits instructions
         let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
         unsafe {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
@@ -340,12 +334,12 @@ impl ProtectPayloadPolicy {
                         }
                     }
                     _ => {
-                        todo!("Implement support for other than 2,4,8 bytes misalinged accesses, current size: {}", len.to_bytes())
+                        unreachable!("Misaligned write with a unexpected byte length")
                     }
                 }
             }
             _ => {
-                panic!("Must be a load instruction here")
+                unreachable!("Must be a load instruction here")
             }
         }
 
@@ -425,10 +419,6 @@ fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
 
 #[allow(unused)]
 fn check_nb_registers_to_forward_per_eid_fid(eid: usize, fid: usize) -> usize {
-    // TODO: Currently forwarding only the registers required by the SBI doesn't work, investigate why
-    return 6;
-
-    #[allow(dead_code)]
     match (eid, fid) {
         (0x10, 0) => 0,
         (0x10, 1) => 0,
@@ -501,6 +491,12 @@ fn check_nb_registers_to_forward_per_eid_fid(eid: usize, fid: usize) -> usize {
         (0x53555350, 0) => 3,
         (0x54494D45, 0) => 1,
         (0x735049, 0) => 2,
-        _ => 0,
+        // This one is used in our test "test_protect_payload_payload" in the payload folder and is not part of the specification
+        // The reason we introduce it is that there is no rule using all the registers currently and therefore we can't test the 6 register using one of the existing rules
+        (0x8475bd0, 1) => 6,
+        _ => {
+            log::warn!("This eid, fid pair is unknown{:x} {:x}", eid, fid);
+            0
+        }
     }
 }
