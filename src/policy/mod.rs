@@ -100,9 +100,23 @@ pub trait PolicyModule {
         PolicyHookResult::Ignore
     }
 
-    fn switch_from_payload_to_firmware(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
+    fn switch_from_payload_to_firmware(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
+        let _ = ctx;
+        let _ = mctx;
+    }
 
-    fn switch_from_firmware_to_payload(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
+    fn switch_from_firmware_to_payload(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
+        let _ = ctx;
+        let _ = mctx;
+    }
 
     /// Callback for policy MSI.
     ///
@@ -110,7 +124,10 @@ pub trait PolicyModule {
     /// for synchronisation between multiple harts. Note that there is no guarantee that the MSI
     /// will be received without a delay, and as such a proper barrier must be used if
     /// synchronisation is critical for security.
-    fn on_interrupt(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext);
+    fn on_interrupt(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+        let _ = ctx;
+        let _ = mctx;
+    }
 
-    const NUMBER_PMPS: usize;
+    const NUMBER_PMPS: usize = 0;
 }
