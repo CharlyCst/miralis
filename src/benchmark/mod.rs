@@ -21,26 +21,29 @@ pub trait BenchmarkModule {
     fn init() -> Self;
     fn name() -> &'static str;
 
-    fn start_interval_counters(scope: Scope);
-    fn stop_interval_counters(scope: Scope);
-    fn increment_counter(counter: Counter);
+    fn start_interval_counters(_scope: Scope) {}
+    fn stop_interval_counters(_scope: Scope) {}
+    fn increment_counter(_counter: Counter) {}
 
     fn update_inteval_counter_stats(
         &mut self,
-        counter: &IntervalCounter,
-        scope: &Scope,
-        value: usize,
-    );
+        _counter: &IntervalCounter,
+        _scope: &Scope,
+        _value: usize,
+    ) {
+    }
 
     /// Print formated string with value of the counters
-    fn display_counters();
+    fn display_counters() {}
 
     /// Read the performance counters into the virtual registers.
     ///
     /// Note: the specific ABI is depends on the benchmark back-end.
-    fn read_counters(ctx: &mut VirtContext);
+    fn read_counters(_ctx: &mut VirtContext) {}
 
-    fn get_counter_value(core_id: usize, counter: Counter) -> usize;
+    fn get_counter_value(_core_id: usize, _counter: Counter) -> usize {
+        0
+    }
 }
 
 pub enum Scope {

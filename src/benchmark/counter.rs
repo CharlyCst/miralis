@@ -46,10 +46,6 @@ impl BenchmarkModule for CounterBenchmark {
         "Counter benchmark"
     }
 
-    fn start_interval_counters(_scope: Scope) {}
-
-    fn stop_interval_counters(_scope: Scope) {}
-
     fn increment_counter(counter: Counter) {
         if counter == FirmwareExits {
             NB_FIRMWARE_EXIT[hard_id()]
