@@ -12,15 +12,15 @@ max_pmp = 0
 
 [platform]
 name = "premierp550"
-nb_harts = 5
+nb_harts = 4
 boot_hart_id = 1
 
 [target.miralis]
-start_address = 0x43000000
+start_address = 0x80000000
 stack_size = 0x8000
 
 [target.firmware]
-start_address = 0x40000000
+start_address = 0x80800000
 
 [benchmark]
 benchmark_type = "counter_per_mcause"

@@ -21,12 +21,12 @@ use crate::{device, logger};
 /// appropriate platform accordingly. This makes it possible to avoid adding an ever increasing set
 /// of features and `#[cfg]` guards to select a platform.
 pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
-    "miralis"     => miralis::MiralisPlatform
-    "visionfive2" => visionfive2::VisionFive2Platform
-    "premierp550"             => premierp550::PremierP550Platform
-    _             => virt::VirtPlatform
-
+    "miralis"      => miralis::MiralisPlatform
+    "visionfive2"  => visionfive2::VisionFive2Platform
+    "premierp550"  => premierp550::PremierP550Platform
+    _              => virt::VirtPlatform
 ];
+
 pub trait Platform {
     fn name() -> &'static str;
     fn init();

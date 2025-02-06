@@ -16,7 +16,7 @@ use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Reg
 use miralis::benchmark::{Benchmark, BenchmarkModule};
 use miralis::config::{
     DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
-    TARGET_STACK_SIZE,
+    TARGET_FIRMWARE_ADDRESS, TARGET_STACK_SIZE,
 };
 use miralis::host::MiralisContext;
 use miralis::platform::{init, Plat, Platform};
@@ -35,7 +35,6 @@ extern "C" {
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
-
     let hart_id = Arch::read_csr(Csr::Mhartid);
 
     init();
@@ -52,8 +51,10 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
     log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
 
-    log::info!("Preparing jump into firmware");
-
+    log::info!(
+        "Preparing jump into firmware : {:X}",
+        TARGET_FIRMWARE_ADDRESS
+    );
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 

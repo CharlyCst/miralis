@@ -9,7 +9,6 @@ use spin::Mutex;
 use crate::arch::{Arch, Architecture};
 use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
-use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
 use crate::driver::clint::ClintDriver;
 use crate::driver::uart::UartDriver;
@@ -17,13 +16,12 @@ use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
-// TODO: Check about that if it is the case or not
 const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 
-// TODO: What is the base of the clint device?
+// The base address can be found in the section 3.3.2.2.3 of the eic7700x cpu manual
+// The manual is available here: https://www.sifive.com/document-file/eic7700x-datasheet
 const CLINT_BASE: usize = 0x2000000;
-const TEST_DEVICE_BASE: usize = 0x3000000;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
@@ -36,29 +34,18 @@ static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CL
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
-/// The virtual test device.
-static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
-
 pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
     EIC770X_UART0_ADDR,
     (1 << EIC770X_UART_REG_SHIFT) as usize,
 ));
 
 /// The list of virtual devices exposed on the platform.
-static VIRT_DEVICES: &[VirtDevice; 2] = &[
-    VirtDevice {
-        start_addr: CLINT_BASE,
-        size: CLINT_SIZE,
-        name: "CLINT",
-        device_interface: &VIRT_CLINT,
-    },
-    VirtDevice {
-        start_addr: TEST_DEVICE_BASE,
-        size: TEST_DEVICE_SIZE,
-        name: "TEST",
-        device_interface: &VIRT_TEST_DEVICE,
-    },
-];
+static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
+    start_addr: CLINT_BASE,
+    size: CLINT_SIZE,
+    name: "CLINT",
+    device_interface: &VIRT_CLINT,
+}];
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
@@ -66,9 +53,9 @@ pub struct PremierP550Platform {}
 
 impl Platform for PremierP550Platform {
     // TODO: Change this number
-    const NB_HARTS: usize = 5;
+    const NB_HARTS: usize = 4;
     // TODO: Check this number
-    const NB_VIRT_DEVICES: usize = 2;
+    const NB_VIRT_DEVICES: usize = VIRT_DEVICES.len();
 
     fn name() -> &'static str {
         "Premier P550 board"
