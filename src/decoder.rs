@@ -2,6 +2,7 @@
 use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
 use crate::logger;
+use crate::platform::{Plat, Platform};
 
 const ILLEGAL_OPCODE_MASK: usize = 0b1110011;
 const SFENCE_INSTR_VMA_MASK: usize = 0b0001001 << 25;
@@ -528,6 +529,14 @@ impl MiralisContext {
                     Csr::Unknown
                 } else {
                     Csr::Dscratch1
+                }
+            }
+            0x7C0..=0x7FF => {
+                // Custom CSRs, do per-SoC validation
+                if Plat::is_valid_custom_csr(csr) {
+                    Csr::Custom(csr)
+                } else {
+                    Csr::Unknown
                 }
             }
             0x342 => Csr::Mcause,
