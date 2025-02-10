@@ -13,7 +13,7 @@ use spin::Mutex;
 use crate::arch::{Arch, Architecture};
 use crate::device::clint::VirtClint;
 use crate::driver::clint::ClintDriver;
-use crate::{device, logger};
+use crate::{debug, device, logger};
 
 /// Export the current platform.
 ///
@@ -56,6 +56,31 @@ pub trait Platform {
 
     /// Return maximum valid address
     fn get_max_valid_address() -> usize;
+
+    /// Returns true if the
+    fn is_valid_custom_csr(csr: usize) -> bool {
+        // Default implementation, no valid custom CSR
+        let _ = csr;
+        false
+    }
+
+    /// Writes to a platform-specific CSR.
+    fn write_custom_csr(csr: usize, value: usize) {
+        // By default drop the writes.
+        debug::warn_once!(
+            "Trying to write to custom CSR 0x{:x}, but custom CSR write is not implemented",
+            csr
+        );
+        let _ = value; // Supress unused warning
+    }
+
+    /// Reads a platform-specific CSR.
+    fn read_custom_csr(csr: usize) -> usize {
+        unimplemented!(
+            "Trying to read custom CSR 0x{:x}, but custom CSR read is not implemented",
+            csr
+        );
+    }
 
     const NB_HARTS: usize;
     const NB_VIRT_DEVICES: usize;

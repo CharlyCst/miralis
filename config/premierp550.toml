@@ -1,7 +1,7 @@
 # A simple configuration to run on the premier P550 board
 
 [log]
-level = "trace"
+level = "info"
 color = true
 
 # DEBUG: Used while debugging board support

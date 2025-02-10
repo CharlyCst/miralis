@@ -191,6 +191,7 @@ impl Architecture for HostArch {
             Csr::Time => 0,
             Csr::Instret => ctx.csr.minstret,
             Csr::Seed => 0x80000000, // Magic value, used for model checking
+            Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
             Csr::Unknown => panic!("Unkown csr!"),
         }
     }
@@ -286,6 +287,7 @@ impl Architecture for HostArch {
             Csr::Time => {}
             Csr::Instret => {}
             Csr::Seed => (), // Read only
+            Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
             Csr::Unknown => panic!("Unkown csr!"),
         }
         prev_val

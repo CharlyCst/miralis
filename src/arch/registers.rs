@@ -264,6 +264,12 @@ pub enum Csr {
     /// Seed register
     Seed,
 
+    /// Custom
+    ///
+    /// Those CSRs are specific to each SoC, refer to the corresponding manual for details.
+    /// The `usize` fields encode the CSR ID.
+    Custom(usize),
+
     /// An unknown CSR
     Unknown,
 }

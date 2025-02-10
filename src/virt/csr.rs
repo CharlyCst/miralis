@@ -224,6 +224,9 @@ impl RegisterContextGetter<Csr> for VirtContext {
             // To get a true random value we defer to the hardware.
             Csr::Seed => Arch::read_csr(Csr::Seed),
 
+            // Platform-specific CSRs
+            Csr::Custom(csr) => Plat::read_custom_csr(csr),
+
             // Unknown
             Csr::Unknown => {
                 log::warn!("Tried to access unknown CSR: {:?}", register);
@@ -721,6 +724,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
 
             // Crypto extension
             Csr::Seed => (), // Read only register
+
+            // Platform-specific CSRs
+            Csr::Custom(csr) => Plat::write_custom_csr(csr, value),
 
             // Unknown
             // Specification ingnores the write to a non-existing register
