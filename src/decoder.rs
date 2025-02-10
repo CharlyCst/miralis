@@ -103,6 +103,8 @@ impl MiralisContext {
             0b11 => self.decode_uncompressed_load(raw),
             // Register-based load and store instructions for C set start with 0b00
             0b00 => self.decode_register_based_compressed_load(raw),
+            // Stack-based load and store instructions for C set start with 0b10
+            0b10 => todo!("Decode stack based C load"),
             _ => Instr::Unknown,
         }
     }
@@ -113,6 +115,8 @@ impl MiralisContext {
             0b11 => self.decode_uncompressed_store(raw),
             // Register-based load and store instructions for C set start with 0b00
             0b00 => self.decode_register_based_compressed_store(raw),
+            // Stack-based load and store instructions for C set start with 0b10
+            0b10 => todo!("Decode stack based C store"),
             _ => Instr::Unknown,
         }
     }
