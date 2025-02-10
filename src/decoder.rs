@@ -11,6 +11,16 @@ const HFENCE_INSTR_GVMA_MASK: usize = 0b0110001 << 25;
 const RS1_RS1_INSTR_TYPE_MASK: usize = 0b1111111111000000001111111;
 const FUNC3_MASK: usize = 0b111000000000000;
 
+/// Compressed Load Word opcode
+const C_LW: usize = 0b010;
+/// Compressed Load Double word opcode
+const C_LD: usize = 0b011;
+
+/// Compressed Store word opcode
+const C_SW: usize = 0b110;
+/// Compressed Load Double word opcode
+const C_SD: usize = 0b111;
+
 /// A RISC-V instruction.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Instr {
@@ -92,7 +102,7 @@ impl MiralisContext {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_uncompressed_load(raw),
             // Register-based load and store instructions for C set start with 0b00
-            0b00 => self.decode_compressed_load(raw),
+            0b00 => self.decode_register_based_compressed_load(raw),
             _ => Instr::Unknown,
         }
     }
@@ -102,7 +112,7 @@ impl MiralisContext {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_uncompressed_store(raw),
             // Register-based load and store instructions for C set start with 0b00
-            0b00 => self.decode_compressed_store(raw),
+            0b00 => self.decode_register_based_compressed_store(raw),
             _ => Instr::Unknown,
         }
     }
@@ -147,35 +157,33 @@ impl MiralisContext {
         }
     }
 
-    fn decode_compressed_load(&self, raw: usize) -> Instr {
-        let func3 = (raw >> 13) & 0b111;
-        let rd_rs2 = (raw >> 2) & 0b111;
+    fn decode_register_based_compressed_load(&self, raw: usize) -> Instr {
+        let rd = (raw >> 2) & 0b111;
         let rs1 = (raw >> 7) & 0b111;
 
-        let rd_rs2 = Register::from(rd_rs2 + 8);
+        let rd = Register::from(rd + 8);
         let rs1 = Register::from(rs1 + 8);
 
+        let func3 = (raw >> 13) & 0b111;
         match func3 {
-            0b011 => {
-                let rd = rd_rs2;
-                let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
-                Instr::Load {
-                    rd,
-                    rs1,
-                    imm: (imm * 8).try_into().unwrap(),
-                    len: Width::from(64),
-                    is_compressed: true,
-                    is_unsigned: false,
-                }
-            }
-            0b010 => {
-                let rd = rd_rs2;
+            C_LW => {
                 let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
                 Instr::Load {
                     rd,
                     rs1,
-                    imm: (imm * 4).try_into().unwrap(),
+                    imm: imm as isize,
                     len: Width::from(32),
+                    is_compressed: true,
+                    is_unsigned: false,
+                }
+            }
+            C_LD => {
+                let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+                Instr::Load {
+                    rd,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::from(64),
                     is_compressed: true,
                     is_unsigned: false,
                 }
@@ -184,33 +192,31 @@ impl MiralisContext {
         }
     }
 
-    fn decode_compressed_store(&self, raw: usize) -> Instr {
+    fn decode_register_based_compressed_store(&self, raw: usize) -> Instr {
         let func3 = (raw >> 13) & 0b111;
-        let rd_rs2 = (raw >> 2) & 0b111;
+        let rs2 = (raw >> 2) & 0b111;
         let rs1 = (raw >> 7) & 0b111;
 
-        let rd_rs2 = Register::from(rd_rs2 + 8);
+        let rs2 = Register::from(rs2 + 8);
         let rs1 = Register::from(rs1 + 8);
 
         match func3 {
-            0b111 => {
-                let rs2 = rd_rs2;
+            C_SD => {
                 let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
                 Instr::Store {
                     rs2,
                     rs1,
-                    imm: (imm * 8).try_into().unwrap(),
+                    imm: imm as isize,
                     len: Width::from(64),
                     is_compressed: true,
                 }
             }
-            0b110 => {
-                let rs2 = rd_rs2;
+            C_SW => {
                 let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
                 Instr::Store {
                     rs2,
                     rs1,
-                    imm: (imm * 4).try_into().unwrap(),
+                    imm: imm as isize,
                     len: Width::from(32),
                     is_compressed: true,
                 }
@@ -1047,20 +1053,12 @@ mod tests {
             }
         );
 
-        // Note: For compressed instructions, the immediate value (imm) represents an offset
-        // and is multiplied by the necessary factor (e.g., x4/8) during decoding.
-        // Therefore, we actually decode an offset as the immediate value for compressed instructions.
-
-        // Example:  0xffff4798 would decode into c.lw x14, 8(x15) (immediate value is 8),
-        // but we assert imm as 32 (8*4), as the eventual offset value would be 32.
-        // This helps to keep compressed and uncompressed instructions handlers more homogenous in other modules.
-
         assert_eq!(
             mctx.decode_store(0xffffe798),
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
-                imm: 64,
+                imm: 8,
                 len: Width::from(64),
                 is_compressed: true,
             }
@@ -1071,7 +1069,7 @@ mod tests {
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
-                imm: 64,
+                imm: 8,
                 len: Width::from(64),
                 is_compressed: true,
                 is_unsigned: false,
@@ -1083,7 +1081,7 @@ mod tests {
             Instr::Load {
                 rd: Register::X14,
                 rs1: Register::X15,
-                imm: 32,
+                imm: 8,
                 len: Width::from(32),
                 is_compressed: true,
                 is_unsigned: false,
@@ -1095,7 +1093,7 @@ mod tests {
             Instr::Store {
                 rs2: Register::X14,
                 rs1: Register::X15,
-                imm: 32,
+                imm: 8,
                 len: Width::from(32),
                 is_compressed: true,
             }
