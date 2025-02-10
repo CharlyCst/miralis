@@ -39,6 +39,10 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     let hart_id = Arch::read_csr(Csr::Mhartid);
 
+    if hart_id != 3 {
+        Plat::exit_success();
+    }
+
     init();
     log::info!("Hello, world!");
     log::info!("Platform name: {}", Plat::name());
@@ -94,6 +98,17 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         Plat::exit_success();
     }
 
+    // // TODO: remove :)
+    // if PLATFORM_NAME == "premierp550" {
+    //     log::info!("Successfully initialized Miralis on P550");
+    //     Plat::exit_success();
+    // }
+    log::info!("Jumping to 0x{:x}", ctx.pc);
+    unsafe {
+        let bytes = core::slice::from_raw_parts(ctx.pc as *const u8, 16);
+        log::warn!("First payload bytes: {:x?}", bytes);
+    }
+
     // SAFETY: At this point we initialized the hardware, loaded the firmware, and configured the
     // initial register values.
     unsafe {
@@ -141,6 +156,10 @@ r#"
 .text
 .global _start
 _start:
+    // Before doing anything we disable interrupts on the hart, as the previous stage might have
+    // enabled them.
+    csrrwi x0, mie, 0
+
     // We start by setting up the stack:
     // First we find where the stack is for that hart
     ld t0, __stack_start

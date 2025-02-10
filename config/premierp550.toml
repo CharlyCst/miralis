@@ -1,8 +1,12 @@
 # A simple configuration to run on the premier P550 board
 
 [log]
-level = "info"
+level = "trace"
 color = true
+
+# DEBUG: Used while debugging board support
+trace = ["miralis::arch::pmp", "miralis::arch::metal", "miralis::device::plic", "miralis::driver::plic"]
+debug = ["miralis::arch::pmp"]
 
 [debug]
 # max_firmware_exits = 2000
@@ -12,15 +16,15 @@ max_pmp = 0
 
 [platform]
 name = "premierp550"
-nb_harts = 5
+nb_harts = 4
 boot_hart_id = 1
 
 [target.miralis]
-start_address = 0x43000000
+start_address = 0x80060000
 stack_size = 0x8000
 
 [target.firmware]
-start_address = 0x40000000
+start_address = 0x80000000
 
 [benchmark]
 benchmark_type = "counter_per_mcause"

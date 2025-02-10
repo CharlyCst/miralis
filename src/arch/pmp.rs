@@ -219,7 +219,9 @@ impl PmpGroup {
             pmp.set_inactive(ALL_CATCH_OFFSET, 0);
 
             // Protect Miralis
-            pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
+            log::debug!("PMP protect Miralis at [0x{:x}, 0x{:x}]", start, start + size);
+            log::warn!("Skipping PMP to protect Miralis");
+            // pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
 
             // Protect virtual devices
             for (i, device) in virtual_devices.iter().enumerate() {
