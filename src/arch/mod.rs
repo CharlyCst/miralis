@@ -565,6 +565,73 @@ impl From<usize> for Width {
     }
 }
 
+// —————————————————————————————— Custom CSRs ——————————————————————————————— //
+// CSR IDs are hard-coded in the CSR read/write/clear/set instructions,       //
+// rather than being passed as operands in a register. Because of this each   //
+// CSR accessed by Miralis must have its corresponding instruction present in //
+// the final binary.                                                          //
+// To avoid bloating Miralis we do not include instructions for all possible  //
+// custom CSRs. Instead we expose macros to access arbitrary CSRs which are   //
+// expected to be used by each platform implementation on an as-needed basis. //
+// —————————————————————————————————————————————————————————————————————————— //
+
+/// Write to a custom CSR.
+///
+/// Usage:
+///
+/// ```rs
+/// let value = 0xffff; // Can be any `usize`
+/// write_custom_csr!(0x7C0, value)
+/// ```
+macro_rules! write_custom_csr {
+    ($csr:expr, $value:tt) => {{
+        #[cfg(not(feature = "userspace"))]
+        unsafe {
+            let value = $value;
+            core::arch::asm!(
+                concat!("csrw ", $csr, ", {value}"),
+                value = in(reg) value,
+                options(nomem)
+            );
+        }
+
+        #[cfg(feature = "userspace")]
+        {
+            // Ignore write, but drop the unused warning
+            let _ = $value;
+        }
+    }}
+}
+
+/// Read a custom CSR.
+///
+/// Usage:
+///
+/// ```rs
+/// let value = read_custom_csr!(0x7C0);
+/// ```
+macro_rules! read_custom_csr {
+    ($csr:expr) => {{
+        #[cfg(not(feature = "userspace"))]
+        unsafe {
+            let value: usize;
+            core::arch::asm!(
+                concat!("csrr {value}, ", $csr),
+                value = out(reg) value,
+                options(nomem)
+            );
+            value
+        }
+
+        #[cfg(feature = "userspace")]
+        {
+            panic!("Trying to read custom CSR from userspace");
+        }
+    }}
+}
+
+pub(crate) use {read_custom_csr, write_custom_csr};
+
 // ———————————————————————— Helpers ————————————————————————— //
 
 /// Change mstatus.MPP and return the previous mstatus.MPP

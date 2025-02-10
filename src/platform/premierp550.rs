@@ -6,7 +6,7 @@ use core::{fmt, hint};
 use log::Level;
 use spin::Mutex;
 
-use crate::arch::{Arch, Architecture};
+use crate::arch::{read_custom_csr, write_custom_csr, Arch, Architecture};
 use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::VirtDevice;
@@ -106,6 +106,38 @@ impl Platform for PremierP550Platform {
 
     fn get_vclint() -> &'static VirtClint {
         &VIRT_CLINT
+    }
+
+    fn is_valid_custom_csr(csr: usize) -> bool {
+        // For the list and usage of custom CSRs refer to the EIC7700X SoC Technical Reference
+        // Manual.
+        (0x7C0..=0x7C4).contains(&csr) || csr == 0x7C8
+    }
+
+    fn write_custom_csr(csr: usize, value: usize) {
+        // On the P550 we simply pass the write through
+        match csr {
+            0x7C0 => write_custom_csr!(0x7C0, value),
+            0x7C1 => write_custom_csr!(0x7C1, value),
+            0x7C2 => write_custom_csr!(0x7C2, value),
+            0x7C3 => write_custom_csr!(0x7C3, value),
+            0x7C4 => write_custom_csr!(0x7C4, value),
+            0x7C8 => write_custom_csr!(0x7C8, value),
+            _ => panic!("Invalid custom CSR: 0x{:x}", csr),
+        }
+    }
+
+    fn read_custom_csr(csr: usize) -> usize {
+        // On the P550 we simply pass the read through
+        match csr {
+            0x7C0 => read_custom_csr!(0x7C0),
+            0x7C1 => read_custom_csr!(0x7C1),
+            0x7C2 => read_custom_csr!(0x7C2),
+            0x7C3 => read_custom_csr!(0x7C3),
+            0x7C4 => read_custom_csr!(0x7C4),
+            0x7C8 => read_custom_csr!(0x7C8),
+            _ => panic!("Invalid custom CSR: 0x{:x}", csr),
+        }
     }
 }
 

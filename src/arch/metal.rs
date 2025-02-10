@@ -244,6 +244,7 @@ impl Architecture for MetalArch {
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
+            Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
             Csr::Unknown => (),
         };
 
@@ -350,6 +351,7 @@ impl Architecture for MetalArch {
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
+            Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
             Csr::Unknown => value = 0,
         };
 
@@ -709,6 +711,7 @@ impl Architecture for MetalArch {
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
+            Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
             Csr::Unknown => (),
         };
 
@@ -816,6 +819,7 @@ impl Architecture for MetalArch {
             Csr::Vtype => todo!(),
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
+            Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
             Csr::Unknown => (),
         };
 
