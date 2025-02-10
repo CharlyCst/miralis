@@ -1,13 +1,13 @@
 //! The offload policy is a special policy used to reduce the number of world switches by creating emulating the timers directly in Miralis
 
-use core::arch::asm;
-use miralis_core::{abi_protect_payload, sbi_codes};
+use miralis_core::sbi_codes;
+
 use crate::arch::{
     get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register,
-    TrapInfo,
 };
 use crate::decoder::Instr;
 use crate::host::MiralisContext;
+use crate::platform::virt::VIRT_CLINT;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::{RegisterContextGetter, RegisterContextSetter};
 use crate::virt::VirtContext;
@@ -35,19 +35,16 @@ impl PolicyModule for OffloadPolicy {
             MCause::LoadAddrMisaligned => self.emulate_misaligned_read(ctx, mctx),
             MCause::StoreAddrMisaligned => self.emulate_misaligned_write(ctx, mctx),
             MCause::EcallFromSMode => {
-                let timer_eid: bool =
-                    ctx.get(Register::X17) == sbi_codes::SBI_TIMER_EID;
-                let timer_fid: bool =
-                    ctx.get(Register::X16) == sbi_codes::SBI_TIMER_FID;
+                let timer_eid: bool = ctx.get(Register::X17) == sbi_codes::SBI_TIMER_EID;
+                let timer_fid: bool = ctx.get(Register::X16) == sbi_codes::SBI_TIMER_FID;
 
-                if(timer_eid && timer_fid) {
-
-
-
-                    return PolicyHookResult::Overwrite;
+                if timer_eid && timer_fid {
+                    VIRT_CLINT.write_clint_payload(ctx, mctx, ctx.regs[Register::X10 as usize]);
+                    ctx.pc += 4;
+                    PolicyHookResult::Overwrite
+                } else {
+                    PolicyHookResult::Ignore
                 }
-
-                return PolicyHookResult::Ignore;
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
@@ -57,7 +54,7 @@ impl PolicyModule for OffloadPolicy {
 
                 if is_privileged_op && is_time_register {
                     let rd = (instr >> 7) & 0b11111;
-                    let rs1 = (instr >> 15) & 0b11111;
+                    let _rs1 = (instr >> 15) & 0b11111;
 
                     let func3_mask = instr & 0b111000000000000;
                     match func3_mask {
@@ -120,7 +117,7 @@ impl OffloadPolicy {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
         }
 
-        match  mctx.decode_load(u64::from_le_bytes(instr) as usize) {
+        match mctx.decode_load(u64::from_le_bytes(instr) as usize) {
             Instr::Load {
                 rd, rs1, imm, len, ..
             } => {
@@ -249,6 +246,4 @@ impl OffloadPolicy {
         let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
         unsafe { Arch::store_bytes_from_mode(src, dest, mode).unwrap() }
     }
-
-
 }

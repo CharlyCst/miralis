@@ -32,7 +32,7 @@ const TEST_DEVICE_BASE: usize = 0x3000000;
 static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
 
 /// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
+pub static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();

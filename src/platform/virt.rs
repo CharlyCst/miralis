@@ -47,7 +47,7 @@ static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
 
 /// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
+pub static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 /// The physical PLIC driver.
 ///

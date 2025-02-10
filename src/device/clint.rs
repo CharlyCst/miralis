@@ -1,3 +1,4 @@
+use core::cmp::min;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use spin::Mutex;
@@ -8,6 +9,8 @@ use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
     ClintDriver, MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
 };
+use crate::host::MiralisContext;
+use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
 use crate::{debug, logger};
 
@@ -25,9 +28,9 @@ pub struct VirtClint {
     /// Policy Machine Software Interrupt (MSI) map
     policy_msi: [AtomicBool; PLATFORM_NB_HARTS],
     /// Next interrupts for the virtual firmware
-    next_timestamp_firmware: [AtomicUsize; PLATFORM_NB_HARTS],
+    pub next_timestamp_firmware: [AtomicUsize; PLATFORM_NB_HARTS],
     /// Next interrupts for the payload
-    next_timestamp_payload: [AtomicUsize; PLATFORM_NB_HARTS],
+    pub next_timestamp_payload: [AtomicUsize; PLATFORM_NB_HARTS],
 }
 
 impl DeviceAccess for VirtClint {
@@ -47,7 +50,7 @@ impl DeviceAccess for VirtClint {
         value: usize,
         ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
-        self.write_clint(offset, w_width, value, ctx)
+        self.write_clint(offset, w_width, value, ctx, false)
     }
 }
 
@@ -58,6 +61,8 @@ impl VirtClint {
             driver,
             vmsi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
             policy_msi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
+            next_timestamp_firmware: [const { AtomicUsize::new(usize::MAX) }; PLATFORM_NB_HARTS],
+            next_timestamp_payload: [const { AtomicUsize::new(usize::MAX) }; PLATFORM_NB_HARTS],
         }
     }
 
@@ -68,6 +73,37 @@ impl VirtClint {
         } else {
             Ok(())
         }
+    }
+
+    pub fn fire_elapsed_times(&self, ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+        let mut clint = Plat::get_clint().lock();
+
+        let current_timestamp: usize = clint.read_mtimecmp(mctx.hw.hart).unwrap();
+
+        if current_timestamp >= self.next_timestamp_firmware[mctx.hw.hart].load(Ordering::SeqCst) {
+            self.next_timestamp_firmware[mctx.hw.hart].store(usize::MAX, Ordering::SeqCst);
+            // Set the firmware interrupt ready
+            ctx.csr.mip |= mie::MTIE_FILTER;
+        }
+
+        if current_timestamp >= self.next_timestamp_payload[mctx.hw.hart].load(Ordering::SeqCst) {
+            self.next_timestamp_payload[mctx.hw.hart].store(usize::MAX, Ordering::SeqCst);
+            // Set the payload interrupt ready
+            ctx.csr.mip |= mie::STIE_FILTER;
+        }
+
+        let new_timestamp_firmware =
+            self.next_timestamp_firmware[mctx.hw.hart].load(Ordering::SeqCst);
+        let new_timestamp_payload =
+            self.next_timestamp_payload[mctx.hw.hart].load(Ordering::SeqCst);
+
+        // Write the minimum of the two back
+        clint
+            .write_mtimecmp(
+                mctx.hw.hart,
+                min(new_timestamp_firmware, new_timestamp_payload),
+            )
+            .expect("Failed to write mtimecmp");
     }
 
     pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
@@ -89,12 +125,29 @@ impl VirtClint {
         }
     }
 
+    pub fn write_clint_payload(
+        &self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+        value: usize,
+    ) {
+        self.write_clint(
+            MTIMECMP_OFFSET + 4 * mctx.hw.hart,
+            Width::Byte8,
+            value,
+            ctx,
+            true,
+        )
+        .unwrap();
+    }
+
     pub fn write_clint(
         &self,
         offset: usize,
         w_width: Width,
         value: usize,
         ctx: &mut VirtContext,
+        is_from_payload: bool,
     ) -> Result<(), &'static str> {
         logger::trace!(
             "Write to CLINT at offset 0x{:x} with a value 0x{:x}",
@@ -148,15 +201,47 @@ impl VirtClint {
                     todo!("Setting mtime for another hart is not yet supported");
                 }
 
+                if is_from_payload {
+                    self.next_timestamp_payload[ctx.hart_id].store(value, Ordering::SeqCst);
+                } else {
+                    self.next_timestamp_firmware[ctx.hart_id].store(value, Ordering::SeqCst);
+                }
+
+                let should_trigger: bool = mtime >= value;
+
                 // Update the virtual `mip` according to the relative ordering of mtime and
                 // mtimecmp.
-                if mtime >= value {
+                if should_trigger && is_from_payload {
+                    ctx.csr.mip |= mie::STIE_FILTER;
+                } else if should_trigger {
                     ctx.csr.mip |= mie::MTIE_FILTER;
                 } else {
-                    // Register a timer to trigger the virtual interrupt once appropriate
-                    driver.write_mtimecmp(hart, value)?;
+                    let mtimecmp_firmware =
+                        self.next_timestamp_firmware[ctx.hart_id].load(Ordering::SeqCst);
+                    let mtimecmp_payload =
+                        self.next_timestamp_payload[ctx.hart_id].load(Ordering::SeqCst);
+
+                    // We want to have the smallest of the two mtimes
+                    driver.write_mtimecmp(hart, min(mtimecmp_firmware, mtimecmp_payload))?;
+                    // TODO: Ask Charly if we should really disable the values here
+                    // I don't understand here what we should do
                     ctx.csr.mip &= !mie::MTIE_FILTER;
                 }
+
+                /*if mtime >= value {
+                    ctx.csr.mip |= mie::MTIE_FILTER;
+                } else {
+                    let mtimecmp_firmware =
+                        self.next_timestamp_firmware[ctx.hart_id].load(Ordering::SeqCst);
+                    let mtimecmp_payload =
+                        self.next_timestamp_payload[ctx.hart_id].load(Ordering::SeqCst);
+
+                    // We want to have the smallest of the two mtimes
+                    driver.write_mtimecmp(hart, min(mtimecmp_firmware, mtimecmp_payload))?;
+                    // TODO: Ask Charly if we should really disable the values here
+                    // I don't understand here what we should do
+                    ctx.csr.mip &= !mie::MTIE_FILTER;
+                }*/
 
                 Ok(())
             }

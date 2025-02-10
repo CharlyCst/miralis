@@ -26,7 +26,7 @@ const TEST_DEVICE_BASE: usize = 0x3000000;
 ///
 /// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
 /// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
+pub static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
 
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);

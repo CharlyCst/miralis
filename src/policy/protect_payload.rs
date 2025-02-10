@@ -222,7 +222,6 @@ impl ProtectPayloadPolicy {
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
     ) -> PolicyHookResult {
-        log::error!("wtf");
         let instr_ptr = ctx.trap_info.mepc as *const u8;
 
         let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
