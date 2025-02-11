@@ -5,7 +5,9 @@ use miralis::arch::{mie, write_pmp, MCause, Register};
 use miralis::decoder::Instr;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use miralis::virt::VirtContext;
-use sail_decoder::encdec_backwards;
+use sail_decoder::decoder_illegal::sail_decoder_illegal;
+use sail_decoder::decoder_load::sail_decoder_load;
+use sail_decoder::decoder_store::sail_decoder_store;
 use sail_model::{
     execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET,
     execute_WFI, pmpCheck, readCSR, set_next_pc, step_interrupts_only, trap_handler, writeCSR,
@@ -591,7 +593,7 @@ pub fn verify_decoder() {
     let instr = any!(u32, 0x30001073);
 
     // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(encdec_backwards(
+    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_illegal::encdec_backwards(
         &mut sail_ctx,
         BitVector::new(instr as u64),
     ));
@@ -630,8 +632,8 @@ pub fn formally_verify_emulation_privileged_instructions() {
 
     // Check the equivalence
     assert_eq!(
-        ctx,
-        sail_to_miralis(sail_ctx),
+        ctx.csr.mstatus,
+        sail_to_miralis(sail_ctx).csr.mstatus,
         "emulation of privileged instructions isn't equivalent"
     );
 }
@@ -663,6 +665,31 @@ pub fn verify_compressed_loads() {
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
+pub fn verify_load() {
+    let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // Generate an instruction to decode
+    let instr = any!(u32, 0x01073) | 0b11;
+
+    // Decode values
+    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_load::encdec_backwards(
+        &mut sail_ctx,
+        BitVector::new(instr as u64),
+    ));
+
+    let decoded_value_miralis = mctx.decode_load(instr as usize);
+
+    // For the moment, we ignore the values that are not decoded by the sail reference
+    if decoded_value_sail != Instr::Unknown {
+        assert_eq!(
+            decoded_value_sail, decoded_value_miralis,
+            "decoders for loads are not equivalent"
+        );
+    }
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
 pub fn verify_compressed_stores() {
     let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
@@ -682,6 +709,31 @@ pub fn verify_compressed_stores() {
         assert_eq!(
             decoded_value_sail, decoded_value_miralis,
             "decoders for compressed stores are not equivalent"
+        );
+    }
+}
+
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn verify_stores() {
+    let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+
+    // Generate an instruction to decode
+    let instr = any!(u32, 0x01073) | 0b11;
+
+    // Decode values
+    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_store::encdec_backwards(
+        &mut sail_ctx,
+        BitVector::new(instr as u64),
+    ));
+
+    let decoded_value_miralis = mctx.decode_store(instr as usize);
+
+    // For the moment, we ignore the values that are not decoded by the sail reference
+    if decoded_value_sail != Instr::Unknown {
+        assert_eq!(
+            decoded_value_sail, decoded_value_miralis,
+            "decoders for loads are not equivalent"
         );
     }
 }

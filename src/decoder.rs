@@ -3,6 +3,7 @@ use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
+use crate::utils::bits_to_int;
 
 const ILLEGAL_OPCODE_MASK: usize = 0b1110011;
 const SFENCE_INSTR_VMA_MASK: usize = 0b0001001 << 25;
@@ -234,25 +235,11 @@ impl MiralisContext {
         }
     }
 
-    fn bits_to_int(&self, raw: usize, start_bit: isize, end_bit: isize) -> isize {
-        let mask = (1 << (end_bit - start_bit + 1)) - 1;
-        let value = (raw >> start_bit) & mask;
-
-        // Check if the most significant bit is set (indicating a negative value)
-        if value & (1 << (end_bit - start_bit)) != 0 {
-            // Extend the sign bit to the left
-            let sign_extension = !0 << (end_bit - start_bit);
-            value as isize | sign_extension
-        } else {
-            value as isize
-        }
-    }
-
     fn decode_uncompressed_load(&self, raw: usize) -> Instr {
         let func3 = (raw >> 12) & 0b111;
         let rd = (raw >> 7) & 0b11111;
         let rs1 = (raw >> 15) & 0b11111;
-        let imm = self.bits_to_int(raw, 20, 31);
+        let imm = bits_to_int(raw, 20, 31);
 
         let rs1 = Register::from(rs1);
         let rd = Register::from(rd);
@@ -330,7 +317,7 @@ impl MiralisContext {
         let func3 = (raw >> 12) & 0b111;
         let rs1: usize = (raw >> 15) & 0b11111;
         let rs2 = (raw >> 20) & 0b11111;
-        let imm = self.bits_to_int(
+        let imm = bits_to_int(
             ((raw >> 7) & 0b11111) | ((raw >> 20) & 0b111111100000),
             0,
             11,
