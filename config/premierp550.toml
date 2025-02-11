@@ -5,7 +5,7 @@ level = "info"
 color = true
 
 # DEBUG: Used while debugging board support
-trace = ["miralis::arch::pmp", "miralis::arch::metal", "miralis::device::plic", "miralis::driver::plic"]
+# trace = ["miralis::arch::pmp", "miralis::arch::metal", "miralis::device::plic", "miralis::driver::plic", "miralis::driver::clint", "miralis::device::clint"]
 debug = ["miralis::arch::pmp"]
 
 [debug]

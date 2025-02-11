@@ -81,7 +81,17 @@ impl VirtClint {
                 driver.read_mtimecmp(hart)
             }
             (o, Width::Byte8) if o == MTIME_OFFSET => Ok(driver.read_mtime()),
-            _ => Err("Invalid CLINT offset"),
+            // We also handle the case of 4 bytes reads to mtime
+            (o, Width::Byte4) if o == MTIME_OFFSET => Ok(driver.read_mtime() & 0xffffffff),
+            (o, Width::Byte4) if o == MTIME_OFFSET + 4 => Ok(driver.read_mtime() >> 32),
+            _ => {
+                log::warn!(
+                    "Invalid clint read: offset is 0x{:x}, width is {}",
+                    offset,
+                    r_width.to_bytes()
+                );
+                Err("Invalid CLINT offset")
+            }
         }
     }
 
@@ -134,7 +144,7 @@ impl VirtClint {
                     _ => unreachable!(),
                 }
             }
-            (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
+            (o, _) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let mtime = driver.read_mtime();
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
                 if hart >= PLATFORM_NB_HARTS {
@@ -156,7 +166,7 @@ impl VirtClint {
 
                 Ok(())
             }
-            (o, Width::Byte8) if o == MTIME_OFFSET => {
+            (o, _) if o == MTIME_OFFSET => {
                 // TODO: when updating mtime we should check on which core the timer should fire.
                 // We don't do it for now so we might loose interrupts.
                 debug::warn_once!(
@@ -165,7 +175,14 @@ impl VirtClint {
                 driver.write_mtime(value);
                 Ok(())
             }
-            _ => Err("Invalid CLINT address"),
+            _ => {
+                log::warn!(
+                    "Invalid CLINT offset: 0x{:x} or width: {}",
+                    offset,
+                    w_width.to_bytes()
+                );
+                Err("Invalid CLINT offset")
+            }
         }
     }
 
