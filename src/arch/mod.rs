@@ -135,6 +135,8 @@ pub struct HardwareCapability {
 pub struct RegistersCapability {
     /// Boolean value indicating if Machine environment configuration register is present
     pub menvcfg: bool,
+    /// Boolean value indicating if Hypervisor environment configuration register is present
+    pub henvcfg: bool,
     /// Boolean value indicating if Supervisor environment configuration register is present
     pub senvcfg: bool,
     /// The number of implemented and non-zero PMP registers

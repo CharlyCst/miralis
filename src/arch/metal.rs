@@ -389,10 +389,12 @@ impl Architecture for MetalArch {
         // Test menvcfg & senvcfg
         // Hint: to simulate a missing register, one can add "ecall" after the first line in asm! of the macro
         let is_menvcfg_present: bool = register_present!("menvcfg");
+        let is_henvcfg_present: bool = register_present!("henvcfg");
         let is_senvcfg_present: bool = register_present!("senvcfg");
         log::debug!(
-            "Detecting available envcfg registers [menvcfg : {} | senvcfg : {} ]",
+            "Detecting available envcfg registers [menvcfg : {} | henvcfg: {} | senvcfg : {} ]",
             is_menvcfg_present,
+            is_henvcfg_present,
             is_senvcfg_present,
         );
 
@@ -472,6 +474,7 @@ impl Architecture for MetalArch {
             _marker: PhantomData,
             available_reg: RegistersCapability {
                 menvcfg: is_menvcfg_present,
+                henvcfg: is_henvcfg_present,
                 senvcfg: is_senvcfg_present,
                 nb_pmp,
             },
