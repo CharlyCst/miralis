@@ -171,7 +171,7 @@ impl MiralisContext {
         let func3 = (raw >> 13) & 0b111;
         match func3 {
             C_LW => {
-                let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                let imm = (raw >> 4) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
                 Instr::Load {
                     rd,
                     rs1,
@@ -205,6 +205,16 @@ impl MiralisContext {
         let rs1 = Register::from(rs1 + 8);
 
         match func3 {
+            C_SW => {
+                let imm = (raw >> 4) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                Instr::Store {
+                    rs2,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::from(32),
+                    is_compressed: true,
+                }
+            }
             C_SD => {
                 let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
                 Instr::Store {
@@ -212,16 +222,6 @@ impl MiralisContext {
                     rs1,
                     imm: imm as isize,
                     len: Width::from(64),
-                    is_compressed: true,
-                }
-            }
-            C_SW => {
-                let imm = (raw >> 3) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
-                Instr::Store {
-                    rs2,
-                    rs1,
-                    imm: imm as isize,
-                    len: Width::from(32),
                     is_compressed: true,
                 }
             }
