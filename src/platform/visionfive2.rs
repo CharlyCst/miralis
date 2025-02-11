@@ -12,11 +12,13 @@ use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
 use crate::driver::clint::ClintDriver;
+use crate::driver::uart::UartDriver;
 use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
-const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
+const UART_SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
+const UART_SIZE_PER_REGISTER: usize = 4;
 const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
 const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 
@@ -37,7 +39,10 @@ static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
 
-pub static WRITER: Mutex<Writer> = Mutex::new(Writer::new(SERIAL_PORT_BASE_ADDRESS));
+pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
+    UART_SERIAL_PORT_BASE_ADDRESS,
+    UART_SIZE_PER_REGISTER,
+));
 
 /// The list of virtual devices exposed on the platform.
 static VIRT_DEVICES: &[VirtDevice; 2] = &[
@@ -117,49 +122,6 @@ impl Platform for VisionFive2Platform {
 
     fn get_vclint() -> &'static VirtClint {
         &VIRT_CLINT
-    }
-}
-
-pub struct Writer {
-    serial_port_base_addr: usize,
-}
-
-impl Writer {
-    pub const fn new(serial_port_base_addr: usize) -> Self {
-        Writer {
-            serial_port_base_addr,
-        }
-    }
-
-    pub const fn get_register(&mut self, offset: usize) -> usize {
-        // Registers are 32 bits wide on the board
-        self.serial_port_base_addr + (offset << 2)
-    }
-
-    pub fn is_line_busy(&mut self) -> bool {
-        // Line Status Register
-        const LSR_OFFSET: usize = 0x05;
-        // Transmit Holding Register Empty
-        const LSR_THRE: u8 = 0x20;
-
-        unsafe { ptr::read_volatile(self.get_register(LSR_OFFSET) as *const u8) & LSR_THRE == 0 }
-    }
-
-    fn write_char(&mut self, c: char) {
-        unsafe {
-            while self.is_line_busy() {}
-
-            ptr::write_volatile(self.serial_port_base_addr as *mut char, c);
-        }
-    }
-}
-
-impl fmt::Write for Writer {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        for c in s.chars() {
-            self.write_char(c);
-        }
-        Ok(())
     }
 }
 
