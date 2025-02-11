@@ -335,7 +335,7 @@ impl VirtContext {
     /// interrupts here.
     fn handle_machine_timer_interrupt(&mut self, mctx: &mut MiralisContext) {
         // TODO: Set new code
-        // VIRT_CLINT.fire_elapsed_times(self, mctx);
+        //VIRT_CLINT.fire_elapsed_times(self, mctx);
 
         let mut clint = Plat::get_clint().lock();
         clint

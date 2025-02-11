@@ -203,8 +203,10 @@ impl VirtClint {
 
                 if is_from_payload {
                     self.next_timestamp_payload[ctx.hart_id].store(value, Ordering::SeqCst);
+                    ctx.csr.mip &= !mie::STIE_FILTER;
                 } else {
                     self.next_timestamp_firmware[ctx.hart_id].store(value, Ordering::SeqCst);
+                    ctx.csr.mip &= !mie::MTIE_FILTER;
                 }
 
                 let should_trigger: bool = mtime >= value;
@@ -225,7 +227,8 @@ impl VirtClint {
                     driver.write_mtimecmp(hart, min(mtimecmp_firmware, mtimecmp_payload))?;
                     // TODO: Ask Charly if we should really disable the values here
                     // I don't understand here what we should do
-                    ctx.csr.mip &= !mie::MTIE_FILTER;
+
+                    // Clear  seulement celui ou on write non`?
                 }
 
                 /*if mtime >= value {
