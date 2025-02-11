@@ -39,6 +39,7 @@ impl PolicyModule for OffloadPolicy {
                 let timer_fid: bool = ctx.get(Register::X16) == sbi_codes::SBI_TIMER_FID;
 
                 if timer_eid && timer_fid {
+                    return PolicyHookResult::Ignore;
                     VIRT_CLINT.write_clint_payload(ctx, mctx, ctx.regs[Register::X10 as usize]);
                     ctx.pc += 4;
                     PolicyHookResult::Overwrite
@@ -70,7 +71,6 @@ impl PolicyModule for OffloadPolicy {
                     }
                 }
 
-                log::info!("Illegal instruction: {:x}", instr);
                 PolicyHookResult::Ignore
             }
             _ => PolicyHookResult::Ignore,

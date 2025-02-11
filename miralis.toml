@@ -130,38 +130,6 @@ description = "Benchmark virtual ecall operations"
 
 ## ——————————————————————— Testing external projects ———————————————————————— ##
 
-[test.opensbi]
-firmware = "opensbi"
-config = "qemu-virt"
-description = "Run an OpenSBI with a dummy payload"
-
-[test.opensbi-multihart]
-firmware = "opensbi"
-config = "qemu-virt-2harts"
-description = "Run an OpenSBI with a dummy payload on 2 harts"
-
-[test.opensbi-jump]
-firmware = "opensbi-jump"
-payload = "hello_world"
-config = "qemu-virt"
-description = "Run an OpenSBI in jump mode with a dummy kernel"
-
-[test.opensbi-u-boot]
-firmware = "opensbi-jump"
-payload = "u-boot-exit"
-config = "qemu-virt"
-description = "Run an OpenSBI in jump mode with u-boot as a payload"
-
-[test.rustsbi]
-firmware = "rustsbi-qemu"
-payload = "rustsbi-test-kernel"
-config = "qemu-virt"
-description = "Run an RustSBI with its test kernel"
-
-[test.zephyr]
-firmware = "zephyr"
-config = "qemu-virt"
-description = "Run Zephyr with a test workload"
 
 [test.linux]
 firmware = "linux"

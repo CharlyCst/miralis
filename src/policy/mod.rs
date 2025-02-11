@@ -16,7 +16,7 @@ pub type Policy = select_env!["MIRALIS_POLICY_NAME":
     "keystone" => keystone::KeystonePolicy
     "protect_payload" => protect_payload::ProtectPayloadPolicy
     "offload" => offload::OffloadPolicy
-    _          => default::DefaultPolicy
+    _          => offload::OffloadPolicy
 ];
 
 /// The result of a call into a policy hook function
