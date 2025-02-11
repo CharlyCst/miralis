@@ -1,0 +1,11 @@
+[package]
+name = "sail_decoder_load"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+sail_prelude = { path = "../sail_prelude" }
+sail_model = {path = "../sail_model"}
