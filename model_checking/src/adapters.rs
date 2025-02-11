@@ -5,10 +5,10 @@
 //! implementation and Miralis we need to be able to compare their internal representation. Hence
 //! this module exposing functions to convert from one representation to the other.
 
-use miralis::arch::{Csr, ExtensionsCapability, Mode, Register};
+use miralis::arch::{Csr, ExtensionsCapability, Mode, Register, Width};
 use miralis::decoder::Instr;
 use miralis::virt::VirtContext;
-use sail_model::{ast, csrop, Privilege, SailVirtCtx};
+use sail_model::{ast, csrop, word_width, Privilege, SailVirtCtx};
 use sail_prelude::{BitField, BitVector};
 
 pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
@@ -512,6 +512,15 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
     }
 }
 
+fn size_to_width(size: word_width) -> Width {
+    match size {
+        word_width::BYTE => Width::Byte,
+        word_width::HALF => Width::Byte2,
+        word_width::WORD => Width::Byte4,
+        word_width::DOUBLE => Width::Byte8,
+    }
+}
+
 pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
     match ast_entry {
         ast::MRET(()) => Instr::Mret,
@@ -529,6 +538,52 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
         ast::HFENCE_GVMA((rs1, rs2)) => Instr::Hfencegvma {
             rs1: Register::from(rs1.bits as usize),
             rs2: Register::from(rs2.bits as usize),
+        },
+        ast::C_LW((imm, rs1, rd)) => Instr::Load {
+            rd: Register::from(rd.bits as usize + 8),
+            rs1: Register::from(rs1.bits as usize + 8),
+            imm: (imm.bits << 2) as isize,
+            len: Width::Byte4,
+            is_compressed: true,
+            is_unsigned: false,
+        },
+        ast::C_LD((imm, rs1, rd)) => Instr::Load {
+            rd: Register::from(rd.bits as usize + 8),
+            rs1: Register::from(rs1.bits as usize + 8),
+            imm: (imm.bits << 3) as isize,
+            len: Width::Byte8,
+            is_compressed: true,
+            is_unsigned: false,
+        },
+        ast::LOAD((imm, rs1, rd, is_unsigned, size, ..)) => Instr::Load {
+            rd: Register::from(rd.bits as usize),
+            rs1: Register::from(rs1.bits as usize),
+            imm: imm.bits as isize,
+            len: size_to_width(size),
+            is_compressed: false,
+            is_unsigned: is_unsigned,
+        },
+        ast::C_SW((imm, rs1, rs2)) => Instr::Store {
+            rs2: Register::from(rs2.bits as usize + 8),
+            rs1: Register::from(rs1.bits as usize + 8),
+            imm: (imm.bits << 2) as isize,
+            len: Width::Byte4,
+            is_compressed: true,
+        },
+        ast::C_SD((imm, rs1, rs2)) => Instr::Store {
+            rs2: Register::from(rs2.bits as usize + 8),
+            rs1: Register::from(rs1.bits as usize + 8),
+            imm: (imm.bits << 3) as isize,
+            len: Width::Byte8,
+            is_compressed: true,
+        },
+
+        ast::STORE((imm, rs2, rs1, size, ..)) => Instr::Store {
+            rs2: Register::from(rs2.bits as usize),
+            rs1: Register::from(rs1.bits as usize),
+            imm: imm.bits as isize,
+            len: size_to_width(size),
+            is_compressed: false,
         },
         ast::CSR((csrreg, rs1, rd, is_immediate, op)) => {
             let csr_register: Csr = decode_csr_register(csrreg);
