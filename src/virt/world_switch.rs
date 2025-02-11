@@ -29,7 +29,9 @@ impl VirtContext {
         if mctx.hw.available_reg.senvcfg {
             Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
         }
-
+        if mctx.hw.available_reg.henvcfg {
+            Arch::write_csr(Csr::Henvcfg, self.csr.henvcfg);
+        }
         if mctx.hw.available_reg.menvcfg {
             Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
         }
@@ -74,7 +76,6 @@ impl VirtContext {
             Arch::write_csr(Csr::Hie, self.csr.hie);
             Arch::write_csr(Csr::Hgeip, self.csr.hgeip);
             Arch::write_csr(Csr::Hgeie, self.csr.hgeie);
-            Arch::write_csr(Csr::Henvcfg, self.csr.henvcfg);
             Arch::write_csr(Csr::Hcounteren, self.csr.hcounteren);
             Arch::write_csr(Csr::Htval, self.csr.htval);
             Arch::write_csr(Csr::Htinst, self.csr.htinst);
@@ -148,7 +149,9 @@ impl VirtContext {
         if mctx.hw.available_reg.senvcfg {
             self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
         }
-
+        if mctx.hw.available_reg.henvcfg {
+            self.csr.henvcfg = Arch::write_csr(Csr::Henvcfg, 0);
+        }
         if mctx.hw.available_reg.menvcfg {
             self.csr.menvcfg = Arch::write_csr(Csr::Menvcfg, 0);
         }
@@ -178,7 +181,6 @@ impl VirtContext {
             self.csr.hie = Arch::read_csr(Csr::Hie);
             self.csr.hgeip = Arch::read_csr(Csr::Hgeip); // Read only register, this write will have no effect
             self.csr.hgeie = Arch::read_csr(Csr::Hgeie);
-            self.csr.henvcfg = Arch::read_csr(Csr::Henvcfg);
             self.csr.hcounteren = Arch::read_csr(Csr::Hcounteren);
             self.csr.htval = Arch::read_csr(Csr::Htval);
             self.csr.htinst = Arch::read_csr(Csr::Htinst);
