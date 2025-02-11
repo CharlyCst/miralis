@@ -79,6 +79,7 @@ impl Architecture for HostArch {
             _marker: PhantomData,
             available_reg: super::RegistersCapability {
                 menvcfg: true,
+                henvcfg: true,
                 senvcfg: true,
                 nb_pmp: 16,
             },
