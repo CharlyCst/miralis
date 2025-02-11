@@ -18,13 +18,28 @@ pub fn calculate_addr(self_value: usize, imm: isize) -> usize {
     }
 }
 
-/// Performws a sign extension assuming the provided width of the value.
+/// Performs a sign extension assuming the provided width of the value.
 pub fn sign_extend(value: usize, width: Width) -> usize {
     match width {
         Width::Byte => value as u8 as i8 as isize as usize,
         Width::Byte2 => value as u16 as i16 as isize as usize,
         Width::Byte4 => value as u32 as i32 as isize as usize,
         Width::Byte8 => value, // Already 64 bits, nothing to do
+    }
+}
+
+/// Extracts the bitwise representation and set to the corresponding signed valuec
+pub fn bits_to_int(raw: usize, start_bit: isize, end_bit: isize) -> isize {
+    let mask = (1 << (end_bit - start_bit + 1)) - 1;
+    let value = (raw >> start_bit) & mask;
+
+    // Check if the most significant bit is set (indicating a negative value)
+    if value & (1 << (end_bit - start_bit)) != 0 {
+        // Extend the sign bit to the left
+        let sign_extension = !0 << (end_bit - start_bit);
+        value as isize | sign_extension
+    } else {
+        value as isize
     }
 }
 

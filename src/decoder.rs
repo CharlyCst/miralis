@@ -2,6 +2,7 @@
 use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
 use crate::logger;
+use crate::utils::bits_to_int;
 
 const ILLEGAL_OPCODE_MASK: usize = 0b1110011;
 const SFENCE_INSTR_VMA_MASK: usize = 0b0001001 << 25;
@@ -171,11 +172,13 @@ impl MiralisContext {
         let func3 = (raw >> 13) & 0b111;
         match func3 {
             C_LW => {
-                let imm = (raw >> 4) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                let imm_2 = ((raw >> 6) & 0b1) << 2;
+                let imm_5_3 = ((raw >> 10) & 0b111) << 3;
+                let imm_6 = ((raw >> 5) & 0b1) << 6;
                 Instr::Load {
                     rd,
                     rs1,
-                    imm: imm as isize,
+                    imm: (imm_6 | imm_5_3 | imm_2) as isize,
                     len: Width::from(32),
                     is_compressed: true,
                     is_unsigned: false,
@@ -206,11 +209,13 @@ impl MiralisContext {
 
         match func3 {
             C_SW => {
-                let imm = (raw >> 4) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                let imm_2 = ((raw >> 6) & 0b1) << 2;
+                let imm_5_3 = ((raw >> 10) & 0b111) << 3;
+                let imm_6 = ((raw >> 5) & 0b1) << 6;
                 Instr::Store {
                     rs2,
                     rs1,
-                    imm: imm as isize,
+                    imm: (imm_6 | imm_5_3 | imm_2) as isize,
                     len: Width::from(32),
                     is_compressed: true,
                 }
@@ -229,25 +234,11 @@ impl MiralisContext {
         }
     }
 
-    fn bits_to_int(&self, raw: usize, start_bit: isize, end_bit: isize) -> isize {
-        let mask = (1 << (end_bit - start_bit + 1)) - 1;
-        let value = (raw >> start_bit) & mask;
-
-        // Check if the most significant bit is set (indicating a negative value)
-        if value & (1 << (end_bit - start_bit)) != 0 {
-            // Extend the sign bit to the left
-            let sign_extension = !0 << (end_bit - start_bit);
-            value as isize | sign_extension
-        } else {
-            value as isize
-        }
-    }
-
     fn decode_uncompressed_load(&self, raw: usize) -> Instr {
         let func3 = (raw >> 12) & 0b111;
         let rd = (raw >> 7) & 0b11111;
         let rs1 = (raw >> 15) & 0b11111;
-        let imm = self.bits_to_int(raw, 20, 31);
+        let imm = bits_to_int(raw, 20, 31);
 
         let rs1 = Register::from(rs1);
         let rd = Register::from(rd);
@@ -309,6 +300,14 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: true,
             },
+            0b111 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(64),
+                is_compressed: false,
+                is_unsigned: true,
+            },
             _ => Instr::Unknown,
         }
     }
@@ -317,7 +316,7 @@ impl MiralisContext {
         let func3 = (raw >> 12) & 0b111;
         let rs1: usize = (raw >> 15) & 0b11111;
         let rs2 = (raw >> 20) & 0b11111;
-        let imm = self.bits_to_int(
+        let imm = bits_to_int(
             ((raw >> 7) & 0b11111) | ((raw >> 20) & 0b111111100000),
             0,
             11,
