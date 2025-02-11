@@ -314,6 +314,14 @@ impl MiralisContext {
                 is_compressed: false,
                 is_unsigned: true,
             },
+            0b111 => Instr::Load {
+                rd,
+                rs1,
+                imm,
+                len: Width::from(64),
+                is_compressed: false,
+                is_unsigned: true,
+            },
             _ => Instr::Unknown,
         }
     }
