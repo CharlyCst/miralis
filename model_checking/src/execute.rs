@@ -1,9 +1,9 @@
-use sail_decoder::encdec_backwards;
+use sail_decoder::decoder_illegal::sail_decoder_illegal;
 use sail_model::{ast, SailVirtCtx};
 use sail_prelude::BitVector;
 
 pub fn execute_ast(sail_virt_ctx: &mut SailVirtCtx, instr: usize) {
-    match encdec_backwards(sail_virt_ctx, BitVector::new(instr as u64)) {
+    match sail_decoder_illegal::encdec_backwards(sail_virt_ctx, BitVector::new(instr as u64)) {
         ast::MRET(_) => {
             sail_model::execute_MRET(sail_virt_ctx);
         }

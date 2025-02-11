@@ -7,6 +7,7 @@
 
 use miralis::arch::{Csr, ExtensionsCapability, Mode, Register, Width};
 use miralis::decoder::Instr;
+use miralis::utils::bits_to_int;
 use miralis::virt::VirtContext;
 use sail_model::{ast, csrop, word_width, Privilege, SailVirtCtx};
 use sail_prelude::{BitField, BitVector};
@@ -558,7 +559,7 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
         ast::LOAD((imm, rs1, rd, is_unsigned, size, ..)) => Instr::Load {
             rd: Register::from(rd.bits as usize),
             rs1: Register::from(rs1.bits as usize),
-            imm: imm.bits as isize,
+            imm: bits_to_int(imm.bits as usize, 0, 11),
             len: size_to_width(size),
             is_compressed: false,
             is_unsigned: is_unsigned,
@@ -581,7 +582,7 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
         ast::STORE((imm, rs2, rs1, size, ..)) => Instr::Store {
             rs2: Register::from(rs2.bits as usize),
             rs1: Register::from(rs1.bits as usize),
-            imm: imm.bits as isize,
+            imm: bits_to_int(imm.bits as usize, 0, 11),
             len: size_to_width(size),
             is_compressed: false,
         },
