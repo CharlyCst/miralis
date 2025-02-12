@@ -13,3 +13,7 @@ max_pmp = 8
 [platform]
 nb_harts = 1
 
+
+[qemu]
+machine = "virt"
+cpu = "sifive-u54"

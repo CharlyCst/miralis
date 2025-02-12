@@ -15,6 +15,7 @@ use crate::benchmark::{Benchmark, BenchmarkModule};
 use crate::decoder::Instr;
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
+use crate::platform::virt::VIRT_CLINT;
 use crate::platform::{Plat, Platform};
 use crate::policy::{Policy, PolicyModule};
 use crate::utils::sign_extend;
@@ -335,9 +336,9 @@ impl VirtContext {
     /// interrupts here.
     fn handle_machine_timer_interrupt(&mut self, mctx: &mut MiralisContext) {
         // TODO: Set new code
-        //VIRT_CLINT.fire_elapsed_times(self, mctx);
+        VIRT_CLINT.fire_elapsed_times(self, mctx);
 
-        let mut clint = Plat::get_clint().lock();
+        /*let mut clint = Plat::get_clint().lock();
         clint
             .write_mtimecmp(mctx.hw.hart, usize::MAX)
             .expect("Failed to write mtimecmp");
@@ -345,7 +346,7 @@ impl VirtContext {
 
         // TODO: Change this logic
 
-        self.csr.mip |= mie::MTIE_FILTER;
+        self.csr.mip |= mie::MTIE_FILTER;*/
     }
 
     /// Handles a machine software interrupt trap
@@ -430,6 +431,7 @@ impl VirtContext {
                 self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
+                log::warn!("from firmware");
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {
@@ -496,6 +498,7 @@ impl VirtContext {
                 self.emulate_jump_trap_handler();
             }
             MCause::MachineTimerInt => {
+                log::warn!("from payload");
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {

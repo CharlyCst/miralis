@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use spin::Mutex;
 
-use crate::arch::mie;
+use crate::arch::{mie, Arch, Csr};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
@@ -76,20 +76,23 @@ impl VirtClint {
     }
 
     pub fn fire_elapsed_times(&self, ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+        log::warn!("Firing now");
         let mut clint = Plat::get_clint().lock();
 
         let current_timestamp: usize = clint.read_mtimecmp(mctx.hw.hart).unwrap();
 
         if current_timestamp >= self.next_timestamp_firmware[mctx.hw.hart].load(Ordering::SeqCst) {
+            log::warn!("firmware");
             self.next_timestamp_firmware[mctx.hw.hart].store(usize::MAX, Ordering::SeqCst);
             // Set the firmware interrupt ready
             ctx.csr.mip |= mie::MTIE_FILTER;
         }
 
         if current_timestamp >= self.next_timestamp_payload[mctx.hw.hart].load(Ordering::SeqCst) {
+            log::warn!("payload");
             self.next_timestamp_payload[mctx.hw.hart].store(usize::MAX, Ordering::SeqCst);
             // Set the payload interrupt ready
-            ctx.csr.mip |= mie::STIE_FILTER;
+            ctx.csr.mip &= mie::STIE_FILTER;
         }
 
         let new_timestamp_firmware =
@@ -139,6 +142,8 @@ impl VirtClint {
             true,
         )
         .unwrap();
+
+        log::error!("Received something here");
     }
 
     pub fn write_clint(
@@ -202,6 +207,7 @@ impl VirtClint {
                 }
 
                 if is_from_payload {
+                    log::error!("{:x} {:x}", value, mtime);
                     self.next_timestamp_payload[ctx.hart_id].store(value, Ordering::SeqCst);
                     ctx.csr.mip &= !mie::STIE_FILTER;
                 } else {
