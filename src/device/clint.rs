@@ -1,4 +1,4 @@
-use core::cmp::min;
+use core::cmp::{min, PartialEq};
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use spin::Mutex;
@@ -16,7 +16,33 @@ use crate::{debug, logger};
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //
 
+// We use this structure to avoid false sharing in the virtual clint
+// The typical size of a cache line is 64 bytes
+#[repr(C, align(64))]
+#[derive(Debug)]
+struct TimestampEntry {
+    counter_firmware: AtomicUsize,
+    counter_payload: AtomicUsize,
+    _padding: [u8; 56],
+}
+
+impl TimestampEntry {
+    const fn max_value() -> Self {
+        TimestampEntry {
+            counter_firmware: AtomicUsize::new(usize::MAX),
+            counter_payload: AtomicUsize::new(usize::MAX),
+            _padding: [0; 56],
+        }
+    }
+}
+
 pub const CLINT_SIZE: usize = 0x10000;
+
+#[derive(PartialEq)]
+enum ClintTimer {
+    Payload,
+    Firmware,
+}
 
 /// Represents a virtual CLINT (Core Local Interruptor) device
 #[derive(Debug)]
@@ -27,10 +53,8 @@ pub struct VirtClint {
     vmsi: [AtomicBool; PLATFORM_NB_HARTS],
     /// Policy Machine Software Interrupt (MSI) map
     policy_msi: [AtomicBool; PLATFORM_NB_HARTS],
-    /// Next interrupts for the virtual firmware
-    pub next_timestamp_firmware: [AtomicUsize; PLATFORM_NB_HARTS],
-    /// Next interrupts for the payload
-    pub next_timestamp_payload: [AtomicUsize; PLATFORM_NB_HARTS],
+    /// Buffer to remember when timer interrupt should be injected in the firmware and the payload
+    next_timestamps: [TimestampEntry; PLATFORM_NB_HARTS],
 }
 
 impl DeviceAccess for VirtClint {
@@ -61,8 +85,7 @@ impl VirtClint {
             driver,
             vmsi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
             policy_msi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
-            next_timestamp_firmware: [const { AtomicUsize::new(usize::MAX) }; PLATFORM_NB_HARTS],
-            next_timestamp_payload: [const { AtomicUsize::new(usize::MAX) }; PLATFORM_NB_HARTS],
+            next_timestamps: [const { TimestampEntry::max_value() }; PLATFORM_NB_HARTS],
         }
     }
 
@@ -80,23 +103,37 @@ impl VirtClint {
 
         let current_timestamp: usize = clint.read_mtimecmp(mctx.hw.hart).unwrap();
 
-        if current_timestamp >= self.next_timestamp_firmware[mctx.hw.hart].load(Ordering::SeqCst) {
-            self.next_timestamp_firmware[mctx.hw.hart].store(usize::MAX, Ordering::SeqCst);
+        if current_timestamp
+            >= self.next_timestamps[mctx.hw.hart]
+                .counter_firmware
+                .load(Ordering::SeqCst)
+        {
+            self.next_timestamps[mctx.hw.hart]
+                .counter_firmware
+                .store(usize::MAX, Ordering::SeqCst);
             // Inject a virtual interrupt to the firmware
             ctx.csr.mip |= mie::MTIE_FILTER;
         }
 
-        if current_timestamp >= self.next_timestamp_payload[mctx.hw.hart].load(Ordering::SeqCst) {
-            self.next_timestamp_payload[mctx.hw.hart].store(usize::MAX, Ordering::SeqCst);
+        if current_timestamp
+            >= self.next_timestamps[mctx.hw.hart]
+                .counter_payload
+                .load(Ordering::SeqCst)
+        {
+            self.next_timestamps[mctx.hw.hart]
+                .counter_payload
+                .store(usize::MAX, Ordering::SeqCst);
             // Inject a virtual interrupt to the payload
             ctx.csr.mip |= mie::STIE_FILTER;
             self.propagate_payload_interupt_physically(ctx);
         }
 
-        let new_timestamp_firmware =
-            self.next_timestamp_firmware[mctx.hw.hart].load(Ordering::SeqCst);
-        let new_timestamp_payload =
-            self.next_timestamp_payload[mctx.hw.hart].load(Ordering::SeqCst);
+        let new_timestamp_firmware = self.next_timestamps[mctx.hw.hart]
+            .counter_firmware
+            .load(Ordering::SeqCst);
+        let new_timestamp_payload = self.next_timestamps[mctx.hw.hart]
+            .counter_payload
+            .load(Ordering::SeqCst);
 
         // Write the minimum of the two back
         clint
@@ -147,7 +184,7 @@ impl VirtClint {
             Width::Byte8,
             value,
             ctx,
-            true,
+            ClintTimer::Payload,
         )
         .unwrap();
     }
@@ -159,7 +196,7 @@ impl VirtClint {
         value: usize,
         ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
-        self.write_clint(offset, w_width, value, ctx, false)
+        self.write_clint(offset, w_width, value, ctx, ClintTimer::Firmware)
     }
 
     fn write_clint(
@@ -168,7 +205,7 @@ impl VirtClint {
         w_width: Width,
         value: usize,
         ctx: &mut VirtContext,
-        is_from_payload: bool,
+        origin: ClintTimer,
     ) -> Result<(), &'static str> {
         logger::trace!(
             "Write to CLINT at offset 0x{:x} with a value 0x{:x}",
@@ -223,32 +260,40 @@ impl VirtClint {
                 }
 
                 // When we receive a timer, we clear the corresponding interrupt bit
-                if is_from_payload {
-                    self.next_timestamp_payload[ctx.hart_id].store(value, Ordering::SeqCst);
+                if origin == ClintTimer::Payload {
+                    self.next_timestamps[ctx.hart_id]
+                        .counter_payload
+                        .store(value, Ordering::SeqCst);
                     ctx.csr.mip &= !mie::STIE_FILTER;
                 } else {
-                    self.next_timestamp_firmware[ctx.hart_id].store(value, Ordering::SeqCst);
+                    self.next_timestamps[ctx.hart_id]
+                        .counter_firmware
+                        .store(value, Ordering::SeqCst);
                     ctx.csr.mip &= !mie::MTIE_FILTER;
                 }
 
                 let is_interrupt_ready: bool = mtime >= value;
 
                 if is_interrupt_ready {
-                    ctx.csr.mip |= if is_from_payload {
+                    ctx.csr.mip |= if origin == ClintTimer::Payload {
                         mie::STIE_FILTER
                     } else {
                         mie::MTIE_FILTER
                     };
                 } else {
-                    let mtimecmp_firmware =
-                        self.next_timestamp_firmware[ctx.hart_id].load(Ordering::SeqCst);
-                    let mtimecmp_payload =
-                        self.next_timestamp_payload[ctx.hart_id].load(Ordering::SeqCst);
+                    let mtimecmp_firmware = self.next_timestamps[ctx.hart_id]
+                        .counter_firmware
+                        .load(Ordering::SeqCst);
+                    let mtimecmp_payload = self.next_timestamps[ctx.hart_id]
+                        .counter_payload
+                        .load(Ordering::SeqCst);
 
                     driver.write_mtimecmp(hart, min(mtimecmp_firmware, mtimecmp_payload))?;
                 }
 
-                self.propagate_payload_interupt_physically(ctx);
+                if origin == ClintTimer::Payload {
+                    self.propagate_payload_interupt_physically(ctx);
+                }
 
                 Ok(())
             }
@@ -280,7 +325,7 @@ impl VirtClint {
         self.vmsi[hart].load(Ordering::SeqCst)
     }
 
-    /// Mark the policy MSI as pending for each harts.
+    /// Mark the policy MSI as pending for each hart.
     pub fn set_all_policy_msi(&self) {
         for hart_idx in 0..PLATFORM_NB_HARTS {
             self.policy_msi[hart_idx].store(true, Ordering::SeqCst);

@@ -24,4 +24,7 @@ start_address = 0x40000000
 profile = "release"
 
 [benchmark]
-benchmark_type = "counter_per_mcause"
+benchmark_type = "counter"
+
+[policy]
+name = "offload"

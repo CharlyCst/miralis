@@ -77,30 +77,6 @@ impl PolicyModule for OffloadPolicy {
         }
     }
 
-    fn ecall_from_payload(
-        &mut self,
-        _mctx: &mut MiralisContext,
-        _ctx: &mut VirtContext,
-    ) -> PolicyHookResult {
-        PolicyHookResult::Ignore
-    }
-
-    fn switch_from_payload_to_firmware(
-        &mut self,
-        _ctx: &mut VirtContext,
-        _mctx: &mut MiralisContext,
-    ) {
-    }
-
-    fn switch_from_firmware_to_payload(
-        &mut self,
-        _ctx: &mut VirtContext,
-        _mctx: &mut MiralisContext,
-    ) {
-    }
-
-    fn on_interrupt(&mut self, _ctx: &mut VirtContext, _mctx: &mut MiralisContext) {}
-
     const NUMBER_PMPS: usize = 0;
 }
 
