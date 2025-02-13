@@ -334,13 +334,8 @@ impl VirtContext {
     /// (out-of-band interrupts). Once we add such support we should disambiguate
     /// interrupts here.
     fn handle_machine_timer_interrupt(&mut self, mctx: &mut MiralisContext) {
-        let mut clint = Plat::get_clint().lock();
-        clint
-            .write_mtimecmp(mctx.hw.hart, usize::MAX)
-            .expect("Failed to write mtimecmp");
-        drop(clint); // Release the lock early
-
-        self.csr.mip |= mie::MTIE_FILTER;
+        let v_clint = Plat::get_vclint();
+        v_clint.handle_machine_timer_interrupt(self, mctx);
     }
 
     /// Handles a machine software interrupt trap
