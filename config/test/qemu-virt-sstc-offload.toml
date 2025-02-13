@@ -1,0 +1,23 @@
+# A configuration to test Supervisor Timer offload.
+#
+# This config file selects the sifive-u54 cores with Sstc extension disabled
+# (i.e. no supervisor timer interrupt) and the offload policy enabled, which
+# will emulate the supervisor timer within Miralis directly.
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 4
+boot_hart_id = 0
+
+[qemu]
+machine = "virt"
+cpu = "sifive-u54,sstc=false"
+
+[policy]
+name = "offload"

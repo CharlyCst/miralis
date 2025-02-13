@@ -20,6 +20,9 @@ path = "config/test/qemu-virt-protect-payload.toml"
 [config.qemu-virt-keystone]
 path = "config/test/qemu-virt-keystone.toml"
 
+[config.qemu-virt-offload]
+path = "config/test/qemu-virt-sstc-offload.toml"
+
 [config.qemu-virt-benchmark]
 path = "config/test/qemu-virt-benchmark.toml"
 
@@ -217,6 +220,11 @@ firmware = "opensbi-jump"
 payload = "test_keystone_payload"
 config = "qemu-virt-keystone"
 description = "Integration test for the protect payload policy, with a custom firmware and payload"
+
+[test.sstc-offload]
+firmware = "linux"
+config = "qemu-virt-offload"
+description = "Handle Supervisor Timer from Miralis directly using the offload policy"
 
 ## —————————————————————————————— Spike Tests ——————————————————————————————— ##
 

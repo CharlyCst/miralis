@@ -1,11 +1,14 @@
 //! The offload policy is a special policy used to reduce the number of world switches
 //! It emulates the misaligned loads and stores, the read of the "time" register and offlaods the timer extension handling in Miralis
 
+use miralis_core::sbi_codes;
+
 use crate::arch::{get_raw_faulting_instr, Arch, Architecture, Csr, MCause, Register};
 use crate::host::MiralisContext;
+use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
-use crate::virt::traits::RegisterContextSetter;
+use crate::virt::traits::{RegisterContextGetter, RegisterContextSetter};
 use crate::virt::VirtContext;
 
 pub struct OffloadPolicy {}
@@ -29,6 +32,19 @@ impl PolicyModule for OffloadPolicy {
         match trap_info.get_cause() {
             MCause::LoadAddrMisaligned => emulate_misaligned_read(ctx, mctx),
             MCause::StoreAddrMisaligned => emulate_misaligned_write(ctx, mctx),
+            MCause::EcallFromSMode => {
+                let timer_eid: bool = ctx.get(Register::X17) == sbi_codes::SBI_TIMER_EID;
+                let timer_fid: bool = ctx.get(Register::X16) == sbi_codes::SBI_TIMER_FID;
+
+                if timer_eid && timer_fid {
+                    let v_clint = Plat::get_vclint();
+                    v_clint.set_payload_deadline(ctx, mctx, ctx.regs[Register::X10 as usize]);
+                    ctx.pc += 4;
+                    PolicyHookResult::Overwrite
+                } else {
+                    PolicyHookResult::Ignore
+                }
+            }
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
 
