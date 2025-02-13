@@ -6,6 +6,7 @@ use core::usize;
 use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
 use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, Width};
 use crate::decoder::Instr;
+use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
 use crate::{utils, RegisterContextGetter, RegisterContextSetter};
 
@@ -282,7 +283,10 @@ impl Architecture for MetalArch {
             Csr::Mcycle => asm_read_csr!("mcycle"),
             Csr::Minstret => asm_read_csr!("minstret"),
             Csr::Cycle => todo!(),
-            Csr::Time => asm_read_csr!("time"),
+            Csr::Time => {
+                let clint = Plat::get_clint().lock();
+                value = clint.read_mtime();
+            }
             Csr::Instret => todo!(),
             Csr::Mhpmcounter(_) => todo!(),
             Csr::Mcountinhibit => asm_read_csr!("mcountinhibit"),
