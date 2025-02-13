@@ -120,8 +120,9 @@ fn handle_trap(
                 "Execution mode: Payload -> Firmware ({:?})",
                 ctx.trap_info.get_cause()
             );
-            unsafe { ctx.switch_from_payload_to_firmware(mctx) };
+
             policy.switch_from_payload_to_firmware(ctx, mctx);
+            unsafe { ctx.switch_from_payload_to_firmware(mctx) };
 
             unsafe {
                 // Commit the PMP to hardware
