@@ -19,7 +19,7 @@ use crate::logger;
 use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::*;
-use crate::virt::VirtContext;
+use crate::virt::{VirtContext, VirtCsr};
 
 const LINUX_LOCK_PAYLOAD_HASH: [u8; 32] = [
     241, 90, 158, 184, 200, 210, 145, 178, 30, 80, 200, 161, 56, 120, 75, 241, 68, 38, 21, 2, 248,
@@ -37,6 +37,7 @@ static FIRST_JUMP: AtomicBool = AtomicBool::new(true);
 pub struct ProtectPayloadPolicy {
     protected: bool,
     general_registers: [usize; 32],
+    csr_registers: VirtCsr,
     forward_register_value_to_firmware: [bool; 32],
     forward_register_value_to_payload: [bool; 32],
 }
@@ -47,6 +48,7 @@ impl PolicyModule for ProtectPayloadPolicy {
             protected: false,
             general_registers: [0; 32],
             // The firmware must be able to pass information such as the device tree to the operating system. We allow all registers to pass during the first transition
+            csr_registers: VirtCsr::new_empty(),
             forward_register_value_to_firmware: [true; 32],
             forward_register_value_to_payload: [true; 32],
         }
@@ -102,7 +104,7 @@ impl PolicyModule for ProtectPayloadPolicy {
             self.check_illegal_instruction(&mut ctx.trap_info);
         }
 
-        // The code becomes harder with the linter suggestion
+        // The code becomes harder to read with the linter suggestion
         #[allow(clippy::needless_range_loop)]
         for i in 0..self.general_registers.len() {
             self.general_registers[i] = ctx.regs[i];
@@ -111,6 +113,9 @@ impl PolicyModule for ProtectPayloadPolicy {
                 ctx.regs[i] = 0;
             }
         }
+
+        // We hide the supervisor CSR registers to the firmware as they are sensitive
+        self.clear_supervisor_csr(ctx);
 
         // Lock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
@@ -134,6 +139,10 @@ impl PolicyModule for ProtectPayloadPolicy {
         // Unlock memory
         mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
+
+        // We restore the supervisor csr registers
+        self.restore_supervisor_csr(ctx);
+        self.restore_supervisor_csr(ctx);
 
         // Attempt to set `flag` to false only if it is currently true
         if FIRST_JUMP
@@ -385,6 +394,46 @@ impl ProtectPayloadPolicy {
 
     fn lock(&mut self, _mctx: &mut MiralisContext, _ctx: &mut VirtContext) {
         self.protected = true;
+    }
+
+    // TODO: Clear sip, sie & sstatus as well. These 3 registers are a bit particular because they overlap with the m-mode registers mip, mie and mstatus
+    fn clear_supervisor_csr(&mut self, ctx: &mut VirtContext) {
+        // Save and clear CSR registers
+        self.protected = true;
+
+        self.csr_registers.stvec = ctx.csr.stvec;
+        self.csr_registers.scounteren = ctx.csr.scounteren;
+        self.csr_registers.scause = ctx.csr.scause;
+        self.csr_registers.senvcfg = ctx.csr.senvcfg;
+        self.csr_registers.sscratch = ctx.csr.sscratch;
+        self.csr_registers.sepc = ctx.csr.sepc;
+        self.csr_registers.scause = ctx.csr.scause;
+        self.csr_registers.stval = ctx.csr.stval;
+        self.csr_registers.satp = ctx.csr.satp;
+
+        ctx.csr.stvec = 0;
+        ctx.csr.scounteren = 0;
+        ctx.csr.scause = 0;
+        ctx.csr.senvcfg = 0;
+        ctx.csr.sscratch = 0;
+        ctx.csr.sepc = 0;
+        ctx.csr.scause = 0;
+        ctx.csr.stval = 0;
+        ctx.csr.satp = 0;
+    }
+
+    fn restore_supervisor_csr(&mut self, ctx: &mut VirtContext) {
+        if self.protected {
+            ctx.csr.stvec = self.csr_registers.stvec;
+            ctx.csr.scounteren = self.csr_registers.scounteren;
+            ctx.csr.scause = self.csr_registers.scause;
+            ctx.csr.senvcfg = self.csr_registers.senvcfg;
+            ctx.csr.sscratch = self.csr_registers.sscratch;
+            ctx.csr.sepc = self.csr_registers.sepc;
+            ctx.csr.scause = self.csr_registers.scause;
+            ctx.csr.stval = self.csr_registers.stval;
+            ctx.csr.satp = self.csr_registers.satp;
+        }
     }
 }
 
