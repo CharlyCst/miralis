@@ -1,0 +1,30 @@
+# A simple configuration to run on StarFive VisionFive 2 platform in release mode
+
+[log]
+level = "info"
+color = true
+
+[vcpu]
+max_pmp = 0
+delegate_perf_counters=true
+
+
+[platform]
+name = "visionfive2"
+nb_harts = 5
+boot_hart_id = 1
+
+[target.miralis]
+start_address = 0x43000000
+stack_size = 0x8000
+profile = "release"
+
+[target.firmware]
+start_address = 0x40000000
+profile = "release"
+
+[benchmark]
+benchmark_type = "counter"
+
+[policy]
+name = "offload"
