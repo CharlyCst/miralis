@@ -9,8 +9,8 @@ use tiny_keccak::{Hasher, Sha3};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::{
-    get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture, Csr, MCause, Register,
-    TrapInfo,
+    get_raw_faulting_instr, mie, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, MCause,
+    Register, TrapInfo,
 };
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::decoder::Instr;
@@ -396,7 +396,20 @@ impl ProtectPayloadPolicy {
         self.protected = true;
     }
 
-    // TODO: Clear sip, sie & sstatus as well. These 3 registers are a bit particular because they overlap with the m-mode registers mip, mie and mstatus
+    const MIP_HIDE_MASK: usize = mie::SSIE_FILTER;
+    const MIE_HIDE_MASK: usize = mie::SIE_FILTER;
+    const MSTATUS_HIDE_MASK: usize = mstatus::MXR_FILTER
+        | mstatus::SUM_FILTER
+        | mstatus::XS_FILTER
+        | mstatus::FS_FILTER
+        | mstatus::VS_FILTER
+        | mstatus::SD_FILTER
+        | mstatus::SPP_FILTER
+        | mstatus::SPIE_FILTER
+        | mstatus::UPIE_FILTER
+        | mstatus::SIE_FILTER
+        | mstatus::SIE_OFFSET;
+
     fn clear_supervisor_csr(&mut self, ctx: &mut VirtContext) {
         // Save and clear CSR registers
         self.protected = true;
@@ -420,6 +433,15 @@ impl ProtectPayloadPolicy {
         ctx.csr.scause = 0;
         ctx.csr.stval = 0;
         ctx.csr.satp = 0;
+
+        self.csr_registers.mip = ctx.csr.mip & Self::MIP_HIDE_MASK;
+        ctx.csr.mip &= !Self::MIP_HIDE_MASK;
+
+        self.csr_registers.mie = ctx.csr.mie & Self::MIE_HIDE_MASK;
+        ctx.csr.mie &= !Self::MIE_HIDE_MASK;
+
+        self.csr_registers.mstatus = ctx.csr.mstatus & Self::MSTATUS_HIDE_MASK;
+        ctx.csr.mstatus &= !Self::MSTATUS_HIDE_MASK;
     }
 
     fn restore_supervisor_csr(&mut self, ctx: &mut VirtContext) {
@@ -433,6 +455,11 @@ impl ProtectPayloadPolicy {
             ctx.csr.scause = self.csr_registers.scause;
             ctx.csr.stval = self.csr_registers.stval;
             ctx.csr.satp = self.csr_registers.satp;
+
+            ctx.csr.mip = (ctx.csr.mip & !Self::MIP_HIDE_MASK) | self.csr_registers.mip;
+            ctx.csr.mie = (ctx.csr.mie & !Self::MIE_HIDE_MASK) | self.csr_registers.mie;
+            ctx.csr.mstatus =
+                (ctx.csr.mstatus & !Self::MSTATUS_HIDE_MASK) | self.csr_registers.mstatus;
         }
     }
 }
