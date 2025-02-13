@@ -59,4 +59,11 @@ pub mod sbi_codes {
     // SBI EIDs and FIDs
     /// The debug console extension defines a generic mechanism for boot-time early prints.
     pub const SBI_DEBUG_CONSOLE_EXTENSION_EID: usize = 0x4442434E;
+
+    /// The SBI_TIMER_EID replaces legacy timer extension (EID #0x00). It follows the new calling convention defined in v0.2.
+    pub const SBI_TIMER_EID: usize = 0x54494d45;
+
+    /// Programs the clock for next event after stime_value time. stime_value is in absolute time. This function must clear the pending timer interrupt bit as well.
+    /// If the supervisor wishes to clear the timer interrupt without scheduling the next timer event, it can either request a timer interrupt infinitely far into the future (i.e., (uint64_t)-1), or it can instead mask the timer interrupt by clearing sie.STIE CSR bit.
+    pub const SBI_TIMER_FID: usize = 0;
 }
