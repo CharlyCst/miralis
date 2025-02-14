@@ -1,6 +1,6 @@
 //! Emulation logic for misaligned loads and stores
 
-use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr};
+use crate::arch::{get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture, Csr};
 use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::policy::PolicyHookResult;
@@ -10,44 +10,36 @@ pub fn emulate_misaligned_read(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) -> PolicyHookResult {
-    let instr_ptr = ctx.trap_info.mepc as *const u8;
+    let raw_instruction = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
 
-    let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-    copy_from_previous_mode(instr_ptr, &mut instr);
-
-    let instr = mctx.decode_load(u64::from_le_bytes(instr) as usize);
-
-    match instr {
+    match mctx.decode_load(raw_instruction) {
         Instr::Load {
             rd, rs1, imm, len, ..
         } => {
+            assert!(
+                len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
+                "Implement support for other than 2,4,8 bytes misalinged accesses"
+            );
+
             // Build the value
             let start_addr: *const u8 =
                 ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
 
-            match len.to_bytes() {
+            ctx.regs[rd as usize] = match len.to_bytes() {
                 8 => {
                     let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
                     copy_from_previous_mode(start_addr, &mut value_to_read);
-
-                    // Return the value
-                    ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
+                    u64::from_le_bytes(value_to_read) as usize
                 }
                 4 => {
                     let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
-
                     copy_from_previous_mode(start_addr, &mut value_to_read);
-
-                    // Return the value
-                    ctx.regs[rd as usize] = u32::from_le_bytes(value_to_read) as usize;
+                    u32::from_le_bytes(value_to_read) as usize
                 }
                 2 => {
                     let mut value_to_read: [u8; 2] = [0, 0];
-
                     copy_from_previous_mode(start_addr, &mut value_to_read);
-
-                    // Return the value
-                    ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
+                    u16::from_le_bytes(value_to_read) as usize
                 }
                 _ => {
                     unreachable!("Misaligned read with a unexpected byte length")
@@ -67,15 +59,9 @@ pub fn emulate_misaligned_write(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) -> PolicyHookResult {
-    let instr_ptr = ctx.trap_info.mepc as *const u8;
+    let raw_instruction = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
 
-    let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-
-    copy_from_previous_mode(instr_ptr, &mut instr);
-
-    let instr = mctx.decode_store(u64::from_le_bytes(instr) as usize);
-
-    match instr {
+    match mctx.decode_store(raw_instruction) {
         Instr::Store {
             rs2, rs1, imm, len, ..
         } => {
