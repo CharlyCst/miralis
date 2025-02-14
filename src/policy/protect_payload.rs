@@ -2,8 +2,8 @@
 use core::slice;
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use miralis_core::sbi_codes;
 use miralis_core::sbi_codes::SBI_ERR_DENIED;
-use miralis_core::{abi_protect_payload, sbi_codes};
 use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
@@ -32,7 +32,7 @@ static FIRST_JUMP: AtomicBool = AtomicBool::new(true);
 
 /// The protect payload policy module, which allow the payload to protect himself from the firmware at some point in time and enfore a boundary between the two components.
 pub struct ProtectPayloadPolicy {
-    protected: bool,
+    need_to_restore_csr: bool,
     general_registers: [usize; 32],
     csr_registers: VirtCsr,
     forward_register_value_to_firmware: [bool; 32],
@@ -42,7 +42,7 @@ pub struct ProtectPayloadPolicy {
 impl PolicyModule for ProtectPayloadPolicy {
     fn init() -> Self {
         ProtectPayloadPolicy {
-            protected: false,
+            need_to_restore_csr: false,
             general_registers: [0; 32],
             // The firmware must be able to pass information such as the device tree to the operating system. We allow all registers to pass during the first transition
             csr_registers: VirtCsr::new_empty(),
@@ -192,7 +192,6 @@ impl ProtectPayloadPolicy {
                 ctx.pc += 4;
                 PolicyHookResult::Overwrite
             }
-            MCause::EcallFromSMode => self.handle_ecall(ctx, mctx),
             _ => PolicyHookResult::Ignore,
         }
     }
@@ -223,34 +222,6 @@ impl ProtectPayloadPolicy {
         }
     }
 
-    fn handle_ecall(
-        &mut self,
-        ctx: &mut VirtContext,
-        mctx: &mut MiralisContext,
-    ) -> PolicyHookResult {
-        if !self.is_policy_call(ctx) {
-            return PolicyHookResult::Ignore;
-        }
-
-        log::info!("Locking payload from payload");
-        self.lock(mctx, ctx);
-        ctx.pc += 4;
-        PolicyHookResult::Overwrite
-    }
-
-    fn is_policy_call(&mut self, ctx: &VirtContext) -> bool {
-        let policy_eid: bool =
-            ctx.get(Register::X17) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_EID;
-        let lock_fid: bool =
-            ctx.get(Register::X16) == abi_protect_payload::MIRALIS_PROTECT_PAYLOAD_LOCK_FID;
-
-        policy_eid && lock_fid
-    }
-
-    fn lock(&mut self, _mctx: &mut MiralisContext, _ctx: &mut VirtContext) {
-        self.protected = true;
-    }
-
     const MIP_HIDE_MASK: usize = mie::SSIE_FILTER;
     const MIE_HIDE_MASK: usize = mie::SIE_FILTER;
     const MSTATUS_HIDE_MASK: usize = mstatus::MXR_FILTER
@@ -265,9 +236,9 @@ impl ProtectPayloadPolicy {
         | mstatus::SIE_FILTER
         | mstatus::SIE_OFFSET;
 
+    // Saves and clear CSR registers
     fn clear_supervisor_csr(&mut self, ctx: &mut VirtContext) {
-        // Save and clear CSR registers
-        self.protected = true;
+        self.need_to_restore_csr = true;
 
         self.csr_registers.stvec = ctx.csr.stvec;
         self.csr_registers.scounteren = ctx.csr.scounteren;
@@ -300,7 +271,7 @@ impl ProtectPayloadPolicy {
     }
 
     fn restore_supervisor_csr(&mut self, ctx: &mut VirtContext) {
-        if self.protected {
+        if self.need_to_restore_csr {
             ctx.csr.stvec = self.csr_registers.stvec;
             ctx.csr.scounteren = self.csr_registers.scounteren;
             ctx.csr.scause = self.csr_registers.scause;
