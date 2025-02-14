@@ -5,6 +5,8 @@ use crate::benchmark::default::IntervalCounter;
 use crate::benchmark::Counter::{FirmwareExits, WorldSwitches};
 use crate::benchmark::{BenchmarkModule, Counter, Scope};
 use crate::config::PLATFORM_NB_HARTS;
+use crate::platform::visionfive2::VISION_FIVE_2_NAME;
+use crate::platform::{Plat, Platform};
 use crate::virt::traits::*;
 use crate::virt::VirtContext;
 
@@ -88,8 +90,15 @@ impl BenchmarkModule for CounterBenchmark {
             ),
         }
 
-        ctx.set(Register::X10, nb_firmware_exits);
-        ctx.set(Register::X11, nb_world_switch);
+        // Edge case: one core is never used on the visionfive2 board
+        let nb_running_harts: usize = if Plat::name() == VISION_FIVE_2_NAME {
+            4
+        } else {
+            PLATFORM_NB_HARTS
+        };
+
+        ctx.set(Register::X10, nb_firmware_exits / nb_running_harts);
+        ctx.set(Register::X11, nb_world_switch / nb_running_harts);
     }
 
     fn display_counters() {

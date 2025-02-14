@@ -25,6 +25,8 @@ const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
 
+pub const VISION_FIVE_2_NAME: &str = "VisionFive 2 board";
+
 // ———————————————————————————— Platform Devices ———————————————————————————— //
 
 /// The physical CLINT driver.
@@ -69,7 +71,7 @@ impl Platform for VisionFive2Platform {
     const NB_VIRT_DEVICES: usize = 2;
 
     fn name() -> &'static str {
-        "VisionFive 2 board"
+        VISION_FIVE_2_NAME
     }
 
     fn init() {
