@@ -493,9 +493,17 @@ fn hash_payload(size_to_hash: usize, pc_start: usize) -> [u8; 32] {
 
 // ———————————————————————————————— Filtering rules for ecall - automatically generated ———————————————————————————————— //
 
-#[allow(unused)]
 fn check_nb_registers_to_forward_per_eid_fid(eid: usize, fid: usize) -> usize {
     match (eid, fid) {
+        (0x00, 0) => 1,
+        (0x01, 0) => 1,
+        (0x02, 0) => 0,
+        (0x03, 0) => 0,
+        (0x04, 0) => 1,
+        (0x05, 0) => 1,
+        (0x06, 0) => 3,
+        (0x07, 0) => 4,
+        (0x08, 0) => 0,
         (0x10, 0) => 0,
         (0x10, 1) => 0,
         (0x10, 2) => 0,
@@ -524,13 +532,14 @@ fn check_nb_registers_to_forward_per_eid_fid(eid: usize, fid: usize) -> usize {
         (0x48534D, 1) => 0,
         (0x48534D, 2) => 1,
         (0x48534D, 3) => 3,
-        (0x4D505859, 0) => 4,
-        (0x4D505859, 1) => 1,
-        (0x4D505859, 2) => 3,
+        (0x4D505859, 0) => 0,
+        (0x4D505859, 1) => 3,
+        (0x4D505859, 2) => 1,
         (0x4D505859, 3) => 3,
         (0x4D505859, 4) => 3,
         (0x4D505859, 5) => 3,
-        (0x4D505859, 6) => 1,
+        (0x4D505859, 6) => 3,
+        (0x4D505859, 7) => 1,
         (0x4E41434C, 0) => 1,
         (0x4E41434C, 1) => 3,
         (0x4E41434C, 2) => 1,
