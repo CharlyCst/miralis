@@ -28,11 +28,15 @@ def read_file_line_by_line(file_path):
         header = file.readline()
 
         if header.startswith("== ") and "EID " in header:
-            fid = header.split("#")[1].split(" ")[0].split(")")[0]
+            eid = header.split("#")[1].split(" ")[0].split(")")[0]
+
+        is_legacy = False
+        if header.strip() == "== Legacy Extensions (EIDs #0x00 - #0x0F)":
+            is_legacy = True
 
         for line in file:
-            if line.startswith("=== ") and "FID " in line:
-                eid = line.split("#")[1].split(" ")[0].split(")")[0]
+            if line.startswith("=== ") and ("FID " in line or "EID " in line) :
+                fid = line.split("#")[1].split(" ")[0].split(")")[0]
                 # Consume the next two lines
                 file.readline()
                 file.readline()
@@ -49,7 +53,12 @@ def read_file_line_by_line(file_path):
                 if "void" in curr:
                     malus += 1
 
-                output.append((fid, eid, curr.count(",") + 1 - malus))
+                if is_legacy:
+                    output.append((fid, "0", curr.count(",") + 1 - malus))
+                else:
+                    output.append((eid, fid, curr.count(",") + 1 - malus))
+
+
     return output
 
 def generate_function(values):
