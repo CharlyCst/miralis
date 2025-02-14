@@ -10,16 +10,13 @@
 
 use core::arch::asm;
 
-use miralis_abi::{lock_payload, log, setup_binary, success};
+use miralis_abi::{log, setup_binary, success};
 
 setup_binary!(main);
 
 fn main() -> ! {
     // Say hello
     log::info!("Hello from test protect payload payload");
-
-    // Lock payload to firmware
-    lock_payload();
 
     // Make sure the ecall parameters goes through
     assert!(test_ecall_rule(), "Ecall test failed");
@@ -40,6 +37,7 @@ fn test_ecall_rule() -> bool {
         "li a3, 60",
         "li a4, 60",
         "li a5, 60",
+        "li x16, 0x1",
         "li x17, 0x08475bd0",
         "ecall",
         out("x10") ret_value_1,
