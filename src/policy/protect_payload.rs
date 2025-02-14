@@ -8,16 +8,13 @@ use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
-use crate::arch::{
-    get_raw_faulting_instr, mie, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, MCause,
-    Register, TrapInfo,
-};
+use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register, TrapInfo};
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
-use crate::decoder::Instr;
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
 use crate::policy::{PolicyHookResult, PolicyModule};
+use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
 use crate::virt::traits::*;
 use crate::virt::{VirtContext, VirtCsr};
 
@@ -183,8 +180,8 @@ impl ProtectPayloadPolicy {
     fn check_trap(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) -> PolicyHookResult {
         let cause = ctx.trap_info.get_cause();
         match cause {
-            MCause::LoadAddrMisaligned => self.emulate_misaligned_read(ctx, mctx),
-            MCause::StoreAddrMisaligned => self.emulate_misaligned_write(ctx, mctx),
+            MCause::LoadAddrMisaligned => emulate_misaligned_read(ctx, mctx),
+            MCause::StoreAddrMisaligned => emulate_misaligned_write(ctx, mctx),
             // In the meantime, we must explicitly disable this feature to run Ubuntu with the protect payload policy
             MCause::EcallFromSMode
                 if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
@@ -224,148 +221,6 @@ impl ProtectPayloadPolicy {
                 _ => {}
             };
         }
-    }
-
-    fn emulate_misaligned_read(
-        &mut self,
-        ctx: &mut VirtContext,
-        mctx: &mut MiralisContext,
-    ) -> PolicyHookResult {
-        let instr_ptr = ctx.trap_info.mepc as *const u8;
-
-        let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-        unsafe {
-            self.copy_from_previous_mode(instr_ptr, &mut instr);
-        }
-
-        let instr = mctx.decode_load(u64::from_le_bytes(instr) as usize);
-
-        match instr {
-            Instr::Load {
-                rd, rs1, imm, len, ..
-            } => {
-                // Build the value
-                let start_addr: *const u8 =
-                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
-
-                match len.to_bytes() {
-                    8 => {
-                        let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-                        unsafe {
-                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                        }
-
-                        // Return the value
-                        ctx.regs[rd as usize] = u64::from_le_bytes(value_to_read) as usize;
-                    }
-                    4 => {
-                        let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
-                        unsafe {
-                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                        }
-
-                        // Return the value
-                        ctx.regs[rd as usize] = u32::from_le_bytes(value_to_read) as usize;
-                    }
-                    2 => {
-                        let mut value_to_read: [u8; 2] = [0, 0];
-                        unsafe {
-                            self.copy_from_previous_mode(start_addr, &mut value_to_read);
-                        }
-
-                        // Return the value
-                        ctx.regs[rd as usize] = u16::from_le_bytes(value_to_read) as usize;
-                    }
-                    _ => {
-                        unreachable!("Misaligned read with a unexpected byte length")
-                    }
-                }
-            }
-            _ => {
-                unreachable!("Must be a load instruction here")
-            }
-        }
-
-        ctx.pc += 4;
-        PolicyHookResult::Overwrite
-    }
-
-    fn emulate_misaligned_write(
-        &mut self,
-        ctx: &mut VirtContext,
-        mctx: &mut MiralisContext,
-    ) -> PolicyHookResult {
-        let instr_ptr = ctx.trap_info.mepc as *const u8;
-
-        let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-        unsafe {
-            self.copy_from_previous_mode(instr_ptr, &mut instr);
-        }
-
-        let instr = mctx.decode_store(u64::from_le_bytes(instr) as usize);
-
-        match instr {
-            Instr::Store {
-                rs2, rs1, imm, len, ..
-            } => {
-                assert!(
-                    len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
-                    "Implement support for other than 2,4,8 bytes misalinged accesses"
-                );
-
-                // Build the value
-                let start_addr: *mut u8 =
-                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *mut u8;
-
-                match len.to_bytes() {
-                    8 => {
-                        let val = ctx.regs[rs2 as usize] as u64;
-                        let mut value_to_store: [u8; 8] = val.to_le_bytes();
-
-                        unsafe {
-                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
-                        }
-                    }
-                    4 => {
-                        let val = ctx.regs[rs2 as usize] as u32;
-                        let mut value_to_store: [u8; 4] = val.to_le_bytes();
-
-                        unsafe {
-                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
-                        }
-                    }
-                    2 => {
-                        let val = ctx.regs[rs2 as usize] as u16;
-                        let mut value_to_store: [u8; 2] = val.to_le_bytes();
-
-                        unsafe {
-                            self.copy_from_previous_mode_store(&mut value_to_store, start_addr);
-                        }
-                    }
-                    _ => {
-                        unreachable!("Misaligned write with a unexpected byte length")
-                    }
-                }
-            }
-            _ => {
-                unreachable!("Must be a load instruction here")
-            }
-        }
-
-        ctx.pc += 4;
-        PolicyHookResult::Overwrite
-    }
-
-    unsafe fn copy_from_previous_mode(&mut self, src: *const u8, dest: &mut [u8]) {
-        // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
-        let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
-        unsafe { Arch::read_bytes_from_mode(src, dest, mode).unwrap() }
-    }
-
-    unsafe fn copy_from_previous_mode_store(&mut self, src: &mut [u8], dest: *mut u8) {
-        // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
-        let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
-        unsafe { Arch::store_bytes_from_mode(src, dest, mode).unwrap() }
     }
 
     fn handle_ecall(

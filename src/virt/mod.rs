@@ -2,6 +2,7 @@
 
 mod csr;
 mod emulator;
+pub mod memory;
 mod world_switch;
 
 pub use csr::traits;
