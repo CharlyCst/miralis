@@ -22,6 +22,8 @@ pub mod policy;
 pub mod utils;
 pub mod virt;
 
+pub mod rw_emulation;
+
 use arch::{Arch, Architecture, Csr, Register};
 use host::MiralisContext;
 pub use platform::init;
