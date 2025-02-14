@@ -14,7 +14,12 @@ pub fn emulate_misaligned_read(
 
     match mctx.decode_load(raw_instruction) {
         Instr::Load {
-            rd, rs1, imm, len, ..
+            rd,
+            rs1,
+            imm,
+            len,
+            is_compressed,
+            ..
         } => {
             assert!(
                 len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
@@ -44,14 +49,15 @@ pub fn emulate_misaligned_read(
                 _ => {
                     unreachable!("Misaligned read with a unexpected byte length")
                 }
-            }
+            };
+
+            ctx.pc += if is_compressed { 2 } else { 4 }
         }
         _ => {
             unreachable!("Must be a load instruction here")
         }
     }
 
-    ctx.pc += 4;
     PolicyHookResult::Overwrite
 }
 
@@ -63,7 +69,11 @@ pub fn emulate_misaligned_write(
 
     match mctx.decode_store(raw_instruction) {
         Instr::Store {
-            rs2, rs1, imm, len, ..
+            rs2,
+            rs1,
+            imm,
+            len,
+            is_compressed,
         } => {
             assert!(
                 len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
@@ -95,14 +105,15 @@ pub fn emulate_misaligned_write(
                 _ => {
                     unreachable!("Misaligned write with a unexpected byte length")
                 }
-            }
+            };
+
+            ctx.pc += if is_compressed { 2 } else { 4 }
         }
         _ => {
             unreachable!("Must be a load instruction here")
         }
     }
 
-    ctx.pc += 4;
     PolicyHookResult::Overwrite
 }
 
