@@ -3,6 +3,7 @@ use crate::arch::{Csr, Register, Width};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
+use crate::virt::VirtContext;
 
 const ILLEGAL_OPCODE_MASK: usize = 0b1110011;
 const SFENCE_INSTR_VMA_MASK: usize = 0b0001001 << 25;
@@ -95,6 +96,7 @@ pub enum Instr {
         is_compressed: bool,
     },
     Unknown,
+    IllegalInstr,
 }
 
 impl MiralisContext {
@@ -110,12 +112,35 @@ impl MiralisContext {
         }
     }
 
+    pub fn decode_load2(&self, raw: usize, ctx: &mut VirtContext) -> Instr {
+        match extract_last_two_bits(raw) {
+            0b11 => self.decode_uncompressed_load(raw),
+            // Register-based load and store instructions for C set start with 0b00
+            0b00 => self.decode_register_based_compressed_load2(raw, ctx),
+            // Stack-based load and store instructions for C set start with 0b10
+            0b10 => todo!("Decode stack based C load"),
+            _ => Instr::Unknown,
+        }
+    }
+
     /// Decodes a raw write RISC-V instruction.
     pub fn decode_store(&self, raw: usize) -> Instr {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_uncompressed_store(raw),
             // Register-based load and store instructions for C set start with 0b00
             0b00 => self.decode_register_based_compressed_store(raw),
+            // Stack-based load and store instructions for C set start with 0b10
+            0b10 => todo!("Decode stack based C store"),
+            _ => Instr::Unknown,
+        }
+    }
+
+    /// Decodes a raw write RISC-V instruction.
+    pub fn decode_store2(&self, raw: usize) -> Instr {
+        match extract_last_two_bits(raw) {
+            0b11 => self.decode_uncompressed_store(raw),
+            // Register-based load and store instructions for C set start with 0b00
+            // 0b00 => self.decode_register_based_compressed_store(raw),
             // Stack-based load and store instructions for C set start with 0b10
             0b10 => todo!("Decode stack based C store"),
             _ => Instr::Unknown,
@@ -172,17 +197,64 @@ impl MiralisContext {
         let func3 = (raw >> 13) & 0b111;
         match func3 {
             C_LW => {
-                let imm = (raw >> 4) & 0b100 | (raw >> 7) & 0b111000 | (raw << 1) & 0b1000000;
+                let imm_2 = ((raw >> 6) & 0b1) << 2;
+                let imm_5_3 = ((raw >> 10) & 0b111) << 3;
+                let imm_6 = ((raw >> 5) & 0b1) << 6;
+
                 Instr::Load {
                     rd,
                     rs1,
-                    imm: imm as isize,
+                    imm: ((imm_6 | imm_5_3 | imm_2) << 2) as isize,
                     len: Width::from(32),
                     is_compressed: true,
                     is_unsigned: false,
                 }
             }
             C_LD => {
+                return Instr::Unknown;
+                let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
+                Instr::Load {
+                    rd,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::from(64),
+                    is_compressed: true,
+                    is_unsigned: false,
+                }
+            }
+            _ => Instr::Unknown,
+        }
+    }
+
+    fn decode_register_based_compressed_load2(&self, raw: usize, ctx: &mut VirtContext) -> Instr {
+        let rd = (raw >> 2) & 0b111;
+        let rs1 = (raw >> 7) & 0b111;
+
+        let rd = Register::from(rd + 8);
+        let rs1 = Register::from(rs1 + 8);
+
+        let func3 = (raw >> 13) & 0b111;
+        match func3 {
+            C_LW => {
+                log::error!("Instruction: {:x}", raw);
+                let imm_2 = ((raw >> 6) & 0b1) << 2;
+                let imm_5_3 = ((raw >> 10) & 0b111) << 3;
+                let imm_6 = ((raw >> 5) & 0b1) << 6;
+
+                ctx.pc -= 2;
+
+                return Instr::Load {
+                    rd,
+                    rs1,
+                    imm: ((imm_6 | imm_5_3 | imm_2)) as isize,
+                    len: Width::from(32),
+                    is_compressed: true,
+                    is_unsigned: false,
+                };
+
+            }
+            C_LD => {
+                return Instr::Unknown;
                 let imm = (raw >> 7) & 0b111000 | ((raw << 1) & 0b11000000);
                 Instr::Load {
                     rd,

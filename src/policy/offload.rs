@@ -93,13 +93,19 @@ impl OffloadPolicy {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
         }
 
-        match mctx.decode_load(u64::from_le_bytes(instr) as usize) {
+        let instr =  mctx.decode_load2(u64::from_le_bytes(instr) as usize, ctx);
+
+        if Instr::Unknown == instr {
+            return PolicyHookResult::Ignore;
+        }
+
+        match instr {
             Instr::Load {
                 rd, rs1, imm, len, ..
             } => {
                 // Build the value
                 let start_addr: *const u8 =
-                    ((ctx.regs[rs1 as usize] as isize + imm) as usize) as *const u8;
+                    ((ctx.regs[rs1 as usize] + imm as usize) as usize) as *const u8;
 
                 match len.to_bytes() {
                     8 => {
@@ -155,7 +161,13 @@ impl OffloadPolicy {
             self.copy_from_previous_mode(instr_ptr, &mut instr);
         }
 
-        match mctx.decode_store(u64::from_le_bytes(instr) as usize) {
+        let instr = mctx.decode_store2(u64::from_le_bytes(instr) as usize);
+
+        if instr == Instr::Unknown {
+            return PolicyHookResult::Ignore;
+        }
+
+        match instr {
             Instr::Store {
                 rs2, rs1, imm, len, ..
             } => {
