@@ -5,8 +5,9 @@
 //! implementation and Miralis we need to be able to compare their internal representation. Hence
 //! this module exposing functions to convert from one representation to the other.
 
-use miralis::arch::{Csr, ExtensionsCapability, Mode, Register, Width};
+use miralis::arch::{Csr, Mode, Register, Width};
 use miralis::decoder::Instr;
+use miralis::host::MiralisContext;
 use miralis::utils::bits_to_int;
 use miralis::virt::VirtContext;
 use sail_model::{ast, csrop, word_width, Privilege, SailVirtCtx};
@@ -309,24 +310,8 @@ pub fn new_sail_ctx() -> SailVirtCtx {
     }
 }
 
-pub fn sail_to_miralis(sail_ctx: SailVirtCtx) -> VirtContext {
-    let mut ctx = VirtContext::new(
-        0,
-        0,
-        ExtensionsCapability {
-            has_crypto_extension: true,
-            has_sstc_extension: false,
-            is_sstc_enabled: false,
-            has_zicntr: true,
-            has_h_extension: false,
-            has_s_extension: false,
-            has_v_extension: true,
-            has_zihpm_extension: true,
-            has_zicboz_extension: false,
-            has_zicbom_extension: false,
-            has_tee_extension: false,
-        },
-    );
+pub fn sail_to_miralis(sail_ctx: SailVirtCtx, mctx: &MiralisContext) -> VirtContext {
+    let mut ctx = VirtContext::new(0, 0, mctx.hw.extensions.clone());
 
     ctx.mode = match sail_ctx.cur_privilege {
         Privilege::User => Mode::U,

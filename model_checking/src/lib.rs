@@ -3,6 +3,7 @@ use miralis::arch::pmp::PmpGroup;
 use miralis::arch::userspace::return_userspace_ctx;
 use miralis::arch::{mie, write_pmp, MCause, Register};
 use miralis::decoder::Instr;
+use miralis::host::MiralisContext;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use miralis::virt::VirtContext;
 use sail_decoder::decoder_illegal::sail_decoder_illegal;
@@ -36,7 +37,7 @@ pub fn mret() {
 
     assert_eq!(
         ctx,
-        adapters::sail_to_miralis(sail_ctx),
+        adapters::sail_to_miralis(sail_ctx, &mctx),
         "mret instruction emulation is not correct"
     );
 }
@@ -52,7 +53,7 @@ pub fn sret() {
 
     assert_eq!(
         ctx,
-        adapters::sail_to_miralis(sail_ctx),
+        adapters::sail_to_miralis(sail_ctx, &mctx),
         "sret instruction emulation is not correct"
     );
 }
@@ -70,8 +71,8 @@ pub fn wfi() {
     ctx.is_wfi = false;
 
     assert_eq!(
-        ctx,
-        adapters::sail_to_miralis(sail_ctx),
+        ctx.csr,
+        adapters::sail_to_miralis(sail_ctx, &mctx).csr,
         "wfi instruction emulation is not correct"
     );
 }
@@ -112,7 +113,7 @@ pub fn fences() {
 
         assert_eq!(
             ctx,
-            adapters::sail_to_miralis(sail_ctx),
+            adapters::sail_to_miralis(sail_ctx, &mctx),
             "sfence-vma instruction emulation is not correct"
         );
     }
@@ -132,7 +133,7 @@ pub fn fences() {
 
         assert_eq!(
             ctx,
-            adapters::sail_to_miralis(sail_ctx),
+            adapters::sail_to_miralis(sail_ctx, &mctx),
             "hfence-vvma instruction emulation is not correct"
         );
     }
@@ -152,7 +153,7 @@ pub fn fences() {
 
         assert_eq!(
             ctx,
-            adapters::sail_to_miralis(sail_ctx),
+            adapters::sail_to_miralis(sail_ctx, &mctx),
             "hfence-gvma instruction emulation is not correct"
         );
     }
@@ -215,195 +216,17 @@ pub fn write_csr() {
         BitVector::<64>::new(value_to_write as u64),
     );
 
-    // TODO: Replace with a single comparaison when all registers are working
-
-    // Pmp registers
     assert_eq!(
-        sail_to_miralis(sail_ctx).csr.pmpaddr,
-        ctx.csr.pmpaddr,
-        "Write pmp addr equivalence"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.pmpcfg,
-        ctx.csr.pmpcfg,
-        "Write pmp cfg equivalence"
-    );
-
-    // Verified and working
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mvendorid,
-        ctx.csr.mvendorid,
-        "Write mvendorid"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mimpid,
-        ctx.csr.mimpid,
-        "Write mimpid"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).hart_id,
-        ctx.hart_id,
-        "Write hart_id"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mconfigptr,
-        ctx.csr.mconfigptr,
-        "Write mconfigptr"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mtvec,
-        ctx.csr.mtvec,
-        "Write mtvec"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mscratch,
-        ctx.csr.mscratch,
-        "wWite mscratch"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mtval,
-        ctx.csr.mtval,
-        "Write mtval"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcycle,
-        ctx.csr.mcycle,
-        "Write mcycle"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.minstret,
-        ctx.csr.minstret,
-        "Write minstret"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.tselect,
-        ctx.csr.tselect,
-        "Write tselect"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.stvec,
-        ctx.csr.stvec,
-        "Write stvec"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.sscratch,
-        ctx.csr.sscratch,
-        "Write sscratch"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.stval,
-        ctx.csr.stval,
-        "Write stval"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.satp,
-        ctx.csr.satp,
-        "Write satp"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.senvcfg,
-        ctx.csr.senvcfg,
-        "Write senvcfg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.scause,
-        ctx.csr.scause,
-        "Write scause"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcause,
-        ctx.csr.mcause,
-        "Write mcause"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mepc,
-        ctx.csr.mepc,
-        "Write mepc"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vstart,
-        ctx.csr.vstart,
-        "Write vstart"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.menvcfg,
-        ctx.csr.menvcfg,
-        "Write menvcfg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcountinhibit,
-        ctx.csr.mcountinhibit,
-        "Write mcountinhibit"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.medeleg,
-        ctx.csr.medeleg,
-        "Write medeleg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vxsat,
-        ctx.csr.vxsat,
-        "Write vxssat"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vxrm,
-        ctx.csr.vxrm,
-        "Write vxrm"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vcsr,
-        ctx.csr.vcsr,
-        "Write vcsr"
-    );
-    assert_eq!(sail_to_miralis(sail_ctx).csr.vl, ctx.csr.vl, "Write vl");
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vtype,
-        ctx.csr.vtype,
-        "Write vtype"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.vlenb,
-        ctx.csr.vlenb,
-        "Write vlenb"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.sepc,
-        ctx.csr.sepc,
-        "Write sepc"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.misa,
-        ctx.csr.misa,
-        "Write misa"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mideleg,
-        ctx.csr.mideleg,
-        "Write mideleg"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mcounteren,
-        ctx.csr.mcounteren,
-        "Write mcountern"
-    );
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.scounteren,
-        ctx.csr.scounteren,
-        "Write scounteren"
-    );
-    assert_eq!(sail_to_miralis(sail_ctx).csr.mip, ctx.csr.mip, "Write mip");
-    assert_eq!(sail_to_miralis(sail_ctx).csr.mie, ctx.csr.mie, "Write mie");
-    assert_eq!(
-        sail_to_miralis(sail_ctx).csr.mstatus,
-        ctx.csr.mstatus,
-        "Write mstatus"
+        sail_to_miralis(sail_ctx, &mctx).csr,
+        ctx.csr,
+        "Write equivalence"
     );
 }
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn interrupt_virtualization() {
-    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+    let (mut ctx, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
     // We don't delegate any interrupts in the formal verification
     sail_ctx.mideleg = BitField::new(0);
@@ -416,7 +239,7 @@ pub fn interrupt_virtualization() {
     // Verify the results
     assert_eq!(
         ctx,
-        sail_to_miralis(sail_ctx),
+        sail_to_miralis(sail_ctx, &mctx),
         "Interrupt virtualisation doesn't work properly"
     )
 }
@@ -424,12 +247,12 @@ pub fn interrupt_virtualization() {
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn exception_virtualization() {
-    let (mut ctx, _, mut sail_ctx) = symbolic::new_symbolic_contexts();
+    let (mut ctx, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
     let trap_cause = generate_exception_cause();
 
     // Generate the trap handler
-    fill_trap_info_structure(&mut ctx, MCause::new(trap_cause as usize));
+    fill_trap_info_structure(&mut ctx, &mctx, MCause::new(trap_cause as usize));
 
     // Emulate jump to trap handler in Miralis
     ctx.emulate_jump_trap_handler();
@@ -447,7 +270,7 @@ pub fn exception_virtualization() {
     );
     set_next_pc(&mut sail_ctx, new_pc);
 
-    let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx);
+    let mut sail_ctx_generated = adapters::sail_to_miralis(sail_ctx, &mctx);
     // Update some meta-data maintained by Miralis
     sail_ctx_generated.is_wfi = ctx.is_wfi.clone();
     sail_ctx_generated.trap_info = ctx.trap_info.clone();
@@ -472,7 +295,7 @@ fn generate_exception_cause() -> usize {
 ///
 /// The simulation is done by instantiating a new Sail context and emulating a trap using the Sail
 /// emulator.
-fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
+fn fill_trap_info_structure(ctx: &mut VirtContext, mctx: &MiralisContext, cause: MCause) {
     let mut sail_ctx = miralis_to_sail(ctx);
 
     // Inject through the Sail emulator.
@@ -487,7 +310,7 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, cause: MCause) {
         None,
     );
 
-    let new_miralis_ctx = sail_to_miralis(sail_ctx);
+    let new_miralis_ctx = sail_to_miralis(sail_ctx, mctx);
 
     ctx.trap_info.mcause = new_miralis_ctx.csr.mcause;
     ctx.trap_info.mstatus = new_miralis_ctx.csr.mstatus;
@@ -633,7 +456,7 @@ pub fn formally_verify_emulation_privileged_instructions() {
     // Check the equivalence
     assert_eq!(
         ctx.csr.mstatus,
-        sail_to_miralis(sail_ctx).csr.mstatus,
+        sail_to_miralis(sail_ctx, &mut mctx).csr.mstatus,
         "emulation of privileged instructions isn't equivalent"
     );
 }
