@@ -56,24 +56,8 @@ macro_rules! any {
 }
 
 /// Return a new context with symbolic values
-pub fn new_ctx() -> VirtContext {
-    let mut ctx = VirtContext::new(
-        0,
-        0,
-        ExtensionsCapability {
-            has_crypto_extension: true,
-            has_sstc_extension: false,
-            is_sstc_enabled: false,
-            has_zicntr: true,
-            has_h_extension: false,
-            has_s_extension: false,
-            has_v_extension: true,
-            has_zihpm_extension: true,
-            has_zicbom_extension: false,
-            has_zicboz_extension: false,
-            has_tee_extension: false,
-        },
-    );
+pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
+    let mut ctx = VirtContext::new(0, 0, available_extension);
 
     // Mode
     ctx.mode = Mode::M;
@@ -174,15 +158,15 @@ pub fn new_ctx() -> VirtContext {
 /// Miralis and mostly containst the list of hardware extensions (which are fixed during model
 /// checking).
 pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, SailVirtCtx) {
-    // We first create a symbolic context
-    let ctx = new_ctx();
-    // Then we copy the symbolic values into a Sail context
-    let sail_ctx = adapters::miralis_to_sail(&ctx);
-
     // Initialize Miralis's own context
     let mut hw = unsafe { Arch::detect_hardware() };
     hw.available_reg.nb_pmp = 64; // We assume 64 PMPs during model checking
     let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
+
+    // We first create a symbolic context
+    let ctx = new_ctx(mctx.hw.extensions.clone());
+    // Then we copy the symbolic values into a Sail context
+    let sail_ctx = adapters::miralis_to_sail(&ctx);
 
     (ctx, mctx, sail_ctx)
 }
