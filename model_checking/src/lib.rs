@@ -2,7 +2,7 @@ use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
 use miralis::arch::pmp::PmpGroup;
 use miralis::arch::userspace::return_userspace_ctx;
 use miralis::arch::{mie, write_pmp, MCause, Register};
-use miralis::decoder::Instr;
+use miralis::decoder::IllegalInstruction;
 use miralis::host::MiralisContext;
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use miralis::virt::VirtContext;
@@ -10,15 +10,15 @@ use sail_decoder::decoder_illegal::sail_decoder_illegal;
 use sail_decoder::decoder_load::sail_decoder_load;
 use sail_decoder::decoder_store::sail_decoder_store;
 use sail_model::{
-    execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET,
+    ast, execute_HFENCE_GVMA, execute_HFENCE_VVMA, execute_MRET, execute_SFENCE_VMA, execute_SRET,
     execute_WFI, pmpCheck, readCSR, set_next_pc, step_interrupts_only, trap_handler, writeCSR,
     AccessType, ExceptionType, Privilege,
 };
 use sail_prelude::{sys_pmp_count, BitField, BitVector};
 
 use crate::adapters::{
-    ast_to_miralis_instr, decode_csr_register, miralis_to_sail, pmpaddr_sail_to_miralis,
-    pmpcfg_sail_to_miralis, sail_to_miralis,
+    ast_to_miralis_instr, ast_to_miralis_load, ast_to_miralis_store, decode_csr_register,
+    miralis_to_sail, pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis, sail_to_miralis,
 };
 
 #[macro_use]
@@ -423,7 +423,7 @@ pub fn verify_decoder() {
     let decoded_value_miralis = mctx.decode_illegal_instruction(instr as usize);
 
     // For the moment, we ignore the values that are not decoded by the sail reference
-    if decoded_value_sail != Instr::Unknown {
+    if decoded_value_sail != IllegalInstruction::Unknown {
         assert_eq!(
             decoded_value_sail, decoded_value_miralis,
             "decoders are not equivalent"
@@ -469,20 +469,21 @@ pub fn verify_compressed_loads() {
     // Generate an instruction to decode
     let instr = any!(u16, 0x01073) & !0b11;
 
-    // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_load::encdec_compressed_backwards(
-        &mut sail_ctx,
-        BitVector::new(instr as u64),
-    ));
+    let intermediate_sail_value =
+        sail_decoder_load::encdec_compressed_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-    let decoded_value_miralis = mctx.decode_load(instr as usize);
+    match intermediate_sail_value {
+        ast::ILLEGAL(_) => {}
+        _ => {
+            // Decode values
+            let decoded_value_sail = ast_to_miralis_load(intermediate_sail_value);
+            let decoded_value_miralis = mctx.decode_load(instr as usize);
 
-    // For the moment, we ignore the values that are not decoded by the sail reference
-    if decoded_value_sail != Instr::Unknown {
-        assert_eq!(
-            decoded_value_sail, decoded_value_miralis,
-            "decoders for compressed loads are not equivalent"
-        );
+            assert_eq!(
+                decoded_value_sail, decoded_value_miralis,
+                "decoders for compressed loads are not equivalent"
+            );
+        }
     }
 }
 
@@ -494,20 +495,21 @@ pub fn verify_load() {
     // Generate an instruction to decode
     let instr = any!(u32, 0x01073) | 0b11;
 
-    // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_load::encdec_backwards(
-        &mut sail_ctx,
-        BitVector::new(instr as u64),
-    ));
+    let intermediate_sail_value =
+        sail_decoder_load::encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-    let decoded_value_miralis = mctx.decode_load(instr as usize);
+    match intermediate_sail_value {
+        ast::ILLEGAL(_) => {}
+        _ => {
+            let decoded_value_sail = ast_to_miralis_load(intermediate_sail_value);
 
-    // For the moment, we ignore the values that are not decoded by the sail reference
-    if decoded_value_sail != Instr::Unknown {
-        assert_eq!(
-            decoded_value_sail, decoded_value_miralis,
-            "decoders for loads are not equivalent"
-        );
+            let decoded_value_miralis = mctx.decode_load(instr as usize);
+
+            assert_eq!(
+                decoded_value_sail, decoded_value_miralis,
+                "decoders for loads are not equivalent"
+            );
+        }
     }
 }
 
@@ -519,20 +521,27 @@ pub fn verify_compressed_stores() {
     // Generate an instruction to decode
     let instr = any!(u16, 0x01073) & !0b11;
 
-    // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_store::encdec_compressed_backwards(
+    let intermediate_sail_value = sail_decoder_store::encdec_compressed_backwards(
         &mut sail_ctx,
         BitVector::new(instr as u64),
-    ));
+    );
 
-    let decoded_value_miralis = mctx.decode_store(instr as usize);
+    match intermediate_sail_value {
+        ast::ILLEGAL(_) => {}
+        _ => {
+            let decoded_value_sail =
+                ast_to_miralis_store(sail_decoder_store::encdec_compressed_backwards(
+                    &mut sail_ctx,
+                    BitVector::new(instr as u64),
+                ));
 
-    // For the moment, we ignore the values that are not decoded by the sail reference
-    if decoded_value_sail != Instr::Unknown {
-        assert_eq!(
-            decoded_value_sail, decoded_value_miralis,
-            "decoders for compressed stores are not equivalent"
-        );
+            let decoded_value_miralis = mctx.decode_store(instr as usize);
+
+            assert_eq!(
+                decoded_value_sail, decoded_value_miralis,
+                "decoders for compressed stores are not equivalent"
+            );
+        }
     }
 }
 
@@ -544,19 +553,21 @@ pub fn verify_stores() {
     // Generate an instruction to decode
     let instr = any!(u32, 0x01073) | 0b11;
 
-    // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(sail_decoder_store::encdec_backwards(
-        &mut sail_ctx,
-        BitVector::new(instr as u64),
-    ));
+    let intermediate_sail_value =
+        sail_decoder_store::encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-    let decoded_value_miralis = mctx.decode_store(instr as usize);
+    match intermediate_sail_value {
+        ast::ILLEGAL(_) => {}
+        _ => {
+            // Decode values
+            let decoded_value_sail = ast_to_miralis_store(intermediate_sail_value);
 
-    // For the moment, we ignore the values that are not decoded by the sail reference
-    if decoded_value_sail != Instr::Unknown {
-        assert_eq!(
-            decoded_value_sail, decoded_value_miralis,
-            "decoders for loads are not equivalent"
-        );
+            let decoded_value_miralis = mctx.decode_store(instr as usize);
+
+            assert_eq!(
+                decoded_value_sail, decoded_value_miralis,
+                "decoders for loads are not equivalent"
+            );
+        }
     }
 }

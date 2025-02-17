@@ -6,7 +6,7 @@
 //! this module exposing functions to convert from one representation to the other.
 
 use miralis::arch::{Csr, Mode, Register, Width};
-use miralis::decoder::Instr;
+use miralis::decoder::{IllegalInstruction, LoadInstr, StoreInstr};
 use miralis::host::MiralisContext;
 use miralis::utils::bits_to_int;
 use miralis::virt::VirtContext;
@@ -507,25 +507,9 @@ fn size_to_width(size: word_width) -> Width {
     }
 }
 
-pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
+pub fn ast_to_miralis_load(ast_entry: ast) -> LoadInstr {
     match ast_entry {
-        ast::MRET(()) => Instr::Mret,
-        ast::WFI(()) => Instr::Wfi,
-        ast::ECALL(()) => panic!("Miralis does not need to decode ecalls"),
-        ast::EBREAK(()) => panic!("Miralis does not need to decode ebreaks"),
-        ast::SFENCE_VMA((rs1, rs2)) => Instr::Sfencevma {
-            rs1: Register::from(rs1.bits as usize),
-            rs2: Register::from(rs2.bits as usize),
-        },
-        ast::HFENCE_VVMA((rs1, rs2)) => Instr::Hfencevvma {
-            rs1: Register::from(rs1.bits as usize),
-            rs2: Register::from(rs2.bits as usize),
-        },
-        ast::HFENCE_GVMA((rs1, rs2)) => Instr::Hfencegvma {
-            rs1: Register::from(rs1.bits as usize),
-            rs2: Register::from(rs2.bits as usize),
-        },
-        ast::C_LW((imm, rs1, rd)) => Instr::Load {
+        ast::C_LW((imm, rs1, rd)) => LoadInstr {
             rd: Register::from(rd.bits as usize + 8),
             rs1: Register::from(rs1.bits as usize + 8),
             imm: (imm.bits << 2) as isize,
@@ -533,7 +517,7 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
             is_compressed: true,
             is_unsigned: false,
         },
-        ast::C_LD((imm, rs1, rd)) => Instr::Load {
+        ast::C_LD((imm, rs1, rd)) => LoadInstr {
             rd: Register::from(rd.bits as usize + 8),
             rs1: Register::from(rs1.bits as usize + 8),
             imm: (imm.bits << 3) as isize,
@@ -541,7 +525,7 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
             is_compressed: true,
             is_unsigned: false,
         },
-        ast::LOAD((imm, rs1, rd, is_unsigned, size, ..)) => Instr::Load {
+        ast::LOAD((imm, rs1, rd, is_unsigned, size, ..)) => LoadInstr {
             rd: Register::from(rd.bits as usize),
             rs1: Register::from(rs1.bits as usize),
             imm: bits_to_int(imm.bits as usize, 0, 11),
@@ -549,14 +533,20 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
             is_compressed: false,
             is_unsigned: is_unsigned,
         },
-        ast::C_SW((imm, rs1, rs2)) => Instr::Store {
+        _ => unreachable!(),
+    }
+}
+
+pub fn ast_to_miralis_store(ast_entry: ast) -> StoreInstr {
+    match ast_entry {
+        ast::C_SW((imm, rs1, rs2)) => StoreInstr {
             rs2: Register::from(rs2.bits as usize + 8),
             rs1: Register::from(rs1.bits as usize + 8),
             imm: (imm.bits << 2) as isize,
             len: Width::Byte4,
             is_compressed: true,
         },
-        ast::C_SD((imm, rs1, rs2)) => Instr::Store {
+        ast::C_SD((imm, rs1, rs2)) => StoreInstr {
             rs2: Register::from(rs2.bits as usize + 8),
             rs1: Register::from(rs1.bits as usize + 8),
             imm: (imm.bits << 3) as isize,
@@ -564,12 +554,34 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
             is_compressed: true,
         },
 
-        ast::STORE((imm, rs2, rs1, size, ..)) => Instr::Store {
+        ast::STORE((imm, rs2, rs1, size, ..)) => StoreInstr {
             rs2: Register::from(rs2.bits as usize),
             rs1: Register::from(rs1.bits as usize),
             imm: bits_to_int(imm.bits as usize, 0, 11),
             len: size_to_width(size),
             is_compressed: false,
+        },
+        _ => unreachable!(),
+    }
+}
+
+pub fn ast_to_miralis_instr(ast_entry: ast) -> IllegalInstruction {
+    match ast_entry {
+        ast::MRET(()) => IllegalInstruction::Mret,
+        ast::WFI(()) => IllegalInstruction::Wfi,
+        ast::ECALL(()) => panic!("Miralis does not need to decode ecalls"),
+        ast::EBREAK(()) => panic!("Miralis does not need to decode ebreaks"),
+        ast::SFENCE_VMA((rs1, rs2)) => IllegalInstruction::Sfencevma {
+            rs1: Register::from(rs1.bits as usize),
+            rs2: Register::from(rs2.bits as usize),
+        },
+        ast::HFENCE_VVMA((rs1, rs2)) => IllegalInstruction::Hfencevvma {
+            rs1: Register::from(rs1.bits as usize),
+            rs2: Register::from(rs2.bits as usize),
+        },
+        ast::HFENCE_GVMA((rs1, rs2)) => IllegalInstruction::Hfencegvma {
+            rs1: Register::from(rs1.bits as usize),
+            rs2: Register::from(rs2.bits as usize),
         },
         ast::CSR((csrreg, rs1, rd, is_immediate, op)) => {
             let csr_register: Csr = decode_csr_register(csrreg);
@@ -578,38 +590,38 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> Instr {
             let rd_miralis = Register::from(rd.bits() as usize);
 
             match (op, is_immediate) {
-                (csrop::CSRRW, false) => Instr::Csrrw {
+                (csrop::CSRRW, false) => IllegalInstruction::Csrrw {
                     csr: csr_register,
                     rd: rd_miralis,
                     rs1: rs1_miralis,
                 },
-                (csrop::CSRRC, false) => Instr::Csrrc {
+                (csrop::CSRRC, false) => IllegalInstruction::Csrrc {
                     csr: csr_register,
                     rd: rd_miralis,
                     rs1: rs1_miralis,
                 },
-                (csrop::CSRRS, false) => Instr::Csrrs {
+                (csrop::CSRRS, false) => IllegalInstruction::Csrrs {
                     csr: csr_register,
                     rd: rd_miralis,
                     rs1: rs1_miralis,
                 },
-                (csrop::CSRRW, true) => Instr::Csrrwi {
+                (csrop::CSRRW, true) => IllegalInstruction::Csrrwi {
                     csr: csr_register,
                     rd: rd_miralis,
                     uimm: rs1.bits as usize,
                 },
-                (csrop::CSRRC, true) => Instr::Csrrci {
+                (csrop::CSRRC, true) => IllegalInstruction::Csrrci {
                     csr: csr_register,
                     rd: rd_miralis,
                     uimm: rs1.bits as usize,
                 },
-                (csrop::CSRRS, true) => Instr::Csrrsi {
+                (csrop::CSRRS, true) => IllegalInstruction::Csrrsi {
                     csr: csr_register,
                     rd: rd_miralis,
                     uimm: rs1.bits as usize,
                 },
             }
         }
-        _ => Instr::Unknown,
+        _ => IllegalInstruction::Unknown,
     }
 }

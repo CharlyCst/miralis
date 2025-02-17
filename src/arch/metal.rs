@@ -5,7 +5,7 @@ use core::usize;
 
 use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
 use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, Width};
-use crate::decoder::Instr;
+use crate::decoder::{LoadInstr, StoreInstr};
 use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
 use crate::{utils, RegisterContextGetter, RegisterContextSetter};
@@ -833,7 +833,7 @@ impl Architecture for MetalArch {
         prev_value
     }
 
-    unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext) {
+    unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext) {
         // Cannot use a raw_trap_handler because of MPRV=1, addresses would be translated
         let trap: usize = _mprv_trap_handler as usize;
 
@@ -886,74 +886,116 @@ impl Architecture for MetalArch {
             };
         }
 
-        match instr {
-            Instr::Load {
-                rd,
-                rs1,
-                imm,
-                len,
-                is_compressed,
-                is_unsigned,
-            } => {
-                addr = utils::calculate_addr(ctx.get(rs1), imm);
-                rd_value = 0;
+        addr = utils::calculate_addr(ctx.get(instr.rs1), instr.imm);
+        rd_value = 0;
 
-                match (len, is_unsigned) {
-                    (Width::Byte, false) => construct_asm!("lb"),
-                    (Width::Byte2, false) => construct_asm!("lh"),
-                    (Width::Byte4, false) => construct_asm!("lw"),
-                    (Width::Byte8, false) => construct_asm!("ld"),
-                    (Width::Byte, true) => construct_asm!("lbu"),
-                    (Width::Byte2, true) => construct_asm!("lhu"),
-                    (Width::Byte4, true) => construct_asm!("lwu"),
-                    _ => panic!("Unknown load instruction"),
-                };
+        match (instr.len, instr.is_unsigned) {
+            (Width::Byte, false) => construct_asm!("lb"),
+            (Width::Byte2, false) => construct_asm!("lh"),
+            (Width::Byte4, false) => construct_asm!("lw"),
+            (Width::Byte8, false) => construct_asm!("ld"),
+            (Width::Byte, true) => construct_asm!("lbu"),
+            (Width::Byte2, true) => construct_asm!("lhu"),
+            (Width::Byte4, true) => construct_asm!("lwu"),
+            _ => panic!("Unknown load instruction"),
+        };
 
-                if Self::read_csr(Csr::Mcause) != 0 {
-                    ctx.trap_info.mcause = cause;
-                    ctx.trap_info.mstatus = mstatus;
-                    ctx.trap_info.mtval = mtval;
-                    ctx.trap_info.mepc = fw_pc;
-                    ctx.trap_info.mip = mip;
+        if Self::read_csr(Csr::Mcause) != 0 {
+            ctx.trap_info.mcause = cause;
+            ctx.trap_info.mstatus = mstatus;
+            ctx.trap_info.mtval = mtval;
+            ctx.trap_info.mepc = fw_pc;
+            ctx.trap_info.mip = mip;
 
-                    ctx.emulate_jump_trap_handler();
-                } else {
-                    ctx.set(rd, rd_value);
-                    ctx.pc += if is_compressed { 2 } else { 4 };
-                }
-            }
-            Instr::Store {
-                rs2,
-                rs1,
-                imm,
-                len,
-                is_compressed,
-            } => {
-                addr = utils::calculate_addr(ctx.get(rs1), imm);
-                rd_value = ctx.get(rs2);
+            ctx.emulate_jump_trap_handler();
+        } else {
+            ctx.set(instr.rd, rd_value);
+            ctx.pc += if instr.is_compressed { 2 } else { 4 };
+        }
 
-                match len {
-                    Width::Byte => construct_asm!("sb"),
-                    Width::Byte2 => construct_asm!("sh"),
-                    Width::Byte4 => construct_asm!("sw"),
-                    Width::Byte8 => construct_asm!("sd"),
-                };
+        // Restore the original values
+        Self::write_csr(Csr::Satp, prev_satp);
+        set_mpp(prev_mpp);
 
-                let _ = rd_value;
+        // Ensure memory consistency
+        Self::sfencevma(None, None);
+    }
 
-                if Self::read_csr(Csr::Mcause) != 0 {
-                    ctx.trap_info.mcause = cause;
-                    ctx.trap_info.mstatus = mstatus;
-                    ctx.trap_info.mtval = mtval;
-                    ctx.trap_info.mepc = fw_pc;
-                    ctx.trap_info.mip = mip;
+    unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext) {
+        // Cannot use a raw_trap_handler because of MPRV=1, addresses would be translated
+        let trap: usize = _mprv_trap_handler as usize;
 
-                    ctx.emulate_jump_trap_handler();
-                } else {
-                    ctx.pc += if is_compressed { 2 } else { 4 };
-                }
-            }
-            _ => todo!("Instruction not yet implemented: {:?}", instr),
+        // Zero out mcause to check if a trap occured during emulation
+        Self::write_csr(Csr::Mcause, 0);
+
+        // Set the MPP mode to match the vMPP
+        let prev_mpp = set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+        let prev_satp = Self::write_csr(Csr::Satp, ctx.csr.satp);
+
+        // Changes to SATP require an sfence instruction to take effect
+        Self::sfencevma(None, None);
+
+        let mut rd_value: usize;
+        let addr: usize;
+        let mut cause: usize;
+        let mut mtval: usize;
+        let mut mstatus: usize;
+        let mut mip: usize;
+        let fw_pc = ctx.trap_info.mepc;
+
+        macro_rules! construct_asm {
+            ($instr:literal) => {
+                asm!(
+                    "csrr {1}, mtvec",      // Save regular mtvec
+                    "csrw mtvec, {mtvec}",  // Set up mtvec to an address-space independent
+
+                    "li {0}, 1",            // Set MPRV bit to 1
+                    "slli {0}, {0}, 17",
+                    "csrs mstatus, {0}",
+
+                    ".option push",
+                    ".option norvc",
+                    concat!($instr, " {rd}, 0({addr})"),
+                    ".option pop",
+
+                    "csrc mstatus, {0}",    // Restore values
+                    "csrw mtvec, {1}",
+                    out(reg) _,
+                    out(reg) _,
+                    out("t1") cause,
+                    out("t2") mtval,
+                    out("t4") mstatus,
+                    out("t5") _,
+                    out("t6") mip,
+                    mtvec = in(reg) trap,
+                    addr = in(reg) addr,
+                    rd = inout(reg) rd_value,
+                )
+            };
+        }
+
+        addr = utils::calculate_addr(ctx.get(instr.rs1), instr.imm);
+        rd_value = ctx.get(instr.rs2);
+
+        match instr.len {
+            Width::Byte => construct_asm!("sb"),
+            Width::Byte2 => construct_asm!("sh"),
+            Width::Byte4 => construct_asm!("sw"),
+            Width::Byte8 => construct_asm!("sd"),
+        };
+
+        let _ = rd_value;
+
+        if Self::read_csr(Csr::Mcause) != 0 {
+            ctx.trap_info.mcause = cause;
+            ctx.trap_info.mstatus = mstatus;
+            ctx.trap_info.mtval = mtval;
+            ctx.trap_info.mepc = fw_pc;
+            ctx.trap_info.mip = mip;
+
+            ctx.emulate_jump_trap_handler();
+        } else {
+            ctx.pc += if instr.is_compressed { 2 } else { 4 };
         }
 
         // Restore the original values

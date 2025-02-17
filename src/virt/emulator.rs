@@ -12,7 +12,7 @@ use crate::arch::{
     parse_spp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register,
 };
 use crate::benchmark::{Benchmark, BenchmarkModule};
-use crate::decoder::Instr;
+use crate::decoder::{IllegalInstruction, LoadInstr, StoreInstr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
@@ -29,31 +29,70 @@ pub enum ExitResult {
     Done,
 }
 
+macro_rules! handle_pmp_fault {
+    ($decoder:ident, $handler:ident, $handler2:ident, $self:expr, $mctx:expr) => {
+        if let Some(device) = device::find_matching_device($self.trap_info.mtval, $mctx.devices) {
+            let instr = unsafe { get_raw_faulting_instr(&$self.trap_info) };
+            let instr = $mctx.$decoder(instr);
+            logger::trace!(
+                "Accessed devices: {} | With instr: {:?}",
+                device.name,
+                instr
+            );
+            $self.$handler(device, &instr);
+        } else if ($self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
+            // TODO: make sure virtual address does not get around PMP protection
+            let instr = unsafe { get_raw_faulting_instr(&$self.trap_info) };
+            let instr = $mctx.$decoder(instr);
+            logger::trace!(
+                "Access fault {:x?} with a virtual address: 0x{:x}",
+                &instr,
+                $self.trap_info.mtval
+            );
+            unsafe {
+                Arch::$handler2(instr, $self);
+            }
+        } else {
+            logger::trace!(
+                "No matching device found for address: {:x}",
+                $self.trap_info.mtval
+            );
+            $self.emulate_jump_trap_handler();
+        }
+    };
+}
+
 impl VirtContext {
-    fn emulate_privileged_instr(&mut self, instr: &Instr, mctx: &mut MiralisContext) {
+    fn emulate_privileged_instr(&mut self, instr: &IllegalInstruction, mctx: &mut MiralisContext) {
         match instr {
-            Instr::Wfi => self.emulate_wfi(mctx),
-            Instr::Csrrw { csr, .. }
-            | Instr::Csrrs { csr, .. }
-            | Instr::Csrrc { csr, .. }
-            | Instr::Csrrwi { csr, .. }
-            | Instr::Csrrsi { csr, .. }
-            | Instr::Csrrci { csr, .. }
+            IllegalInstruction::Wfi => self.emulate_wfi(mctx),
+            IllegalInstruction::Csrrw { csr, .. }
+            | IllegalInstruction::Csrrs { csr, .. }
+            | IllegalInstruction::Csrrc { csr, .. }
+            | IllegalInstruction::Csrrwi { csr, .. }
+            | IllegalInstruction::Csrrsi { csr, .. }
+            | IllegalInstruction::Csrrci { csr, .. }
                 if csr.is_unknown() =>
             {
                 self.emulate_jump_trap_handler();
             }
-            Instr::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
-            Instr::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, *csr, *rd, *rs1),
-            Instr::Csrrc { csr, rd, rs1 } => self.emulate_csrrc(mctx, *csr, *rd, *rs1),
-            Instr::Csrrwi { csr, rd, uimm } => self.emulate_csrrwi(mctx, *csr, *rd, *uimm),
-            Instr::Csrrsi { csr, rd, uimm } => self.emulate_csrrsi(mctx, *csr, *rd, *uimm),
-            Instr::Csrrci { csr, rd, uimm } => self.emulate_csrrci(mctx, *csr, *rd, *uimm),
-            Instr::Mret => self.emulate_mret(mctx),
-            Instr::Sret => self.emulate_sret(mctx),
-            Instr::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
-            Instr::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
-            Instr::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
+            IllegalInstruction::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
+            IllegalInstruction::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, *csr, *rd, *rs1),
+            IllegalInstruction::Csrrc { csr, rd, rs1 } => self.emulate_csrrc(mctx, *csr, *rd, *rs1),
+            IllegalInstruction::Csrrwi { csr, rd, uimm } => {
+                self.emulate_csrrwi(mctx, *csr, *rd, *uimm)
+            }
+            IllegalInstruction::Csrrsi { csr, rd, uimm } => {
+                self.emulate_csrrsi(mctx, *csr, *rd, *uimm)
+            }
+            IllegalInstruction::Csrrci { csr, rd, uimm } => {
+                self.emulate_csrrci(mctx, *csr, *rd, *uimm)
+            }
+            IllegalInstruction::Mret => self.emulate_mret(mctx),
+            IllegalInstruction::Sret => self.emulate_sret(mctx),
+            IllegalInstruction::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
+            IllegalInstruction::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
+            IllegalInstruction::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
             _ => todo!(
                 "Instruction not yet implemented: {:?} {:x} {:x}",
                 instr,
@@ -63,7 +102,7 @@ impl VirtContext {
         }
 
         // All instructions except MRET and SRET increases the pc by 4
-        if *instr != Instr::Mret && *instr != Instr::Sret {
+        if *instr != IllegalInstruction::Mret && *instr != IllegalInstruction::Sret {
             self.pc += 4;
         }
     }
@@ -78,34 +117,30 @@ impl VirtContext {
     /// - The immediate (`imm`) value can be positive or negative.
     /// - Compressed load&store instructions are 2 bytes long.
     /// - The immediate (`imm`) value is always positive.
-    fn handle_load(&mut self, device: &VirtDevice, instr: &Instr) {
-        match instr {
-            Instr::Load {
-                rd,
-                rs1,
-                imm,
-                len,
-                is_compressed,
-                is_unsigned,
-            } => {
-                let address = utils::calculate_addr(self.get(*rs1), *imm);
-                let offset = address - device.start_addr;
+    fn handle_load(&mut self, device: &VirtDevice, instr: &LoadInstr) {
+        let LoadInstr {
+            rd,
+            rs1,
+            imm,
+            len,
+            is_compressed,
+            is_unsigned,
+        } = instr;
+        let address = utils::calculate_addr(self.get(*rs1), *imm);
+        let offset = address - device.start_addr;
 
-                match device.device_interface.read_device(offset, *len, self) {
-                    Ok(value) => {
-                        let value = if !is_unsigned {
-                            sign_extend(value, *len)
-                        } else {
-                            value
-                        };
+        match device.device_interface.read_device(offset, *len, self) {
+            Ok(value) => {
+                let value = if !is_unsigned {
+                    sign_extend(value, *len)
+                } else {
+                    value
+                };
 
-                        self.set(*rd, value);
-                        self.pc += if *is_compressed { 2 } else { 4 };
-                    }
-                    Err(err) => panic!("Error reading {}: {}", device.name, err),
-                }
+                self.set(*rd, value);
+                self.pc += if *is_compressed { 2 } else { 4 };
             }
-            _ => panic!("Not a load instruction in a load handler"),
+            Err(err) => panic!("Error reading {}: {}", device.name, err),
         }
     }
 
@@ -113,87 +148,42 @@ impl VirtContext {
     ///
     /// Calculates the memory address and writes the value
     /// to the device (after applying a mask to prevent overflow).
-    fn handle_store(&mut self, device: &VirtDevice, instr: &Instr) {
-        match instr {
-            Instr::Store {
-                rs2,
-                rs1,
-                imm,
-                len,
-                is_compressed,
-            } => {
-                let address = utils::calculate_addr(self.get(*rs1), *imm);
-                let offset = address - device.start_addr;
+    fn handle_store(&mut self, device: &VirtDevice, instr: &StoreInstr) {
+        let StoreInstr {
+            rs2,
+            rs1,
+            imm,
+            len,
+            is_compressed,
+        } = instr;
+        let address = utils::calculate_addr(self.get(*rs1), *imm);
+        let offset = address - device.start_addr;
 
-                let value = self.get(*rs2);
+        let value = self.get(*rs2);
 
-                let mask = if len.to_bits() < usize::BITS as usize {
-                    (1 << len.to_bits()) - 1
-                } else {
-                    usize::MAX
-                };
-
-                if value > mask {
-                    debug::warn_once!(
-                        "Value {} exceeds allowed length {}. Trimming to fit.",
-                        value,
-                        len.to_bits()
-                    );
-                }
-
-                match device
-                    .device_interface
-                    .write_device(offset, *len, value & mask, self)
-                {
-                    Ok(()) => {
-                        // Update the program counter (pc) based on compression
-                        self.pc += if *is_compressed { 2 } else { 4 };
-                    }
-                    Err(err) => panic!("Error writing {}: {}", device.name, err),
-                }
-            }
-            _ => panic!("Not a store instruction in a store handler"),
-        }
-    }
-
-    pub fn handle_device_access_fault(&mut self, instr: &Instr, device: &VirtDevice) {
-        match instr {
-            Instr::Load { .. } => self.handle_load(device, instr),
-            Instr::Store { .. } => self.handle_store(device, instr),
-            _ => todo!("Instruction not yet implemented: {:?}", instr),
-        }
-    }
-
-    /// Handle a PMP fault due to a load or store instruction.
-    ///
-    /// When Miralis gets an access fault there might be three causes:
-    /// - An emulated MMIO access, that is a device is being accessed.
-    /// - A load/store with MPRV set to 1
-    /// - A normal access fault, which should be forwarded.
-    fn handle_pmp_fault(&mut self, mctx: &mut MiralisContext, instr: Instr) {
-        if let Some(device) = device::find_matching_device(self.trap_info.mtval, mctx.devices) {
-            logger::trace!(
-                "Accessed devices: {} | With instr: {:?}",
-                device.name,
-                instr
-            );
-            self.handle_device_access_fault(&instr, device);
-        } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
-            // TODO: make sure virtual address does not get around PMP protection
-            logger::trace!(
-                "Access fault {:x?} with a virtual address: 0x{:x}",
-                &instr,
-                self.trap_info.mtval
-            );
-            unsafe {
-                Arch::handle_virtual_load_store(instr, self);
-            }
+        let mask = if len.to_bits() < usize::BITS as usize {
+            (1 << len.to_bits()) - 1
         } else {
-            logger::trace!(
-                "No matching device found for address: {:x}",
-                self.trap_info.mtval
+            usize::MAX
+        };
+
+        if value > mask {
+            debug::warn_once!(
+                "Value {} exceeds allowed length {}. Trimming to fit.",
+                value,
+                len.to_bits()
             );
-            self.emulate_jump_trap_handler();
+        }
+
+        match device
+            .device_interface
+            .write_device(offset, *len, value & mask, self)
+        {
+            Ok(()) => {
+                // Update the program counter (pc) based on compression
+                self.pc += if *is_compressed { 2 } else { 4 };
+            }
+            Err(err) => panic!("Error writing {}: {}", device.name, err),
         }
     }
 
@@ -406,14 +396,10 @@ impl VirtContext {
                 self.emulate_jump_trap_handler();
             }
             MCause::StoreAccessFault => {
-                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                let instr = mctx.decode_store(instr);
-                self.handle_pmp_fault(mctx, instr);
+                handle_pmp_fault!(decode_store, handle_store, handle_virtual_store, self, mctx)
             }
             MCause::LoadAccessFault => {
-                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
-                let instr = mctx.decode_load(instr);
-                self.handle_pmp_fault(mctx, instr);
+                handle_pmp_fault!(decode_load, handle_load, handle_virtual_load, self, mctx)
             }
             MCause::InstrAccessFault => {
                 logger::trace!("Instruction access fault: {:x?}", self.trap_info);
