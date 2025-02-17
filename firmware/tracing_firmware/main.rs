@@ -11,12 +11,14 @@ use core::arch::{asm, global_asm};
 
 use config_helpers::parse_str_or;
 use miralis_abi::{failure, log, setup_binary, success};
+use miralis_core::sbi_codes;
 
 setup_binary!(main);
 
 const POLICY_NAME: &str = parse_str_or(option_env!("MIRALIS_POLICY_NAME"), "default_policy");
 
 const PROTECT_PAYLOAD_POLICY: &str = "protect_payload";
+const OFFLOAD_POLICY: &str = "offload";
 
 fn enable_mcycle_in_smode() {
     unsafe {
@@ -132,6 +134,12 @@ fn operating_system() {
         measure_misaligned();
     }
 
+    // These are the most two frequent type of traps we receive in Miralis from the payload
+    if POLICY_NAME == OFFLOAD_POLICY {
+        measure_time_ecall();
+        measure_time_read();
+    }
+
     success();
 }
 
@@ -165,6 +173,44 @@ fn measure_misaligned() {
     let average_measure = trigger_misaligned_op_batched();
 
     log::info!("Misaligned cost {} : {}", POLICY_NAME, average_measure);
+
+    print_statistics(stats);
+}
+
+fn measure_time_ecall() {
+    let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
+
+    for i in 0..NB_REPEATS {
+        values[i] = trigger_ecall_op()
+    }
+
+    let stats = get_statistics(values);
+    let average_measure = trigger_ecall_op_batched();
+
+    log::info!(
+        "Ecall cost to set time {} : {}",
+        POLICY_NAME,
+        average_measure
+    );
+
+    print_statistics(stats);
+}
+
+fn measure_time_read() {
+    let mut values: [usize; NB_REPEATS] = [0; NB_REPEATS];
+
+    for i in 0..NB_REPEATS {
+        values[i] = trigger_time_read_op()
+    }
+
+    let stats = get_statistics(values);
+    let average_measure = trigger_time_read_op_batched();
+
+    log::info!(
+        "CSRRS Cost to read time {} : {}",
+        POLICY_NAME,
+        average_measure
+    );
 
     print_statistics(stats);
 }
@@ -243,6 +289,99 @@ pub fn trigger_misaligned_op_batched() -> usize {
             addr = in(reg) misaligned_address_8_bytes,
             r = out(reg) _,
             );
+        }
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) end);
+    }
+
+    (end - begin) as usize / NB_REPEATS
+}
+
+pub fn trigger_ecall_op() -> usize {
+    let begin: u64;
+    let end: u64;
+
+    unsafe {
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) begin);
+        // We trigger a misaligned operation
+        asm!(
+        "mv a0, {0}",
+        "li a6, {1}",
+        "li a7, {2}",
+        "ecall",
+        in(reg) usize::MAX,                  // a0
+        const sbi_codes::SBI_TIMER_FID,      // a6 (Use `const` for small immediates)
+        const sbi_codes::SBI_TIMER_EID,      // a7
+        out("a0") _,                         // syscall may overwrite a0
+        out("a6") _,                         // syscall may overwrite a6
+        out("a7") _,                         // syscall may overwrite a7
+        );
+
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) end);
+    }
+
+    (end - begin) as usize
+}
+
+pub fn trigger_ecall_op_batched() -> usize {
+    let begin: u64;
+    let end: u64;
+
+    unsafe {
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) begin);
+
+        for _ in 0..NB_REPEATS {
+            // We trigger a misaligned operation
+            asm!(
+            "mv a0, {0}",
+            "li a6, {1}",
+            "li a7, {2}",
+            "ecall",
+            in(reg) usize::MAX,                  // a0
+            const sbi_codes::SBI_TIMER_FID,      // a6 (Use `const` for small immediates)
+            const sbi_codes::SBI_TIMER_EID,      // a7
+            out("a0") _,                         // syscall may overwrite a0
+            out("a6") _,                         // syscall may overwrite a6
+            out("a7") _,                         // syscall may overwrite a7
+            );
+        }
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) end);
+    }
+
+    (end - begin) as usize / NB_REPEATS
+}
+
+pub fn trigger_time_read_op() -> usize {
+    let begin: u64;
+    let end: u64;
+
+    unsafe {
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) begin);
+        // Read time to measure the offload latency
+        asm!("csrrs x15, time, x0");
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) end);
+    }
+
+    (end - begin) as usize
+}
+
+pub fn trigger_time_read_op_batched() -> usize {
+    let begin: u64;
+    let end: u64;
+
+    unsafe {
+        // Read the `mcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, cycle", out(reg) begin);
+
+        for _ in 0..NB_REPEATS {
+            // Read time to measure the offload latency
+            asm!("csrrs x15, time, x0");
         }
         // Read the `mcycle` register (assuming 64-bit RISC-V)
         asm!("csrr {}, cycle", out(reg) end);
