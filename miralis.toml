@@ -38,6 +38,9 @@ path = "./config/test/spike-latency-benchmark.toml"
 [config.spike-benchmark-protect-payload]
 path = "./config/test/spike-latency-benchmark-protect-payload.toml"
 
+[config.spike-benchmark-offload]
+path = "./config/test/spike-latency-benchmark-offload.toml"
+
 ## ——————————————————————————— Integration Tests ———————————————————————————— ##
 
 [test.ecall]
@@ -242,3 +245,8 @@ description = "The firmware and configuration we use to measure cycles in the CI
 firmware = "tracing_firmware"
 config = "spike-benchmark-protect-payload"
 description = "The firmware and configuration we use to measure cycles in the CI using the protect payload policy"
+
+[test.spike-benchmark-offload]
+firmware = "tracing_firmware"
+config = "spike-benchmark-offload"
+description = "The firmware and configuration we use to measure the latency of the offloaded timer"
