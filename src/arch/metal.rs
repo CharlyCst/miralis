@@ -5,7 +5,7 @@ use core::usize;
 
 use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
 use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, Width};
-use crate::decoder::Instr;
+use crate::decoder::{LoadInstr, StoreInstr};
 use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
 use crate::{utils, RegisterContextGetter, RegisterContextSetter};
@@ -21,6 +21,48 @@ impl MetalArch {
         assert_eq!(handler, mtvec, "Failed to set trap handler");
     }
 }
+
+// ————————————————————————————————— Utils —————————————————————————————————— //
+
+/// Loads or store a value using MPRV (memory privileged).
+///
+/// This allows to load/store with the previous privileges access rights (in the sense of previous
+/// privileged mode in `mstatus`). For instance if S-mode was running last, this will perform a
+/// load/store using the installed S-mode page tables.
+///
+/// This macro sets up a special trap handler, [_mprv_trap_handler], to catch traps if the
+/// load/store fails. The regular trap handler can't be used because of the MPRV bit which would
+/// cause read/writes with another privilege mode's access rights.
+macro_rules! asm_mprv_mem_op {
+    ($instr:literal, $addr:expr, $value:ident) => {
+        asm!(
+            "csrr {1}, mtvec",      // Save regular mtvec
+            "csrw mtvec, {mtvec}",  // Set up mtvec to an address-space independent
+
+            // Set MPRV bit to 1
+            "li {0}, 1",
+            "slli {0}, {0}, 17",
+            "csrs mstatus, {0}",
+
+            // The 'norvc' guarantees that instructions are 4 bytes wide.
+            // This prevent the compiler from using compressed load/stores.
+            ".option push",
+            ".option norvc",
+            concat!($instr, " {rd}, 0({addr})"),
+            ".option pop",
+
+            "csrc mstatus, {0}",    // Restore values
+            "csrw mtvec, {1}",
+            out(reg) _,
+            out(reg) _,
+            mtvec = in(reg) (_mprv_trap_handler as usize),
+            addr = in(reg) $addr,
+            rd = inout(reg) $value,
+        )
+    };
+}
+
+// —————————————————————————— Arch Implementation ——————————————————————————— //
 
 impl Architecture for MetalArch {
     fn init() {
@@ -833,10 +875,13 @@ impl Architecture for MetalArch {
         prev_value
     }
 
-    unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext) {
-        // Cannot use a raw_trap_handler because of MPRV=1, addresses would be translated
-        let trap: usize = _mprv_trap_handler as usize;
-
+    /// Emulates a load instruction using MPRV = 1.
+    ///
+    /// # Safety
+    /// This function performs a load using MPRV = 1, whose behavior depends on the privilegd state
+    /// and in particular PMP and page tables. The privileged state must be configured properly to
+    /// ensure the proper access rights are enforced.
+    unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext) {
         // Zero out mcause to check if a trap occured during emulation
         Self::write_csr(Csr::Mcause, 0);
 
@@ -847,113 +892,85 @@ impl Architecture for MetalArch {
         // Changes to SATP require an sfence instruction to take effect
         Self::sfencevma(None, None);
 
-        let mut rd_value: usize;
-        let addr: usize;
-        let mut cause: usize;
-        let mut mtval: usize;
-        let mut mstatus: usize;
-        let mut mip: usize;
-        let fw_pc = ctx.trap_info.mepc;
+        let mut value: usize = 0;
+        let addr: usize = utils::calculate_addr(ctx.get(instr.rs1), instr.imm);
 
-        macro_rules! construct_asm {
-            ($instr:literal) => {
-                asm!(
-                    "csrr {1}, mtvec",      // Save regular mtvec
-                    "csrw mtvec, {mtvec}",  // Set up mtvec to an address-space independent
+        match (instr.len, instr.is_unsigned) {
+            (Width::Byte, false) => asm_mprv_mem_op!("lb", addr, value),
+            (Width::Byte2, false) => asm_mprv_mem_op!("lh", addr, value),
+            (Width::Byte4, false) => asm_mprv_mem_op!("lw", addr, value),
+            (Width::Byte8, false) => asm_mprv_mem_op!("ld", addr, value),
+            (Width::Byte, true) => asm_mprv_mem_op!("lbu", addr, value),
+            (Width::Byte2, true) => asm_mprv_mem_op!("lhu", addr, value),
+            (Width::Byte4, true) => asm_mprv_mem_op!("lwu", addr, value),
+            _ => panic!("Unknown load instruction"),
+        };
 
-                    "li {0}, 1",            // Set MPRV bit to 1
-                    "slli {0}, {0}, 17",
-                    "csrs mstatus, {0}",
+        // If `mcause` is not zero then the load caused a trap.
+        // In that case we need to update the trap info and inject the trap back.
+        let cause = Self::read_csr(Csr::Mcause);
+        if cause != 0 {
+            ctx.trap_info.mcause = cause;
+            ctx.trap_info.mstatus = Self::read_csr(Csr::Mstatus);
+            ctx.trap_info.mtval = Self::read_csr(Csr::Mtval);
+            ctx.trap_info.mip = Self::read_csr(Csr::Mip);
 
-                    ".option push",
-                    ".option norvc",
-                    concat!($instr, " {rd}, 0({addr})"),
-                    ".option pop",
-
-                    "csrc mstatus, {0}",    // Restore values
-                    "csrw mtvec, {1}",
-                    out(reg) _,
-                    out(reg) _,
-                    out("t1") cause,
-                    out("t2") mtval,
-                    out("t4") mstatus,
-                    out("t5") _,
-                    out("t6") mip,
-                    mtvec = in(reg) trap,
-                    addr = in(reg) addr,
-                    rd = inout(reg) rd_value,
-                )
-            };
+            ctx.emulate_jump_trap_handler();
+        } else {
+            ctx.set(instr.rd, value);
+            ctx.pc += if instr.is_compressed { 2 } else { 4 };
         }
 
-        match instr {
-            Instr::Load {
-                rd,
-                rs1,
-                imm,
-                len,
-                is_compressed,
-                is_unsigned,
-            } => {
-                addr = utils::calculate_addr(ctx.get(rs1), imm);
-                rd_value = 0;
+        // Restore the original values
+        Self::write_csr(Csr::Satp, prev_satp);
+        set_mpp(prev_mpp);
 
-                match (len, is_unsigned) {
-                    (Width::Byte, false) => construct_asm!("lb"),
-                    (Width::Byte2, false) => construct_asm!("lh"),
-                    (Width::Byte4, false) => construct_asm!("lw"),
-                    (Width::Byte8, false) => construct_asm!("ld"),
-                    (Width::Byte, true) => construct_asm!("lbu"),
-                    (Width::Byte2, true) => construct_asm!("lhu"),
-                    (Width::Byte4, true) => construct_asm!("lwu"),
-                    _ => panic!("Unknown load instruction"),
-                };
+        // Ensure memory consistency
+        Self::sfencevma(None, None);
+    }
 
-                if Self::read_csr(Csr::Mcause) != 0 {
-                    ctx.trap_info.mcause = cause;
-                    ctx.trap_info.mstatus = mstatus;
-                    ctx.trap_info.mtval = mtval;
-                    ctx.trap_info.mepc = fw_pc;
-                    ctx.trap_info.mip = mip;
+    /// Emulates a store instruction using MPRV = 1.
+    ///
+    /// # Safety
+    /// This function performs a store using MPRV = 1, whose behavior depends on the privilegd
+    /// state and in particular PMP and page tables. The privileged state must be configured
+    /// properly to ensure the proper access rights are enforced.
+    unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext) {
+        // Zero out mcause to check if a trap occured during emulation
+        Self::write_csr(Csr::Mcause, 0);
 
-                    ctx.emulate_jump_trap_handler();
-                } else {
-                    ctx.set(rd, rd_value);
-                    ctx.pc += if is_compressed { 2 } else { 4 };
-                }
-            }
-            Instr::Store {
-                rs2,
-                rs1,
-                imm,
-                len,
-                is_compressed,
-            } => {
-                addr = utils::calculate_addr(ctx.get(rs1), imm);
-                rd_value = ctx.get(rs2);
+        // Set the MPP mode to match the vMPP
+        let prev_mpp = set_mpp(parse_mpp_return_mode(ctx.csr.mstatus));
+        let prev_satp = Self::write_csr(Csr::Satp, ctx.csr.satp);
 
-                match len {
-                    Width::Byte => construct_asm!("sb"),
-                    Width::Byte2 => construct_asm!("sh"),
-                    Width::Byte4 => construct_asm!("sw"),
-                    Width::Byte8 => construct_asm!("sd"),
-                };
+        // Changes to SATP require an sfence instruction to take effect
+        Self::sfencevma(None, None);
 
-                let _ = rd_value;
+        let mut value: usize = ctx.get(instr.rs2);
+        let addr: usize = utils::calculate_addr(ctx.get(instr.rs1), instr.imm);
 
-                if Self::read_csr(Csr::Mcause) != 0 {
-                    ctx.trap_info.mcause = cause;
-                    ctx.trap_info.mstatus = mstatus;
-                    ctx.trap_info.mtval = mtval;
-                    ctx.trap_info.mepc = fw_pc;
-                    ctx.trap_info.mip = mip;
+        match instr.len {
+            Width::Byte => asm_mprv_mem_op!("sb", addr, value),
+            Width::Byte2 => asm_mprv_mem_op!("sh", addr, value),
+            Width::Byte4 => asm_mprv_mem_op!("sw", addr, value),
+            Width::Byte8 => asm_mprv_mem_op!("sd", addr, value),
+        };
 
-                    ctx.emulate_jump_trap_handler();
-                } else {
-                    ctx.pc += if is_compressed { 2 } else { 4 };
-                }
-            }
-            _ => todo!("Instruction not yet implemented: {:?}", instr),
+        // Silence unused warning caused by the macro
+        let _ = value;
+
+        // If `mcause` is not zero then the load caused a trap.
+        // In that case we need to update the trap info and inject the trap back.
+        let cause = Self::read_csr(Csr::Mcause);
+        if cause != 0 {
+            ctx.trap_info.mcause = cause;
+            ctx.trap_info.mstatus = Self::read_csr(Csr::Mstatus);
+            ctx.trap_info.mtval = Self::read_csr(Csr::Mtval);
+            ctx.trap_info.mip = Self::read_csr(Csr::Mip);
+
+            ctx.emulate_jump_trap_handler();
+        } else {
+            ctx.pc += if instr.is_compressed { 2 } else { 4 };
         }
 
         // Restore the original values
@@ -1345,20 +1362,17 @@ _tracing_trap_handler:
 // However, this approach is incorrect.
 //
 // To address this issue, we set mtvec to point to this custom trap handler.
-// The purpose of this handler is straightforward: it skips the illegal instruction and reads the TrapInfo.
+// The purpose of this handler is straightforward: it skips the illegal instruction, assuming it is
+// 4 bytes wide.
 global_asm!(
     r#"
 .text
 .align 4
 .global _mprv_trap_handler
 _mprv_trap_handler:
-    csrr t5, mepc
-    addi t5, t5, 4
     csrrw t5, mepc, t5
-    csrr t1, mcause
-    csrr t2, mtval
-    csrr t4, mstatus
-    csrr t6, mip
+    addi  t5, t5, 4
+    csrrw t5, mepc, t5
     mret
 "#,
 );

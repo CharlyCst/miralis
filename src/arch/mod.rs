@@ -24,7 +24,7 @@ pub use registers::{Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET, SPP_FILTER, SPP_OFFSET};
-use crate::decoder::Instr;
+use crate::decoder::{LoadInstr, StoreInstr};
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -94,7 +94,9 @@ pub trait Architecture {
     /// It should not be assume that any of the core configuration is preserved by this function.
     unsafe fn detect_hardware() -> HardwareCapability;
 
-    unsafe fn handle_virtual_load_store(instr: Instr, ctx: &mut VirtContext);
+    unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext);
+
+    unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext);
 
     /// Copies dest.len() bytes from src to dest, using the provided mode to read from src.
     /// This function can be useful to copy bytes from the virtual address space of a lower
