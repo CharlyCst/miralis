@@ -202,10 +202,10 @@ payload = "test_protect_payload_payload"
 config = "qemu-virt-protect-payload"
 description = "Integration test for the protect payload policy, with a custom firmware and payload"
 
-[test.protect-payload-linux]
-firmware = "linux-lock"
-config = "qemu-virt-protect-payload"
-description = "Integration test for the protect payload policy, running Linux with OpenSBI"
+[test.spike-protect-payload]
+firmware = "linux"
+config = "spike-benchmark-protect-payload"
+description = "Integration test for the linux kernel with the protect payload policy"
 
 [test.protect-payload-uboot]
 firmware = "opensbi-jump"
