@@ -48,6 +48,7 @@ file="cycles.txt"
 # Run the benchmarks
 cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark.toml > $file
 cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark-protect-payload.toml >> $file
+cargo run -- run --firmware tracing_firmware --config ./config/test/spike-latency-benchmark-offload.toml >> $file
 
 # Extract the number after "firmware cost:"
 firmware_cost=$(grep -i "Firmware cost default_policy :" "$file"  | sed -E 's/.*Firmware cost default_policy : ([0-9]+).*/\1/')
@@ -55,42 +56,8 @@ payload_cost=$(grep -i "Payload cost default_policy :" "$file" | sed -E 's/.*Pay
 firmware_cost_protect=$(grep -i "Firmware cost protect_payload :" "$file"  | sed -E 's/.*Firmware cost protect_payload : ([0-9]+).*/\1/')
 payload_cost_protect=$(grep -i "Payload cost protect_payload :" "$file" | sed -E 's/.*Payload cost protect_payload : ([0-9]+).*/\1/')
 misaligned_cost_protect=$(grep -i "Misaligned cost protect_payload :" "$file" | sed -E 's/.*Misaligned cost protect_payload : ([0-9]+).*/\1/')
-
-# Check if a number was found
-if [ -n "$firmware_cost" ]; then
-    echo "Firmware cost: $firmware_cost"
-else
-    echo "No firmware cost found in the file."
-fi
-
-# Check if a number was found
-if [ -n "$payload_cost" ]; then
-    echo "Payload cost: $payload_cost"
-else
-    echo "No firmware cost found in the file."
-fi
-
-# Check if a number was found
-if [ -n "$firmware_cost_protect" ]; then
-    echo "Firmware cost: $firmware_cost_protect"
-else
-    echo "No firmware cost found in the file."
-fi
-
-# Check if a number was found
-if [ -n "$payload_cost_protect" ]; then
-    echo "Payload cost: $payload_cost_protect"
-else
-    echo "No firmware cost found in the file."
-fi
-
-# Check if a number was found
-if [ -n "$misaligned_cost_protect" ]; then
-    echo "Payload cost: $misaligned_cost_protect"
-else
-    echo "No firmware cost found in the file."
-fi
-
+set_time_cost=$(grep -i "Ecall cost to set time offload :" "$file" | sed -E 's/.*Ecall cost to set time offload : ([0-9]+).*/\1/')
+read_time_cost=$(grep -i "CSRRS Cost to read time offload :" "$file" | sed -E 's/.CSRRS Cost to read time offload : ([0-9]+).*/\1/')
 
 # ———————————————————————————————— Push stats ———————————————————————————————— #
 
@@ -103,9 +70,11 @@ echo "Payload <--> Firmware latency in cycles: " $payload_cost
 echo "[PROTECT PAYLOAD] Miralis <--> Firmware latency in cycles: " $firmware_cost_protect
 echo "[PROTECT PAYLOAD] Payload <--> Firmware latency in cycles: " $payload_cost_protect
 echo "[PROTECT PAYLOAD] Cost of a misaligned emulation: " $misaligned_cost_protect
+echo "[OFFLOAD] Latency to set timer interrupt: " $set_time_cost
+echo "[OFFLOAD] Latency to read current time: " $read_time_cost
 
 if [ "$1" = "--commit" ]; then
-    csv_entry="$git_commit, $current_date, $miralis_size, $build_time, $firmware_cost, $payload_cost,$firmware_cost_protect,$payload_cost_protect,$misaligned_cost_protect"
+    csv_entry="$git_commit, $current_date, $miralis_size, $build_time, $firmware_cost, $payload_cost, $firmware_cost_protect, $payload_cost_protect, $misaligned_cost_protect, $set_time_cost, $read_time_cost"
     echo $csv_entry >> "$miralis_stats_csv_path"
     echo "Added CSV entry to $miralis_stats_csv_path"
 fi
