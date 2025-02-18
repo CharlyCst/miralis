@@ -1,6 +1,6 @@
 //! Emulation logic for misaligned loads and stores
 
-use crate::arch::{get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture, Csr};
+use crate::arch::{parse_mpp_return_mode, Arch, Architecture, Csr};
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::host::MiralisContext;
 use crate::policy::PolicyHookResult;
@@ -10,7 +10,10 @@ pub fn emulate_misaligned_read(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) -> PolicyHookResult {
-    let raw_instruction = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
+    let instr_ptr = ctx.trap_info.mepc as *const u8;
+
+    let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+    copy_from_previous_mode(instr_ptr, &mut instr);
 
     let LoadInstr {
         rd,
@@ -19,7 +22,7 @@ pub fn emulate_misaligned_read(
         len,
         is_compressed,
         ..
-    } = mctx.decode_load(raw_instruction);
+    } = mctx.decode_load(u64::from_le_bytes(instr) as usize);
 
     assert!(
         len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
@@ -59,7 +62,11 @@ pub fn emulate_misaligned_write(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) -> PolicyHookResult {
-    let raw_instruction = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
+    let instr_ptr = ctx.trap_info.mepc as *const u8;
+
+    let mut instr: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+
+    copy_from_previous_mode(instr_ptr, &mut instr);
 
     let StoreInstr {
         rs2,
@@ -67,7 +74,7 @@ pub fn emulate_misaligned_write(
         imm,
         len,
         is_compressed,
-    } = mctx.decode_store(raw_instruction);
+    } = mctx.decode_store(u64::from_le_bytes(instr) as usize);
 
     assert!(
         len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
