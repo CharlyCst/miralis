@@ -205,6 +205,11 @@ firmware = "misaligned_op"
 config = "spike-protect-payload"
 description = "Test the protect payload policy emulation of misaligned loads (on Spike)."
 
+[test.protect-payload-misaligned-linux]
+firmware = "linux"
+config = "spike-protect-payload"
+description = "Test the protect payload policy emulation of misaligned loads (on Spike)."
+
 [test.keystone]
 firmware = "opensbi-jump"
 payload = "test_keystone_payload"
