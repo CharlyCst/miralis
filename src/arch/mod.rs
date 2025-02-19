@@ -650,21 +650,37 @@ pub unsafe fn set_mpp(mode: Mode) -> Mode {
 ///
 /// # Safety
 ///
-/// The trap info must correspond to a valid trap info, no further checks are performed.
-pub unsafe fn get_raw_faulting_instr(trap_info: &TrapInfo) -> usize {
-    if trap_info.mcause == MCause::IllegalInstr as usize {
-        // First, try mtval and check if it contains an instruction
-        if trap_info.mtval != 0 {
-            return trap_info.mtval;
-        }
+/// The trap info must in the [VirtContext] correspond to a valid trap info, no further checks are
+/// performed.
+pub unsafe fn get_raw_faulting_instr(ctx: &VirtContext) -> usize {
+    // First, try mtval and check if it contains an instruction
+    if ctx.trap_info.mcause == MCause::IllegalInstr as usize && ctx.trap_info.mtval != 0 {
+        return ctx.trap_info.mtval;
     }
 
-    let instr_ptr = trap_info.mepc as *const u32;
-
-    // With compressed instruction extention ("C") instructions can be misaligned.
-    // TODO: add support for 16 bits instructions
-    let instr = ptr::read_unaligned(instr_ptr);
-    instr as usize
+    // Then as a fallback we read the instruction directly from memory
+    match ctx.mode {
+        Mode::M => {
+            // The virtual firmware runs in U-mode without virtual memory, we can read memory
+            // directly
+            //
+            // NOTE: this access might fault, in the future we might want to use our safer
+            // [Arch::read_bytes_from_mode] function which catches traps during reads. However
+            // doing so would slow down that path quite a lot until we have an optimized
+            // [Arch::read_bytes_from_mode] implementation.
+            let instr_ptr = ctx.trap_info.mepc as *const u32;
+            let instr = ptr::read_unaligned(instr_ptr);
+            instr as usize
+        }
+        mode => {
+            // The instructions come from the payload, therefore virtual memory might be enabled.
+            // We need to read the instructions using MPRV.
+            let mut instr: [u8; 4] = [0, 0, 0, 0];
+            let instr_ptr = ctx.trap_info.mepc as *const u8;
+            Arch::read_bytes_from_mode(instr_ptr, &mut instr, mode).unwrap();
+            u32::from_le_bytes(instr) as usize
+        }
+    }
 }
 
 pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
