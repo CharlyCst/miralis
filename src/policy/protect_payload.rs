@@ -8,7 +8,7 @@ use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
-use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register, TrapInfo};
+use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
 use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::host::MiralisContext;
 use crate::logger;
@@ -98,7 +98,7 @@ impl PolicyModule for ProtectPayloadPolicy {
 
         // If the illegal instruction is whitelisted, we allow every register to be modified
         if ctx.trap_info.get_cause() == MCause::IllegalInstr {
-            self.check_illegal_instruction(&mut ctx.trap_info);
+            self.check_illegal_instruction(ctx);
         }
 
         // The code becomes harder to read with the linter suggestion
@@ -196,8 +196,8 @@ impl ProtectPayloadPolicy {
         }
     }
 
-    fn check_illegal_instruction(&mut self, trap_info: &mut TrapInfo) {
-        let instr = unsafe { get_raw_faulting_instr(trap_info) };
+    fn check_illegal_instruction(&mut self, ctx: &VirtContext) {
+        let instr = unsafe { get_raw_faulting_instr(ctx) };
 
         let is_privileged_op: bool = instr & 0x7f == 0b111_0011;
         let is_time_register: bool = (instr >> 20) == 0b1100_0000_0001;

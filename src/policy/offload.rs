@@ -46,7 +46,7 @@ impl PolicyModule for OffloadPolicy {
                 }
             }
             MCause::IllegalInstr => {
-                let instr = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
+                let instr = unsafe { get_raw_faulting_instr(ctx) };
 
                 let is_privileged_op: bool = instr & 0x7f == 0b111_0011;
                 let is_time_register: bool = (instr >> 20) == 0b1100_0000_0001;

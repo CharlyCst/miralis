@@ -10,7 +10,7 @@ pub fn emulate_misaligned_read(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) -> PolicyHookResult {
-    let raw_instruction = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
+    let raw_instruction = unsafe { get_raw_faulting_instr(ctx) };
 
     let LoadInstr {
         rd,
@@ -59,7 +59,7 @@ pub fn emulate_misaligned_write(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) -> PolicyHookResult {
-    let raw_instruction = unsafe { get_raw_faulting_instr(&ctx.trap_info) };
+    let raw_instruction = unsafe { get_raw_faulting_instr(ctx) };
 
     let StoreInstr {
         rs2,

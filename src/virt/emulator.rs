@@ -404,7 +404,7 @@ impl VirtContext {
                 panic!("Firmware should not be able to come from S-mode");
             }
             MCause::IllegalInstr => {
-                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
+                let instr = unsafe { get_raw_faulting_instr(self) };
 
                 // Illegal instruction can have two causes:
                 // - privileged (system) instructions excepts ebreak and ecall
@@ -417,12 +417,12 @@ impl VirtContext {
                 self.emulate_jump_trap_handler();
             }
             MCause::StoreAccessFault => {
-                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
+                let instr = unsafe { get_raw_faulting_instr(self) };
                 let instr = mctx.decode_store(instr);
                 self.handle_pmp_fault(mctx, LoadStoreInstr::Store(instr));
             }
             MCause::LoadAccessFault => {
-                let instr = unsafe { get_raw_faulting_instr(&self.trap_info) };
+                let instr = unsafe { get_raw_faulting_instr(self) };
                 let instr = mctx.decode_load(instr);
                 self.handle_pmp_fault(mctx, LoadStoreInstr::Load(instr));
             }
