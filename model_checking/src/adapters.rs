@@ -492,7 +492,6 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
         // Manually added
         b_155 if { BitVector::new(0x5A8) == b_155 } => Csr::Scontext,
         b_156 if { BitVector::new(0xf13) == b_156 } => Csr::Mimpid,
-        b_157 if { BitVector::new(0x747) == b_157 } => Csr::Mseccfg,
         // End manually added
         _ => Csr::Unknown,
     }
