@@ -37,12 +37,11 @@ pub const OFFLOAD_POLICY_NAME: &str = "Offload Policy";
 pub struct OffloadPolicy {}
 
 impl PolicyModule for OffloadPolicy {
+    const NUMBER_PMPS: usize = 0;
+    const NAME: &'static str = OFFLOAD_POLICY_NAME;
+
     fn init() -> Self {
         OffloadPolicy {}
-    }
-
-    fn name() -> &'static str {
-        OFFLOAD_POLICY_NAME
     }
 
     fn trap_from_payload(
@@ -138,8 +137,6 @@ impl PolicyModule for OffloadPolicy {
             }
         }
     }
-
-    const NUMBER_PMPS: usize = 0;
 }
 
 impl OffloadPolicy {

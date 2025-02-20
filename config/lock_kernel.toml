@@ -1,5 +1,5 @@
-[policy]
-name = "protect_payload"
+[modules]
+modules = ["protect_payload"]
 
 [target.miralis]
 # Build profile for Miralis (dev profile is set by default)

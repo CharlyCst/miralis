@@ -26,5 +26,5 @@ profile = "release"
 [benchmark]
 benchmark_type = "counter"
 
-[policy]
-name = "protect_payload"
+[modules]
+modules = ["protect_payload"]

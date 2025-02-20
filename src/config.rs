@@ -99,7 +99,5 @@ pub const TARGET_STACK_SIZE: usize =
 ///
 /// See https://github.com/rust-lang/rust/issues/99515
 #[allow(unused)]
-pub const POLICY_NAME: &str = parse_str_or(option_env!("MIRALIS_POLICY_NAME"), "default_policy");
-
-/// Size of the payload to hash
-pub const PAYLOAD_HASH_SIZE: usize = parse_usize_or(option_env!("PAYLOAD_HASH_SIZE"), 0x2000000);
+pub const MODULES: &[&str; str_list_len(option_env!("MIRALIS_MODULES"))] =
+    &parse_str_list(option_env!("MIRALIS_MODULES"));

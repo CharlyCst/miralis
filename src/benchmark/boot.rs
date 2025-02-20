@@ -2,8 +2,8 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::arch::{Arch, Architecture, Csr};
 use crate::benchmark::{get_exception_category, NUMBER_CATEGORIES};
+use crate::config::MODULES;
 use crate::policy::offload::OFFLOAD_POLICY_NAME;
-use crate::policy::{Policy, PolicyModule};
 use crate::virt::{ExecutionMode, VirtContext};
 use crate::BenchmarkModule;
 
@@ -25,7 +25,7 @@ pub struct BootBenchmark {}
 
 impl BenchmarkModule for BootBenchmark {
     fn init() -> Self {
-        if Policy::name() != OFFLOAD_POLICY_NAME {
+        if !MODULES.contains(&OFFLOAD_POLICY_NAME) {
             panic!("This benchmark must be used with the offload policy")
         }
 

@@ -11,5 +11,5 @@ max_pmp = 0
 [platform]
 nb_harts = 1
 
-[policy]
-name = "keystone"
+[modules]
+modules = ["keystone"]

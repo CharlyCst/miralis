@@ -25,5 +25,5 @@ profile = "dev"
 start_address = 0x80200000
 stack_size = 0x8000
 
-[policy]
-name = "keystone"
+[modules]
+modules = ["keystone"]

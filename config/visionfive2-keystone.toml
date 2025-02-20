@@ -26,5 +26,5 @@ profile = "release"
 [benchmark]
 benchmark_type = "counter"
 
-[policy]
-name = "keystone"
+[modules]
+modules = ["keystone"]

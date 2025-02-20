@@ -22,5 +22,5 @@ name = "opensbi-jump"
 [target.payload]
 name = "u-boot"
 
-[policy]
-name = "protect_payload"
+[modules]
+modules = ["protect_payload"]

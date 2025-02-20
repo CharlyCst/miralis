@@ -19,5 +19,5 @@ boot_hart_id = 0
 machine = "virt"
 cpu = "sifive-u54,sstc=false"
 
-[policy]
-name = "offload"
+[modules]
+modules = ["offload"]

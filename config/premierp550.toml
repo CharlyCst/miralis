@@ -25,5 +25,5 @@ start_address = 0x80000000
 [benchmark]
 benchmark_type = "counter_per_mcause"
 
-[policy]
-name = "offload"
+[modules]
+modules = ["offload"]
