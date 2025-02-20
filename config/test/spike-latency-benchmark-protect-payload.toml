@@ -19,5 +19,5 @@ profile = "release"
 # Build profile for the firmware (dev profile is set by default)
 profile = "release"
 
-[policy]
-name = "protect_payload"
+[modules]
+modules = ["protect_payload"]

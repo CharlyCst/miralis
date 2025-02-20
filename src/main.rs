@@ -42,7 +42,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     init();
     log::info!("Hello, world!");
     log::info!("Platform name: {}", Plat::name());
-    log::info!("Policy module: {}", Policy::name());
     log::info!("Benchmark module: {}", Benchmark::name());
     log::info!("Hart ID: {}", hart_id);
     log::debug!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));

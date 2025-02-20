@@ -2,22 +2,190 @@
 //!
 //! This modules holds the definitions of policy modules for Miralis.
 
-use config_select::select_env;
+use module_macro::{build_modules, for_each_module};
 
 use crate::host::MiralisContext;
 use crate::virt::VirtContext;
 
-mod default;
 mod keystone;
 pub mod offload;
 mod protect_payload;
 
-pub type Policy = select_env!["MIRALIS_POLICY_NAME":
+pub type Policy = Modules;
+
+build_modules! {
     "keystone" => keystone::KeystonePolicy
     "protect_payload" => protect_payload::ProtectPayloadPolicy
     "offload" => offload::OffloadPolicy
-    _          => default::DefaultPolicy
-];
+}
+
+impl PolicyModule for Modules {
+    const NAME: &'static str = "Main Module";
+
+    fn init() -> Self {
+        let module = for_each_module!(
+            Self {
+                $($module: PolicyModule::init()),*
+            }
+        );
+        module.log_all_modules();
+        module
+    }
+
+    fn ecall_from_firmware(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                if self.$module.ecall_from_firmware(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    fn ecall_from_payload(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                if self.$module.ecall_from_payload(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    fn trap_from_firmware(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                if self.$module.trap_from_firmware(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    /// Handle a trap from the payload.
+    fn trap_from_payload(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                if self.$module.trap_from_payload(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    fn switch_from_payload_to_firmware(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                self.$module.switch_from_payload_to_firmware(ctx, mctx);
+            )*
+        );
+    }
+
+    fn switch_from_firmware_to_payload(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                self.$module.switch_from_firmware_to_payload(ctx, mctx);
+            )*
+        );
+    }
+
+    fn on_interrupt(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+        // Remove "unused" warning when building with no modules
+        let _ = &mctx;
+        let _ = &ctx;
+
+        for_each_module!(
+            $(
+                self.$module.on_interrupt(ctx, mctx);
+            )*
+        );
+    }
+
+    /// The total number of PMPs is computed as the sum of the number of PMPs for each selected
+    /// module.
+    const NUMBER_PMPS: usize = Modules::TOTAL_PMPS;
+}
+
+impl Modules {
+    /// Display the list of all installed module.
+    fn log_all_modules(&self) {
+        // Count the number of modules
+        #[allow(unused_mut)]
+        let mut nb_modules: usize = 0;
+        for_each_module!(
+            $(
+                nb_modules += 1;
+            )*
+        );
+
+        if nb_modules > 0 {
+            log::info!("Installed {} modules:", nb_modules);
+            for_each_module!(
+                $(
+                    log::info!("  - {}", self.$module.name());
+                )*
+            );
+        } else {
+            log::info!("No module installed")
+        }
+    }
+}
 
 /// The result of a call into a policy hook function
 ///
@@ -51,8 +219,14 @@ impl PolicyHookResult {
 /// The role of a policy module is to enforce a set of policies on the firmware, for instance
 /// restricting which memory is accessible to the firmware, how which `ecall`s are intercepted.
 pub trait PolicyModule {
+    const NUMBER_PMPS: usize = 0;
+    const NAME: &'static str;
+
     fn init() -> Self;
-    fn name() -> &'static str;
+
+    fn name(&self) -> &'static str {
+        Self::NAME
+    }
 
     /// Handle an ecall from the virtualized firmware.
     ///
@@ -130,6 +304,4 @@ pub trait PolicyModule {
         let _ = ctx;
         let _ = mctx;
     }
-
-    const NUMBER_PMPS: usize = 0;
 }

@@ -9,7 +9,7 @@ use tiny_keccak::{Hasher, Sha3};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
-use crate::config::{ALL_HARTS_MASK, PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
+use crate::config::{ALL_HARTS_MASK, TARGET_PAYLOAD_ADDRESS};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
@@ -28,6 +28,11 @@ const TEST_POLICY_PAYLOAD: [u8; 32] = [
     166, 149, 149, 158, 179, 237, 5, 158, 54, 245, 69,
 ];
 
+/// The size of the payload to hash
+///
+/// In the future we might want to inject that value from the configuration file.
+const PAYLOAD_HASH_SIZE: usize = 0x2000000;
+
 static FIRST_JUMP: AtomicBool = AtomicBool::new(true);
 
 /// The protect payload policy module, which allow the payload to protect himself from the firmware at some point in time and enfore a boundary between the two components.
@@ -40,6 +45,9 @@ pub struct ProtectPayloadPolicy {
 }
 
 impl PolicyModule for ProtectPayloadPolicy {
+    const NUMBER_PMPS: usize = 2;
+    const NAME: &'static str = "Protect Payload Policy";
+
     fn init() -> Self {
         ProtectPayloadPolicy {
             need_to_restore_csr: false,
@@ -49,9 +57,6 @@ impl PolicyModule for ProtectPayloadPolicy {
             forward_register_value_to_firmware: [true; 32],
             forward_register_value_to_payload: [true; 32],
         }
-    }
-    fn name() -> &'static str {
-        "Protect Payload Policy"
     }
 
     fn trap_from_firmware(
@@ -172,8 +177,6 @@ impl PolicyModule for ProtectPayloadPolicy {
         mctx.pmp
             .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
     }
-
-    const NUMBER_PMPS: usize = 2;
 }
 
 impl ProtectPayloadPolicy {

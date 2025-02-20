@@ -432,12 +432,10 @@ impl KeystonePolicy {
 
 /// To check how ecalls are handled, see https://github.com/riscv-software-src/opensbi/blob/2ffa0a153d804910c20b82974bfe2dedcf35a777/lib/sbi/sbi_ecall.c#L98
 impl PolicyModule for KeystonePolicy {
+    const NAME: &'static str = "Keystone Policy";
+
     fn init() -> Self {
         Self::default()
-    }
-
-    fn name() -> &'static str {
-        "Keystone Policy"
     }
 
     fn ecall_from_firmware(

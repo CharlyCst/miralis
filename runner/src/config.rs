@@ -34,7 +34,7 @@ pub struct Config {
     #[serde(default)]
     pub target: Targets,
     #[serde(default)]
-    pub policy: Policy,
+    pub modules: Modules,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -129,15 +129,12 @@ pub struct Target {
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
-pub struct Policy {
-    pub name: Option<PolicyModule>,
-    pub payload_size: Option<usize>,
+pub struct Modules {
+    pub modules: Vec<ModuleName>,
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
-pub enum PolicyModule {
-    #[serde(rename = "default")]
-    Default,
+pub enum ModuleName {
     #[serde(rename = "keystone")]
     Keystone,
     #[serde(rename = "protect_payload")]
@@ -146,13 +143,12 @@ pub enum PolicyModule {
     Offload,
 }
 
-impl fmt::Display for PolicyModule {
+impl fmt::Display for ModuleName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            PolicyModule::Default => write!(f, "default"),
-            PolicyModule::Keystone => write!(f, "keystone"),
-            PolicyModule::ProtectPayload => write!(f, "protect_payload"),
-            PolicyModule::Offload => write!(f, "offload"),
+            ModuleName::Keystone => write!(f, "keystone"),
+            ModuleName::ProtectPayload => write!(f, "protect_payload"),
+            ModuleName::Offload => write!(f, "offload"),
         }
     }
 }
@@ -177,7 +173,7 @@ impl Config {
         envs.extend(self.platform.build_envs());
         envs.extend(self.benchmark.build_envs());
         envs.extend(self.target.build_envs());
-        envs.extend(self.policy.buid_envs());
+        envs.extend(self.modules.buid_envs());
         envs
     }
 }
@@ -301,11 +297,18 @@ impl Targets {
     }
 }
 
-impl Policy {
+impl Modules {
     fn buid_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
-        envs.insert("MIRALIS_POLICY_NAME", &self.name);
-        envs.insert("PAYLOAD_HASH_SIZE", &self.payload_size);
+        let modules = self
+            .modules
+            .iter()
+            .map(|m| format!("{}", m))
+            .collect::<Vec<String>>()
+            .join(",");
+        if !modules.is_empty() {
+            envs.insert("MIRALIS_MODULES", &Some(modules));
+        }
         envs.envs
     }
 }
