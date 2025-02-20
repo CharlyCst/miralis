@@ -3,6 +3,7 @@
 //! This modules holds the definitions of policy modules for Miralis.
 
 use config_select::select_env;
+use module_macro::{build_modules, for_each_module};
 
 use crate::host::MiralisContext;
 use crate::virt::VirtContext;
@@ -18,6 +19,132 @@ pub type Policy = select_env!["MIRALIS_POLICY_NAME":
     "offload" => offload::OffloadPolicy
     _          => default::DefaultPolicy
 ];
+
+build_modules!["MIRALIS_POLICY_NAME":
+    "keystone" => keystone::KeystonePolicy
+    _          => default::DefaultPolicy
+];
+
+impl PolicyModule for Modules {
+    fn init() -> Self {
+        // return Self {
+        //     keystone: PolicyModule::init(),
+        //     offload: PolicyModule::init(),
+        // };
+        for_each_module!(
+            return Self {
+                $($module: PolicyModule::init()),*
+            };
+        );
+    }
+
+    fn name() -> &'static str {
+        "main module"
+    }
+
+    fn ecall_from_firmware(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        for_each_module!(
+            $(
+                if self.$module.ecall_from_firmware(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    fn ecall_from_payload(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        for_each_module!(
+            $(
+                if self.$module.ecall_from_payload(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    fn trap_from_firmware(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        for_each_module!(
+            $(
+                if self.$module.trap_from_firmware(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    /// Handle a trap from the payload.
+    fn trap_from_payload(
+        &mut self,
+        mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> PolicyHookResult {
+        for_each_module!(
+            $(
+                if self.$module.trap_from_payload(mctx, ctx).overwrites() {
+                    return PolicyHookResult::Overwrite
+                }
+            )*
+        );
+
+        PolicyHookResult::Ignore
+    }
+
+    fn switch_from_payload_to_firmware(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
+        for_each_module!(
+            $(
+                self.$module.switch_from_payload_to_firmware(ctx, mctx);
+            )*
+        );
+    }
+
+    fn switch_from_firmware_to_payload(
+        &mut self,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
+    ) {
+        for_each_module!(
+            $(
+                self.$module.switch_from_firmware_to_payload(ctx, mctx);
+            )*
+        );
+    }
+
+    fn on_interrupt(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) {
+        for_each_module!(
+            $(
+                self.$module.on_interrupt(ctx, mctx);
+            )*
+        );
+    }
+
+    // const NUMBER_PMPS: usize = 
+    //     for_each_module!(
+    //         $(<Self.$module as PolicyModule>::NUBMER_PMPS)+*
+    //         0 // Add a trailing zero for base case with no modules 
+    //     ); 
+}
 
 /// The result of a call into a policy hook function
 ///

@@ -43,7 +43,7 @@ members = [
     # Testing and verification
     "model_checking",
     "model_checking/sail_prelude",
-    "model_checking/sail_model",
+    "model_checking/sail_model", "crates/module_macro",
 ]
 
 # Setting the runner as the default member makes it easier to invoke (no need

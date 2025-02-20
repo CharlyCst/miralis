@@ -272,6 +272,7 @@ dependencies = [
  "log",
  "miralis_abi",
  "miralis_core",
+ "module_macro",
  "spin",
  "tiny-keccak",
  "uart_16550",
@@ -305,6 +306,15 @@ dependencies = [
  "sail_decoder",
  "sail_model",
  "sail_prelude",
+]
+
+[[package]]
+name = "module_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
