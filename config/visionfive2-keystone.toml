@@ -1,4 +1,4 @@
-# A simple configuration to run on StarFive VisionFive 2 platform in release mode with the protect payload policy
+# A simple configuration to run on StarFive VisionFive 2 platform
 
 [log]
 level = "info"
@@ -27,4 +27,4 @@ profile = "release"
 benchmark_type = "counter"
 
 [policy]
-name = "protect_payload"
+name = "keystone"
