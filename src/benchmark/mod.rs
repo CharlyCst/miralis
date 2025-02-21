@@ -9,7 +9,6 @@ mod empty;
 
 use config_select::select_env;
 
-use crate::benchmark::default::IntervalCounter;
 use crate::virt::VirtContext;
 
 pub type Benchmark = select_env!["MIRALIS_BENCHMARK_TYPE":
@@ -27,14 +26,6 @@ pub trait BenchmarkModule {
     fn stop_interval_counters(_scope: Scope) {}
     fn increment_counter(_ctx: &mut VirtContext, _counter: Counter) {}
 
-    fn update_inteval_counter_stats(
-        &mut self,
-        _counter: &IntervalCounter,
-        _scope: &Scope,
-        _value: usize,
-    ) {
-    }
-
     /// Print formated string with value of the counters
     fn display_counters() {}
 
@@ -42,10 +33,6 @@ pub trait BenchmarkModule {
     ///
     /// Note: the specific ABI is depends on the benchmark back-end.
     fn read_counters(_ctx: &mut VirtContext) {}
-
-    fn get_counter_value(_core_id: usize, _counter: Counter) -> usize {
-        0
-    }
 }
 
 pub enum Scope {

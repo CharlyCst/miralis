@@ -154,21 +154,6 @@ impl BenchmarkModule for DefaultBenchmark {
         }
     }
 
-    fn update_inteval_counter_stats(
-        &mut self,
-        counter: &IntervalCounter,
-        scope: &Scope,
-        value: usize,
-    ) {
-        let index = Self::interval_counter_index(counter, scope);
-        let stats = &mut self.interval_counters[index];
-        stats.count += 1;
-        stats.sum += value;
-        stats.mean = stats.sum / stats.count;
-        stats.min = core::cmp::min(value, stats.min);
-        stats.max = core::cmp::max(value, stats.max);
-    }
-
     /// Increment counter's value.
     fn increment_counter(_ctx: &mut VirtContext, counter: Counter) {
         let index = counter as usize;
@@ -266,10 +251,6 @@ impl BenchmarkModule for DefaultBenchmark {
             }
         }
     }
-
-    fn get_counter_value(_core_id: usize, _counter: Counter) -> usize {
-        todo!("implement the logic");
-    }
 }
 
 impl DefaultBenchmark {
@@ -315,5 +296,20 @@ impl DefaultBenchmark {
     fn read_interval_counters(&self, counter: &IntervalCounter, scope: &Scope) -> usize {
         let index = Self::interval_counter_index(counter, scope);
         self.interval_counters[index].previous
+    }
+
+    fn update_inteval_counter_stats(
+        &mut self,
+        counter: &IntervalCounter,
+        scope: &Scope,
+        value: usize,
+    ) {
+        let index = Self::interval_counter_index(counter, scope);
+        let stats = &mut self.interval_counters[index];
+        stats.count += 1;
+        stats.sum += value;
+        stats.mean = stats.sum / stats.count;
+        stats.min = core::cmp::min(value, stats.min);
+        stats.max = core::cmp::max(value, stats.max);
     }
 }
