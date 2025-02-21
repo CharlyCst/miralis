@@ -9,7 +9,7 @@ use tiny_keccak::{Hasher, Sha3};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::POLICY_OFFSET;
 use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
-use crate::config::{PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
+use crate::config::{ALL_HARTS_MASK, PAYLOAD_HASH_SIZE, TARGET_PAYLOAD_ADDRESS};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
@@ -148,7 +148,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         {
             // Lock memory from all cores
             // TODO: add a proper barrier to ensure synchronization
-            Plat::broadcast_policy_interrupt();
+            Plat::broadcast_policy_interrupt(ALL_HARTS_MASK);
 
             let hashed_value = hash_payload(PAYLOAD_HASH_SIZE, ctx.pc);
 

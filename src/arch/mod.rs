@@ -74,6 +74,7 @@ pub trait Architecture {
     unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
     unsafe fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);
+    unsafe fn ifence();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
 
     /// Wait for interrupt

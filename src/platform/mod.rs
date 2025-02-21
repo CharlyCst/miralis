@@ -40,12 +40,12 @@ pub trait Platform {
     /// Signal a pending policy interrupt on all cores and trigger an MSI.
     ///
     /// As a result the policy interrupt callback will be called into on each cores.
-    fn broadcast_policy_interrupt() {
+    fn broadcast_policy_interrupt(mask: usize) {
         // Mark values in virtual clint
-        Self::get_vclint().set_all_policy_msi();
+        Self::get_vclint().set_all_policy_msi(mask);
 
         // Fire physical clint
-        Self::get_clint().lock().trigger_msi_on_all_harts();
+        Self::get_clint().lock().trigger_msi_on_all_harts(mask);
     }
 
     /// Load the firmware (virtual M-mode software) and return its address.

@@ -47,6 +47,8 @@ pub mod sbi_codes {
     // SBI return codes used in Miralis
     pub const SBI_ERR_DENIED: usize = (-4_i64) as usize;
 
+    pub const SBI_SUCCESS: usize = 0x0;
+
     // SBI EIDs and FIDs
     /// The debug console extension defines a generic mechanism for boot-time early prints.
     pub const SBI_DEBUG_CONSOLE_EXTENSION_EID: usize = 0x4442434E;
@@ -56,5 +58,24 @@ pub mod sbi_codes {
 
     /// Programs the clock for next event after stime_value time. stime_value is in absolute time. This function must clear the pending timer interrupt bit as well.
     /// If the supervisor wishes to clear the timer interrupt without scheduling the next timer event, it can either request a timer interrupt infinitely far into the future (i.e., (uint64_t)-1), or it can instead mask the timer interrupt by clearing sie.STIE CSR bit.
-    pub const SBI_TIMER_FID: usize = 0;
+    pub const SBI_TIMER_FID: usize = 0x0;
+
+    /// This extension replaces the legacy extension (EID #0x04). The other IPI related legacy extension(0x3)
+    /// is deprecated now. All the functions in this extension follow the hart_mask as defined in the binary
+    /// encoding section.
+    pub const IPI_EXTENSION_EID: usize = 0x735049;
+    /// Send an inter-processor interrupt to all the harts defined in hart_mask. Interprocessor interrupts
+    // manifest at the receiving harts as the supervisor software interrupts.
+    pub const SEND_IPI_FID: usize = 0x0;
+
+    /// This extension defines all remote fence related functions and replaces the legacy extensions (EIDs
+    /// #0x05 - #0x07). All the functions follow the hart_mask as defined in binary encoding section. Any
+    /// function wishes to use range of addresses (i.e. start_addr and size), have to abide by the below
+    /// constraints on range parameters.
+    pub const RFENCE_EXTENSION_EID: usize = 0x52464E43;
+    /// Instructs remote harts to execute FENCE.I instruction.
+    pub const REMOTE_FENCE_I_FID: usize = 0x0;
+    /// Instructs the remote harts to execute one or more SFENCE.VMA instructions, covering the range of
+    /// virtual addresses between start and size.
+    pub const REMOTE_FENCE_VMA_FID: usize = 0x01;
 }
