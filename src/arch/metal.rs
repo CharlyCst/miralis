@@ -662,6 +662,10 @@ impl Architecture for MetalArch {
         }
     }
 
+    unsafe fn ifence() {
+        asm!("fence.i");
+    }
+
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
         let mut prev_value: usize = 0;
         macro_rules! asm_clear_csr_bits {

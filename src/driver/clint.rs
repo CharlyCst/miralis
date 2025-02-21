@@ -6,7 +6,7 @@
 
 use core::ptr;
 
-use crate::arch::{Arch, Architecture, Csr, Width};
+use crate::arch::Width;
 use crate::config::{self, PLATFORM_NB_HARTS};
 use crate::logger;
 
@@ -145,20 +145,10 @@ impl ClintDriver {
         Ok(())
     }
 
-    /// Create a pending MSI interrupts for each harts of the platform, including the current one.
-    pub fn trigger_msi_on_all_harts(&mut self) {
+    /// Create a pending MSI interrupts for each harts of the platform given in the mask (bit 0 = hart 0, bit 1 = hart 1,...)
+    pub fn trigger_msi_on_all_harts(&mut self, mask: usize) {
         for i in 0..PLATFORM_NB_HARTS {
-            self.write_msip(i, 1).unwrap();
-        }
-    }
-
-    /// Create a pending MSI interrupts for each harts of the platform, except the current one.
-    #[allow(dead_code)]
-    pub fn trigger_msi_on_all_other_harts(&mut self) {
-        let current_hart: usize = Arch::read_csr(Csr::Marchid);
-
-        for i in 0..PLATFORM_NB_HARTS {
-            if i != current_hart {
+            if mask & (1 << i) != 0 {
                 self.write_msip(i, 1).unwrap();
             }
         }
