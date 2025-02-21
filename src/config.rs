@@ -58,6 +58,9 @@ pub const PLATFORM_NB_HARTS: usize = {
     }
 };
 
+/// A mask containing all harts
+pub const ALL_HARTS_MASK: usize = (1 << PLATFORM_NB_HARTS) - 1;
+
 /// Delegate performance counters
 pub const DELEGATE_PERF_COUNTER: bool = is_enabled_default_false!("MIRALIS_DELEGATE_PERF_COUNTER");
 

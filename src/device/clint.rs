@@ -332,9 +332,11 @@ impl VirtClint {
     }
 
     /// Mark the policy MSI as pending for each hart.
-    pub fn set_all_policy_msi(&self) {
+    pub fn set_all_policy_msi(&self, mask: usize) {
         for hart_idx in 0..PLATFORM_NB_HARTS {
-            self.policy_msi[hart_idx].store(true, Ordering::SeqCst);
+            if mask & (1 << hart_idx) != 0 {
+                self.policy_msi[hart_idx].store(true, Ordering::SeqCst);
+            }
         }
     }
 

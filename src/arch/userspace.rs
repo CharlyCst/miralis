@@ -72,6 +72,10 @@ impl Architecture for HostArch {
         logger::debug!("Userspace hfencevvma")
     }
 
+    unsafe fn ifence() {
+        logger::debug!("Userspace ifence");
+    }
+
     unsafe fn detect_hardware() -> HardwareCapability {
         HardwareCapability {
             interrupts: mie::ALL_INT,
