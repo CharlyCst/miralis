@@ -214,15 +214,16 @@ pub fn get_qemu_cmd(
 /// Return the command to run Miralis on Spike.
 pub fn get_spike_cmd(cfg: &Config, miralis: PathBuf, firmware: PathBuf) -> Result<Command, ()> {
     let mut spike_cmd = Command::new(SPIKE);
+
+    if let Some(nb_harts) = cfg.platform.nb_harts {
+        assert!(nb_harts > 0, "Must use at least one core");
+        spike_cmd.arg(format!("-p{}", nb_harts));
+    }
+
     spike_cmd.arg("--kernel");
 
     spike_cmd.arg(firmware.to_str().unwrap());
     spike_cmd.arg(raw_to_elf(miralis.to_str().unwrap()));
-
-    if let Some(nb_harts) = cfg.platform.nb_harts {
-        assert!(nb_harts > 0, "Must use at least one core");
-        spike_cmd.arg("-p").arg(format!("{}", nb_harts));
-    }
 
     Ok(spike_cmd)
 }
