@@ -1,9 +1,8 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::arch::{Arch, Architecture, Csr, Register};
-use crate::benchmark::default::IntervalCounter;
 use crate::benchmark::Counter::{FirmwareExits, WorldSwitches};
-use crate::benchmark::{BenchmarkModule, Counter, Scope};
+use crate::benchmark::{BenchmarkModule, Counter};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::virt::traits::*;
 use crate::virt::VirtContext;
@@ -58,14 +57,6 @@ impl BenchmarkModule for CounterBenchmark {
         }
     }
 
-    fn update_inteval_counter_stats(
-        &mut self,
-        _counter: &IntervalCounter,
-        _scope: &Scope,
-        _value: usize,
-    ) {
-    }
-
     fn read_counters(ctx: &mut VirtContext) {
         let mut nb_firmware_exits: usize = 0;
         let mut nb_world_switch: usize = 0;
@@ -100,14 +91,6 @@ impl BenchmarkModule for CounterBenchmark {
             get_nb_firmware_exits(current),
             get_nb_world_switch(current)
         )
-    }
-
-    fn get_counter_value(hart_id: usize, counter: Counter) -> usize {
-        match counter {
-            Counter::TotalExits => 0,
-            FirmwareExits => get_nb_firmware_exits(hart_id) as usize,
-            WorldSwitches => get_nb_world_switch(hart_id) as usize,
-        }
     }
 }
 

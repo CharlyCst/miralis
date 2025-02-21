@@ -4,9 +4,8 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::arch::{Arch, Architecture, Csr, MCause};
-use crate::benchmark::default::IntervalCounter;
 use crate::benchmark::Counter::{FirmwareExits, WorldSwitches};
-use crate::benchmark::{BenchmarkModule, Counter, Scope};
+use crate::benchmark::{BenchmarkModule, Counter};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::virt::VirtContext;
 
@@ -89,10 +88,6 @@ impl BenchmarkModule for CounterPerMcauseBenchmark {
         "Counter per code benchmark"
     }
 
-    fn start_interval_counters(_scope: Scope) {}
-
-    fn stop_interval_counters(_scope: Scope) {}
-
     fn increment_counter(ctx: &mut VirtContext, counter: Counter) {
         let hart_id: usize = hard_id();
         let mcause_offset: usize = raw_cause_to_entry(ctx.trap_info.mcause);
@@ -106,14 +101,6 @@ impl BenchmarkModule for CounterPerMcauseBenchmark {
             }
             _ => {}
         }
-    }
-
-    fn update_inteval_counter_stats(
-        &mut self,
-        _counter: &IntervalCounter,
-        _scope: &Scope,
-        _value: usize,
-    ) {
     }
 
     fn read_counters(_ctx: &mut VirtContext) {
@@ -151,10 +138,6 @@ impl BenchmarkModule for CounterPerMcauseBenchmark {
         log_mcause!(MCause::UserExternalInt);
         log_mcause!(MCause::SupervisorExternalInt);
         log_mcause!(MCause::MachineExternalInt);
-    }
-
-    fn get_counter_value(_hart_id: usize, _counter: Counter) -> usize {
-        todo!("Implement the get_counter_value logic in counter_per_mcause")
     }
 }
 
