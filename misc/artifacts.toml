@@ -12,17 +12,17 @@ repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.linux]
 description = "An OpenSBI image with a Linux kernel payload that exits after boot."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-exit.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.6/opensbi-linux-kernel-exit.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.linux-shell]
 description = "An OpenSBI image with a Linux kernel payload that spawn a shell after boot."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-shell.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.6/opensbi-linux-kernel-shell.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.linux-benchmark]
 description = "An OpenSBI image with a Linux kernel payload that charge a driver to ecall benchmark printing in Miralis."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-driver.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.6/opensbi-linux-kernel-driver.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.zephyr]
@@ -52,7 +52,7 @@ repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.linux-lock]
 description = "An OpenSBI image with a Linux kernel payload that locks itself in the protect payload policy"
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.5/opensbi-linux-kernel-lock.bin"
+url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.6/opensbi-linux-kernel-lock.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
 [bin.keystone]
