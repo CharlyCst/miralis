@@ -1,0 +1,25 @@
+# A simple configuration to run on QEMU virt platform
+
+[log]
+level = "info"
+color = true
+
+[debug]
+# max_firmware_exits = 2000
+
+[vcpu]
+max_pmp = 8
+
+[platform]
+nb_harts = 4
+boot_hart_id = 0
+
+[qemu]
+machine = "virt"
+cpu = "sifive-u54,sstc=false"
+
+[benchmark]
+benchmark_type = "boot"
+
+[policy]
+name = "offload"
