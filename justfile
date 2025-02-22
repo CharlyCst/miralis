@@ -3,11 +3,6 @@ config           := "config.toml"
 benchmark        := "ecall_benchmark"
 spike            := "./config/spike.toml"
 qemu_virt        := "./config/test/qemu-virt.toml"
-spike_virt_benchmark := "./config/test/spike-virt-benchmark.toml"
-spike_latency_benchmark := "./config/test/spike-latency-benchmark.toml"
-benchmark_folder := "./benchmark-out"
-default_iterations := "1"
-
 
 # Print the list of commands
 help:
@@ -31,18 +26,12 @@ test:
 	# Run linter...
 	cargo clippy --features userspace -p miralis
 	cargo clippy -p runner
-	cargo clippy -p benchmark_analyzer
 
 	# Run integration tests...
 	cargo run -- test --strict
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
-
-spike-benchmarks:
-    cargo run -- run --config {{spike_latency_benchmark}} --firmware tracing_firmware
-    cargo run -- run --config {{spike_virt_benchmark}} --firmware csr_write
-    cargo run -- run --config {{spike_virt_benchmark}} --firmware ecall_benchmark
 
 # Run unit tests
 unit-test:
@@ -80,9 +69,6 @@ install-toolchain:
 	cargo install cargo-binutils
 	cargo install --locked kani-verifier
 	cargo kani setup
-
-analyze-benchmark input_path:
-	cargo run --package benchmark_analyzer -- {{input_path}}
 
 # The following line gives highlighting on vim
 # vim: set ft=make :

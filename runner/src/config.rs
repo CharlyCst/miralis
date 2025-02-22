@@ -107,11 +107,6 @@ impl fmt::Display for Platforms {
 pub struct Benchmark {
     pub benchmark_type: Option<String>,
     pub csv_format: Option<bool>,
-    pub time: Option<bool>,
-    pub instruction: Option<bool>,
-    pub nb_exits: Option<bool>,
-    pub nb_firmware_exits: Option<bool>,
-    pub world_switches: Option<bool>,
     pub nb_iter: Option<usize>,
 }
 
@@ -277,14 +272,6 @@ impl Benchmark {
         let mut envs = EnvVars::new();
         envs.insert("MIRALIS_BENCHMARK_TYPE", &self.benchmark_type);
         envs.insert("MIRALIS_BENCHMARK_CSV_FORMAT", &self.csv_format);
-        envs.insert("MIRALIS_BENCHMARK_TIME", &self.time);
-        envs.insert("MIRALIS_BENCHMARK_INSTRUCTION", &self.instruction);
-        envs.insert("MIRALIS_BENCHMARK_NB_EXISTS", &self.nb_exits);
-        envs.insert(
-            "MIRALIS_BENCHMARK_NB_FIRMWARE_EXITS",
-            &self.nb_firmware_exits,
-        );
-        envs.insert("MIRALIS_BENCHMARK_WORLD_SWITCHES", &self.world_switches);
         envs.insert("MIRALIS_BENCHMARK_NB_ITER", &self.nb_iter);
         envs.envs
     }

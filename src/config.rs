@@ -75,21 +75,6 @@ pub const BENCHMARK_TYPE: &str = parse_str_or(option_env!("MIRALIS_BENCHMARK_TYP
 /// Whether print in csv format or not
 pub const BENCHMARK_CSV_FORMAT: bool = is_enabled!("MIRALIS_BENCHMARK_CSV_FORMAT");
 
-/// Whether execution time benchmarking is enabled
-pub const BENCHMARK_TIME: bool = is_enabled!("MIRALIS_BENCHMARK_TIME");
-
-/// Whether instruction count benchmarking is enabled
-pub const BENCHMARK_INSTRUCTION: bool = is_enabled!("MIRALIS_BENCHMARK_INSTRUCTION");
-
-/// Whether count or not total number of exits
-pub const BENCHMARK_NB_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_EXISTS");
-
-/// Whether count or not number of firmware exits
-pub const BENCHMARK_NB_FIRMWARE_EXITS: bool = is_enabled!("MIRALIS_BENCHMARK_NB_FIRMWARE_EXITS");
-
-/// Whether count or not number of world switches
-pub const BENCHMARK_WORLD_SWITCHES: bool = is_enabled!("MIRALIS_BENCHMARK_WORLD_SWITCHES");
-
 /// Start address of Miralis
 pub const TARGET_START_ADDRESS: usize =
     parse_usize_or(option_env!("MIRALIS_TARGET_START_ADDRESS"), 0x80000000);

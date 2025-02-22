@@ -52,10 +52,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "benchmark_analyzer"
-version = "0.1.0"
-
-[[package]]
 name = "bit_field"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -174,13 +170,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "csr_write"
-version = "0.1.0"
-dependencies = [
- "miralis_abi",
-]
-
-[[package]]
 name = "default"
 version = "0.1.0"
 dependencies = [
@@ -198,13 +187,6 @@ dependencies = [
 
 [[package]]
 name = "ecall"
-version = "0.1.0"
-dependencies = [
- "miralis_abi",
-]
-
-[[package]]
-name = "ecall_benchmark"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -384,7 +366,6 @@ dependencies = [
 name = "runner"
 version = "0.1.0"
 dependencies = [
- "benchmark_analyzer",
  "clap",
  "config_helpers",
  "indexmap",

@@ -58,7 +58,7 @@ global_asm!(
 .align 4
 .global _raw_os
 _raw_os:
-    li a6, 3           // Miralis ABI FID: benchmark
+    li a6, 1           // Miralis ABI FID: Exit with success
     li a7, 0x08475bcd  // Miralis ABI EID
     ecall
 "#,
