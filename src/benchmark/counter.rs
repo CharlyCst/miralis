@@ -37,9 +37,6 @@ const ZEROED_COUNTER: PaddedCounter = PaddedCounter {
 
 static COUNTERS: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_NB_HARTS];
 
-const SINGLE_CORE_BENCHMARK: usize = 0;
-const ALL_CORES_BENCHMARK: usize = 1;
-
 /// A simple and efficient benchmark module based on atomic counters.
 ///
 /// This benchmark module explicitly avoid computing any advanced statistics (e.g. standard
@@ -101,39 +98,26 @@ impl BenchmarkModule for CounterBenchmark {
     }
 
     fn read_counters(ctx: &mut VirtContext) {
-        let mut nb_firmware_exits: usize = 0;
-        let mut nb_world_switch: usize = 0;
-
-        match ctx.get(Register::X10) {
-            SINGLE_CORE_BENCHMARK => {
-                nb_firmware_exits = get_nb_firmware_exits(ctx.hart_id) as usize;
-                nb_world_switch = get_nb_world_switch(ctx.hart_id) as usize;
+        let measure = match ExceptionCategory::try_from(ctx.get(Register::X10)).unwrap() {
+            ExceptionCategory::NotOffloaded => {
+                COUNTERS[ctx.hart_id].world_switches.load(Ordering::SeqCst)
             }
-            ALL_CORES_BENCHMARK => {
-                for current_hart in 0..PLATFORM_NB_HARTS {
-                    nb_firmware_exits += get_nb_firmware_exits(current_hart) as usize;
-                    nb_world_switch += get_nb_world_switch(current_hart) as usize;
-                }
+            ExceptionCategory::ReadTime => COUNTERS[ctx.hart_id].timer_read.load(Ordering::SeqCst),
+            ExceptionCategory::SetTimer => {
+                COUNTERS[ctx.hart_id].timer_request.load(Ordering::SeqCst)
             }
-            _ => log::error!(
-                "Invalid argument for register a0 [0 ==> Core 0 | 1 ==> All cores] {}",
-                ctx.get(Register::X10)
-            ),
-        }
+            ExceptionCategory::MisalignedOp => {
+                COUNTERS[ctx.hart_id].misaligned_op.load(Ordering::SeqCst)
+            }
+            ExceptionCategory::IPI => COUNTERS[ctx.hart_id].ipi_request.load(Ordering::SeqCst),
+            ExceptionCategory::RemoteFence => COUNTERS[ctx.hart_id]
+                .remote_fence_request
+                .load(Ordering::SeqCst),
+            ExceptionCategory::FirmwareTrap => {
+                COUNTERS[ctx.hart_id].firmware_traps.load(Ordering::SeqCst)
+            }
+        };
 
-        ctx.set(Register::X10, nb_firmware_exits);
-        ctx.set(Register::X11, nb_world_switch);
+        ctx.set(Register::X10, measure as usize);
     }
-}
-
-// ———————————————————————————————— Helpers ————————————————————————————————— //
-
-/// Return the number of firmware exits on the given hart
-fn get_nb_firmware_exits(hart: usize) -> u64 {
-    COUNTERS[hart].firmware_traps.load(Ordering::Relaxed)
-}
-
-/// Return the number of world switches on the given hart
-fn get_nb_world_switch(hart: usize) -> u64 {
-    COUNTERS[hart].world_switches.load(Ordering::Relaxed)
 }

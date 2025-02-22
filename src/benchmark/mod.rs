@@ -13,6 +13,9 @@ use miralis_core::sbi_codes::{
 };
 
 use crate::arch::{MCause, Register};
+use crate::benchmark::ExceptionCategory::{
+    FirmwareTrap, MisalignedOp, NotOffloaded, ReadTime, RemoteFence, SetTimer, IPI,
+};
 use crate::virt::traits::RegisterContextGetter;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -49,6 +52,23 @@ pub enum ExceptionCategory {
     IPI = 4,
     RemoteFence = 5,
     FirmwareTrap = 6,
+}
+
+impl TryFrom<usize> for ExceptionCategory {
+    type Error = ();
+
+    fn try_from(exception_category: usize) -> Result<Self, Self::Error> {
+        match exception_category {
+            0 => Ok(NotOffloaded),
+            1 => Ok(ReadTime),
+            2 => Ok(SetTimer),
+            3 => Ok(MisalignedOp),
+            4 => Ok(IPI),
+            5 => Ok(RemoteFence),
+            6 => Ok(FirmwareTrap),
+            _ => Err(()),
+        }
+    }
 }
 
 pub fn get_exception_category(
