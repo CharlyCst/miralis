@@ -228,19 +228,6 @@ fn locate_bin_artifact(name: &str) -> Option<BinArtifact> {
         return artifact;
     }
 
-    // Get the path to the firmware/benchmark directory
-    firmware_path.push("benchmark");
-    assert!(
-        firmware_path.is_dir(),
-        "Could not find 'firmware/benchmark' directory"
-    );
-
-    // Look for artifact inside benchmark folder
-    let artifact = find_artifact(&firmware_path, name);
-    if artifact.is_some() {
-        return artifact;
-    }
-
     // Get the path to the payload directory
     let mut payload_path = get_workspace_path();
     payload_path.push("payload");

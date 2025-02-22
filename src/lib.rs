@@ -31,7 +31,7 @@ use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
 
 use crate::arch::write_pmp;
-use crate::benchmark::{Benchmark, BenchmarkModule, Scope};
+use crate::benchmark::{Benchmark, BenchmarkModule};
 
 /// The virtuam firmware monitor main loop.
 ///
@@ -43,21 +43,10 @@ use crate::benchmark::{Benchmark, BenchmarkModule, Scope};
 /// This function will start by passing control to the firmware. The hardware must have
 /// been initialized properly (including calling `miralis::init` and loading the firmware.
 pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
-    loop {
-        Benchmark::start_interval_counters(Scope::RunVCPU);
+    Arch::run_vcpu(ctx);
 
-        unsafe { Arch::run_vcpu(ctx) };
-
-        Benchmark::stop_interval_counters(Scope::RunVCPU);
-        Benchmark::start_interval_counters(Scope::HandleTrap);
-
-        if handle_trap(ctx, mctx, policy) == ExitResult::Done {
-            return;
-        }
-
-        Benchmark::stop_interval_counters(Scope::HandleTrap);
-        // TODO: What to do with this?
-        // Benchmark::increment_counter(ctx, Counter::TotalExits);
+    while handle_trap(ctx, mctx, policy) != ExitResult::Done {
+        Arch::run_vcpu(ctx);
     }
 }
 

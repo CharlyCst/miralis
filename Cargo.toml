@@ -20,12 +20,9 @@ members = [
     "firmware/sandbox",
     "firmware/test_protect_payload_firmware",
     "firmware/interrupt",
-    "firmware/os_ecall",
     "firmware/device",
     "firmware/tracing_firmware",
     "firmware/vectored_mtvec",
-    "firmware/benchmark/ecall_benchmark",
-    "firmware/benchmark/csr_write",
 
     # Payload
     "payload/hello_world",

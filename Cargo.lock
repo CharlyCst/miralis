@@ -174,13 +174,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "csr_write"
-version = "0.1.0"
-dependencies = [
- "miralis_abi",
-]
-
-[[package]]
 name = "default"
 version = "0.1.0"
 dependencies = [
@@ -198,13 +191,6 @@ dependencies = [
 
 [[package]]
 name = "ecall"
-version = "0.1.0"
-dependencies = [
- "miralis_abi",
-]
-
-[[package]]
-name = "ecall_benchmark"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -334,13 +320,6 @@ dependencies = [
 
 [[package]]
 name = "os_ctx_switch"
-version = "0.1.0"
-dependencies = [
- "miralis_abi",
-]
-
-[[package]]
-name = "os_ecall"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",

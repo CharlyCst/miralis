@@ -88,11 +88,6 @@ firmware = "interrupt"
 config = "qemu-virt"
 description = "Ensure that the firmware can receive"
 
-[test.os-ecall]
-firmware = "os_ecall"
-config = "qemu-virt"
-description = "Test ecall from OS payload to the virtualized firmware"
-
 [test.vectored-mtvec]
 firmware = "vectored_mtvec"
 config = "qemu-virt"

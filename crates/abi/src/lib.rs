@@ -42,16 +42,6 @@ pub fn failure() -> ! {
     }
 }
 
-/// Ask Miralis to end benchmark and print results.
-pub fn miralis_end_benchmark() -> ! {
-    unsafe { miralis_ecall(abi::MIRALIS_BENCHMARK_FID).ok() };
-
-    // Loop forever, this should never happen as Miralis will terminate the execution before.
-    loop {
-        hint::spin_loop();
-    }
-}
-
 /// Ask Miralis to log a string with the provided log level.
 pub fn miralis_log(level: Level, message: &str) {
     // Prepare ecall arguments
@@ -231,8 +221,3 @@ pub unsafe fn ecall3(
 unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
     ecall3(abi::MIRALIS_EID, fid, 0, 0, 0)
 }
-
-// ——————————————————————————————— Constants ———————————————————————————————— //
-
-/// Number of iterations to be used by benchmark firmware.
-pub const BENCHMARK_NB_ITER: usize = parse_usize_or(option_env!("MIRALIS_BENCHMARK_NB_ITER"), 1);
