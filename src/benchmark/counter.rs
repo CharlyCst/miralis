@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use crate::arch::{Arch, Architecture, Csr, Register};
+use crate::arch::Register;
 use crate::benchmark::{get_exception_category, BenchmarkModule, ExceptionCategory};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::virt::traits::*;
@@ -62,37 +62,37 @@ impl BenchmarkModule for CounterBenchmark {
     ) {
         match get_exception_category(ctx, from_exec_mode, to_exec_mode) {
             Some(ExceptionCategory::FirmwareTrap) => {
-                COUNTERS[hart_id()]
+                COUNTERS[ctx.hart_id]
                     .firmware_traps
                     .fetch_add(1, Ordering::Relaxed);
             }
             Some(ExceptionCategory::ReadTime) => {
-                COUNTERS[hart_id()]
+                COUNTERS[ctx.hart_id]
                     .timer_read
                     .fetch_add(1, Ordering::Relaxed);
             }
             Some(ExceptionCategory::SetTimer) => {
-                COUNTERS[hart_id()]
+                COUNTERS[ctx.hart_id]
                     .timer_request
                     .fetch_add(1, Ordering::Relaxed);
             }
             Some(ExceptionCategory::MisalignedOp) => {
-                COUNTERS[hart_id()]
+                COUNTERS[ctx.hart_id]
                     .misaligned_op
                     .fetch_add(1, Ordering::Relaxed);
             }
             Some(ExceptionCategory::IPI) => {
-                COUNTERS[hart_id()]
+                COUNTERS[ctx.hart_id]
                     .ipi_request
                     .fetch_add(1, Ordering::Relaxed);
             }
             Some(ExceptionCategory::RemoteFence) => {
-                COUNTERS[hart_id()]
-                    .timer_request
+                COUNTERS[ctx.hart_id]
+                    .remote_fence_request
                     .fetch_add(1, Ordering::Relaxed);
             }
             Some(ExceptionCategory::NotOffloaded) => {
-                COUNTERS[hart_id()]
+                COUNTERS[ctx.hart_id]
                     .world_switches
                     .fetch_add(1, Ordering::Relaxed);
             }
@@ -106,9 +106,8 @@ impl BenchmarkModule for CounterBenchmark {
 
         match ctx.get(Register::X10) {
             SINGLE_CORE_BENCHMARK => {
-                let hart = hart_id();
-                nb_firmware_exits = get_nb_firmware_exits(hart) as usize;
-                nb_world_switch = get_nb_world_switch(hart) as usize;
+                nb_firmware_exits = get_nb_firmware_exits(ctx.hart_id) as usize;
+                nb_world_switch = get_nb_world_switch(ctx.hart_id) as usize;
             }
             ALL_CORES_BENCHMARK => {
                 for current_hart in 0..PLATFORM_NB_HARTS {
@@ -125,24 +124,9 @@ impl BenchmarkModule for CounterBenchmark {
         ctx.set(Register::X10, nb_firmware_exits);
         ctx.set(Register::X11, nb_world_switch);
     }
-
-    fn display_counters() {
-        let current = hart_id();
-        log::info!(
-            "Core {}: {} firmware exits, {} world switches",
-            current,
-            get_nb_firmware_exits(current),
-            get_nb_world_switch(current)
-        )
-    }
 }
 
 // ———————————————————————————————— Helpers ————————————————————————————————— //
-
-/// Return the current hart id
-fn hart_id() -> usize {
-    Arch::read_csr(Csr::Mhartid)
-}
 
 /// Return the number of firmware exits on the given hart
 fn get_nb_firmware_exits(hart: usize) -> u64 {

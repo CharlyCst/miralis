@@ -42,16 +42,6 @@ pub fn failure() -> ! {
     }
 }
 
-/// Ask Miralis to end benchmark and print results.
-pub fn miralis_end_benchmark() -> ! {
-    unsafe { miralis_ecall(abi::MIRALIS_BENCHMARK_FID).ok() };
-
-    // Loop forever, this should never happen as Miralis will terminate the execution before.
-    loop {
-        hint::spin_loop();
-    }
-}
-
 /// Ask Miralis to log a string with the provided log level.
 pub fn miralis_log(level: Level, message: &str) {
     // Prepare ecall arguments

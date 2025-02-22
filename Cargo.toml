@@ -24,8 +24,6 @@ members = [
     "firmware/device",
     "firmware/tracing_firmware",
     "firmware/vectored_mtvec",
-    "firmware/benchmark/ecall_benchmark",
-    "firmware/benchmark/csr_write",
 
     # Payload
     "payload/hello_world",
@@ -41,7 +39,6 @@ members = [
 
     # Tooling
     "runner",
-    "benchmark_analyzer",
 
     # Testing and verification
     "model_checking",

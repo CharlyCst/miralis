@@ -20,11 +20,6 @@ description = "An OpenSBI image with a Linux kernel payload that spawn a shell a
 url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-shell.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
 
-[bin.linux-benchmark]
-description = "An OpenSBI image with a Linux kernel payload that charge a driver to ecall benchmark printing in Miralis."
-url = "https://github.com/CharlyCst/miralis-artifact-opensbi/releases/download/v0.2.3/opensbi-linux-kernel-driver.bin"
-repo = "https://github.com/CharlyCst/miralis-artifact-opensbi"
-
 [bin.zephyr]
 description = "A Zephyr image which summons two threads that print in round-robin several times before exiting."
 url = "https://github.com/CharlyCst/miralis-artifact-zephyr/releases/download/v0.1.1/zephyr.bin"

@@ -75,21 +75,6 @@ benchmark_type = "default"
 # Print in csv_format, useful for analysis
 csv_format = true
 
-# Benchmark execution time
-time = false
-
-# Benchmark number of instruction
-instruction = false
-
-# Count number of total exits
-nb_exits = false
-
-# Count number of firmware exits
-nb_firmware_exits = false
-
-# Count number of world switches
-world_switches = false
-
 # Number of iterations to be used by benchmark firmware.
 # What is iterated on may vary from one firmware to another.
 nb_iter = 1000

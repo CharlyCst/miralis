@@ -23,9 +23,6 @@ path = "config/test/qemu-virt-keystone.toml"
 [config.qemu-virt-offload]
 path = "config/test/qemu-virt-sstc-offload.toml"
 
-[config.qemu-virt-benchmark]
-path = "config/test/qemu-virt-benchmark.toml"
-
 [config.spike]
 path = "config/test/spike.toml"
 

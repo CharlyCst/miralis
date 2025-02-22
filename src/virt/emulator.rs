@@ -549,10 +549,6 @@ impl VirtContext {
                 self.set(Register::X10, 0);
                 self.set(Register::X11, 0);
             }
-            abi::MIRALIS_BENCHMARK_FID => {
-                Benchmark::display_counters();
-                Plat::exit_success();
-            }
             abi::MIRALIS_READ_COUNTERS_FID => {
                 Benchmark::read_counters(self);
             }

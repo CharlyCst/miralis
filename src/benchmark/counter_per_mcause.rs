@@ -114,7 +114,9 @@ impl BenchmarkModule for CounterPerMcauseBenchmark {
             NB_WORLD_SWITCHES[hard_id()].counter[i].store(0, Ordering::Relaxed);
         }
     }
+}
 
+impl CounterPerMcauseBenchmark {
     fn display_counters() {
         log_mcause!(MCause::InstrAddrMisaligned);
         log_mcause!(MCause::InstrAccessFault);
