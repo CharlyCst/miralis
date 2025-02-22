@@ -4,10 +4,9 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::arch::{Arch, Architecture, Csr, MCause};
-use crate::benchmark::Counter::{FirmwareExits, WorldSwitches};
-use crate::benchmark::{BenchmarkModule, Counter};
+use crate::benchmark::BenchmarkModule;
 use crate::config::PLATFORM_NB_HARTS;
-use crate::virt::VirtContext;
+use crate::virt::{ExecutionMode, VirtContext};
 
 // We don't need to add a padding to avoid false sharing. The size of the struct is a multiplier of the cache line
 #[repr(C, align(64))]
@@ -88,18 +87,20 @@ impl BenchmarkModule for CounterPerMcauseBenchmark {
         "Counter per code benchmark"
     }
 
-    fn increment_counter(ctx: &mut VirtContext, counter: Counter) {
+    fn increment_counter(
+        ctx: &mut VirtContext,
+        from_exec_mode: ExecutionMode,
+        to_exec_mode: ExecutionMode,
+    ) {
         let hart_id: usize = hard_id();
         let mcause_offset: usize = raw_cause_to_entry(ctx.trap_info.mcause);
 
-        match counter {
-            FirmwareExits => {
-                NB_FIRMWARE_EXIT[hart_id].counter[mcause_offset].fetch_add(1, Ordering::Relaxed);
-            }
-            WorldSwitches => {
-                NB_WORLD_SWITCHES[hart_id].counter[mcause_offset].fetch_add(1, Ordering::Relaxed);
-            }
-            _ => {}
+        if from_exec_mode == ExecutionMode::Payload && to_exec_mode == ExecutionMode::Firmware {
+            NB_WORLD_SWITCHES[hart_id].counter[mcause_offset].fetch_add(1, Ordering::Relaxed);
+        } else if from_exec_mode == ExecutionMode::Firmware
+            && to_exec_mode == ExecutionMode::Firmware
+        {
+            NB_FIRMWARE_EXIT[hart_id].counter[mcause_offset].fetch_add(1, Ordering::Relaxed);
         }
     }
 

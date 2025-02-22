@@ -1,31 +1,41 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::arch::{Arch, Architecture, Csr, Register};
-use crate::benchmark::Counter::{FirmwareExits, WorldSwitches};
-use crate::benchmark::{BenchmarkModule, Counter};
+use crate::benchmark::{get_exception_category, BenchmarkModule, ExceptionCategory};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::virt::traits::*;
-use crate::virt::VirtContext;
+use crate::virt::{ExecutionMode, VirtContext};
 
 // We use this structure to avoid false sharing in the benchmark.
 // The typical size of a cache line is 64 bytes
 #[repr(C, align(64))]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct PaddedCounter {
-    counter: AtomicU64,
-    _padding: [u8; 56],
+    firmware_traps: AtomicU64,
+    world_switches: AtomicU64,
+    misaligned_op: AtomicU64,
+    timer_read: AtomicU64,
+    timer_request: AtomicU64,
+    ipi_request: AtomicU64,
+    remote_fence_request: AtomicU64,
+    _padding: [u8; 64 - 7 * size_of::<AtomicU64>()],
 }
 
 // NOTE: Clippy is triggering a warning here but it's fine as we use the const only for array
 // initialization.
 #[allow(clippy::declare_interior_mutable_const)]
 const ZEROED_COUNTER: PaddedCounter = PaddedCounter {
-    counter: AtomicU64::new(0),
-    _padding: [0; 56],
+    firmware_traps: const { AtomicU64::new(0) },
+    world_switches: const { AtomicU64::new(0) },
+    misaligned_op: const { AtomicU64::new(0) },
+    timer_read: const { AtomicU64::new(0) },
+    timer_request: const { AtomicU64::new(0) },
+    ipi_request: const { AtomicU64::new(0) },
+    remote_fence_request: const { AtomicU64::new(0) },
+    _padding: [0; 64 - 7 * size_of::<AtomicU64>()],
 };
 
-static NB_WORLD_SWITCHES: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_NB_HARTS];
-static NB_FIRMWARE_EXIT: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_NB_HARTS];
+static COUNTERS: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_NB_HARTS];
 
 const SINGLE_CORE_BENCHMARK: usize = 0;
 const ALL_CORES_BENCHMARK: usize = 1;
@@ -45,15 +55,48 @@ impl BenchmarkModule for CounterBenchmark {
         "Counter benchmark"
     }
 
-    fn increment_counter(_ctx: &mut VirtContext, counter: Counter) {
-        if counter == FirmwareExits {
-            NB_FIRMWARE_EXIT[hard_id()]
-                .counter
-                .fetch_add(1, Ordering::Relaxed);
-        } else if counter == WorldSwitches {
-            NB_WORLD_SWITCHES[hard_id()]
-                .counter
-                .fetch_add(1, Ordering::Relaxed);
+    fn increment_counter(
+        ctx: &mut VirtContext,
+        from_exec_mode: ExecutionMode,
+        to_exec_mode: ExecutionMode,
+    ) {
+        match get_exception_category(ctx, from_exec_mode, to_exec_mode) {
+            Some(ExceptionCategory::FirmwareTrap) => {
+                COUNTERS[hart_id()]
+                    .firmware_traps
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Some(ExceptionCategory::ReadTime) => {
+                COUNTERS[hart_id()]
+                    .timer_read
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Some(ExceptionCategory::SetTimer) => {
+                COUNTERS[hart_id()]
+                    .timer_request
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Some(ExceptionCategory::MisalignedOp) => {
+                COUNTERS[hart_id()]
+                    .misaligned_op
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Some(ExceptionCategory::IPI) => {
+                COUNTERS[hart_id()]
+                    .ipi_request
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Some(ExceptionCategory::RemoteFence) => {
+                COUNTERS[hart_id()]
+                    .timer_request
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            Some(ExceptionCategory::NotOffloaded) => {
+                COUNTERS[hart_id()]
+                    .world_switches
+                    .fetch_add(1, Ordering::Relaxed);
+            }
+            _ => {}
         }
     }
 
@@ -63,7 +106,7 @@ impl BenchmarkModule for CounterBenchmark {
 
         match ctx.get(Register::X10) {
             SINGLE_CORE_BENCHMARK => {
-                let hart = hard_id();
+                let hart = hart_id();
                 nb_firmware_exits = get_nb_firmware_exits(hart) as usize;
                 nb_world_switch = get_nb_world_switch(hart) as usize;
             }
@@ -84,7 +127,7 @@ impl BenchmarkModule for CounterBenchmark {
     }
 
     fn display_counters() {
-        let current = hard_id();
+        let current = hart_id();
         log::info!(
             "Core {}: {} firmware exits, {} world switches",
             current,
@@ -97,16 +140,16 @@ impl BenchmarkModule for CounterBenchmark {
 // ———————————————————————————————— Helpers ————————————————————————————————— //
 
 /// Return the current hart id
-fn hard_id() -> usize {
+fn hart_id() -> usize {
     Arch::read_csr(Csr::Mhartid)
 }
 
 /// Return the number of firmware exits on the given hart
 fn get_nb_firmware_exits(hart: usize) -> u64 {
-    NB_FIRMWARE_EXIT[hart].counter.load(Ordering::Relaxed)
+    COUNTERS[hart].firmware_traps.load(Ordering::Relaxed)
 }
 
 /// Return the number of world switches on the given hart
 fn get_nb_world_switch(hart: usize) -> u64 {
-    NB_WORLD_SWITCHES[hart].counter.load(Ordering::Relaxed)
+    COUNTERS[hart].world_switches.load(Ordering::Relaxed)
 }

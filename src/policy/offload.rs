@@ -24,6 +24,8 @@ static FENCE_I_ARRAY: [AtomicBool; PLATFORM_NB_HARTS] =
 static FENCE_VMA_ARRAY: [AtomicBool; PLATFORM_NB_HARTS] =
     [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS];
 
+pub const OFFLOAD_POLICY_NAME: &str = "Offload Policy";
+
 pub struct OffloadPolicy {}
 
 impl PolicyModule for OffloadPolicy {
@@ -32,7 +34,7 @@ impl PolicyModule for OffloadPolicy {
     }
 
     fn name() -> &'static str {
-        "Offload Policy"
+        OFFLOAD_POLICY_NAME
     }
 
     fn trap_from_payload(
@@ -120,25 +122,25 @@ impl OffloadPolicy {
         eid: usize,
     ) -> PolicyHookResult {
         match (fid, eid) {
-            (sbi_codes::SBI_TIMER_FID, sbi_codes::SBI_TIMER_EID) => {
+            _ if sbi_codes::is_timer_request(fid, eid) => {
                 let v_clint = Plat::get_vclint();
                 v_clint.set_payload_deadline(ctx, mctx, ctx.regs[Register::X10 as usize]);
                 ctx.pc += 4;
                 PolicyHookResult::Overwrite
             }
-            (sbi_codes::SEND_IPI_FID, sbi_codes::IPI_EXTENSION_EID) => {
+            _ if sbi_codes::is_ipi_request(fid, eid) => {
                 Self::broadcast_ssi(ctx.get(Register::X10) << ctx.get(Register::X11));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
                 PolicyHookResult::Overwrite
             }
-            (sbi_codes::REMOTE_FENCE_I_FID, sbi_codes::RFENCE_EXTENSION_EID) => {
+            _ if sbi_codes::is_i_fence_request(fid, eid) => {
                 Self::broadcast_i_fence(ctx.get(Register::X10));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
                 PolicyHookResult::Overwrite
             }
-            (sbi_codes::REMOTE_FENCE_VMA_FID, sbi_codes::RFENCE_EXTENSION_EID) => {
+            _ if sbi_codes::is_vma_request(fid, eid) => {
                 Self::broadcast_vma_fence(ctx.get(Register::X10));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);

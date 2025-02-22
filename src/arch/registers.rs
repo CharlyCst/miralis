@@ -36,9 +36,9 @@ pub enum Register {
     X14 = 14,
     /// a5 - Function argument
     X15 = 15,
-    /// a6 - Function argument
+    /// a6 - Function argument - Encodes FID
     X16 = 16,
-    /// a7 - Function argument
+    /// a7 - Function argument - Encodes EID
     X17 = 17,
     /// s2 - Saved register
     X18 = 18,

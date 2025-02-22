@@ -9,7 +9,7 @@ use crate::benchmark::{BenchmarkModule, Counter, Scope};
 use crate::config;
 use crate::platform::{Plat, Platform};
 use crate::virt::traits::*;
-use crate::virt::VirtContext;
+use crate::virt::{ExecutionMode, VirtContext};
 
 #[macro_export]
 macro_rules! _benchmark_print {
@@ -155,8 +155,13 @@ impl BenchmarkModule for DefaultBenchmark {
     }
 
     /// Increment counter's value.
-    fn increment_counter(_ctx: &mut VirtContext, counter: Counter) {
-        let index = counter as usize;
+    fn increment_counter(
+        _ctx: &mut VirtContext,
+        _from_mode: ExecutionMode,
+        _to_mode: ExecutionMode,
+    ) {
+        todo!("Implement new api for increment_counter")
+        /*let index = counter as usize;
 
         let wrapped_counter = Either::Counter(counter);
 
@@ -164,7 +169,7 @@ impl BenchmarkModule for DefaultBenchmark {
             return;
         }
 
-        BENCH.lock().counters[index] += 1;
+        BENCH.lock().counters[index] += 1;*/
     }
 
     fn read_counters(ctx: &mut VirtContext) {
