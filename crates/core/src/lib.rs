@@ -77,5 +77,21 @@ pub mod sbi_codes {
     pub const REMOTE_FENCE_I_FID: usize = 0x0;
     /// Instructs the remote harts to execute one or more SFENCE.VMA instructions, covering the range of
     /// virtual addresses between start and size.
-    pub const REMOTE_FENCE_VMA_FID: usize = 0x01;
+    pub const REMOTE_FENCE_VMA_FID: usize = 0x1;
+
+    pub fn is_timer_request(fid: usize, eid: usize) -> bool {
+        fid == SBI_TIMER_FID && eid == SBI_TIMER_EID
+    }
+
+    pub fn is_ipi_request(fid: usize, eid: usize) -> bool {
+        fid == SEND_IPI_FID && eid == IPI_EXTENSION_EID
+    }
+
+    pub fn is_i_fence_request(fid: usize, eid: usize) -> bool {
+        fid == REMOTE_FENCE_I_FID && eid == RFENCE_EXTENSION_EID
+    }
+
+    pub fn is_vma_request(fid: usize, eid: usize) -> bool {
+        fid == REMOTE_FENCE_VMA_FID && eid == RFENCE_EXTENSION_EID
+    }
 }

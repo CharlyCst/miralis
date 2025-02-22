@@ -9,7 +9,7 @@ use crate::virt::VirtContext;
 
 mod default;
 mod keystone;
-mod offload;
+pub mod offload;
 mod protect_payload;
 
 pub type Policy = select_env!["MIRALIS_POLICY_NAME":

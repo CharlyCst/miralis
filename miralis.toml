@@ -133,16 +133,6 @@ firmware = "miralis"
 config = "qemu-virt"
 description = "Run Miralis on top of Miralis (nested virtualization)"
 
-[test.benchmark-csr]
-firmware = "csr_write"
-config = "qemu-virt-benchmark"
-description = "Benchmark virtual CSR write operations"
-
-[test.benchmark-ecall]
-firmware = "ecall_benchmark"
-config = "qemu-virt-benchmark"
-description = "Benchmark virtual ecall operations"
-
 ## ——————————————————————— Testing external projects ———————————————————————— ##
 
 [test.opensbi]

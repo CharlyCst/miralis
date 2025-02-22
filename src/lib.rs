@@ -31,7 +31,7 @@ use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
 
 use crate::arch::write_pmp;
-use crate::benchmark::{Benchmark, BenchmarkModule, Counter, Scope};
+use crate::benchmark::{Benchmark, BenchmarkModule, Scope};
 
 /// The virtuam firmware monitor main loop.
 ///
@@ -56,7 +56,8 @@ pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy
         }
 
         Benchmark::stop_interval_counters(Scope::HandleTrap);
-        Benchmark::increment_counter(ctx, Counter::TotalExits);
+        // TODO: What to do with this?
+        // Benchmark::increment_counter(ctx, Counter::TotalExits);
     }
 }
 
@@ -84,7 +85,6 @@ fn handle_trap(
 
     // Perform emulation
     let exec_mode = ctx.mode.to_exec_mode();
-
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     let result = match exec_mode {
@@ -92,13 +92,7 @@ fn handle_trap(
         ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
     };
 
-    if exec_mode == ExecutionMode::Payload && ctx.mode.to_exec_mode() == ExecutionMode::Firmware {
-        Benchmark::increment_counter(ctx, Counter::WorldSwitches);
-    } else if exec_mode == ExecutionMode::Firmware
-        && ctx.mode.to_exec_mode() == ExecutionMode::Firmware
-    {
-        Benchmark::increment_counter(ctx, Counter::FirmwareExits);
-    }
+    Benchmark::increment_counter(ctx, exec_mode, ctx.mode.to_exec_mode());
 
     // Inject interrupts if required
     ctx.check_and_inject_interrupts();
