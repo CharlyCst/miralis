@@ -2,6 +2,7 @@
 //!
 //! This modules holds the different values for the benchmarks
 
+mod boot;
 mod counter;
 mod counter_per_mcause;
 mod default;
@@ -20,6 +21,7 @@ pub type Benchmark = select_env!["MIRALIS_BENCHMARK_TYPE":
     "default"      => default::DefaultBenchmark
     "counter"      => counter::CounterBenchmark
     "counter_per_mcause" => counter_per_mcause::CounterPerMcauseBenchmark
+    "boot" => boot::BootBenchmark
     _ => empty::EmptyBenchmark
 ];
 
