@@ -106,6 +106,7 @@ impl PolicyModule for OffloadPolicy {
             .is_ok()
         {
             unsafe {
+                // TODO: Optimise by flushing only the requested address space
                 Arch::sfencevma(None, None);
             }
         }
@@ -115,6 +116,13 @@ impl PolicyModule for OffloadPolicy {
 }
 
 impl OffloadPolicy {
+    fn prepare_hart_mask(ctx: &mut VirtContext) -> usize {
+        let hart_mask: usize = ctx.get(Register::X10);
+        // Hart mask base corresponds to the hart where the mask starts
+        let hart_mask_base: usize = ctx.get(Register::X11);
+        hart_mask << hart_mask_base
+    }
+
     fn check_ecall(
         ctx: &mut VirtContext,
         mctx: &mut MiralisContext,
@@ -129,19 +137,19 @@ impl OffloadPolicy {
                 PolicyHookResult::Overwrite
             }
             _ if sbi_codes::is_ipi_request(fid, eid) => {
-                Self::broadcast_ssi(ctx.get(Register::X10) << ctx.get(Register::X11));
+                Self::broadcast_ssi(Self::prepare_hart_mask(ctx));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
                 PolicyHookResult::Overwrite
             }
             _ if sbi_codes::is_i_fence_request(fid, eid) => {
-                Self::broadcast_i_fence(ctx.get(Register::X10));
+                Self::broadcast_i_fence(Self::prepare_hart_mask(ctx));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
                 PolicyHookResult::Overwrite
             }
             _ if sbi_codes::is_vma_request(fid, eid) => {
-                Self::broadcast_vma_fence(ctx.get(Register::X10));
+                Self::broadcast_vma_fence(Self::prepare_hart_mask(ctx));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
                 PolicyHookResult::Overwrite
@@ -169,8 +177,7 @@ impl OffloadPolicy {
             }
         }
 
-        let mut clint = Plat::get_clint().lock();
-        clint.trigger_msi_on_all_harts(mask);
+        Plat::broadcast_policy_interrupt(mask);
     }
 
     fn broadcast_vma_fence(mask: usize) {
@@ -181,8 +188,7 @@ impl OffloadPolicy {
             }
         }
 
-        let mut clint = Plat::get_clint().lock();
-        clint.trigger_msi_on_all_harts(mask);
+        Plat::broadcast_policy_interrupt(mask);
     }
 
     unsafe fn set_physical_ssip(&self) {
