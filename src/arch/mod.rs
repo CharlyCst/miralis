@@ -570,6 +570,9 @@ impl From<usize> for Width {
     }
 }
 
+/// Number of bits in a risc-v page table entry
+pub const PAGE_SIZE: usize = 4096;
+
 // —————————————————————————————— Custom CSRs ——————————————————————————————— //
 // CSR IDs are hard-coded in the CSR read/write/clear/set instructions,       //
 // rather than being passed as operands in a register. Because of this each   //

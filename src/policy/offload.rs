@@ -1,11 +1,13 @@
 //! The offload policy is a special policy used to reduce the number of world switches
 //! It emulates the misaligned loads and stores, the read of the "time" register and offlaods the timer extension handling in Miralis
 
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use miralis_core::sbi_codes;
 
-use crate::arch::{get_raw_faulting_instr, mie, Arch, Architecture, Csr, MCause, Mode, Register};
+use crate::arch::{
+    get_raw_faulting_instr, mie, Arch, Architecture, Csr, MCause, Mode, Register, PAGE_SIZE,
+};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
@@ -23,6 +25,12 @@ static FENCE_I_ARRAY: [AtomicBool; PLATFORM_NB_HARTS] =
 /// Remote vma fence map
 static FENCE_VMA_ARRAY: [AtomicBool; PLATFORM_NB_HARTS] =
     [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS];
+
+static FENCE_VMA_START: [AtomicUsize; PLATFORM_NB_HARTS] =
+    [const { AtomicUsize::new(0) }; PLATFORM_NB_HARTS];
+
+static FENCE_VMA_SIZE: [AtomicUsize; PLATFORM_NB_HARTS] =
+    [const { AtomicUsize::new(0) }; PLATFORM_NB_HARTS];
 
 pub const OFFLOAD_POLICY_NAME: &str = "Offload Policy";
 
@@ -105,9 +113,15 @@ impl PolicyModule for OffloadPolicy {
             .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
         {
-            unsafe {
-                // TODO: Optimise by flushing only the requested address space
-                Arch::sfencevma(None, None);
+            let start = FENCE_VMA_START[mctx.hw.hart].load(Ordering::SeqCst);
+            let size = FENCE_VMA_SIZE[mctx.hw.hart].load(Ordering::SeqCst);
+
+            if start == 0 && size == usize::MAX {
+                unsafe { Arch::sfencevma(None, None) };
+            } else {
+                for address in (start..start + size).step_by(PAGE_SIZE) {
+                    unsafe { Arch::sfencevma(Some(address), None) };
+                }
             }
         }
     }
@@ -149,7 +163,9 @@ impl OffloadPolicy {
                 PolicyHookResult::Overwrite
             }
             _ if sbi_codes::is_vma_request(fid, eid) => {
-                Self::broadcast_vma_fence(Self::prepare_hart_mask(ctx));
+                let start_address = ctx.get(Register::X12);
+                let size = ctx.get(Register::X13);
+                Self::broadcast_vma_fence(Self::prepare_hart_mask(ctx), start_address, size);
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
                 PolicyHookResult::Overwrite
@@ -180,11 +196,13 @@ impl OffloadPolicy {
         Plat::broadcast_policy_interrupt(mask);
     }
 
-    fn broadcast_vma_fence(mask: usize) {
+    fn broadcast_vma_fence(mask: usize, start_address: usize, size: usize) {
         #[allow(clippy::needless_range_loop)]
         for idx in 0..PLATFORM_NB_HARTS {
             if mask & (1 << idx) != 0 {
                 FENCE_VMA_ARRAY[idx].store(true, Ordering::SeqCst);
+                FENCE_VMA_START[idx].store(start_address, Ordering::SeqCst);
+                FENCE_VMA_SIZE[idx].store(size, Ordering::SeqCst);
             }
         }
 
