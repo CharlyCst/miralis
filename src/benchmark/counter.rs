@@ -98,23 +98,26 @@ impl BenchmarkModule for CounterBenchmark {
     }
 
     fn read_counters(ctx: &mut VirtContext) {
-        let measure = match ExceptionCategory::try_from(ctx.get(Register::X10)).unwrap() {
+        let hart_to_read = ctx.get(Register::X10);
+        let exception_category = ExceptionCategory::try_from(ctx.get(Register::X11)).unwrap();
+
+        let measure = match exception_category {
             ExceptionCategory::NotOffloaded => {
-                COUNTERS[ctx.hart_id].world_switches.load(Ordering::SeqCst)
+                COUNTERS[hart_to_read].world_switches.load(Ordering::SeqCst)
             }
-            ExceptionCategory::ReadTime => COUNTERS[ctx.hart_id].timer_read.load(Ordering::SeqCst),
+            ExceptionCategory::ReadTime => COUNTERS[hart_to_read].timer_read.load(Ordering::SeqCst),
             ExceptionCategory::SetTimer => {
-                COUNTERS[ctx.hart_id].timer_request.load(Ordering::SeqCst)
+                COUNTERS[hart_to_read].timer_request.load(Ordering::SeqCst)
             }
             ExceptionCategory::MisalignedOp => {
-                COUNTERS[ctx.hart_id].misaligned_op.load(Ordering::SeqCst)
+                COUNTERS[hart_to_read].misaligned_op.load(Ordering::SeqCst)
             }
-            ExceptionCategory::IPI => COUNTERS[ctx.hart_id].ipi_request.load(Ordering::SeqCst),
-            ExceptionCategory::RemoteFence => COUNTERS[ctx.hart_id]
+            ExceptionCategory::IPI => COUNTERS[hart_to_read].ipi_request.load(Ordering::SeqCst),
+            ExceptionCategory::RemoteFence => COUNTERS[hart_to_read]
                 .remote_fence_request
                 .load(Ordering::SeqCst),
             ExceptionCategory::FirmwareTrap => {
-                COUNTERS[ctx.hart_id].firmware_traps.load(Ordering::SeqCst)
+                COUNTERS[hart_to_read].firmware_traps.load(Ordering::SeqCst)
             }
         };
 
