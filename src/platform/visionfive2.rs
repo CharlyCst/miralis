@@ -1,12 +1,11 @@
 //! QEMU Virt board
 
 use core::fmt::Write;
-use core::{fmt, hint, ptr};
+use core::{fmt, ptr};
 
 use log::Level;
 use spin::Mutex;
 
-use crate::arch::{Arch, Architecture};
 use crate::device::clint::CLINT_SIZE;
 use crate::device::tester::TEST_DEVICE_SIZE;
 use crate::device::VirtDevice;
@@ -66,20 +65,6 @@ impl Platform for VisionFive2Platform {
         let mut writer = WRITER.lock();
         writer.write_fmt(args).unwrap();
         writer.write_str("\r").unwrap();
-    }
-
-    fn exit_success() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
-    }
-
-    fn exit_failure() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
     }
 
     fn get_virtual_devices() -> &'static [VirtDevice] {

@@ -7,7 +7,7 @@ use log::Level;
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
-use super::{Plat, Platform, VIRT_CLINT, VIRT_TEST_DEVICE};
+use super::{Platform, VIRT_CLINT, VIRT_TEST_DEVICE};
 use crate::config::PLATFORM_NAME;
 use crate::device::clint::CLINT_SIZE;
 use crate::device::plic::VirtPlic;
@@ -17,8 +17,9 @@ use crate::driver::plic::PlicDriver;
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
-
+const CLINT_BASE: usize = 0x2000000;
 const PLIC_BASE: usize = 0xC000000;
+const TEST_DEVICE_BASE: usize = 0x3000000;
 
 // —————————————————————————— Spike Parameters ——————————————————————————— //
 
@@ -53,13 +54,13 @@ static VIRT_PLIC: VirtPlic = VirtPlic::new(&PLIC_MUTEX);
 /// The list of virtual devices exposed on the platform.
 static VIRT_DEVICES: &[VirtDevice; 2] = &[
     VirtDevice {
-        start_addr: Plat::CLINT_BASE,
+        start_addr: CLINT_BASE,
         size: CLINT_SIZE,
         name: "CLINT",
         device_interface: &VIRT_CLINT,
     },
     VirtDevice {
-        start_addr: Plat::TEST_DEVICE_BASE,
+        start_addr: TEST_DEVICE_BASE,
         size: TEST_DEVICE_SIZE,
         name: "TEST",
         device_interface: &VIRT_TEST_DEVICE,

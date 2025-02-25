@@ -1,12 +1,12 @@
 //! SiFive HiFive P550 board
 
+use core::fmt;
 use core::fmt::Write;
-use core::{fmt, hint};
 
 use log::Level;
 use spin::Mutex;
 
-use crate::arch::{read_custom_csr, write_custom_csr, Arch, Architecture};
+use crate::arch::{read_custom_csr, write_custom_csr};
 use crate::device::clint::CLINT_SIZE;
 use crate::device::VirtDevice;
 use crate::driver::uart::UartDriver;
@@ -52,20 +52,6 @@ impl Platform for PremierP550Platform {
         let mut writer = WRITER.lock();
         writer.write_fmt(args).unwrap();
         writer.write_str("\r").unwrap();
-    }
-
-    fn exit_success() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
-    }
-
-    fn exit_failure() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
     }
 
     fn get_virtual_devices() -> &'static [VirtDevice] {

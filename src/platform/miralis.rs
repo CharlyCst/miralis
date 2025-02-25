@@ -41,8 +41,6 @@ impl Platform for MiralisPlatform {
         "Miralis"
     }
 
-    fn init() {}
-
     fn debug_print(level: Level, args: fmt::Arguments) {
         miralis_log_fmt(level, args)
     }
