@@ -12,24 +12,10 @@ use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::VirtDevice;
 use crate::driver::clint::ClintDriver;
 use crate::driver::uart::UartDriver;
+use crate::platform::{Plat, CLINT_MUTEX, VIRT_CLINT};
 use crate::Platform;
 
-// —————————————————————————— Platform Parameters ——————————————————————————— //
-
-const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
-const CLINT_BASE: usize = 0x0000_0200_0000;
-
 // ———————————————————————————— Platform Devices ———————————————————————————— //
-
-/// The physical CLINT driver.
-///
-/// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
-/// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
-
-/// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
     EIC770X_UART0_ADDR,
@@ -38,7 +24,7 @@ pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
 
 /// The list of virtual devices exposed on the platform.
 static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
-    start_addr: CLINT_BASE,
+    start_addr: Plat::CLINT_BASE,
     size: CLINT_SIZE,
     name: "CLINT",
     device_interface: &VIRT_CLINT,
@@ -85,11 +71,11 @@ impl Platform for PremierP550Platform {
     }
 
     fn load_firmware() -> usize {
-        FIRMWARE_START_ADDR
+        TARGET_FIRMWARE_ADDRESS
     }
 
     fn get_miralis_start() -> usize {
-        MIRALIS_START_ADDR
+        TARGET_START_ADDRESS
     }
 
     fn get_max_valid_address() -> usize {
