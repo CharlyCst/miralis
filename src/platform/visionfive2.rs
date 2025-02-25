@@ -1,38 +1,23 @@
 //! QEMU Virt board
 
 use core::fmt::Write;
-use core::{fmt, hint, ptr};
+use core::{fmt, ptr};
 
 use log::Level;
 use spin::Mutex;
 
-use crate::arch::{Arch, Architecture};
-use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
-use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::clint::CLINT_SIZE;
 use crate::device::VirtDevice;
-use crate::driver::clint::ClintDriver;
 use crate::driver::uart::UartDriver;
+use crate::platform::{Plat, VIRT_CLINT};
 use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
 const UART_SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const UART_SIZE_PER_REGISTER: usize = 4;
-const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
-
-const CLINT_BASE: usize = 0x2000000;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
-
-/// The physical CLINT driver.
-///
-/// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
-/// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
-
-/// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
 pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
     UART_SERIAL_PORT_BASE_ADDRESS,
@@ -41,7 +26,7 @@ pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
 
 /// The list of virtual devices exposed on the platform.
 static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
-    start_addr: CLINT_BASE,
+    start_addr: Plat::CLINT_BASE,
     size: CLINT_SIZE,
     name: "CLINT",
     device_interface: &VIRT_CLINT,
@@ -73,42 +58,8 @@ impl Platform for VisionFive2Platform {
         writer.write_str("\r").unwrap();
     }
 
-    fn exit_success() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
-    }
-
-    fn exit_failure() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
-    }
-
-    fn load_firmware() -> usize {
-        FIRMWARE_START_ADDR
-    }
-
-    fn get_miralis_start() -> usize {
-        MIRALIS_START_ADDR
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
-    }
-
     fn get_virtual_devices() -> &'static [VirtDevice] {
         VIRT_DEVICES
-    }
-
-    fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
-    }
-
-    fn get_vclint() -> &'static VirtClint {
-        &VIRT_CLINT
     }
 }
 

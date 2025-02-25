@@ -14,6 +14,7 @@ use crate::arch::{
 use crate::benchmark::{Benchmark, BenchmarkModule};
 use crate::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use crate::device::VirtDevice;
+use crate::driver::clint::clint_driver;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{Policy, PolicyModule};
@@ -355,12 +356,7 @@ impl VirtContext {
         mctx: &mut MiralisContext,
         policy: &mut Policy,
     ) {
-        // Clear the interrupt
-        let mut clint = Plat::get_clint().lock();
-        clint
-            .write_msip(mctx.hw.hart, 0)
-            .expect("Failed to write msip");
-        drop(clint); // Release the lock early
+        clint_driver::write_msip(mctx.hw.hart, 0).expect("Failed to write msip");
 
         // Check if a virtual MSI is pending
         let vclint = Plat::get_vclint();
