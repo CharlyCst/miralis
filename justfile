@@ -1,8 +1,10 @@
-default          := "default"
-config           := "config.toml"
-benchmark        := "ecall_benchmark"
-spike            := "./config/spike.toml"
-qemu_virt        := "./config/test/qemu-virt.toml"
+default      := "default"
+config       := "config.toml"
+benchmark    := "ecall_benchmark"
+spike        := "./config/spike.toml"
+qemu_virt    := "./config/test/qemu-virt.toml"
+visionfive_2 := "./config/visionfive2.toml"
+premier_p550 := "./config/premierp550.toml"
 
 # Print the list of commands
 help:
@@ -32,6 +34,10 @@ test:
 
 	# Test firmware build
 	just build-firmware default {{qemu_virt}}
+
+	# Build Miralis for our boards
+	just build {{visionfive_2}}
+	just build {{premier_p550}}
 
 # Run unit tests
 unit-test:
