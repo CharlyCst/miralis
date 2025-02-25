@@ -7,13 +7,11 @@ use log::Level;
 use spin::Mutex;
 
 use crate::arch::{Arch, Architecture};
-use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
-use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::clint::CLINT_SIZE;
 use crate::device::tester::TEST_DEVICE_SIZE;
 use crate::device::VirtDevice;
-use crate::driver::clint::ClintDriver;
 use crate::driver::uart::UartDriver;
-use crate::platform::{Plat, CLINT_MUTEX, VIRT_CLINT, VIRT_TEST_DEVICE};
+use crate::platform::{Plat, VIRT_CLINT, VIRT_TEST_DEVICE};
 use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
@@ -84,28 +82,8 @@ impl Platform for VisionFive2Platform {
         }
     }
 
-    fn load_firmware() -> usize {
-        TARGET_FIRMWARE_ADDRESS
-    }
-
-    fn get_miralis_start() -> usize {
-        TARGET_START_ADDRESS
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
-    }
-
     fn get_virtual_devices() -> &'static [VirtDevice] {
         VIRT_DEVICES
-    }
-
-    fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
-    }
-
-    fn get_vclint() -> &'static VirtClint {
-        &VIRT_CLINT
     }
 }
 

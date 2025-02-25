@@ -7,13 +7,12 @@ use log::Level;
 use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
-use super::{Plat, Platform, CLINT_MUTEX, VIRT_CLINT, VIRT_TEST_DEVICE};
-use crate::config::{PLATFORM_NAME, TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
-use crate::device::clint::{VirtClint, CLINT_SIZE};
+use super::{Plat, Platform, VIRT_CLINT, VIRT_TEST_DEVICE};
+use crate::config::PLATFORM_NAME;
+use crate::device::clint::CLINT_SIZE;
 use crate::device::plic::VirtPlic;
 use crate::device::tester::TEST_DEVICE_SIZE;
 use crate::device::VirtDevice;
-use crate::driver::clint::ClintDriver;
 use crate::driver::plic::PlicDriver;
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
@@ -113,29 +112,8 @@ impl Platform for VirtPlatform {
         }
     }
 
-    fn load_firmware() -> usize {
-        // We directly load the firmware from QEMU, nothing to do here.
-        TARGET_FIRMWARE_ADDRESS
-    }
-
-    fn get_miralis_start() -> usize {
-        TARGET_START_ADDRESS
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
-    }
-
     fn get_virtual_devices() -> &'static [VirtDevice] {
         VIRT_DEVICES
-    }
-
-    fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
-    }
-
-    fn get_vclint() -> &'static VirtClint {
-        &VIRT_CLINT
     }
 }
 

@@ -4,14 +4,11 @@ use core::fmt;
 
 use log::Level;
 use miralis_abi::{failure, miralis_log_fmt, success};
-use spin::Mutex;
 
-use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
-use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::clint::CLINT_SIZE;
 use crate::device::tester::TEST_DEVICE_SIZE;
 use crate::device::VirtDevice;
-use crate::driver::clint::ClintDriver;
-use crate::platform::{Plat, CLINT_MUTEX, VIRT_CLINT, VIRT_TEST_DEVICE};
+use crate::platform::{Plat, VIRT_CLINT, VIRT_TEST_DEVICE};
 use crate::Platform;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //
@@ -58,28 +55,7 @@ impl Platform for MiralisPlatform {
         failure();
     }
 
-    fn load_firmware() -> usize {
-        // We directly load the firmware from QEMU, nothing to do here.
-        TARGET_FIRMWARE_ADDRESS
-    }
-
-    fn get_miralis_start() -> usize {
-        TARGET_START_ADDRESS
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
-    }
-
     fn get_virtual_devices() -> &'static [VirtDevice] {
         VIRT_DEVICES
-    }
-
-    fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
-    }
-
-    fn get_vclint() -> &'static VirtClint {
-        &VIRT_CLINT
     }
 }
