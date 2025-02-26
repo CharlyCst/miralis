@@ -3,17 +3,25 @@ mod premierp550;
 pub mod virt;
 pub mod visionfive2;
 
-use core::fmt;
+use core::{fmt, hint};
 
 use config_select::select_env;
 use log::Level;
-use spin::Mutex;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
+use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::VirtClint;
-use crate::driver::clint::ClintDriver;
-use crate::{debug, device, logger};
+use crate::device::tester::VirtTestDevice;
+use crate::device::VirtDevice;
+use crate::driver::clint::clint_driver;
+use crate::{debug, logger};
+
+/// The virtual test device.
+static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
+
+/// The virtual CLINT device.
+static VIRT_CLINT: VirtClint = VirtClint::default();
 
 /// Export the current platform.
 ///
@@ -29,13 +37,27 @@ pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
 ];
 pub trait Platform {
     fn name() -> &'static str;
-    fn init();
+    fn init() {}
     fn debug_print(level: Level, args: fmt::Arguments);
-    fn exit_success() -> !;
-    fn exit_failure() -> !;
-    fn get_virtual_devices() -> &'static [device::VirtDevice];
-    fn get_clint() -> &'static Mutex<ClintDriver>;
-    fn get_vclint() -> &'static VirtClint;
+    fn exit_success() -> ! {
+        loop {
+            Arch::wfi();
+            hint::spin_loop();
+        }
+    }
+
+    fn exit_failure() -> ! {
+        loop {
+            Arch::wfi();
+            hint::spin_loop();
+        }
+    }
+
+    fn get_virtual_devices() -> &'static [VirtDevice];
+
+    fn get_vclint() -> &'static VirtClint {
+        &VIRT_CLINT
+    }
 
     /// Signal a pending policy interrupt on all cores and trigger an MSI.
     ///
@@ -45,17 +67,22 @@ pub trait Platform {
         Self::get_vclint().set_all_policy_msi(mask);
 
         // Fire physical clint
-        Self::get_clint().lock().trigger_msi_on_all_harts(mask);
+        clint_driver::trigger_msi_on_all_harts(mask);
     }
 
     /// Load the firmware (virtual M-mode software) and return its address.
-    fn load_firmware() -> usize;
-
+    fn load_firmware() -> usize {
+        TARGET_FIRMWARE_ADDRESS
+    }
     /// Returns the start and size of Miralis's own memory.
-    fn get_miralis_start() -> usize;
+    fn get_miralis_start() -> usize {
+        TARGET_START_ADDRESS
+    }
 
     /// Return maximum valid address
-    fn get_max_valid_address() -> usize;
+    fn get_max_valid_address() -> usize {
+        usize::MAX
+    }
 
     /// Returns true if the
     fn is_valid_custom_csr(csr: usize) -> bool {
@@ -84,6 +111,10 @@ pub trait Platform {
 
     const NB_HARTS: usize;
     const NB_VIRT_DEVICES: usize;
+
+    const CLINT_BASE: usize = 0x2000000;
+
+    const TEST_DEVICE_BASE: usize = 0x3000000;
 }
 
 pub fn init() {
