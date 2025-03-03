@@ -51,12 +51,12 @@ fn main() -> ! {
         let shared_memory: [usize; 64] = [0; 64];
         let valid_args = CreateArgs {
             epm_paddr: _enclave as usize,
-            epm_size: 0x128,
+            epm_size: 0x256,
             utm_paddr: shared_memory.as_ptr() as usize,
             utm_size: shared_memory.len(),
-            runtime_paddr: 0x8380C000,
-            user_paddr: 0x83834000,
-            free_paddr: 0x838D6000,
+            runtime_paddr: _enclave as usize + 0x128,
+            user_paddr: _enclave as usize + 0x128,
+            free_paddr: _enclave as usize + 0x128,
             free_requested: 0x40000,
         };
 

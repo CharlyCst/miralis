@@ -12,6 +12,7 @@ use crate::arch::{
     parse_mpp_return_mode, set_mpp, write_pmp, Arch, Architecture, Csr, MCause, Mode, Register,
 };
 use crate::host::MiralisContext;
+use crate::policy::keystone::ReturnCode::IllegalArgument;
 use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::*;
 use crate::{logger, RegisterContextGetter, VirtContext};
@@ -57,6 +58,21 @@ enum ReturnCode {
     NoFreeResources = 100013,
     EnclaveNotFresh = 100016,
     NotImplemented = 100100,
+}
+
+/// Arguments used to create a keystone enclave
+///
+/// See https://github.com/keystone-enclave/keystone/blob/80ffb2f9d4e774965589ee7c67609b0af051dc8b/sdk/include/shared/sm_call.h#L59
+#[repr(C)]
+struct CreateArgs {
+    epm_paddr: usize, // Enclave region
+    epm_size: usize,
+    utm_paddr: usize, // Untrusted region
+    utm_size: usize,
+    runtime_paddr: usize,
+    user_paddr: usize,
+    free_paddr: usize,
+    free_requested: usize,
 }
 
 /// Reason for stopping an enclave
@@ -238,19 +254,51 @@ impl KeystonePolicy {
         Self::lock_enclave(mctx, enclave);
     }
 
+    fn is_create_args_valid(&mut self, args: &mut CreateArgs) -> bool {
+        // check if physical addresses are valid
+        if args.epm_size == 0 {
+            return false;
+        }
+
+        // check if overflow
+        if args.epm_paddr >= args.epm_paddr + args.epm_size {
+            return false;
+        }
+        if args.utm_paddr >= args.utm_paddr + args.utm_size {
+            return false;
+        }
+
+        let epm_start = args.epm_paddr;
+        let epm_end = args.epm_paddr + args.epm_size;
+
+        // check if physical addresses are in the range
+        if args.runtime_paddr < epm_start || args.runtime_paddr >= epm_end {
+            return false;
+        }
+
+        if args.user_paddr < epm_start || args.user_paddr >= epm_end {
+            return false;
+        }
+
+        if args.free_paddr < epm_start || args.free_paddr > epm_end {
+            // note: free_paddr == epm_end if there's no free memory
+            return false;
+        }
+
+        // check the order of physical addresses
+        if args.runtime_paddr > args.user_paddr {
+            return false;
+        }
+
+        if args.user_paddr > args.free_paddr {
+            return false;
+        }
+
+        true
+    }
+
     fn create_enclave(&mut self, mctx: &mut MiralisContext, ctx: &mut VirtContext) -> ReturnCode {
         logger::debug!("Keystone: Create enclave");
-        #[repr(C)]
-        struct CreateArgs {
-            epm_paddr: usize, // Enclave region
-            epm_size: usize,
-            utm_paddr: usize, // Untrusted region
-            utm_size: usize,
-            runtime_paddr: usize,
-            user_paddr: usize,
-            free_paddr: usize,
-            free_requested: usize,
-        }
 
         // Copy the arguments from the S-mode virtual memory to the M-mode physical memory
         const ARGS_SIZE: usize = size_of::<CreateArgs>();
@@ -262,8 +310,10 @@ impl KeystonePolicy {
             return ReturnCode::IllegalArgument;
         }
 
-        // TODO: Check if args is valid (see enclave.c line 351)
-        let args = unsafe { ptr::read(dest.as_ptr() as *const CreateArgs) };
+        let mut args = unsafe { ptr::read(dest.as_ptr() as *const CreateArgs) };
+        if !self.is_create_args_valid(&mut args) {
+            return IllegalArgument;
+        }
 
         // Find a free enclave slot and initialize it
         let eid = match self.allocate_enclave() {
