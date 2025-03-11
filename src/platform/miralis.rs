@@ -5,7 +5,6 @@ use core::fmt;
 use log::Level;
 use miralis_abi::{failure, miralis_log_fmt, success};
 
-use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_PAYLOAD_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
@@ -14,8 +13,6 @@ use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 
-const MIRALIS_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_PAYLOAD_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
 
@@ -61,8 +58,6 @@ impl Platform for MiralisPlatform {
         "Miralis"
     }
 
-    fn init() {}
-
     fn debug_print(level: Level, args: fmt::Arguments) {
         miralis_log_fmt(level, args)
     }
@@ -73,19 +68,6 @@ impl Platform for MiralisPlatform {
 
     fn exit_failure() -> ! {
         failure();
-    }
-
-    fn load_firmware() -> usize {
-        // We directly load the firmware from QEMU, nothing to do here.
-        FIRMWARE_START_ADDR
-    }
-
-    fn get_miralis_start() -> usize {
-        MIRALIS_START_ADDR
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
     }
 
     fn get_virtual_devices() -> &'static [VirtDevice] {

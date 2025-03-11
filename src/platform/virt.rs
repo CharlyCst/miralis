@@ -8,7 +8,7 @@ use spin::Mutex;
 use uart_16550::MmioSerialPort;
 
 use super::Platform;
-use crate::config::{PLATFORM_NAME, TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
+use crate::config::PLATFORM_NAME;
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::plic::VirtPlic;
 use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
@@ -18,8 +18,6 @@ use crate::driver::plic::PlicDriver;
 
 const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
-const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 const CLINT_BASE: usize = 0x2000000;
 const PLIC_BASE: usize = 0xC000000;
 const TEST_DEVICE_BASE: usize = 0x3000000;
@@ -126,19 +124,6 @@ impl Platform for VirtPlatform {
             "spike" => exit_spike(false),
             _ => exit_qemu(false),
         }
-    }
-
-    fn load_firmware() -> usize {
-        // We directly load the firmware from QEMU, nothing to do here.
-        FIRMWARE_START_ADDR
-    }
-
-    fn get_miralis_start() -> usize {
-        MIRALIS_START_ADDR
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
     }
 
     fn get_virtual_devices() -> &'static [VirtDevice] {
