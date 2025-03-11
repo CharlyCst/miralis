@@ -26,7 +26,7 @@ const CLINT_BASE: usize = 0x0000_0200_0000;
 ///
 /// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
 /// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
+static CLINT_MUTEX: ClintDriver = unsafe { ClintDriver::new(CLINT_BASE) };
 
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
@@ -100,7 +100,7 @@ impl Platform for PremierP550Platform {
         VIRT_DEVICES
     }
 
-    fn get_clint() -> &'static Mutex<ClintDriver> {
+    fn get_clint() -> &'static ClintDriver {
         &CLINT_MUTEX
     }
 

@@ -2,8 +2,6 @@ use core::cmp::min;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use spin::Mutex;
-
 use crate::arch::{mie, Arch, Architecture, Csr, Mode};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::device::{DeviceAccess, Width};
@@ -55,7 +53,7 @@ impl TimestampEntry {
 #[derive(Debug)]
 pub struct VirtClint {
     /// A driver for the physical CLINT
-    driver: &'static Mutex<ClintDriver>,
+    driver: &'static ClintDriver,
     /// Virtual Machine Software Interrupt (MSI) map
     vmsi: [AtomicBool; PLATFORM_NB_HARTS],
     /// Policy Machine Software Interrupt (MSI) map
@@ -89,7 +87,7 @@ impl DeviceAccess for VirtClint {
 
 impl VirtClint {
     /// Creates a new virtual CLINT device backed by a physical CLINT.
-    pub const fn new(driver: &'static Mutex<ClintDriver>) -> Self {
+    pub const fn new(driver: &'static ClintDriver) -> Self {
         Self {
             driver,
             vmsi: [const { AtomicBool::new(false) }; PLATFORM_NB_HARTS],
@@ -109,16 +107,13 @@ impl VirtClint {
 
     /// React to a physical timer interrupt.
     ///
-    /// The virtual CLINT can multiplexe the physical timer for multiple sources. This function
+    /// The virtual CLINT can multiplex the physical timer for multiple sources. This function
     /// handles the multiplexing by finding the timer origin and configuring the next deadline.
     pub fn handle_machine_timer_interrupt(&self, ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         let timestamps = &self.next_timestamps[mctx.hw.hart];
 
-        // Read current timestamp and drop the lock right away
-        let current_timestamp: usize = Plat::get_clint()
-            .lock()
-            .read_mtimecmp(mctx.hw.hart)
-            .unwrap();
+        // Read current timestamp
+        let current_timestamp = Plat::get_clint().read_mtimecmp(mctx.hw.hart).unwrap();
 
         // If the timer is for the firmware
         if current_timestamp >= timestamps.deadline_firmware.load(Ordering::SeqCst) {
@@ -160,7 +155,6 @@ impl VirtClint {
 
         // Write the next deadline back
         Plat::get_clint()
-            .lock()
             .write_mtimecmp(hart_id, next_deadline)
             .expect("Failed to write mtimecmp");
     }
@@ -168,21 +162,20 @@ impl VirtClint {
     pub fn read_clint(&self, offset: usize, r_width: Width) -> Result<usize, &'static str> {
         logger::trace!("Read from CLINT at offset 0x{:x}", offset);
         self.validate_offset(offset)?;
-        let driver = self.driver.lock();
 
         match (offset, r_width) {
             (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
                 let hart = (o - MSIP_OFFSET) / MSIP_WIDTH.to_bytes();
-                driver.read_msip(hart)
+                self.driver.read_msip(hart)
             }
             (o, Width::Byte8) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
-                driver.read_mtimecmp(hart)
+                self.driver.read_mtimecmp(hart)
             }
-            (o, Width::Byte8) if o == MTIME_OFFSET => Ok(driver.read_mtime()),
+            (o, Width::Byte8) if o == MTIME_OFFSET => Ok(self.driver.read_mtime()),
             // We also handle the case of 4 bytes reads to mtime
-            (o, Width::Byte4) if o == MTIME_OFFSET => Ok(driver.read_mtime() & 0xffffffff),
-            (o, Width::Byte4) if o == MTIME_OFFSET + 4 => Ok(driver.read_mtime() >> 32),
+            (o, Width::Byte4) if o == MTIME_OFFSET => Ok(self.driver.read_mtime() & 0xffffffff),
+            (o, Width::Byte4) if o == MTIME_OFFSET + 4 => Ok(self.driver.read_mtime() >> 32),
             _ => {
                 log::warn!(
                     "Invalid clint read: offset is 0x{:x}, width is {}",
@@ -201,7 +194,7 @@ impl VirtClint {
         mctx: &mut MiralisContext,
         value: usize,
     ) {
-        let mtime = self.driver.lock().read_mtime();
+        let mtime = self.driver.read_mtime();
         if mtime >= value {
             // If the deadline already passed we install the timer interrupt
             ctx.csr.mip |= mie::STIE_FILTER;
@@ -240,7 +233,6 @@ impl VirtClint {
             value
         );
         self.validate_offset(offset)?;
-        let mut driver = self.driver.lock();
 
         match (offset, w_width) {
             (o, Width::Byte4) if (MSIP_OFFSET..MTIMECMP_OFFSET).contains(&o) => {
@@ -258,7 +250,7 @@ impl VirtClint {
                             Ok(())
                         } else {
                             // On remote hart send a physical MSI
-                            driver.write_msip(hart, 1)
+                            self.driver.write_msip(hart, 1)
                         }
                     }
                     1 => {
@@ -270,14 +262,14 @@ impl VirtClint {
                             Ok(())
                         } else {
                             // On remote hart send a physical MSI
-                            driver.write_msip(hart, 1)
+                            self.driver.write_msip(hart, 1)
                         }
                     }
                     _ => unreachable!(),
                 }
             }
             (o, _) if (MTIMECMP_OFFSET..MTIME_OFFSET).contains(&o) => {
-                let mtime = driver.read_mtime();
+                let mtime = self.driver.read_mtime();
                 let hart = (o - MTIMECMP_OFFSET) / MTIMECMP_WIDTH.to_bytes();
                 if hart >= PLATFORM_NB_HARTS {
                     return Err("Invalid hart when writting MSIP");
@@ -292,7 +284,6 @@ impl VirtClint {
                     ctx.csr.mip |= mie::MTIE_FILTER;
                 } else {
                     // Register a timer to trigger the virtual interrupt once appropriate
-                    drop(driver); // We need to drop the lock here to write the deadlines
                     self.next_timestamps[ctx.hart_id]
                         .deadline_firmware
                         .store(value, Ordering::SeqCst);
@@ -308,7 +299,7 @@ impl VirtClint {
                 debug::warn_once!(
                     "Write to mtime not yet fully supported (might cause interrupt loss)"
                 );
-                driver.write_mtime(value);
+                self.driver.write_mtime(value);
                 Ok(())
             }
             _ => {

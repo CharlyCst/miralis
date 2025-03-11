@@ -29,10 +29,10 @@ const CLINT_BASE: usize = 0x2000000;
 ///
 /// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
 /// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
+static CLINT_DRIVER: ClintDriver = unsafe { ClintDriver::new(CLINT_BASE) };
 
 /// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
+static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_DRIVER);
 
 pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
     UART_SERIAL_PORT_BASE_ADDRESS,
@@ -103,8 +103,8 @@ impl Platform for VisionFive2Platform {
         VIRT_DEVICES
     }
 
-    fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
+    fn get_clint() -> &'static ClintDriver {
+        &CLINT_DRIVER
     }
 
     fn get_vclint() -> &'static VirtClint {

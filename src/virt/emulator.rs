@@ -356,11 +356,9 @@ impl VirtContext {
         policy: &mut Policy,
     ) {
         // Clear the interrupt
-        let mut clint = Plat::get_clint().lock();
-        clint
+        Plat::get_clint()
             .write_msip(mctx.hw.hart, 0)
             .expect("Failed to write msip");
-        drop(clint); // Release the lock early
 
         // Check if a virtual MSI is pending
         let vclint = Plat::get_vclint();

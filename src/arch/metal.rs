@@ -326,8 +326,7 @@ impl Architecture for MetalArch {
             Csr::Minstret => asm_read_csr!("minstret"),
             Csr::Cycle => todo!(),
             Csr::Time => {
-                let clint = Plat::get_clint().lock();
-                value = clint.read_mtime();
+                value = Plat::get_clint().read_mtime();
             }
             Csr::Instret => todo!(),
             Csr::Mhpmcounter(_) => todo!(),
