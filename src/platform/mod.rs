@@ -3,13 +3,14 @@ mod premierp550;
 pub mod virt;
 pub mod visionfive2;
 
-use core::fmt;
+use core::{fmt, hint};
 
 use config_select::select_env;
 use log::Level;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
+use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::VirtClint;
 use crate::driver::clint::ClintDriver;
 use crate::{debug, device, logger};
@@ -28,13 +29,33 @@ pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
 ];
 pub trait Platform {
     fn name() -> &'static str;
-    fn init();
     fn debug_print(level: Level, args: fmt::Arguments);
-    fn exit_success() -> !;
-    fn exit_failure() -> !;
     fn get_virtual_devices() -> &'static [device::VirtDevice];
     fn get_clint() -> &'static ClintDriver;
     fn get_vclint() -> &'static VirtClint;
+
+    // Platform specific initialization.
+    fn init() {}
+
+    /// Halt Miralis and signal a success.
+    ///
+    /// The exact behavior is platform dependant.
+    fn exit_success() -> ! {
+        loop {
+            Arch::wfi();
+            hint::spin_loop();
+        }
+    }
+
+    /// Halt Miralis and signal a failure.
+    ///
+    /// The exact behavior is platform dependant.
+    fn exit_failure() -> ! {
+        loop {
+            Arch::wfi();
+            hint::spin_loop();
+        }
+    }
 
     /// Signal a pending policy interrupt on all cores and trigger an MSI.
     ///
@@ -48,13 +69,19 @@ pub trait Platform {
     }
 
     /// Load the firmware (virtual M-mode software) and return its address.
-    fn load_firmware() -> usize;
+    fn load_firmware() -> usize {
+        TARGET_FIRMWARE_ADDRESS
+    }
 
     /// Returns the start and size of Miralis's own memory.
-    fn get_miralis_start() -> usize;
+    fn get_miralis_start() -> usize {
+        TARGET_START_ADDRESS
+    }
 
     /// Return maximum valid address
-    fn get_max_valid_address() -> usize;
+    fn get_max_valid_address() -> usize {
+        usize::MAX
+    }
 
     /// Returns true if the
     fn is_valid_custom_csr(csr: usize) -> bool {

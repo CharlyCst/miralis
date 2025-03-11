@@ -1,13 +1,11 @@
 //! QEMU Virt board
 
 use core::fmt::Write;
-use core::{fmt, hint, ptr};
+use core::{fmt, ptr};
 
 use log::Level;
 use spin::Mutex;
 
-use crate::arch::{Arch, Architecture};
-use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::VirtDevice;
 use crate::driver::clint::ClintDriver;
@@ -18,8 +16,6 @@ use crate::Platform;
 
 const UART_SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const UART_SIZE_PER_REGISTER: usize = 4;
-const MIRALIS_START_ADDR: usize = TARGET_START_ADDRESS;
-const FIRMWARE_START_ADDR: usize = TARGET_FIRMWARE_ADDRESS;
 
 const CLINT_BASE: usize = 0x2000000;
 
@@ -71,32 +67,6 @@ impl Platform for VisionFive2Platform {
         let mut writer = WRITER.lock();
         writer.write_fmt(args).unwrap();
         writer.write_str("\r").unwrap();
-    }
-
-    fn exit_success() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
-    }
-
-    fn exit_failure() -> ! {
-        loop {
-            Arch::wfi();
-            hint::spin_loop();
-        }
-    }
-
-    fn load_firmware() -> usize {
-        FIRMWARE_START_ADDR
-    }
-
-    fn get_miralis_start() -> usize {
-        MIRALIS_START_ADDR
-    }
-
-    fn get_max_valid_address() -> usize {
-        usize::MAX
     }
 
     fn get_virtual_devices() -> &'static [VirtDevice] {
