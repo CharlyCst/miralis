@@ -44,10 +44,10 @@ static SERIAL_PORT: Mutex<Option<MmioSerialPort>> = Mutex::new(None);
 ///
 /// SAFETY: this is the only CLINT device driver that we create, and the platform code does not
 /// otherwise access the CLINT.
-static CLINT_MUTEX: Mutex<ClintDriver> = unsafe { Mutex::new(ClintDriver::new(CLINT_BASE)) };
+static CLINT_DRIVER: ClintDriver = unsafe { ClintDriver::new(CLINT_BASE) };
 
 /// The virtual CLINT device.
-static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
+static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_DRIVER);
 
 /// The physical PLIC driver.
 ///
@@ -145,8 +145,8 @@ impl Platform for VirtPlatform {
         VIRT_DEVICES
     }
 
-    fn get_clint() -> &'static Mutex<ClintDriver> {
-        &CLINT_MUTEX
+    fn get_clint() -> &'static ClintDriver {
+        &CLINT_DRIVER
     }
 
     fn get_vclint() -> &'static VirtClint {

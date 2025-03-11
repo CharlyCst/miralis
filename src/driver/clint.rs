@@ -1,6 +1,6 @@
 //! # CLINT Driver
 //!
-//! This module implements a driver for the RISC-V CLINT (Core Local Interruptor). It is inteded to
+//! This module implements a driver for the RISC-V CLINT (Core Local Interruptor). It is intended to
 //! be used both as a back-end for the virtual CLINT device and for directly programming M-mode
 //! interrupts from Miralis.
 
@@ -54,11 +54,12 @@ impl ClintDriver {
     }
 
     /// Write a new value to the machine timer (mtime)
-    pub fn write_mtime(&mut self, time: usize) {
+    pub fn write_mtime(&self, time: usize) {
         let pointer = self.add_base_offset(MTIME_OFFSET);
 
         // SAFETY: We derive a valid memory address assuming the base points to a valid CLINT
-        // device. Moreover, we take `self` with &mut reference to enforce aliasing rules.
+        // The pointer will access MMIO memory, the Rust memory model is not clear regarding
+        // concurrent access but this mimic the OpenSBI implementation with racy read/writes.
         unsafe { ptr::write_volatile(pointer as *mut usize, time) };
         logger::trace!("MTIME value written: 0x{:x}", time);
     }
@@ -83,7 +84,7 @@ impl ClintDriver {
     }
 
     /// Write a new value to the machine timer compare (mtimecmp) for a specific hart
-    pub fn write_mtimecmp(&mut self, hart: usize, deadline: usize) -> Result<(), &'static str> {
+    pub fn write_mtimecmp(&self, hart: usize, deadline: usize) -> Result<(), &'static str> {
         if hart >= config::PLATFORM_NB_HARTS {
             log::warn!(
                 "Tried to write MTIMECMP for hart {}, but only {} hart(s) are available",
@@ -95,8 +96,9 @@ impl ClintDriver {
         let pointer = self.add_base_offset(MTIMECMP_OFFSET + hart * MTIMECMP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
-        // the read is contained within the MTIMECMP area of the CLINT. Moreover, we take `self`
-        // with a &mut reference to enforce aliasing rules.
+        // the read is contained within the MTIMECMP area of the CLINT.
+        // The pointer will access MMIO memory, the Rust memory model is not clear regarding
+        // concurrent access but this mimic the OpenSBI implementation with racy read/writes.
         unsafe { ptr::write_volatile(pointer as *mut usize, deadline) };
         logger::trace!("MTIMECMP value written: 0x{:x}", deadline);
         Ok(())
@@ -125,7 +127,7 @@ impl ClintDriver {
     }
 
     /// Write a new value to the machine software interrupt (msip) for a specific hart.
-    pub fn write_msip(&mut self, hart: usize, msip: u32) -> Result<(), &'static str> {
+    pub fn write_msip(&self, hart: usize, msip: u32) -> Result<(), &'static str> {
         if hart >= PLATFORM_NB_HARTS {
             log::warn!(
                 "Tried to write MSIP for hart {}, but only {} hart(s) are available",
@@ -138,15 +140,16 @@ impl ClintDriver {
         let pointer = self.add_base_offset(MSIP_OFFSET + hart * MSIP_WIDTH.to_bytes());
 
         // SAFETY: We checked that the number of hart is within the platform limit, which ensures
-        // the read is contained within the MSIP area of the CLINT. Moreover, we take `self`
-        // with a &mut reference to enforce aliasing rules.
+        // the read is contained within the MSIP area of the CLINT.
+        // The pointer will access MMIO memory, the Rust memory model is not clear regarding
+        // concurrent access but this mimic the OpenSBI implementation with racy read/writes.
         unsafe { ptr::write_volatile((pointer) as *mut u32, msip_value) };
         logger::trace!("MSIP value written: 0x{:x} for hart {hart}", msip_value);
         Ok(())
     }
 
     /// Create a pending MSI interrupts for each harts of the platform given in the mask (bit 0 = hart 0, bit 1 = hart 1,...)
-    pub fn trigger_msi_on_all_harts(&mut self, mask: usize) {
+    pub fn trigger_msi_on_all_harts(&self, mask: usize) {
         for i in 0..PLATFORM_NB_HARTS {
             if mask & (1 << i) != 0 {
                 self.write_msip(i, 1).unwrap();

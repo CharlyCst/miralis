@@ -7,7 +7,6 @@ use core::fmt;
 
 use config_select::select_env;
 use log::Level;
-use spin::Mutex;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
@@ -34,7 +33,7 @@ pub trait Platform {
     fn exit_success() -> !;
     fn exit_failure() -> !;
     fn get_virtual_devices() -> &'static [device::VirtDevice];
-    fn get_clint() -> &'static Mutex<ClintDriver>;
+    fn get_clint() -> &'static ClintDriver;
     fn get_vclint() -> &'static VirtClint;
 
     /// Signal a pending policy interrupt on all cores and trigger an MSI.
@@ -45,7 +44,7 @@ pub trait Platform {
         Self::get_vclint().set_all_policy_msi(mask);
 
         // Fire physical clint
-        Self::get_clint().lock().trigger_msi_on_all_harts(mask);
+        Self::get_clint().trigger_msi_on_all_harts(mask);
     }
 
     /// Load the firmware (virtual M-mode software) and return its address.
