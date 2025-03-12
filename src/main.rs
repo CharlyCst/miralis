@@ -12,6 +12,9 @@
 
 use core::arch::global_asm;
 
+use fdt_rs::base::*;
+use fdt_rs::index::*;
+use fdt_rs::prelude::*;
 use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
 use miralis::benchmark::{Benchmark, BenchmarkModule};
@@ -35,11 +38,39 @@ extern "C" {
 
 pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> ! {
     // On the VisionFive2 board there is an issue with a hart_id
-    // Identification, so we have to reassign it for now
+    // identification, so we have to reassign it for now
 
     let hart_id = Arch::read_csr(Csr::Mhartid);
 
     init();
+
+    log::info!("Modifying the flattened device tree");
+
+    // Create the device tree parser
+    let devtree = unsafe { DevTree::from_raw_pointer(device_tree_blob_addr as *const u8) }
+        .expect("Buffer does not contain a device tree.");
+
+    let mem_prop = devtree
+        .props()
+        .find(|p| Ok(p.name()? == "device_type" && p.str()? == "memory"))
+        .unwrap()
+        .unwrap();
+
+    let reg_prop = mem_prop
+        .node()
+        .props()
+        .find(|p| Ok(p.name().unwrap_or("empty") == "reg"))
+        .unwrap()
+        .unwrap();
+
+    log::warn!(
+        "{:x} {:x}",
+        reg_prop.u64(0).unwrap(),
+        reg_prop.u64(1).unwrap()
+    );
+
+    loop {}
+
     log::info!("Hello, world!");
     log::info!("Platform name: {}", Plat::name());
     log::info!("Policy module: {}", Policy::name());

@@ -18,6 +18,11 @@ path = "lib.rs"
 name = "miralis"
 path = "main.rs"
 
+
+[dependencies.fdt-rs]
+version = "x"
+default-features = false
+
 [dependencies]
 uart_16550 = "0.3.0"
 spin = "0.5.2"
