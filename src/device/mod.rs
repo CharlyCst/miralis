@@ -7,6 +7,8 @@ pub mod clint;
 pub mod plic;
 pub mod tester;
 
+pub mod passthrough;
+
 // ———————————————————————————— Virtual Devices ————————————————————————————— //
 
 /// Represents a virtual memory-mapped device

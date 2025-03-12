@@ -8,6 +8,7 @@ use spin::Mutex;
 
 use crate::arch::{read_custom_csr, write_custom_csr};
 use crate::device::clint::{VirtClint, CLINT_SIZE};
+use crate::device::passthrough::{PassThroughDevice, PASSTHROUGH_BASE_ADDRESS, PASSTHROUGH_SIZE};
 use crate::device::VirtDevice;
 use crate::driver::clint::ClintDriver;
 use crate::driver::uart::UartDriver;
@@ -28,18 +29,28 @@ static CLINT_MUTEX: ClintDriver = unsafe { ClintDriver::new(CLINT_BASE) };
 /// The virtual CLINT device.
 static VIRT_CLINT: VirtClint = VirtClint::new(&CLINT_MUTEX);
 
+static PASSTHROUGH_RW: PassThroughDevice = PassThroughDevice::new();
+
 pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
     EIC770X_UART0_ADDR,
     (1 << EIC770X_UART_REG_SHIFT) as usize,
 ));
 
 /// The list of virtual devices exposed on the platform.
-static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
-    start_addr: CLINT_BASE,
-    size: CLINT_SIZE,
-    name: "CLINT",
-    device_interface: &VIRT_CLINT,
-}];
+static VIRT_DEVICES: &[VirtDevice; 2] = &[
+    VirtDevice {
+        start_addr: CLINT_BASE,
+        size: CLINT_SIZE,
+        name: "CLINT",
+        device_interface: &VIRT_CLINT,
+    },
+    VirtDevice {
+        start_addr: PASSTHROUGH_BASE_ADDRESS,
+        size: PASSTHROUGH_SIZE,
+        name: "PASSTHROUGH",
+        device_interface: &PASSTHROUGH_RW,
+    },
+];
 
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
