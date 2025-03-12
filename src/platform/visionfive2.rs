@@ -36,7 +36,7 @@ pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
 ));
 
 /// The list of virtual devices exposed on the platform.
-static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
+static VIRT_DEVICES: &[VirtDevice] = &[VirtDevice {
     start_addr: CLINT_BASE,
     size: CLINT_SIZE,
     name: "CLINT",
@@ -48,8 +48,10 @@ static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
 pub struct VisionFive2Platform {}
 
 impl Platform for VisionFive2Platform {
+    // The VisifionFive2Platform has a minimal fifth core that isn't booting the linux kernel.
+    // This is why we write 5 instead of 4
     const NB_HARTS: usize = 5;
-    const NB_VIRT_DEVICES: usize = 2;
+    const NB_VIRT_DEVICES: usize = VIRT_DEVICES.len();
 
     fn name() -> &'static str {
         "VisionFive 2 board"

@@ -65,7 +65,7 @@ static VIRT_PLIC: VirtPlic = VirtPlic::new(&PLIC_MUTEX);
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
 
 /// The list of virtual devices exposed on the platform.
-static VIRT_DEVICES: &[VirtDevice; 2] = &[
+static VIRT_DEVICES: &[VirtDevice] = &[
     VirtDevice {
         start_addr: CLINT_BASE,
         size: CLINT_SIZE,
@@ -86,7 +86,7 @@ pub struct VirtPlatform {}
 
 impl Platform for VirtPlatform {
     const NB_HARTS: usize = usize::MAX;
-    const NB_VIRT_DEVICES: usize = 2;
+    const NB_VIRT_DEVICES: usize = VIRT_DEVICES.len();
 
     fn name() -> &'static str {
         match PLATFORM_NAME {

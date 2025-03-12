@@ -34,7 +34,7 @@ pub static WRITER: Mutex<UartDriver> = Mutex::new(UartDriver::new(
 ));
 
 /// The list of virtual devices exposed on the platform.
-static VIRT_DEVICES: &[VirtDevice; 1] = &[VirtDevice {
+static VIRT_DEVICES: &[VirtDevice] = &[VirtDevice {
     start_addr: CLINT_BASE,
     size: CLINT_SIZE,
     name: "CLINT",
