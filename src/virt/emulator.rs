@@ -17,7 +17,7 @@ use crate::device::VirtDevice;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{Policy, PolicyModule};
-use crate::utils::sign_extend;
+use crate::utils::{is_miralis_range, sign_extend};
 use crate::{debug, device, logger, utils};
 
 /// Wether to continue execution of the virtual firmware or payload, or terminate the run loop.
@@ -173,6 +173,8 @@ impl VirtContext {
                 LoadStoreInstr::Load(instr) => self.handle_device_load(device, &instr),
                 LoadStoreInstr::Store(instr) => self.handle_device_store(device, &instr),
             }
+        } else if is_miralis_range(self.trap_info.mtval) {
+            panic!("Read or store to Miralis memory");
         } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
             // The fault is due to an access with MPRV = 1.
             //
@@ -499,6 +501,16 @@ impl VirtContext {
             }
             MCause::MachineSoftInt => {
                 self.handle_machine_software_interrupt(mctx, policy);
+            }
+            MCause::StoreAccessFault => {
+                let instr = unsafe { get_raw_faulting_instr(self) };
+                let instr = mctx.decode_store(instr);
+                self.handle_pmp_fault(mctx, LoadStoreInstr::Store(instr));
+            }
+            MCause::LoadAccessFault => {
+                let instr = unsafe { get_raw_faulting_instr(self) };
+                let instr = mctx.decode_load(instr);
+                self.handle_pmp_fault(mctx, LoadStoreInstr::Load(instr));
             }
             _ => self.emulate_jump_trap_handler(),
         }

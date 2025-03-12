@@ -134,7 +134,7 @@ pub fn get_qemu_cmd(
     if let Some(memory) = &cfg.qemu.memory {
         qemu_cmd.arg(memory);
     } else {
-        qemu_cmd.arg("2048");
+        qemu_cmd.arg("64");
     }
 
     qemu_cmd

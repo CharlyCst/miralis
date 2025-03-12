@@ -5,6 +5,8 @@
 use core::marker::PhantomData;
 
 use crate::arch::Width;
+use crate::config::{PLATFORM_NB_HARTS, TARGET_STACK_SIZE};
+use crate::platform::{Plat, Platform};
 
 /// A marker type that is not Send and not Sync (!Send, !Sync).
 pub type PhantomNotSendNotSync = PhantomData<*const ()>;
@@ -66,6 +68,36 @@ pub const fn const_str_eq(a: &str, b: &str) -> bool {
     }
 
     true
+}
+
+#[cfg(not(feature = "userspace"))]
+extern "C" {
+    static _stack_start: u8;
+    static _start_address: u8;
+}
+
+#[allow(non_upper_case_globals)]
+#[cfg(feature = "userspace")]
+static _stack_start: u8 = 0;
+
+#[allow(non_upper_case_globals)]
+#[cfg(feature = "userspace")]
+static _start_address: u8 = 0;
+
+/// Return the size of Miralis, including the stacks, rounded up the nearest power of two.
+pub fn get_miralis_size() -> usize {
+    let size = (&raw const _stack_start as usize)
+        .checked_sub(&raw const _start_address as usize)
+        .and_then(|diff| diff.checked_add(TARGET_STACK_SIZE * PLATFORM_NB_HARTS))
+        .unwrap();
+
+    size.next_power_of_two()
+}
+
+/// Checks if the address is part of the Miralis range
+pub fn is_miralis_range(address: usize) -> bool {
+    Plat::get_miralis_start() <= address
+        && address < Plat::get_miralis_start() + 8 * get_miralis_size()
 }
 
 #[cfg(test)]

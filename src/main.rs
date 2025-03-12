@@ -16,12 +16,12 @@ use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
 use miralis::benchmark::{Benchmark, BenchmarkModule};
 use miralis::config::{
-    DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
-    TARGET_STACK_SIZE,
+    DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, TARGET_STACK_SIZE,
 };
 use miralis::host::MiralisContext;
 use miralis::platform::{init, Plat, Platform};
 use miralis::policy::{Policy, PolicyModule};
+use miralis::utils::get_miralis_size;
 use miralis::virt::traits::*;
 use miralis::virt::VirtContext;
 
@@ -64,7 +64,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // SAFETY: this must happen before hardware initialization
     let hw = unsafe { Arch::detect_hardware() };
     // Initialize Miralis's own context
-    let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), get_miralis_size());
+    let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 8 * get_miralis_size());
 
     // Initialize the virtual context and configure architecture
     let mut ctx = VirtContext::new(hart_id, mctx.pmp.nb_virt_pmp, mctx.hw.extensions.clone());
@@ -105,16 +105,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         miralis::debug::log_stack_usage(&raw const _stack_start as usize);
     }
     Plat::exit_success();
-}
-
-/// Return the size of Miralis, including the stacks, rounded up the nearest power of two.
-fn get_miralis_size() -> usize {
-    let size = (&raw const _stack_start as usize)
-        .checked_sub(&raw const _start_address as usize)
-        .and_then(|diff| diff.checked_add(TARGET_STACK_SIZE * PLATFORM_NB_HARTS))
-        .unwrap();
-
-    size.next_power_of_two()
 }
 
 // ————————————————————————————— Panic Handler —————————————————————————————— //
