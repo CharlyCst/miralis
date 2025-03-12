@@ -17,7 +17,8 @@ impl PassThroughDevice {
 
 pub const PASSTHROUGH_BASE_ADDRESS: usize = 0x0;
 
-pub const PASSTHROUGH_SIZE: usize = 0x20;
+// All values before 0x8000_0000 should be accessed in M-mode
+pub const PASSTHROUGH_SIZE: usize = 0x8000_0000;
 impl DeviceAccess for PassThroughDevice {
     fn read_device(
         &self,
