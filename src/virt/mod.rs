@@ -141,6 +141,7 @@ impl VirtContext {
                 mtval: 0,
                 mtval2: 0,
                 mtinst: 0,
+                gva: false,
             },
             nb_exits: 0,
             hart_id,

@@ -58,6 +58,10 @@ impl MCause {
         self as usize & INTERRUPT_BIT != 0
     }
 
+    pub fn is_trap(self) -> bool {
+        self as usize & INTERRUPT_BIT == 0
+    }
+
     pub fn cause_number(cause: usize) -> usize {
         if (cause as isize) < 0 {
             cause ^ INTERRUPT_BIT
@@ -125,6 +129,7 @@ pub struct TrapInfo {
     pub mtval: usize,
     pub mtval2: usize,
     pub mtinst: usize,
+    pub gva: bool,
 }
 
 impl TrapInfo {
