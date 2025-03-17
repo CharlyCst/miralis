@@ -114,6 +114,8 @@ pub struct TrapInfo {
     pub mcause: usize,
     pub mip: usize,
     pub mtval: usize,
+    pub mtval2: usize,
+    pub mtinst: usize,
 }
 
 impl TrapInfo {

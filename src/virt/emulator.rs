@@ -282,6 +282,11 @@ impl VirtContext {
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
 
+        if self.extensions.has_h_extension {
+            self.csr.mtinst = self.trap_info.mtinst;
+            self.csr.mtval2 = self.trap_info.mtval2;
+        }
+
         // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
         // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
         // controller. (refer to documentation for further detail).
