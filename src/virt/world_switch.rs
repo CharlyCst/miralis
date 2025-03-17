@@ -173,28 +173,28 @@ impl VirtContext {
 
         // If H extension is present - save the registers
         if mctx.hw.extensions.has_h_extension {
-            self.csr.hstatus = Arch::read_csr(Csr::Hstatus);
-            self.csr.hedeleg = Arch::read_csr(Csr::Hedeleg);
-            self.csr.hideleg = Arch::read_csr(Csr::Hideleg);
-            self.csr.hvip = Arch::read_csr(Csr::Hvip);
-            self.csr.hip = Arch::read_csr(Csr::Hip);
-            self.csr.hie = Arch::read_csr(Csr::Hie);
-            self.csr.hgeip = Arch::read_csr(Csr::Hgeip); // Read only register, this write will have no effect
-            self.csr.hgeie = Arch::read_csr(Csr::Hgeie);
-            self.csr.hcounteren = Arch::read_csr(Csr::Hcounteren);
-            self.csr.htval = Arch::read_csr(Csr::Htval);
-            self.csr.htinst = Arch::read_csr(Csr::Htinst);
-            self.csr.hgatp = Arch::read_csr(Csr::Hgatp);
+            self.csr.hstatus = Arch::write_csr(Csr::Hstatus, 0);
+            self.csr.hedeleg = Arch::write_csr(Csr::Hedeleg, 0);
+            self.csr.hideleg = Arch::write_csr(Csr::Hideleg, 0);
+            self.csr.hvip = Arch::write_csr(Csr::Hvip, 0);
+            self.csr.hip = Arch::write_csr(Csr::Hip, 0);
+            self.csr.hie = Arch::write_csr(Csr::Hie, 0);
+            self.csr.hgeip = Arch::write_csr(Csr::Hgeip, 0); // Read only register, this write will have no effect
+            self.csr.hgeie = Arch::write_csr(Csr::Hgeie, 0);
+            self.csr.hcounteren = Arch::write_csr(Csr::Hcounteren, 0);
+            self.csr.htval = Arch::write_csr(Csr::Htval, 0);
+            self.csr.htinst = Arch::write_csr(Csr::Htinst, 0);
+            self.csr.hgatp = Arch::write_csr(Csr::Hgatp, 0);
 
-            self.csr.vsstatus = Arch::read_csr(Csr::Vsstatus);
-            self.csr.vsie = Arch::read_csr(Csr::Vsie);
-            self.csr.vstvec = Arch::read_csr(Csr::Vstvec);
-            self.csr.vsscratch = Arch::read_csr(Csr::Vsscratch);
-            self.csr.vsepc = Arch::read_csr(Csr::Vsepc);
-            self.csr.vscause = Arch::read_csr(Csr::Vscause);
-            self.csr.vstval = Arch::read_csr(Csr::Vstval);
-            self.csr.vsip = Arch::read_csr(Csr::Vsip);
-            self.csr.vsatp = Arch::read_csr(Csr::Vsatp);
+            self.csr.vsstatus = Arch::write_csr(Csr::Vsstatus, 0);
+            self.csr.vsie = Arch::write_csr(Csr::Vsie, 0);
+            self.csr.vstvec = Arch::write_csr(Csr::Vstvec, 0);
+            self.csr.vsscratch = Arch::write_csr(Csr::Vsscratch, 0);
+            self.csr.vsepc = Arch::write_csr(Csr::Vsepc, 0);
+            self.csr.vscause = Arch::write_csr(Csr::Vscause, 0);
+            self.csr.vstval = Arch::write_csr(Csr::Vstval, 0);
+            self.csr.vsip = Arch::write_csr(Csr::Vsip, 0);
+            self.csr.vsatp = Arch::write_csr(Csr::Vsatp, 0);
         }
 
         // Remove Firmware PMP from the hardware
