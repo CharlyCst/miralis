@@ -5,8 +5,14 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use miralis_core::sbi_codes;
 
+use crate::arch::hstatus::{GVA_FILTER, SPVP_FILTER, SPV_FILTER};
+use crate::arch::mie::{SIE_FILTER, SSIE_FILTER};
+use crate::arch::mstatus::{
+    MPP_FILTER, MPP_OFFSET, MPV_FILTER, SPIE_FILTER, SPIE_OFFSET, SPP_FILTER, SPP_OFFSET,
+};
 use crate::arch::{
-    get_raw_faulting_instr, mie, Arch, Architecture, Csr, MCause, Mode, Register, PAGE_SIZE,
+    get_raw_faulting_instr, mie, mstatus, parse_mpp_return_mode, Arch, Architecture, Csr, MCause,
+    Mode, Register, PAGE_SIZE,
 };
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
@@ -55,6 +61,9 @@ impl PolicyModule for OffloadPolicy {
         match trap_info.get_cause() {
             MCause::LoadAddrMisaligned => emulate_misaligned_read(ctx, mctx),
             MCause::StoreAddrMisaligned => emulate_misaligned_write(ctx, mctx),
+            MCause::LoadPageFault | MCause::StorePageFault | MCause::InstrPageFault => {
+                Self::redirect_trap_to_s_mode(ctx)
+            }
             MCause::EcallFromSMode => {
                 Self::check_ecall(ctx, mctx, ctx.get(Register::X16), ctx.get(Register::X17))
             }
@@ -211,5 +220,134 @@ impl OffloadPolicy {
 
     unsafe fn set_physical_ssip(&self) {
         Arch::set_csr_bits(Csr::Mip, mie::SSIE_FILTER);
+    }
+
+    /// This function is a rust implementation of the function "sbi_trap_redirect" in the sbi_trap.c from the OpenSBI codebase
+    /// This function corresponds to a payload to payload transition. Therefore, we don't modify the virtual context but the physical registers
+    /// The only exception is ctx.pc because in the trap handler we write mepc with ctx.pc value.
+    #[allow(unused)]
+    fn redirect_trap_to_s_mode(ctx: &mut VirtContext) -> PolicyHookResult {
+        let mut mstatus = ctx.trap_info.mstatus;
+
+        // The previous virtualisation mode
+        let prev_is_virt: bool = mstatus & MPV_FILTER != 0;
+
+        assert!(
+            !prev_is_virt,
+            "Currently, we never tested this code when virtualisation is active, the feature might be unstable"
+        );
+
+        // Sanity check on previous mode
+        let prev_mode = parse_mpp_return_mode(mstatus);
+        assert!(
+            prev_mode != Mode::S && prev_mode != Mode::U,
+            "Trying to redirect a trap from the firmware to the payload"
+        );
+
+        // If exceptions came from VS/VU-mode, redirect to VS-mode if delegated in hedeleg
+        let next_is_virt = ctx.extensions.has_h_extension
+            && prev_is_virt
+            && MCause::is_trap(MCause::try_from(ctx.trap_info.mcause).unwrap());
+
+        // Update MSTATUS MPV bits
+        mstatus &= !MPV_FILTER;
+        mstatus |= if next_is_virt { MPV_FILTER } else { 0 };
+
+        // Update hypervisor CSRs if going to HS-mode
+        if ctx.extensions.has_h_extension && !next_is_virt {
+            let mut hstatus = Arch::read_csr(Csr::Hstatus);
+
+            if prev_is_virt {
+                // hstatus.SPVP is only updated if coming from VS/VU-mode
+                hstatus &= !SPVP_FILTER;
+                hstatus |= if prev_mode == Mode::S { SPVP_FILTER } else { 0 };
+
+                hstatus &= !SPV_FILTER;
+                hstatus |= if prev_is_virt { SPV_FILTER } else { 0 };
+                hstatus &= !GVA_FILTER;
+                hstatus |= if ctx.trap_info.gva { GVA_FILTER } else { 0 };
+
+                unsafe {
+                    Arch::write_csr(Csr::Hstatus, hstatus);
+                    Arch::write_csr(Csr::Htval, ctx.trap_info.mtval2);
+                    Arch::write_csr(Csr::Htinst, ctx.trap_info.mtinst);
+                }
+            }
+        }
+
+        // Update exception related CSRs
+        if (next_is_virt) {
+            // Update VS-mode exception info
+            unsafe {
+                Arch::write_csr(Csr::Vstval, ctx.trap_info.mtval);
+                Arch::write_csr(Csr::Vsepc, ctx.trap_info.mepc);
+                Arch::write_csr(Csr::Vscause, ctx.trap_info.mcause);
+            }
+
+            // Set MEPC to VS-mode exception vector base
+            ctx.pc = Arch::read_csr(Csr::Vstvec);
+
+            // Set MPP to VS-mode
+            mstatus &= !MPP_FILTER;
+            mstatus |= (Mode::S as usize) << MPP_OFFSET;
+
+            // Get VS-mode SSTATUS CSR
+            let mut vsstatus = Arch::read_csr(Csr::Vsstatus);
+
+            // Set SPP for VS-mode
+            vsstatus &= !SPP_FILTER;
+            if prev_mode == Mode::S {
+                vsstatus |= 1 << SPP_OFFSET;
+            }
+
+            // Set SPIE for VS-mode
+            vsstatus &= !SPIE_FILTER;
+            if vsstatus & SSIE_FILTER != 0 {
+                vsstatus |= 1 << SPIE_OFFSET;
+            }
+
+            // Clear SIE for VS-mode
+            vsstatus &= !SIE_FILTER;
+
+            // Update VS-mode SSTATUS CSR
+            unsafe {
+                Arch::write_csr(Csr::Vsstatus, vsstatus);
+            }
+        } else {
+            // Update S-mode exception info
+            unsafe {
+                Arch::write_csr(Csr::Stval, ctx.trap_info.mtval);
+                Arch::write_csr(Csr::Sepc, ctx.trap_info.mepc);
+                Arch::write_csr(Csr::Scause, ctx.trap_info.mcause);
+            }
+
+            // Jump to the Payload trap handler
+            ctx.pc = Arch::read_csr(Csr::Stvec);
+
+            // Set MPP to S-mode
+            mstatus &= !MPP_FILTER;
+            mstatus |= (Mode::S as usize) << MPP_OFFSET;
+
+            // Set SPP for S-mode
+            mstatus &= !SPP_FILTER;
+            if prev_mode == Mode::S {
+                mstatus |= 1 << SPP_OFFSET;
+            }
+
+            // Set SPIE for S-mode
+            mstatus &= !SPIE_FILTER;
+            if mstatus & SIE_FILTER != 0 {
+                mstatus |= SPIE_FILTER
+            }
+
+            // Clear SIE for S-mode
+            mstatus &= !mstatus::SIE_FILTER;
+
+            unsafe {
+                Arch::write_csr(Csr::Mstatus, mstatus);
+            }
+        }
+
+        PolicyHookResult::Overwrite
     }
 }

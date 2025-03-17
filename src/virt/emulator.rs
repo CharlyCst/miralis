@@ -736,16 +736,6 @@ impl VirtContext {
                 );
             }
         }
-        // Modify mstatus
-        // ONLY WITH HYPERVISOR EXTENSION : MPV = 0,
-        if false {
-            VirtCsr::set_csr_field(
-                &mut self.csr.mstatus,
-                mstatus::MPV_OFFSET,
-                mstatus::MPV_FILTER,
-                0,
-            );
-        }
 
         // MIE = MPIE, MPIE = 1, MPRV = 0
         let mpie = (self.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET;
