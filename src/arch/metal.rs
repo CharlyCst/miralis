@@ -4,6 +4,7 @@ use core::marker::PhantomData;
 use core::usize;
 
 use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
+use crate::arch::Csr::{Mtinst, Mtval2};
 use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, Width};
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::platform::{Plat, Platform};
@@ -584,6 +585,18 @@ impl Architecture for MetalArch {
             out("x29") _,
             out("x30") _,
         );
+
+        // Fill the trap_info data structure
+        ctx.trap_info.mepc = Arch::read_csr(Csr::Mepc);
+        ctx.trap_info.mtval = Arch::read_csr(Csr::Mtval);
+        ctx.trap_info.mip = Arch::read_csr(Csr::Mip);
+        ctx.trap_info.mcause = Arch::read_csr(Csr::Mcause);
+        ctx.trap_info.mstatus = Arch::read_csr(Csr::Mstatus);
+
+        if ctx.extensions.has_h_extension {
+            ctx.trap_info.mtval2 = Arch::read_csr(Mtval2);
+            ctx.trap_info.mtinst = Arch::read_csr(Mtinst);
+        }
     }
 
     unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>) {
@@ -1321,15 +1334,6 @@ _raw_trap_handler:
 
     csrr x30, mepc              // Read guest PC
     sd x30, (8+8*32)(x31)       // Save the PC
-    sd x30, (8+8*32+8+8*0)(x31) // Save mepc
-    csrr x30, mstatus           // Fill the TrapInfo :  Read mstatus
-    sd x30, (8+8*32+8+8*1)(x31) // Save mstatus
-    csrr x30, mcause            // Fill the TrapInfo :  Read mcause
-    sd x30, (8+8*32+8+8*2)(x31) // Save mcause
-    csrr x30, mip               // Fill the TrapInfo : Read mip
-    sd x30, (8+8*32+8+8*3)(x31) // Save mip
-    csrr x30, mtval             // Fill the TrapInfo : Read mtval
-    sd x30, (8+8*32+8+8*4)(x31) // Save mtval
 
     ld sp,(8*0)(x31)      // Restore host stack
     ld x30,(sp)           // Load return address from stack
