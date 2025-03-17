@@ -4,6 +4,7 @@ use core::marker::PhantomData;
 use core::usize;
 
 use super::{menvcfg, Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability};
+use crate::arch::hstatus::GVA_FILTER;
 use crate::arch::Csr::{Mtinst, Mtval2};
 use crate::arch::{mie, misa, mstatus, parse_mpp_return_mode, set_mpp, HardwareCapability, Width};
 use crate::decoder::{LoadInstr, StoreInstr};
@@ -596,6 +597,7 @@ impl Architecture for MetalArch {
         if ctx.extensions.has_h_extension {
             ctx.trap_info.mtval2 = Arch::read_csr(Mtval2);
             ctx.trap_info.mtinst = Arch::read_csr(Mtinst);
+            ctx.trap_info.gva = ctx.trap_info.mstatus & GVA_FILTER != 0;
         }
     }
 

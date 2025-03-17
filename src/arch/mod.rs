@@ -497,12 +497,23 @@ pub mod menvcfg {
 // ————————————————————————————— Hypervisor Status ————————————————————————————— //
 
 /// Constants for the Machine Status (mstatus) CSR.
-#[allow(unused)]
 pub mod hstatus {
 
     // VSBE
     pub const VSBE_OFFSET: usize = 5;
     pub const VSBE_FILTER: usize = 0b1 << VSBE_OFFSET;
+
+    // GVA
+    pub const GVA_OFFSET: usize = 6;
+    pub const GVA_FILTER: usize = 1 << GVA_OFFSET;
+
+    // SPV
+    pub const SPV_OFFSET: usize = 7;
+    pub const SPV_FILTER: usize = 1 << SPV_OFFSET;
+
+    // SPVP
+    pub const SPVP_OFFSET: usize = 8;
+    pub const SPVP_FILTER: usize = 1 << SPVP_OFFSET;
 
     // TVM
     pub const VTVM_OFFSET: usize = 20;
