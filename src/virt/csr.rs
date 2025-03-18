@@ -5,7 +5,7 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
-use crate::arch::mstatus::{MBE_FILTER, SBE_FILTER, UBE_FILTER};
+use crate::arch::mstatus::{MBE_FILTER, MPV_FILTER, MPV_OFFSET, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, logger, MiralisContext, Plat, Platform};
@@ -387,6 +387,18 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                         mstatus::UPIE_OFFSET,
                         mstatus::UPIE_FILTER,
                         0,
+                    );
+                }
+
+                // If the hypervisor extension is enabled, we can modify the machine previous virtualisation bit
+                // This bit is similar to MPP but enables and disables virtualisation when jumping using mret
+                if self.extensions.has_h_extension {
+                    let mpv_value = (value >> MPV_OFFSET) & MPV_FILTER;
+                    VirtCsr::set_csr_field(
+                        &mut new_value,
+                        mstatus::MPV_OFFSET,
+                        mstatus::MPV_FILTER,
+                        mpv_value,
                     );
                 }
 
