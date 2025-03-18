@@ -180,8 +180,18 @@ impl ProtectPayloadPolicy {
     fn check_trap(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) -> PolicyHookResult {
         let cause = ctx.trap_info.get_cause();
         match cause {
-            MCause::LoadAddrMisaligned => emulate_misaligned_read(ctx, mctx),
-            MCause::StoreAddrMisaligned => emulate_misaligned_write(ctx, mctx),
+            MCause::LoadAddrMisaligned => {
+                if emulate_misaligned_read(ctx, mctx).is_err() {
+                    ctx.emulate_payload_trap();
+                }
+                PolicyHookResult::Overwrite
+            }
+            MCause::StoreAddrMisaligned => {
+                if emulate_misaligned_write(ctx, mctx).is_err() {
+                    ctx.emulate_payload_trap();
+                }
+                PolicyHookResult::Overwrite
+            }
             // In the meantime, we must explicitly disable this feature to run Ubuntu with the protect payload policy
             MCause::EcallFromSMode
                 if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
