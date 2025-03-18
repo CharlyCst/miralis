@@ -21,22 +21,31 @@ pub enum MCause {
     StoreAccessFault = 7,
     EcallFromUMode = 8,
     EcallFromSMode = 9,
+    EcallFromVsMode = 10,
     EcallFromMMode = 11,
     InstrPageFault = 12,
     LoadPageFault = 13,
     StorePageFault = 15,
     UnknownException = 16,
+    InstrGuestPageFault = 20,
+    LoadGuestPageFault = 21,
+    VirtualInstr = 22,
+    StoreGuestPageFault = 23,
 
     // Interrupts
     UserSoftInt = INTERRUPT_BIT,
     SupervisorSoftInt = INTERRUPT_BIT + 1,
+    VirtualSupervisorSoftInt = INTERRUPT_BIT + 2,
     MachineSoftInt = INTERRUPT_BIT + 3,
     UserTimerInt = INTERRUPT_BIT + 4,
     SupervisorTimerInt = INTERRUPT_BIT + 5,
+    VirtualSupervisorTimerInt = INTERRUPT_BIT + 6,
     MachineTimerInt = INTERRUPT_BIT + 7,
     UserExternalInt = INTERRUPT_BIT + 8,
     SupervisorExternalInt = INTERRUPT_BIT + 9,
+    VirtualSupervisorExternalInt = INTERRUPT_BIT + 10,
     MachineExternalInt = INTERRUPT_BIT + 11,
+    SupervisorGuestExternalInt = INTERRUPT_BIT + 12,
     UnknownInt,
 }
 
@@ -146,6 +155,12 @@ impl fmt::Debug for MCause {
             MCause::UserExternalInt => write!(f, "user external interrupt"),
             MCause::SupervisorExternalInt => write!(f, "supervisor external interrupt"),
             MCause::MachineExternalInt => write!(f, "machine external interrupt"),
+            MCause::VirtualSupervisorSoftInt => write!(f, "virtual supervisor software interrupt"),
+            MCause::VirtualSupervisorTimerInt => write!(f, "virtual supervisor timer interrupt"),
+            MCause::VirtualSupervisorExternalInt => {
+                write!(f, "virtual supervisor external interrupt")
+            }
+            MCause::SupervisorGuestExternalInt => write!(f, "supervisor guest external interrupt"),
             MCause::UnknownInt => write!(f, "unknown interrupt"),
             // Traps
             MCause::InstrAddrMisaligned => write!(f, "instruction address misaligned"),
@@ -163,6 +178,11 @@ impl fmt::Debug for MCause {
             MCause::LoadPageFault => write!(f, "load page fault"),
             MCause::StorePageFault => write!(f, "store/amo page fault"),
             MCause::UnknownException => write!(f, "unknown exception"),
+            MCause::EcallFromVsMode => write!(f, "ecall from vs-mode"),
+            MCause::InstrGuestPageFault => write!(f, "instruction guest page fault"),
+            MCause::LoadGuestPageFault => write!(f, "load guest page fault"),
+            MCause::VirtualInstr => write!(f, "virtual instruction"),
+            MCause::StoreGuestPageFault => write!(f, "store guest page fault"),
         }
     }
 }
