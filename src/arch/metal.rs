@@ -926,11 +926,6 @@ impl Architecture for MetalArch {
         // In that case we need to update the trap info and inject the trap back.
         let cause = Self::read_csr(Csr::Mcause);
         if cause != 0 {
-            ctx.trap_info.mcause = cause;
-            ctx.trap_info.mstatus = Self::read_csr(Csr::Mstatus);
-            ctx.trap_info.mtval = Self::read_csr(Csr::Mtval);
-            ctx.trap_info.mip = Self::read_csr(Csr::Mip);
-
             ctx.emulate_jump_trap_handler();
         } else {
             ctx.set(instr.rd, value);
@@ -979,11 +974,6 @@ impl Architecture for MetalArch {
         // In that case we need to update the trap info and inject the trap back.
         let cause = Self::read_csr(Csr::Mcause);
         if cause != 0 {
-            ctx.trap_info.mcause = cause;
-            ctx.trap_info.mstatus = Self::read_csr(Csr::Mstatus);
-            ctx.trap_info.mtval = Self::read_csr(Csr::Mtval);
-            ctx.trap_info.mip = Self::read_csr(Csr::Mip);
-
             ctx.emulate_jump_trap_handler();
         } else {
             ctx.pc += if instr.is_compressed { 2 } else { 4 };
