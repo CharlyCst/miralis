@@ -255,7 +255,7 @@ pub fn exception_virtualization() {
     fill_trap_info_structure(&mut ctx, &mctx, MCause::new(trap_cause as usize));
 
     // Emulate jump to trap handler in Miralis
-    ctx.emulate_jump_trap_handler();
+    ctx.emulate_firmware_trap();
 
     // Emulate jump to trap handler in Sail
     let pc = sail_ctx.PC;
