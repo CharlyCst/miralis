@@ -1012,30 +1012,28 @@ impl Architecture for MetalArch {
             let mut byte_read: u8 = 0;
             unsafe {
                 asm!(
-                // Try
-                "la {r_mtvec}, 0f",
-                "csrrw {r_mtvec}, mtvec, {r_mtvec}",  // Trap to catch-block if an exception occurs
+                // Set the trap vector to a custom catch block
+                "la {r_mtvec}, 0f",                  // loads the address of the catch block below
+                "csrrw {r_mtvec}, mtvec, {r_mtvec}", // Set the trap vector and save old value
 
-                // Set the mstatus.MPRV bit to 1
-                "csrs mstatus, {mprv_filter}",
-                // Read byte at src
-                "lb {byte}, 0x00({src})",
-                // Set the mstatus.MPRV bit to 0
-                "csrc mstatus, {mprv_filter}",
-                "j 1f", // Jump to finally if the read was successful
+                // Try to perform the load
+                "csrs mstatus, {mprv_filter}", // Set the mstatus.MPRV bit to 1
+                "lb {byte}, 0x00({src})",      // Read one byte
+                "j 1f",                        // If we didn't trap skip the catch block
 
-                // Catch
+                // Catch block, the CPU will trap here if the load fails
                 ".align 4",
                 "0:",
-                "li {success}, 0",
-                "la {byte}, 1f",
+                "li {success}, 0",   // Set the success variable to 0
+                "la {byte}, 1f",     // Prepare the return PC value
                 "csrw mepc, {byte}",
-                "mret",  // Jump to finally and set mstatus.MPRV to 0
+                "mret",              // Execute an mret to clear mstatus
 
-                // Finally
+                // Final code block, restore the CPU state
                 ".align 4",
                 "1:",
-                "csrw mtvec, {r_mtvec}", // Restore mtvec
+                "csrc mstatus, {mprv_filter}", // Set the mstatus.MPRV bit to 0
+                "csrw mtvec, {r_mtvec}",       // Restore mtvec
                 src = in(reg) src,
                 mprv_filter = in(reg) mstatus::MPRV_FILTER,
                 byte = inout(reg) byte_read,
@@ -1059,7 +1057,7 @@ impl Architecture for MetalArch {
         Ok(())
     }
 
-    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()> {
+    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *mut u8, mode: Mode) -> Result<(), ()> {
         let mut dest = dest as usize;
         let mut success: usize = 1;
 
@@ -1074,33 +1072,31 @@ impl Architecture for MetalArch {
             let byte_value: u8 = src[i];
             unsafe {
                 asm!(
-                // Try
-                "la {r_mtvec}, 0f",
-                "csrrw {r_mtvec}, mtvec, {r_mtvec}",  // Trap to catch-block if an exception occurs
+                // Set the trap vector to a custom catch block
+                "la {r_mtvec}, 0f",                  // loads the address of the catch block below
+                "csrrw {r_mtvec}, mtvec, {r_mtvec}", // Set the trap vector and save old value
 
-                // Set the mstatus.MPRV bit to 1
-                "csrs mstatus, {mprv_filter}",
-                // Store byte at src
-                "sb {byte}, 0x00({dest})",
-                // Set the mstatus.MPRV bit to 0
-                "csrc mstatus, {mprv_filter}",
-                "j 1f", // Jump to finally if the read was successful
+                // Try to perform the store
+                "csrs mstatus, {mprv_filter}", // Set the mstatus.MPRV bit to 1
+                "sb {byte}, 0x00({dest})",     // Store one byte
+                "j 1f",                        // If we didn't trap skip the catch block
 
-                // Catch
+                // Catch block, the CPU will trap here if the store fails
                 ".align 4",
                 "0:",
-                "li {success}, 0",
-                "la {byte}, 1f",
+                "li {success}, 0",   // Set the success variable to 0
+                "la {byte}, 1f",     // Prepare the return PC value
                 "csrw mepc, {byte}",
-                "mret",  // Jump to finally and set mstatus.MPRV to 0
+                "mret",              // Execute an mret to clear mstatus
 
-                // Finally
+                // Final code block, restore the CPU state
                 ".align 4",
                 "1:",
-                "csrw mtvec, {r_mtvec}", // Restore mtvec
+                "csrc mstatus, {mprv_filter}", // Set the mstatus.MPRV bit to 0
+                "csrw mtvec, {r_mtvec}",       // Restore mtvec
                 dest = in(reg) dest,
                 mprv_filter = in(reg) mstatus::MPRV_FILTER,
-                byte = in(reg) byte_value,
+                byte = inout(reg) byte_value => _,
                 success = inout(reg) success,
                 r_mtvec = out(reg) _,
                 )

@@ -108,7 +108,7 @@ pub trait Architecture {
     unsafe fn read_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()>;
 
     /// This function is similar to the function above except it is used to store bytes in virtual memory from a chphysical address.
-    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()>;
+    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *mut u8, mode: Mode) -> Result<(), ()>;
     unsafe fn write_pmpaddr(idx: usize, value: usize);
     unsafe fn write_pmpcfg(idx: usize, configuration: usize);
 }

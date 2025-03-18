@@ -324,7 +324,7 @@ impl Architecture for HostArch {
 
     unsafe fn store_bytes_from_mode(
         _src: &mut [u8],
-        _dest: *const u8,
+        _dest: *mut u8,
         _mode: Mode,
     ) -> Result<(), ()> {
         todo!()
