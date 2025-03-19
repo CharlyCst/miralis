@@ -18,6 +18,7 @@ struct PaddedCounter {
     timer_request: AtomicU64,
     ipi_request: AtomicU64,
     remote_fence_request: AtomicU64,
+    page_faults: AtomicU64,
     _padding: [u8; 64 - 7 * size_of::<AtomicU64>()],
 }
 
@@ -32,6 +33,7 @@ const ZEROED_COUNTER: PaddedCounter = PaddedCounter {
     timer_request: const { AtomicU64::new(0) },
     ipi_request: const { AtomicU64::new(0) },
     remote_fence_request: const { AtomicU64::new(0) },
+    page_faults: const { AtomicU64::new(0) },
     _padding: [0; 64 - 7 * size_of::<AtomicU64>()],
 };
 
@@ -93,6 +95,11 @@ impl BenchmarkModule for CounterBenchmark {
                     .world_switches
                     .fetch_add(1, Ordering::Relaxed);
             }
+            Some(ExceptionCategory::PageFault) => {
+                COUNTERS[ctx.hart_id]
+                    .page_faults
+                    .fetch_add(1, Ordering::Relaxed);
+            }
             _ => {}
         }
     }
@@ -118,6 +125,9 @@ impl BenchmarkModule for CounterBenchmark {
                 .load(Ordering::SeqCst),
             ExceptionCategory::FirmwareTrap => {
                 COUNTERS[hart_to_read].firmware_traps.load(Ordering::SeqCst)
+            }
+            ExceptionCategory::PageFault => {
+                COUNTERS[hart_to_read].page_faults.load(Ordering::SeqCst)
             }
         };
 

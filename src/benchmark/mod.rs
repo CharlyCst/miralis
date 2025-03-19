@@ -14,7 +14,7 @@ use miralis_core::sbi_codes::{
 
 use crate::arch::{MCause, Register};
 use crate::benchmark::ExceptionCategory::{
-    FirmwareTrap, MisalignedOp, NotOffloaded, ReadTime, RemoteFence, SetTimer, IPI,
+    FirmwareTrap, MisalignedOp, NotOffloaded, PageFault, ReadTime, RemoteFence, SetTimer, IPI,
 };
 use crate::virt::traits::RegisterContextGetter;
 use crate::virt::{ExecutionMode, VirtContext};
@@ -43,7 +43,7 @@ pub trait BenchmarkModule {
     fn read_counters(_ctx: &mut VirtContext) {}
 }
 
-const NUMBER_CATEGORIES: usize = 7;
+const NUMBER_CATEGORIES: usize = 8;
 pub enum ExceptionCategory {
     NotOffloaded = 0,
     ReadTime = 1,
@@ -52,6 +52,7 @@ pub enum ExceptionCategory {
     IPI = 4,
     RemoteFence = 5,
     FirmwareTrap = 6,
+    PageFault = 7,
 }
 
 impl TryFrom<usize> for ExceptionCategory {
@@ -66,6 +67,7 @@ impl TryFrom<usize> for ExceptionCategory {
             4 => Ok(IPI),
             5 => Ok(RemoteFence),
             6 => Ok(FirmwareTrap),
+            7 => Ok(PageFault),
             _ => Err(()),
         }
     }
@@ -105,6 +107,10 @@ pub fn get_exception_category(
                 {
                     Some(ExceptionCategory::RemoteFence)
                 }
+                MCause::LoadPageFault | MCause::StorePageFault | MCause::InstrPageFault => {
+                    Some(ExceptionCategory::PageFault)
+                }
+
                 _ => None,
             }
         }
