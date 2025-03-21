@@ -129,8 +129,7 @@ impl PolicyModule for OffloadPolicy {
         {
             let start = FENCE_VMA_START[mctx.hw.hart].load(Ordering::SeqCst);
             let size = FENCE_VMA_SIZE[mctx.hw.hart].load(Ordering::SeqCst);
-
-            if start == 0 && size == usize::MAX {
+            if (start == 0 && size == 0) || size >= 0xf0000 {
                 unsafe { Arch::sfencevma(None, None) };
             } else {
                 for address in (start..start + size).step_by(PAGE_SIZE) {
