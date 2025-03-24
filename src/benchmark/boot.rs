@@ -7,12 +7,12 @@ use crate::policy::{Policy, PolicyModule};
 use crate::virt::{ExecutionMode, VirtContext};
 use crate::BenchmarkModule;
 
-const NUMBER_SECONDS: usize = 15;
+const NUMBER_SECONDS: usize = 1000;
 
-const CYCLES_PER_INTERVALL: usize = 2_000_000;
+const CYCLES_PER_INTERVALL: usize = 200_000;
 
 const CSV_HEADER: &str =
-    "no-offload, read-time, set-timer, misaligned-op, ipi, remote-fence, firmware-trap";
+    "no-offload, read-time, set-timer, misaligned-op, ipi, remote-fence, firmware-trap, page-faults";
 
 static BUCKETS: [AtomicUsize; NUMBER_CATEGORIES * NUMBER_SECONDS] =
     [const { AtomicUsize::new(0) }; NUMBER_CATEGORIES * NUMBER_SECONDS];
@@ -21,7 +21,10 @@ static BUCKETS: [AtomicUsize; NUMBER_CATEGORIES * NUMBER_SECONDS] =
 /// Upon halting the execution it gives an indication over times of what kind of traps arrived when.
 /// This allows us to understand the behaviors during the boot of the linux kernel.
 /// This benchmark must be used with the offload policy AND IS FOR EXPERIMENTS ONLY
-pub struct BootBenchmark {}
+pub struct BootBenchmark {
+}
+
+static mut value: i32 = 0;
 
 impl BenchmarkModule for BootBenchmark {
     fn init() -> Self {
@@ -29,7 +32,8 @@ impl BenchmarkModule for BootBenchmark {
             panic!("This benchmark must be used with the offload policy")
         }
 
-        BootBenchmark {}
+        BootBenchmark {
+        }
     }
 
     fn name() -> &'static str {
@@ -42,7 +46,18 @@ impl BenchmarkModule for BootBenchmark {
         to_exec_mode: ExecutionMode,
     ) {
         if let Some(exception_offset) = get_exception_category(ctx, from_exec_mode, to_exec_mode) {
+
             let current_time_bin = Arch::read_csr(Csr::Time) / CYCLES_PER_INTERVALL;
+
+            unsafe {
+                if value != current_time_bin as i32 {
+                    value = current_time_bin as i32;
+                    log::warn!("Current time bin {}", value);
+                }
+
+            }
+
+
 
             if Self::is_done(current_time_bin) {
                 Self::display_benchmark(ctx.hart_id);
@@ -70,14 +85,15 @@ impl BootBenchmark {
         for i in 0..NUMBER_SECONDS {
             assert!(i * NUMBER_CATEGORIES + 1 < NUMBER_CATEGORIES * NUMBER_SECONDS);
             log::info!(
-                "{},{},{},{},{},{},{}",
+                "{},{},{},{},{},{},{},{}",
                 BUCKETS[i * NUMBER_CATEGORIES].load(Ordering::SeqCst),
                 BUCKETS[i * NUMBER_CATEGORIES + 1].load(Ordering::SeqCst),
                 BUCKETS[i * NUMBER_CATEGORIES + 2].load(Ordering::SeqCst),
                 BUCKETS[i * NUMBER_CATEGORIES + 3].load(Ordering::SeqCst),
                 BUCKETS[i * NUMBER_CATEGORIES + 4].load(Ordering::SeqCst),
                 BUCKETS[i * NUMBER_CATEGORIES + 5].load(Ordering::SeqCst),
-                BUCKETS[i * NUMBER_CATEGORIES + 6].load(Ordering::SeqCst)
+                BUCKETS[i * NUMBER_CATEGORIES + 6].load(Ordering::SeqCst),
+                BUCKETS[i * NUMBER_CATEGORIES + 7].load(Ordering::SeqCst)
             );
         }
 

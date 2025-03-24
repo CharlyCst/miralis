@@ -24,7 +24,7 @@ start_address = 0x40000000
 profile = "release"
 
 [benchmark]
-benchmark_type = "counter"
+benchmark_type = "boot"
 
 [policy]
 name = "offload"

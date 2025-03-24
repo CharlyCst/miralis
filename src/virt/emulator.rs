@@ -642,6 +642,25 @@ impl VirtContext {
             MCause::MachineSoftInt => {
                 self.handle_machine_software_interrupt(mctx, policy);
             }
+            MCause::IllegalInstr => {
+                let instr = unsafe { get_raw_faulting_instr(self) };
+                //log::info!("{:x}", instr);
+                if instr == 0xb00025f3  {
+                    self.pc += 4;
+                    let cycle = Arch::read_csr(Csr::Mcycle);
+                    self.regs[11] = cycle;
+                } else if instr == 0xb0002573{
+                    self.pc += 4;
+                    let cycle = Arch::read_csr(Csr::Mcycle);
+                    self.regs[10] = cycle;
+                } else if instr == 0xb0002673 {
+                    self.pc += 4;
+                    let cycle = Arch::read_csr(Csr::Mcycle);
+                    self.regs[12] = cycle;
+                }else {
+                    self.emulate_firmware_trap()
+                }
+            }
             _ => self.emulate_firmware_trap(),
         }
 

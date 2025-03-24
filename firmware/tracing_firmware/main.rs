@@ -20,9 +20,9 @@ const POLICY_NAME: &str = parse_str_or(option_env!("MIRALIS_POLICY_NAME"), "defa
 const PROTECT_PAYLOAD_POLICY: &str = "protect_payload";
 const OFFLOAD_POLICY: &str = "offload";
 
-fn enable_mcycle_in_smode() {
+fn enable_mmcycle_in_smode() {
     unsafe {
-        // This allows to read cycle in S-mode - for the payload
+        // This allows to read mcycle in S-mode - for the payload
         let mcounteren: u32;
         asm!("csrr {}, mcounteren", out(reg) mcounteren);
         asm!("csrw mcounteren, {}", in(reg) mcounteren | 1);
@@ -32,7 +32,7 @@ fn enable_mcycle_in_smode() {
 fn main() -> ! {
     let trap: usize = _empty_handler as usize;
 
-    enable_mcycle_in_smode();
+    enable_mmcycle_in_smode();
 
     unsafe {
         asm!(
@@ -128,6 +128,8 @@ fn operating_system() {
         asm!("la sp, 0x80700000");
     }
 
+    log::info!("From operating system");
+
     measure(false);
 
     if POLICY_NAME == PROTECT_PAYLOAD_POLICY {
@@ -220,12 +222,12 @@ fn trigger_ctx_switch_to_firmware() -> usize {
     let end: u64;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
         // We trigger an illegal instruction
         asm!("csrw mscratch, zero");
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize
@@ -236,15 +238,15 @@ fn trigger_ctx_switch_to_firmware_batched() -> usize {
     let end: u64;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
         for _ in 0..NB_REPEATS {
             // We can trigger an illegal instruction
             asm!("csrw mscratch, zero");
         }
 
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize / NB_REPEATS
@@ -257,16 +259,16 @@ pub fn trigger_misaligned_op() -> usize {
     let misaligned_address_8_bytes: usize = 0x80600301;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
         // We trigger a misaligned operation
         asm!(
         "ld {r}, 0({addr})",
         addr = in(reg) misaligned_address_8_bytes,
         r = out(reg) _,
         );
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize
@@ -279,8 +281,8 @@ pub fn trigger_misaligned_op_batched() -> usize {
     let misaligned_address_8_bytes: usize = 0x80600301;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
 
         for _ in 0..NB_REPEATS {
             // We trigger a misaligned operation
@@ -290,8 +292,8 @@ pub fn trigger_misaligned_op_batched() -> usize {
             r = out(reg) _,
             );
         }
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize / NB_REPEATS
@@ -302,8 +304,8 @@ pub fn trigger_ecall_op() -> usize {
     let end: u64;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
         // We trigger a misaligned operation
         asm!(
         "mv a0, {0}",
@@ -318,8 +320,8 @@ pub fn trigger_ecall_op() -> usize {
         out("a7") _,                         // syscall may overwrite a7
         );
 
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize
@@ -330,8 +332,8 @@ pub fn trigger_ecall_op_batched() -> usize {
     let end: u64;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
 
         for _ in 0..NB_REPEATS {
             // We trigger a misaligned operation
@@ -348,8 +350,8 @@ pub fn trigger_ecall_op_batched() -> usize {
             out("a7") _,                         // syscall may overwrite a7
             );
         }
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize / NB_REPEATS
@@ -360,12 +362,12 @@ pub fn trigger_time_read_op() -> usize {
     let end: u64;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
         // Read time to measure the offload latency
         asm!("csrrs x15, time, x0");
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize
@@ -376,15 +378,15 @@ pub fn trigger_time_read_op_batched() -> usize {
     let end: u64;
 
     unsafe {
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) begin);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) begin);
 
         for _ in 0..NB_REPEATS {
             // Read time to measure the offload latency
             asm!("csrrs x15, time, x0");
         }
-        // Read the `mcycle` register (assuming 64-bit RISC-V)
-        asm!("csrr {}, cycle", out(reg) end);
+        // Read the `mmcycle` register (assuming 64-bit RISC-V)
+        asm!("csrr {}, mcycle", out(reg) end);
     }
 
     (end - begin) as usize / NB_REPEATS

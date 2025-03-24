@@ -104,7 +104,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
                 }
                 self.csr.pmpaddr[pmp_addr_idx]
             }
-            Csr::Mcycle => self.csr.mcycle,
+            Csr::Mcycle => Arch::read_csr(Csr::Mcycle),
             Csr::Minstret => self.csr.minstret,
             Csr::Mhpmcounter(n) => self.csr.mhpmcounter[n],
             Csr::Mcountinhibit => self.csr.mcountinhibit as usize,
@@ -216,7 +216,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Vtype => self.csr.vtype,
             Csr::Vlenb => self.csr.vlenb,
 
-            Csr::Cycle => self.csr.mcycle,
+            Csr::Cycle => Arch::read_csr(Csr::Mcycle),
             Csr::Time => Arch::read_csr(Csr::Time),
             Csr::Instret => self.csr.minstret,
 
