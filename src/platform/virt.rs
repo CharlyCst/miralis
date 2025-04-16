@@ -86,7 +86,7 @@ pub struct VirtPlatform {}
 
 impl Platform for VirtPlatform {
     const NB_HARTS: usize = usize::MAX;
-    const NB_VIRT_DEVICES: usize = 2;
+    const NB_VIRT_DEVICES: usize = VIRT_DEVICES.len();
 
     fn name() -> &'static str {
         match PLATFORM_NAME {
