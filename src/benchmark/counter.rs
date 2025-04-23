@@ -1,8 +1,12 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
+use miralis_core::abi;
+
 use crate::arch::Register;
-use crate::benchmark::{get_exception_category, BenchmarkModule, ExceptionCategory};
+use crate::benchmark::{get_exception_category, ExceptionCategory};
 use crate::config::PLATFORM_NB_HARTS;
+use crate::host::MiralisContext;
+use crate::modules::{Module, ModuleAction};
 use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -45,21 +49,20 @@ static COUNTERS: [PaddedCounter; PLATFORM_NB_HARTS] = [ZEROED_COUNTER; PLATFORM_
 /// deviation) to keep the code simple and efficient.
 pub struct CounterBenchmark {}
 
-impl BenchmarkModule for CounterBenchmark {
+impl Module for CounterBenchmark {
+    const NAME: &'static str = "Counter Benchmark";
+
     fn init() -> Self {
         CounterBenchmark {}
     }
 
-    fn name() -> &'static str {
-        "Counter benchmark"
-    }
-
-    fn increment_counter(
+    fn decided_next_exec_mode(
+        &mut self,
         ctx: &mut VirtContext,
-        from_exec_mode: ExecutionMode,
-        to_exec_mode: ExecutionMode,
+        previous_mode: ExecutionMode,
+        next_mode: ExecutionMode,
     ) {
-        match get_exception_category(ctx, from_exec_mode, to_exec_mode) {
+        match get_exception_category(ctx, previous_mode, next_mode) {
             Some(ExceptionCategory::FirmwareTrap) => {
                 COUNTERS[ctx.hart_id]
                     .firmware_traps
@@ -104,7 +107,36 @@ impl BenchmarkModule for CounterBenchmark {
         }
     }
 
-    fn read_counters(ctx: &mut VirtContext) {
+    fn ecall_from_payload(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> ModuleAction {
+        self.ecall_from_any_mode(ctx)
+    }
+
+    fn ecall_from_firmware(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> ModuleAction {
+        self.ecall_from_any_mode(ctx)
+    }
+}
+
+impl CounterBenchmark {
+    fn ecall_from_any_mode(&mut self, ctx: &mut VirtContext) -> ModuleAction {
+        if ctx.get(Register::X17) == abi::MIRALIS_EID
+            && ctx.get(Register::X16) == abi::MIRALIS_READ_COUNTERS_FID
+        {
+            self.read_counters(ctx);
+            ModuleAction::Overwrite
+        } else {
+            ModuleAction::Ignore
+        }
+    }
+
+    fn read_counters(&mut self, ctx: &mut VirtContext) {
         let hart_to_read = ctx.get(Register::X10);
         let exception_category = ExceptionCategory::try_from(ctx.get(Register::X11)).unwrap();
 

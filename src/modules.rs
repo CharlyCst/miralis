@@ -6,7 +6,7 @@
 use module_macro::{build_modules, for_each_module};
 
 use crate::host::MiralisContext;
-use crate::virt::VirtContext;
+use crate::virt::{ExecutionMode, VirtContext};
 
 // ———————————————————————————— Module Interface ———————————————————————————— //
 
@@ -110,6 +110,21 @@ pub trait Module {
         let _ = mctx;
     }
 
+    /// Interpose after the next mode has been decided, but before world switch if any.
+    ///
+    /// This module hook can be useful for collecting statistics about traps to firmware, such as
+    /// causes and frequency.
+    fn decided_next_exec_mode(
+        &mut self,
+        ctx: &mut VirtContext,
+        previous_mode: ExecutionMode,
+        next_mode: ExecutionMode,
+    ) {
+        let _ = ctx;
+        let _ = previous_mode;
+        let _ = next_mode;
+    }
+
     /// Callback for policy MSI.
     ///
     /// This function can be triggered across harts by sending a policy MSI. As such it can be used
@@ -161,6 +176,9 @@ build_modules! {
     "keystone" => crate::policy::keystone::KeystonePolicy
     "protect_payload" => crate::policy::protect_payload::ProtectPayloadPolicy
     "offload" => crate::policy::offload::OffloadPolicy
+    "exit_counter" => crate::benchmark::counter::CounterBenchmark
+    "exit_counter_per_cause" => crate::benchmark::counter_per_cause::CounterPerMcauseBenchmark
+    "boot_counter" => crate::benchmark::boot::BootBenchmark
 }
 
 impl Module for MainModule {
@@ -255,6 +273,24 @@ impl Module for MainModule {
         );
 
         ModuleAction::Ignore
+    }
+
+    fn decided_next_exec_mode(
+        &mut self,
+        ctx: &mut VirtContext,
+        previous_mode: ExecutionMode,
+        next_mode: ExecutionMode,
+    ) {
+        // Remove "unused" warning when building with no modules
+        let _ = &ctx;
+        let _ = &previous_mode;
+        let _ = &next_mode;
+
+        for_each_module!(
+            $(
+                self.$module.decided_next_exec_mode(ctx, previous_mode, next_mode);
+            )*
+        );
     }
 
     fn switch_from_payload_to_firmware(

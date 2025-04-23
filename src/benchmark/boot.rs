@@ -1,11 +1,14 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::arch::{Arch, Architecture, Csr};
+use miralis_core::abi;
+
+use crate::arch::{Arch, Architecture, Csr, Register};
 use crate::benchmark::{get_exception_category, NUMBER_CATEGORIES};
 use crate::config::MODULES;
-use crate::policy::offload::OFFLOAD_POLICY_NAME;
+use crate::host::MiralisContext;
+use crate::modules::{Module, ModuleAction};
+use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
-use crate::BenchmarkModule;
 
 const NUMBER_SECONDS: usize = 15;
 
@@ -23,43 +26,76 @@ static BUCKETS: [AtomicUsize; NUMBER_CATEGORIES * NUMBER_SECONDS] =
 /// This benchmark must be used with the offload policy AND IS FOR EXPERIMENTS ONLY
 pub struct BootBenchmark {}
 
-impl BenchmarkModule for BootBenchmark {
+impl Module for BootBenchmark {
+    const NAME: &'static str = "Boot Benchmark";
+
     fn init() -> Self {
-        if !MODULES.contains(&OFFLOAD_POLICY_NAME) {
+        const OFFLOAD_POLICY_ID: &str = "offload";
+
+        if !MODULES.contains(&OFFLOAD_POLICY_ID) {
+            log::error!(
+                "Installed modules: {:?}, expected '{}'",
+                MODULES,
+                OFFLOAD_POLICY_ID
+            );
             panic!("This benchmark must be used with the offload policy")
         }
 
         BootBenchmark {}
     }
 
-    fn name() -> &'static str {
-        "Boot Benchmark"
-    }
-
-    fn increment_counter(
+    fn decided_next_exec_mode(
+        &mut self,
         ctx: &mut VirtContext,
-        from_exec_mode: ExecutionMode,
-        to_exec_mode: ExecutionMode,
+        previous_mode: ExecutionMode,
+        next_mode: ExecutionMode,
     ) {
-        if let Some(exception_offset) = get_exception_category(ctx, from_exec_mode, to_exec_mode) {
+        if let Some(exception_offset) = get_exception_category(ctx, previous_mode, next_mode) {
             let current_time_bin = Arch::read_csr(Csr::Time) / CYCLES_PER_INTERVALL;
 
             if Self::is_done(current_time_bin) {
-                Self::display_benchmark(ctx.hart_id);
+                self.display_benchmark(ctx.hart_id);
             }
 
             BUCKETS[current_time_bin * NUMBER_CATEGORIES + exception_offset as usize]
                 .fetch_add(1, Ordering::SeqCst);
         }
     }
+
+    fn ecall_from_payload(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> ModuleAction {
+        self.ecall_from_any_mode(ctx)
+    }
+
+    fn ecall_from_firmware(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> ModuleAction {
+        self.ecall_from_any_mode(ctx)
+    }
 }
 
 impl BootBenchmark {
+    fn ecall_from_any_mode(&mut self, ctx: &mut VirtContext) -> ModuleAction {
+        if ctx.get(Register::X17) == abi::MIRALIS_EID
+            && ctx.get(Register::X16) == abi::MIRALIS_READ_COUNTERS_FID
+        {
+            self.display_benchmark(ctx.hart_id);
+            ModuleAction::Overwrite
+        } else {
+            ModuleAction::Ignore
+        }
+    }
+
     fn is_done(current_time_bin: usize) -> bool {
         current_time_bin >= NUMBER_SECONDS
     }
 
-    fn display_benchmark(hart_id: usize) {
+    fn display_benchmark(&self, hart_id: usize) {
         if hart_id != 0 {
             loop {
                 Arch::wfi();

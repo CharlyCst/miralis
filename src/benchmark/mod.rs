@@ -2,12 +2,10 @@
 //!
 //! This modules holds the different values for the benchmarks
 
-mod boot;
-mod counter;
-mod counter_per_mcause;
-mod empty;
+pub mod boot;
+pub mod counter;
+pub mod counter_per_mcause;
 
-use config_select::select_env;
 use miralis_core::sbi_codes::{
     is_i_fence_request, is_ipi_request, is_timer_request, is_vma_request,
 };
@@ -18,30 +16,6 @@ use crate::benchmark::ExceptionCategory::{
 };
 use crate::virt::traits::RegisterContextGetter;
 use crate::virt::{ExecutionMode, VirtContext};
-
-pub type Benchmark = select_env!["MIRALIS_BENCHMARK_TYPE":
-    "counter"      => counter::CounterBenchmark
-    "counter_per_mcause" => counter_per_mcause::CounterPerMcauseBenchmark
-    "boot" => boot::BootBenchmark
-    _ => empty::EmptyBenchmark
-];
-
-pub trait BenchmarkModule {
-    fn init() -> Self;
-    fn name() -> &'static str;
-
-    fn increment_counter(
-        _ctx: &mut VirtContext,
-        _from_exec_mode: ExecutionMode,
-        _to_exec_mode: ExecutionMode,
-    ) {
-    }
-
-    /// Read the performance counters into the virtual registers.
-    ///
-    /// Note: the specific ABI is depends on the benchmark back-end.
-    fn read_counters(_ctx: &mut VirtContext) {}
-}
 
 const NUMBER_CATEGORIES: usize = 8;
 pub enum ExceptionCategory {

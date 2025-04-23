@@ -69,12 +69,6 @@ pub const DELEGATE_PERF_COUNTER: bool = is_enabled_default_false!("MIRALIS_DELEG
 pub const PLATFORM_BOOT_HART_ID: usize =
     parse_usize_or(option_env!("MIRALIS_PLATFORM_BOOT_HART_ID"), 0);
 
-/// What kind of benchmark we want to have in Miralis
-pub const BENCHMARK_TYPE: &str = parse_str_or(option_env!("MIRALIS_BENCHMARK_TYPE"), "empty");
-
-/// Whether print in csv format or not
-pub const BENCHMARK_CSV_FORMAT: bool = is_enabled!("MIRALIS_BENCHMARK_CSV_FORMAT");
-
 /// Start address of Miralis
 pub const TARGET_START_ADDRESS: usize =
     parse_usize_or(option_env!("MIRALIS_TARGET_START_ADDRESS"), 0x80000000);

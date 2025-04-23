@@ -14,10 +14,6 @@ max_pmp = 8
 nb_harts = 1
 name = "spike"
 
-[benchmark]
-# You can choose between default and empty - empty implies no benchmark
-benchmark_type = "default"
-
 [target.miralis]
 # Build profile for Miralis (dev profile is set by default)
 profile = "dev"

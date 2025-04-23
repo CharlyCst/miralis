@@ -14,7 +14,6 @@ use core::arch::global_asm;
 
 use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
-use miralis::benchmark::{Benchmark, BenchmarkModule};
 use miralis::config::{
     DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
     TARGET_STACK_SIZE,
@@ -42,7 +41,6 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     init();
     log::info!("Hello, world!");
     log::info!("Platform name: {}", Plat::name());
-    log::info!("Benchmark module: {}", Benchmark::name());
     log::info!("Hart ID: {}", hart_id);
     log::debug!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
     log::debug!(

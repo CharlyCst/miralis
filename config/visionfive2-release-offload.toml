@@ -23,8 +23,5 @@ profile = "release"
 start_address = 0x40000000
 profile = "release"
 
-[benchmark]
-benchmark_type = "counter"
-
 [modules]
-modules = ["offload"]
+modules = ["offload", "exit_counter"]
