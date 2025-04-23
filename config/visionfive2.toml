@@ -22,5 +22,5 @@ stack_size = 0x8000
 [target.firmware]
 start_address = 0x40000000
 
-[benchmark]
-benchmark_type = "counter_per_mcause"
+[modules]
+modules = ["exit_counter"]

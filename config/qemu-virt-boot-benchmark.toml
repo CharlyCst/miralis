@@ -1,4 +1,5 @@
-# A simple configuration to run on QEMU virt platform
+# A configuration measuring the number and cause of exits to firmware during
+# Linux boot
 
 [log]
 level = "info"
@@ -18,8 +19,5 @@ boot_hart_id = 0
 machine = "virt"
 cpu = "sifive-u54,sstc=false"
 
-[benchmark]
-benchmark_type = "boot"
-
 [modules]
-modules = ["offload"]
+modules = ["offload", "boot_counter"]

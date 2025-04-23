@@ -30,8 +30,6 @@ pub struct Config {
     #[serde(default)]
     pub qemu: Qemu,
     #[serde(default)]
-    pub benchmark: Benchmark,
-    #[serde(default)]
     pub target: Targets,
     #[serde(default)]
     pub modules: Modules,
@@ -53,6 +51,7 @@ pub struct Log {
 #[serde(deny_unknown_fields)]
 pub struct Debug {
     pub max_firmware_exits: Option<usize>,
+    pub nb_iter: Option<usize>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -104,14 +103,6 @@ impl fmt::Display for Platforms {
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
-pub struct Benchmark {
-    pub benchmark_type: Option<String>,
-    pub csv_format: Option<bool>,
-    pub nb_iter: Option<usize>,
-}
-
-#[derive(Deserialize, Debug, Default)]
-#[serde(deny_unknown_fields)]
 pub struct Targets {
     pub miralis: Target,
     pub firmware: Target,
@@ -141,6 +132,12 @@ pub enum ModuleName {
     ProtectPayload,
     #[serde(rename = "offload")]
     Offload,
+    #[serde(rename = "boot_counter")]
+    BootCounter,
+    #[serde(rename = "exit_counter_per_cause")]
+    ExitCounterPerCause,
+    #[serde(rename = "exit_counter")]
+    ExitCounter,
 }
 
 impl fmt::Display for ModuleName {
@@ -149,6 +146,9 @@ impl fmt::Display for ModuleName {
             ModuleName::Keystone => write!(f, "keystone"),
             ModuleName::ProtectPayload => write!(f, "protect_payload"),
             ModuleName::Offload => write!(f, "offload"),
+            ModuleName::BootCounter => write!(f, "boot_counter"),
+            ModuleName::ExitCounterPerCause => write!(f, "exit_counter_per_cause"),
+            ModuleName::ExitCounter => write!(f, "exit_counter"),
         }
     }
 }
@@ -171,7 +171,6 @@ impl Config {
         envs.extend(self.debug.build_envs());
         envs.extend(self.vcpu.build_envs());
         envs.extend(self.platform.build_envs());
-        envs.extend(self.benchmark.build_envs());
         envs.extend(self.target.build_envs());
         envs.extend(self.modules.buid_envs());
         envs
@@ -237,6 +236,7 @@ impl Debug {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
         envs.insert("MIRALIS_DEBUG_MAX_FIRMWARE_EXITS", &self.max_firmware_exits);
+        envs.insert("MIRALIS_BENCHMARK_NB_ITER", &self.nb_iter);
         envs.envs
     }
 }
@@ -259,16 +259,6 @@ impl Platform {
         envs.insert("MIRALIS_PLATFORM_NAME", &self.name);
         envs.insert("MIRALIS_PLATFORM_NB_HARTS", &self.nb_harts);
         envs.insert("MIRALIS_PLATFORM_BOOT_HART_ID", &self.boot_hart_id);
-        envs.envs
-    }
-}
-
-impl Benchmark {
-    pub fn build_envs(&self) -> HashMap<String, String> {
-        let mut envs = EnvVars::new();
-        envs.insert("MIRALIS_BENCHMARK_TYPE", &self.benchmark_type);
-        envs.insert("MIRALIS_BENCHMARK_CSV_FORMAT", &self.csv_format);
-        envs.insert("MIRALIS_BENCHMARK_NB_ITER", &self.nb_iter);
         envs.envs
     }
 }

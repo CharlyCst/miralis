@@ -31,7 +31,6 @@ use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
 
 use crate::arch::write_pmp;
-use crate::benchmark::{Benchmark, BenchmarkModule};
 use crate::modules::{MainModule, Module};
 
 /// The virtuam firmware monitor main loop.
@@ -82,10 +81,11 @@ fn handle_trap(
         ExecutionMode::Payload => ctx.handle_payload_trap(mctx, module),
     };
 
-    Benchmark::increment_counter(ctx, exec_mode, ctx.mode.to_exec_mode());
-
     // Inject interrupts if required
     ctx.check_and_inject_interrupts();
+
+    // At this point the next mode is fixed
+    module.decided_next_exec_mode(ctx, exec_mode, ctx.mode.to_exec_mode());
 
     // Check for execution mode change
     match (exec_mode, ctx.mode.to_exec_mode()) {

@@ -3,9 +3,13 @@
 /// The reason for this is that we use it only for debugging and we currently don't need to measure this. If this is the case, the benchmark needs to be improved
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use crate::arch::{Arch, Architecture, Csr, MCause};
-use crate::benchmark::BenchmarkModule;
+use miralis_core::abi;
+
+use crate::arch::{Arch, Architecture, Csr, MCause, Register};
 use crate::config::PLATFORM_NB_HARTS;
+use crate::host::MiralisContext;
+use crate::modules::{Module, ModuleAction};
+use crate::virt::traits::*;
 use crate::virt::{ExecutionMode, VirtContext};
 
 // We don't need to add a padding to avoid false sharing. The size of the struct is a multiplier of the cache line
@@ -78,33 +82,59 @@ macro_rules! log_mcause {
     }};
 }
 
-impl BenchmarkModule for CounterPerMcauseBenchmark {
+impl Module for CounterPerMcauseBenchmark {
+    const NAME: &'static str = "Counter per MCause";
+
     fn init() -> Self {
         CounterPerMcauseBenchmark {}
     }
 
-    fn name() -> &'static str {
-        "Counter per code benchmark"
-    }
-
-    fn increment_counter(
+    fn decided_next_exec_mode(
+        &mut self,
         ctx: &mut VirtContext,
-        from_exec_mode: ExecutionMode,
-        to_exec_mode: ExecutionMode,
+        previous_mode: ExecutionMode,
+        next_mode: ExecutionMode,
     ) {
         let hart_id: usize = hard_id();
         let mcause_offset: usize = raw_cause_to_entry(ctx.trap_info.mcause);
 
-        if from_exec_mode == ExecutionMode::Payload && to_exec_mode == ExecutionMode::Firmware {
+        if previous_mode == ExecutionMode::Payload && next_mode == ExecutionMode::Firmware {
             NB_WORLD_SWITCHES[hart_id].counter[mcause_offset].fetch_add(1, Ordering::Relaxed);
-        } else if from_exec_mode == ExecutionMode::Firmware
-            && to_exec_mode == ExecutionMode::Firmware
-        {
+        } else if previous_mode == ExecutionMode::Firmware && next_mode == ExecutionMode::Firmware {
             NB_FIRMWARE_EXIT[hart_id].counter[mcause_offset].fetch_add(1, Ordering::Relaxed);
         }
     }
 
-    fn read_counters(_ctx: &mut VirtContext) {
+    fn ecall_from_payload(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> ModuleAction {
+        self.ecall_from_any_mode(ctx)
+    }
+
+    fn ecall_from_firmware(
+        &mut self,
+        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+    ) -> ModuleAction {
+        self.ecall_from_any_mode(ctx)
+    }
+}
+
+impl CounterPerMcauseBenchmark {
+    fn ecall_from_any_mode(&mut self, ctx: &mut VirtContext) -> ModuleAction {
+        if ctx.get(Register::X17) == abi::MIRALIS_EID
+            && ctx.get(Register::X16) == abi::MIRALIS_READ_COUNTERS_FID
+        {
+            self.read_counters(ctx);
+            ModuleAction::Overwrite
+        } else {
+            ModuleAction::Ignore
+        }
+    }
+
+    fn read_counters(&mut self, _ctx: &mut VirtContext) {
         // For the moment we simply display the counters in Miralis, we use this benchmark for debugging only
         Self::display_counters();
 
@@ -114,9 +144,7 @@ impl BenchmarkModule for CounterPerMcauseBenchmark {
             NB_WORLD_SWITCHES[hard_id()].counter[i].store(0, Ordering::Relaxed);
         }
     }
-}
 
-impl CounterPerMcauseBenchmark {
     fn display_counters() {
         log_mcause!(MCause::InstrAddrMisaligned);
         log_mcause!(MCause::InstrAccessFault);

@@ -16,7 +16,6 @@ use crate::arch::{
     get_raw_faulting_instr, mie, misa, mstatus, mtvec, parse_mpp_return_mode,
     parse_spp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register,
 };
-use crate::benchmark::{Benchmark, BenchmarkModule};
 use crate::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
@@ -688,9 +687,6 @@ impl VirtContext {
                 // For now we don't return error code or the length written
                 self.set(Register::X10, 0);
                 self.set(Register::X11, 0);
-            }
-            abi::MIRALIS_READ_COUNTERS_FID => {
-                Benchmark::read_counters(self);
             }
             _ => panic!("Invalid Miralis FID: 0x{:x}", fid),
         }

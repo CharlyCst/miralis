@@ -23,8 +23,5 @@ profile = "release"
 start_address = 0x40000000
 profile = "release"
 
-[benchmark]
-benchmark_type = "counter"
-
 [modules]
-modules = ["protect_payload"]
+modules = ["protect_payload", "exit_counter"]
