@@ -20,8 +20,8 @@ use crate::benchmark::{Benchmark, BenchmarkModule};
 use crate::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use crate::device::VirtDevice;
 use crate::host::MiralisContext;
+use crate::modules::{MainModule, Module};
 use crate::platform::{Plat, Platform};
-use crate::policy::{Policy, PolicyModule};
 use crate::utils::sign_extend;
 use crate::{debug, device, logger, utils};
 
@@ -495,7 +495,7 @@ impl VirtContext {
     fn handle_machine_software_interrupt(
         &mut self,
         mctx: &mut MiralisContext,
-        policy: &mut Policy,
+        module: &mut MainModule,
     ) {
         // Clear the interrupt
         Plat::get_clint()
@@ -513,7 +513,7 @@ impl VirtContext {
         // Check if a policy MSI is pending
         if vclint.get_policy_msi(self.hart_id) {
             vclint.clear_policy_msi(self.hart_id);
-            policy.on_interrupt(self, mctx);
+            module.on_interrupt(self, mctx);
         }
     }
 
@@ -521,16 +521,16 @@ impl VirtContext {
     pub fn handle_firmware_trap(
         &mut self,
         mctx: &mut MiralisContext,
-        policy: &mut Policy,
+        module: &mut MainModule,
     ) -> ExitResult {
-        if policy.trap_from_firmware(mctx, self).overwrites() {
+        if module.trap_from_firmware(mctx, self).overwrites() {
             logger::trace!("Catching trap in the policy module");
             return ExitResult::Continue;
         }
 
         let cause = self.trap_info.get_cause();
         match cause {
-            MCause::EcallFromUMode if policy.ecall_from_firmware(mctx, self).overwrites() => {
+            MCause::EcallFromUMode if module.ecall_from_firmware(mctx, self).overwrites() => {
                 // Nothing to do, the policy module handles those ecalls
                 logger::trace!("Catching E-call from firmware in the policy module");
             }
@@ -574,7 +574,7 @@ impl VirtContext {
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {
-                self.handle_machine_software_interrupt(mctx, policy);
+                self.handle_machine_software_interrupt(mctx, module);
             }
             MCause::MachineExternalInt => {
                 todo!("Virtualize machine external interrupt")
@@ -608,12 +608,12 @@ impl VirtContext {
     pub fn handle_payload_trap(
         &mut self,
         mctx: &mut MiralisContext,
-        policy: &mut Policy,
+        module: &mut MainModule,
     ) -> ExitResult {
         // Update the current mode
         self.mode = parse_mpp_return_mode(self.trap_info.mstatus);
 
-        if policy.trap_from_payload(mctx, self).overwrites() {
+        if module.trap_from_payload(mctx, self).overwrites() {
             logger::trace!("Catching trap in the policy module");
             return ExitResult::Continue;
         }
@@ -621,7 +621,7 @@ impl VirtContext {
         // Handle the exit.
         // We only care about ecalls and virtualized interrupts.
         match self.trap_info.get_cause() {
-            MCause::EcallFromSMode if policy.ecall_from_payload(mctx, self).overwrites() => {
+            MCause::EcallFromSMode if module.ecall_from_payload(mctx, self).overwrites() => {
                 // Nothing to do, the Policy module handles those ecalls
                 logger::trace!("Catching E-call from payload in the policy module");
             }
@@ -640,7 +640,7 @@ impl VirtContext {
                 self.handle_machine_timer_interrupt(mctx);
             }
             MCause::MachineSoftInt => {
-                self.handle_machine_software_interrupt(mctx, policy);
+                self.handle_machine_software_interrupt(mctx, module);
             }
             _ => self.emulate_firmware_trap(),
         }

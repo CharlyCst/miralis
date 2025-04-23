@@ -17,6 +17,7 @@ pub mod device;
 pub mod driver;
 pub mod host;
 pub mod logger;
+pub mod modules;
 pub mod platform;
 pub mod policy;
 pub mod utils;
@@ -26,12 +27,12 @@ use arch::{Arch, Architecture, Csr, Register};
 use host::MiralisContext;
 pub use platform::init;
 use platform::{Plat, Platform};
-use policy::{Policy, PolicyModule};
 use virt::traits::*;
 use virt::{ExecutionMode, ExitResult, VirtContext};
 
 use crate::arch::write_pmp;
 use crate::benchmark::{Benchmark, BenchmarkModule};
+use crate::modules::{MainModule, Module};
 
 /// The virtuam firmware monitor main loop.
 ///
@@ -42,10 +43,10 @@ use crate::benchmark::{Benchmark, BenchmarkModule};
 ///
 /// This function will start by passing control to the firmware. The hardware must have
 /// been initialized properly (including calling `miralis::init` and loading the firmware.
-pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy: &mut Policy) {
+pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, module: &mut MainModule) {
     Arch::run_vcpu(ctx);
 
-    while handle_trap(ctx, mctx, policy) != ExitResult::Done {
+    while handle_trap(ctx, mctx, module) != ExitResult::Done {
         Arch::run_vcpu(ctx);
     }
 }
@@ -53,7 +54,7 @@ pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, policy
 fn handle_trap(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
-    policy: &mut Policy,
+    module: &mut MainModule,
 ) -> ExitResult {
     if logger::trace_enabled!() {
         log_ctx(ctx);
@@ -77,8 +78,8 @@ fn handle_trap(
     // Keep track of the number of exit
     ctx.nb_exits += 1;
     let result = match exec_mode {
-        ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx, policy),
-        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, policy),
+        ExecutionMode::Firmware => ctx.handle_firmware_trap(mctx, module),
+        ExecutionMode::Payload => ctx.handle_payload_trap(mctx, module),
     };
 
     Benchmark::increment_counter(ctx, exec_mode, ctx.mode.to_exec_mode());
@@ -91,7 +92,7 @@ fn handle_trap(
         (ExecutionMode::Firmware, ExecutionMode::Payload) => {
             logger::debug!("Execution mode: Firmware -> Payload");
             unsafe { ctx.switch_from_firmware_to_payload(mctx) };
-            policy.switch_from_firmware_to_payload(ctx, mctx);
+            module.switch_from_firmware_to_payload(ctx, mctx);
 
             unsafe {
                 // Commit the PMP to hardware
@@ -104,7 +105,7 @@ fn handle_trap(
                 ctx.trap_info.get_cause()
             );
 
-            policy.switch_from_payload_to_firmware(ctx, mctx);
+            module.switch_from_payload_to_firmware(ctx, mctx);
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
 
             unsafe {
@@ -237,14 +238,14 @@ mod tests {
     use crate::arch::{mstatus, Arch, Architecture, Csr, MCause, Mode};
     use crate::handle_trap;
     use crate::host::MiralisContext;
-    use crate::policy::{Policy, PolicyModule};
+    use crate::modules::{MainModule, Module};
     use crate::virt::VirtContext;
 
     #[test]
     fn handle_trap_state() {
         let hw = unsafe { Arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
-        let mut policy = Policy::init();
+        let mut module = MainModule::init();
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
         // Firmware is running
@@ -266,7 +267,7 @@ mod tests {
             Arch::write_csr(Csr::Mip, 0b1);
             Arch::write_csr(Csr::Mideleg, 0);
         };
-        handle_trap(&mut ctx, &mut mctx, &mut policy);
+        handle_trap(&mut ctx, &mut mctx, &mut module);
 
         assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "mideleg must be 0");
         assert_eq!(Arch::read_csr(Csr::Mie), 0b1, "mie must be 1");

@@ -10,8 +10,8 @@ use crate::arch::{
 };
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
+use crate::modules::{Module, ModuleAction};
 use crate::platform::{Plat, Platform};
-use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
 use crate::virt::traits::{RegisterContextGetter, RegisterContextSetter};
 use crate::virt::VirtContext;
@@ -36,7 +36,7 @@ pub const OFFLOAD_POLICY_NAME: &str = "Offload Policy";
 
 pub struct OffloadPolicy {}
 
-impl PolicyModule for OffloadPolicy {
+impl Module for OffloadPolicy {
     const NUMBER_PMPS: usize = 0;
     const NAME: &'static str = OFFLOAD_POLICY_NAME;
 
@@ -48,7 +48,7 @@ impl PolicyModule for OffloadPolicy {
         &mut self,
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
-    ) -> PolicyHookResult {
+    ) -> ModuleAction {
         let trap_info = ctx.trap_info.clone();
 
         match trap_info.get_cause() {
@@ -56,17 +56,17 @@ impl PolicyModule for OffloadPolicy {
                 if emulate_misaligned_read(ctx, mctx).is_err() {
                     ctx.emulate_payload_trap();
                 }
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             MCause::StoreAddrMisaligned => {
                 if emulate_misaligned_write(ctx, mctx).is_err() {
                     ctx.emulate_payload_trap();
                 }
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             MCause::LoadPageFault | MCause::StorePageFault | MCause::InstrPageFault => {
                 ctx.emulate_payload_trap();
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             MCause::EcallFromSMode => {
                 Self::check_ecall(ctx, mctx, ctx.get(Register::X16), ctx.get(Register::X17))
@@ -86,7 +86,7 @@ impl PolicyModule for OffloadPolicy {
                         0x2000 => {
                             ctx.set(Register::try_from(rd).unwrap(), Arch::read_csr(Csr::Time));
                             ctx.pc += 4;
-                            return PolicyHookResult::Overwrite;
+                            return ModuleAction::Overwrite;
                         }
                         0x1000 | 0x3000 | 0x5000 | 0x6000 | 0x7000 => {
                             todo!("Handle the offload of other CSR instructions")
@@ -95,9 +95,9 @@ impl PolicyModule for OffloadPolicy {
                     }
                 }
 
-                PolicyHookResult::Ignore
+                ModuleAction::Ignore
             }
-            _ => PolicyHookResult::Ignore,
+            _ => ModuleAction::Ignore,
         }
     }
 
@@ -152,25 +152,25 @@ impl OffloadPolicy {
         mctx: &mut MiralisContext,
         fid: usize,
         eid: usize,
-    ) -> PolicyHookResult {
+    ) -> ModuleAction {
         match (fid, eid) {
             _ if sbi_codes::is_timer_request(fid, eid) => {
                 let v_clint = Plat::get_vclint();
                 v_clint.set_payload_deadline(ctx, mctx, ctx.regs[Register::X10 as usize]);
                 ctx.pc += 4;
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             _ if sbi_codes::is_ipi_request(fid, eid) => {
                 Self::broadcast_ssi(Self::prepare_hart_mask(ctx));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             _ if sbi_codes::is_i_fence_request(fid, eid) => {
                 Self::broadcast_i_fence(Self::prepare_hart_mask(ctx));
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             _ if sbi_codes::is_vma_request(fid, eid) => {
                 let start_address = ctx.get(Register::X12);
@@ -178,9 +178,9 @@ impl OffloadPolicy {
                 Self::broadcast_vma_fence(Self::prepare_hart_mask(ctx), start_address, size);
                 ctx.pc += 4;
                 ctx.set(Register::X10, sbi_codes::SBI_SUCCESS);
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
-            _ => PolicyHookResult::Ignore,
+            _ => ModuleAction::Ignore,
         }
     }
 

@@ -12,8 +12,8 @@ use crate::arch::{
     parse_mpp_return_mode, set_mpp, write_pmp, Arch, Architecture, Csr, MCause, Mode, Register,
 };
 use crate::host::MiralisContext;
+use crate::modules::{Module, ModuleAction};
 use crate::policy::keystone::ReturnCode::IllegalArgument;
-use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::traits::*;
 use crate::{logger, RegisterContextGetter, VirtContext};
 
@@ -431,7 +431,7 @@ impl KeystonePolicy {
 }
 
 /// To check how ecalls are handled, see https://github.com/riscv-software-src/opensbi/blob/2ffa0a153d804910c20b82974bfe2dedcf35a777/lib/sbi/sbi_ecall.c#L98
-impl PolicyModule for KeystonePolicy {
+impl Module for KeystonePolicy {
     const NAME: &'static str = "Keystone Policy";
 
     fn init() -> Self {
@@ -442,21 +442,21 @@ impl PolicyModule for KeystonePolicy {
         &mut self,
         _mctx: &mut MiralisContext,
         _ctx: &mut VirtContext,
-    ) -> PolicyHookResult {
-        PolicyHookResult::Ignore
+    ) -> ModuleAction {
+        ModuleAction::Ignore
     }
 
     fn ecall_from_payload(
         &mut self,
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
-    ) -> PolicyHookResult {
+    ) -> ModuleAction {
         let eid = ctx.get(Register::X17);
         let fid = ctx.get(Register::X16);
         let enclave_running = self.get_active_enclave(ctx).is_some();
 
         if eid != sbi::KEYSTONE_EID {
-            return PolicyHookResult::Ignore;
+            return ModuleAction::Ignore;
         }
 
         let return_code: ReturnCode = match (enclave_running, fid) {
@@ -473,7 +473,7 @@ impl PolicyModule for KeystonePolicy {
         ctx.set(Register::X10, return_code as usize);
         ctx.pc += 4;
 
-        PolicyHookResult::Overwrite
+        ModuleAction::Overwrite
     }
 
     fn switch_from_payload_to_firmware(
