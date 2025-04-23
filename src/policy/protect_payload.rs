@@ -12,8 +12,8 @@ use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
 use crate::config::{ALL_HARTS_MASK, TARGET_PAYLOAD_ADDRESS};
 use crate::host::MiralisContext;
 use crate::logger;
+use crate::modules::{Module, ModuleAction};
 use crate::platform::{Plat, Platform};
-use crate::policy::{PolicyHookResult, PolicyModule};
 use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
 use crate::virt::traits::*;
 use crate::virt::{VirtContext, VirtCsr};
@@ -44,7 +44,7 @@ pub struct ProtectPayloadPolicy {
     forward_register_value_to_payload: [bool; 32],
 }
 
-impl PolicyModule for ProtectPayloadPolicy {
+impl Module for ProtectPayloadPolicy {
     const NUMBER_PMPS: usize = 2;
     const NAME: &'static str = "Protect Payload Policy";
 
@@ -63,7 +63,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         &mut self,
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
-    ) -> PolicyHookResult {
+    ) -> ModuleAction {
         self.check_trap(ctx, mctx)
     }
 
@@ -71,7 +71,7 @@ impl PolicyModule for ProtectPayloadPolicy {
         &mut self,
         mctx: &mut MiralisContext,
         ctx: &mut VirtContext,
-    ) -> PolicyHookResult {
+    ) -> ModuleAction {
         self.check_trap(ctx, mctx)
     }
 
@@ -180,20 +180,20 @@ impl PolicyModule for ProtectPayloadPolicy {
 }
 
 impl ProtectPayloadPolicy {
-    fn check_trap(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) -> PolicyHookResult {
+    fn check_trap(&mut self, ctx: &mut VirtContext, mctx: &mut MiralisContext) -> ModuleAction {
         let cause = ctx.trap_info.get_cause();
         match cause {
             MCause::LoadAddrMisaligned => {
                 if emulate_misaligned_read(ctx, mctx).is_err() {
                     ctx.emulate_payload_trap();
                 }
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             MCause::StoreAddrMisaligned => {
                 if emulate_misaligned_write(ctx, mctx).is_err() {
                     ctx.emulate_payload_trap();
                 }
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
             // In the meantime, we must explicitly disable this feature to run Ubuntu with the protect payload policy
             MCause::EcallFromSMode
@@ -203,9 +203,9 @@ impl ProtectPayloadPolicy {
                 // Explicitly tell the payload this feature is not available
                 ctx.set(Register::X10, SBI_ERR_DENIED);
                 ctx.pc += 4;
-                PolicyHookResult::Overwrite
+                ModuleAction::Overwrite
             }
-            _ => PolicyHookResult::Ignore,
+            _ => ModuleAction::Ignore,
         }
     }
 

@@ -7,16 +7,16 @@ use syn::{Ident, LitStr, Path, Token};
 const MIRALIS_MODULE_ENV_VAR: &str = "MIRALIS_MODULES";
 
 /// Name of the struct to generate
-const STRUCT_NAME: &str = "Modules";
+const STRUCT_NAME: &str = "MainModule";
 
 /// Name of the token to replace with the module name
 const TOKEN_TO_REPLACE: &str = "module";
 
-/// This macro instantiate a new `Modules` struct that contains all modules selected at compile
-/// time. We rely on a proc macro to only include calls to necessary modules and allow compile-time
+/// This macro instantiate a new struct that contains all modules selected at compile time. We rely
+/// on a proc macro to only include calls to necessary modules and allow compile-time
 /// optimisations. This is required for efficiency as modules are called into the hot path of a few
-/// hundred instructions. Moreover, without compile-time module selection or binary patching the cost
-/// would be proportional to the total number of modules (including unused ones!).
+/// hundred instructions. Moreover, without compile-time module selection or binary patching the
+/// cost would be proportional to the total number of modules (including unused ones!).
 ///
 /// Usage:
 /// ```
@@ -66,11 +66,13 @@ pub fn build_modules(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream
 
     // Emit the actual code
     quote!(
+        /// The main module hosting all modules selected at compile time.
         pub struct #new_mod_name {
             #(#fields),*
         }
 
         impl #new_mod_name {
+            /// The sum of PMP entries used by all modules selected at compile time.
             const TOTAL_PMPS: usize = #(#paths::NUMBER_PMPS +)* 0;
         }
     )

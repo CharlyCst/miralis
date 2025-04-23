@@ -20,8 +20,8 @@ use miralis::config::{
     TARGET_STACK_SIZE,
 };
 use miralis::host::MiralisContext;
+use miralis::modules::{MainModule, Module};
 use miralis::platform::{init, Plat, Platform};
-use miralis::policy::{Policy, PolicyModule};
 use miralis::virt::traits::*;
 use miralis::virt::VirtContext;
 
@@ -57,7 +57,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);
 
-    let mut policy: Policy = Policy::init();
+    let mut module = MainModule::init();
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
@@ -96,7 +96,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // SAFETY: At this point we initialized the hardware, loaded the firmware, and configured the
     // initial register values.
     unsafe {
-        miralis::main_loop(&mut ctx, &mut mctx, &mut policy);
+        miralis::main_loop(&mut ctx, &mut mctx, &mut module);
     }
 
     // If we reach here it means the firmware exited successfully.

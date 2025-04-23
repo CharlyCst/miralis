@@ -19,8 +19,8 @@ use crate::{config, logger};
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
 
 pub mod pmplayout {
+    use crate::modules::{MainModule, Module};
     use crate::platform::{Plat, Platform};
-    use crate::policy::{Policy, PolicyModule};
 
     /// First entry used to catch all pmp entries
     pub const ALL_CATCH_SIZE: usize = 1;
@@ -35,7 +35,7 @@ pub mod pmplayout {
     pub const DEVICES_OFFSET: usize = MIRALIS_OFFSET + MIRALIS_SIZE;
 
     /// PMP entries used by the policy
-    pub const POLICY_SIZE: usize = Policy::NUMBER_PMPS;
+    pub const POLICY_SIZE: usize = MainModule::NUMBER_PMPS;
     pub const POLICY_OFFSET: usize = DEVICES_OFFSET + DEVICES_SIZE;
 
     /// Last PMP entry used in to emulate TOR correctly in the firmware
@@ -374,6 +374,20 @@ impl PmpGroup {
     }
 }
 
+impl PmpFlush {
+    /// Flush the caches, which is required for PMP changes to take effect.
+    pub fn flush(self) {
+        unsafe { Arch::sfencevma(None, None) }
+    }
+
+    /// Do not flush the caches, PMP changes will not take effect predictably which can lead to
+    /// suble bugs.
+    #[allow(dead_code)] // TODO: remove once used or part of the public API
+    pub fn no_flush(self) {
+        // Do nothing
+    }
+}
+
 // ————————————————————————————— Memory Segment ————————————————————————————— //
 
 /// A segment of memory.
@@ -544,7 +558,9 @@ mod tests {
 
         // Initialize an empty group of PMPS
         let mut pmps: PmpGroup = PmpGroup::new(8);
-        for _ in &pmps {
+
+        // Sanity check: no valid entry on creation
+        if (&pmps).into_iter().next().is_some() {
             panic!("A PMP group should be initialized with no valid entry");
         }
 
@@ -566,19 +582,5 @@ mod tests {
         for (actual, expected) in pmps.into_iter().zip(expected.into_iter()) {
             assert_eq!(actual, expected, "Unexpected PMP region")
         }
-    }
-}
-
-impl PmpFlush {
-    /// Flush the caches, which is required for PMP changes to take effect.
-    pub fn flush(self) {
-        unsafe { Arch::sfencevma(None, None) }
-    }
-
-    /// Do not flush the caches, PMP changes will not take effect predictably which can lead to
-    /// suble bugs.
-    #[allow(dead_code)] // TODO: remove once used or part of the public API
-    pub fn no_flush(self) {
-        // Do nothing
     }
 }
