@@ -55,6 +55,11 @@ impl Module for BootBenchmark {
 
             if Self::is_done(current_time_bin) {
                 self.display_benchmark(ctx.hart_id);
+
+                // We block the core now, we got all the data we needed
+                loop {
+                    Arch::wfi();
+                }
             }
 
             BUCKETS[current_time_bin * NUMBER_CATEGORIES + exception_offset as usize]
@@ -76,6 +81,10 @@ impl Module for BootBenchmark {
         ctx: &mut VirtContext,
     ) -> ModuleAction {
         self.ecall_from_any_mode(ctx)
+    }
+
+    fn on_shutdown(&mut self) {
+        self.display_benchmark(Arch::read_csr(Csr::Mhartid));
     }
 }
 
@@ -115,10 +124,6 @@ impl BootBenchmark {
                 BUCKETS[i * NUMBER_CATEGORIES + 5].load(Ordering::SeqCst),
                 BUCKETS[i * NUMBER_CATEGORIES + 6].load(Ordering::SeqCst)
             );
-        }
-
-        loop {
-            Arch::wfi();
         }
     }
 }

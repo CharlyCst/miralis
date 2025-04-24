@@ -98,6 +98,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     }
 
     // If we reach here it means the firmware exited successfully.
+    module.on_shutdown();
     unsafe {
         miralis::debug::log_stack_usage(&raw const _stack_start as usize);
     }
