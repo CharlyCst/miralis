@@ -132,7 +132,8 @@ impl MiralisContext {
         assert_eq!(
             raw_instr & 0b1111111,
             ILLEGAL_OPCODE_MASK,
-            "Precondition violated, this is not an illegal instruction"
+            "Precondition violated, this is not an illegal instruction: 0x{:x}",
+            raw_instr
         );
 
         match raw_instr {
