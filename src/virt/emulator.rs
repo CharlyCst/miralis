@@ -22,6 +22,7 @@ use crate::device::VirtDevice;
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::policy::{Policy, PolicyModule};
+use crate::precondition::apply_or_verify_preconditions;
 use crate::utils::sign_extend;
 use crate::{debug, device, logger, utils};
 
@@ -545,6 +546,10 @@ impl VirtContext {
             }
             MCause::IllegalInstr => {
                 let instr = unsafe { get_raw_faulting_instr(self) };
+
+                // We verify that it matches the preconditions from the formal verifications
+                // This function call get removed in release mode
+                apply_or_verify_preconditions(self);
 
                 // Illegal instruction can have two causes:
                 // - privileged (system) instructions excepts ebreak and ecall

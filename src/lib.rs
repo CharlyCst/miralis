@@ -19,6 +19,7 @@ pub mod host;
 pub mod logger;
 pub mod platform;
 pub mod policy;
+pub mod precondition;
 pub mod utils;
 pub mod virt;
 
