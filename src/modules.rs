@@ -135,6 +135,9 @@ pub trait Module {
         let _ = ctx;
         let _ = mctx;
     }
+
+    /// Hook called before shutting down.
+    fn on_shutdown(&mut self) {}
 }
 
 /// Outcome of a module hook.
@@ -183,6 +186,10 @@ build_modules! {
 
 impl Module for MainModule {
     const NAME: &'static str = "Main Module";
+
+    /// The total number of PMPs is computed as the sum of the number of PMPs for each selected
+    /// module.
+    const NUMBER_PMPS: usize = MainModule::TOTAL_PMPS;
 
     fn init() -> Self {
         let module = for_each_module!(
@@ -337,9 +344,13 @@ impl Module for MainModule {
         );
     }
 
-    /// The total number of PMPs is computed as the sum of the number of PMPs for each selected
-    /// module.
-    const NUMBER_PMPS: usize = MainModule::TOTAL_PMPS;
+    fn on_shutdown(&mut self) {
+        for_each_module!(
+            $(
+                self.$module.on_shutdown();
+            )*
+        );
+    }
 }
 
 impl MainModule {

@@ -62,6 +62,7 @@ fn handle_trap(
     if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
         if ctx.nb_exits + 1 >= max_exit {
             log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
+            module.on_shutdown();
             Plat::exit_failure();
         }
     }

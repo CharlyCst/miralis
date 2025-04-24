@@ -6,13 +6,13 @@ level = "info"
 color = true
 
 [debug]
-# max_firmware_exits = 2000
+max_firmware_exits = 2050
 
 [vcpu]
 max_pmp = 8
 
 [platform]
-nb_harts = 4
+nb_harts = 1
 boot_hart_id = 0
 
 [qemu]
