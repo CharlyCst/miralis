@@ -9,16 +9,31 @@
 
 use core::arch::{asm, global_asm};
 
-use config_helpers::parse_str_or;
+use config_helpers::{parse_str_list, str_list_len};
 use miralis_abi::{failure, log, setup_binary, success};
 use miralis_core::sbi_codes;
 
 setup_binary!(main);
 
-const POLICY_NAME: &str = parse_str_or(option_env!("MIRALIS_POLICY_NAME"), "default_policy");
+const MIRALIS_MODULES: &[&str; str_list_len(option_env!("MIRALIS_MODULES"))] =
+    &parse_str_list(option_env!("MIRALIS_MODULES"));
 
 const PROTECT_PAYLOAD_POLICY: &str = "protect_payload";
 const OFFLOAD_POLICY: &str = "offload";
+const DEFAULT_POLICY: &str = "default_policy";
+
+/// Returns the name of the enabled policy
+///
+/// NOTE: we expect to benchmark a single policy module at a time.
+fn policy_name() -> &'static str {
+    if MIRALIS_MODULES.contains(&PROTECT_PAYLOAD_POLICY) {
+        PROTECT_PAYLOAD_POLICY
+    } else if MIRALIS_MODULES.contains(&OFFLOAD_POLICY) {
+        OFFLOAD_POLICY
+    } else {
+        DEFAULT_POLICY
+    }
+}
 
 fn enable_mcycle_in_smode() {
     unsafe {
@@ -130,12 +145,12 @@ fn operating_system() {
 
     measure(false);
 
-    if POLICY_NAME == PROTECT_PAYLOAD_POLICY {
+    if MIRALIS_MODULES.contains(&PROTECT_PAYLOAD_POLICY) {
         measure_misaligned();
     }
 
     // These are the most two frequent type of traps we receive in Miralis from the payload
-    if POLICY_NAME == OFFLOAD_POLICY {
+    if MIRALIS_MODULES.contains(&OFFLOAD_POLICY) {
         measure_time_ecall();
         measure_time_read();
     }
@@ -154,9 +169,9 @@ fn measure(is_firmware: bool) {
     let average_measure = trigger_ctx_switch_to_firmware_batched();
 
     if is_firmware {
-        log::info!("Firmware cost {} : {}", POLICY_NAME, average_measure);
+        log::info!("Firmware cost {} : {}", policy_name(), average_measure);
     } else {
-        log::info!("Payload cost {} : {}", POLICY_NAME, average_measure);
+        log::info!("Payload cost {} : {}", policy_name(), average_measure);
     }
 
     print_statistics(stats);
@@ -172,7 +187,7 @@ fn measure_misaligned() {
     let stats = get_statistics(values);
     let average_measure = trigger_misaligned_op_batched();
 
-    log::info!("Misaligned cost {} : {}", POLICY_NAME, average_measure);
+    log::info!("Misaligned cost {} : {}", policy_name(), average_measure);
 
     print_statistics(stats);
 }
@@ -189,7 +204,7 @@ fn measure_time_ecall() {
 
     log::info!(
         "Ecall cost to set time {} : {}",
-        POLICY_NAME,
+        policy_name(),
         average_measure
     );
 
@@ -208,7 +223,7 @@ fn measure_time_read() {
 
     log::info!(
         "CSRRS Cost to read time {} : {}",
-        POLICY_NAME,
+        policy_name(),
         average_measure
     );
 
