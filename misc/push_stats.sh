@@ -57,7 +57,7 @@ firmware_cost_protect=$(grep -i "Firmware cost protect_payload :" "$file"  | sed
 payload_cost_protect=$(grep -i "Payload cost protect_payload :" "$file" | sed -E 's/.*Payload cost protect_payload : ([0-9]+).*/\1/')
 misaligned_cost_protect=$(grep -i "Misaligned cost protect_payload :" "$file" | sed -E 's/.*Misaligned cost protect_payload : ([0-9]+).*/\1/')
 set_time_cost=$(grep -i "Ecall cost to set time offload :" "$file" | sed -E 's/.*Ecall cost to set time offload : ([0-9]+).*/\1/')
-read_time_cost=$(grep -i "CSRRS Cost to read time offload :" "$file" | sed -E 's/.CSRRS Cost to read time offload : ([0-9]+).*/\1/')
+read_time_cost=$(grep -i "CSRRS Cost to read time offload :" "$file" | sed -E 's/.*CSRRS Cost to read time offload : ([0-9]+).*/\1/')
 
 # ———————————————————————————————— Push stats ———————————————————————————————— #
 
