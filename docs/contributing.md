@@ -1,4 +1,7 @@
-# Contributing
+---
+title: Contributing
+sidebar_position: 15
+---
 
 The development of Miralis is done through pull requests against the `main` branch.
 We strive to maintain a clean linear history for the `main` branch, we rebase all PRs before merging and expect PRs to be rebased against the latest `main` branch.
