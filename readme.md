@@ -1,4 +1,13 @@
-# Miralis
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/miralis-firmware/assets/refs/heads/main/miralis_logo_1_github_dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/miralis-firmware/assets/refs/heads/main/miralis_logo_1_github_light.svg">
+    <img src="https://raw.githubusercontent.com/miralis-firmware/assets/refs/heads/main/miralis_logo_1_github_light.svg" width="50%" alt="The Miralis logo"/>
+  </picture>
+
+  [Documentation][Documentation]
+</div>
+<br/>
 
 Miralis is a RISC-V firmware that virtualizes RISC-V firmware.
 We call Miralis a _Virtual Firmware Monitor_.
@@ -54,7 +63,8 @@ Although it looks like a standard Linux environment, the M-mode firmware (OpenSB
 
 ## Going Further
 
-For more details, user guides, and platform support see the [documentation](https://miralis-firmware.github.io/docs/introduction).
+For more details, user guides, and platform support see the [documentation][Documentation].
 If you think Miralis can be useful to you, get in touch!
 We are always looking for new use-cases.
 
+[Documentation]: https://miralis-firmware.github.io/docs/introduction
