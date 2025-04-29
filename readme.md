@@ -1,45 +1,60 @@
 # Miralis
 
-Miralis is an experimental system that virtualises firmware to enforce strong isolation between opaque and SoC-dependant firmware and user-controlled hypervisor or operating system.
+Miralis is a RISC-V firmware that virtualizes RISC-V firmware.
+We call Miralis a _Virtual Firmware Monitor_.
 
-## Getting Started
+> **Status**: Miralis is a research project, and is not fit for production yet.
 
-The Miralis project uses [`just`](https://github.com/casey/just) to easily build, run, and test code.
-You can easily install `just` with your favorite package manager or `cargo` by following [the instructions](https://just.systems/man/en/chapter_4.html).
+## Motivation
 
-Miralis is primary developed and tested on QEMU, therefore you will need to install `qemu-system-riscv64` on your system.
-Then you will need to install the rust toolchain, if rust is installed through rustup on the machine this can be done by running `just install-toolchain`
+Usually, low level software is granted high privilege.
+For instance, on RISC-V, platform-specific operations such as cache configuration and power management are handled in M-mode, with full access to all the machine's code and data.
+This is not a great situation: any bug or vulnerability in the machine's firmware can take down or compromise the whole system.
 
-Then running Miralis is as simple as invoking `just run`.
+This can be easily solved by re-designing system firmware, leveraging ideas from the multitude of micro-kernels.
+Unfortunately, it is hard to convince all hardware vendors to re-design their firmware.
+Miralis provides an alternative solution by efficiently de-privileging unmodified vendor firmware.
 
-## Project Organisation
+## How Does It Work?
 
-The Miralis sources live in `src`, that is where the main body of code live for now.
-Miralis does nothing by itself, however, and it needs a _firmware_ to virtualise.
-The `firmware` folder contains simple firmware used for testing, including the `default` firmware selected by `just run`.
+On RISC-V, firmware runs in M-mode.
+Miralis instead runs firmware in U-mode and emulates privileged instructions and memory accesses, creating the illusion of a virtual M-mode (vM-mode).
+This is a classic virtualization technique also known as _trap and emulate_.
 
-To make development and testing easier, the `runner` folder contains a simple command line tool to build, prepare, and load executables on QEMU.
-The runner is invoked automatically by `just run`.
+```
+        ┌──────────────┐ ┌────────────┐
+U-mode  │   User App   │ │  Firmware  │ vM-mode
+        ├──────────────┤ └────────────┘
+S-mode  │    Kernel    │
+        ├──────────────┴──────────────┐
+M-mode  │           Miralis           │
+        └─────────────────────────────┘
+```
 
-The `justfile` holds a collection of useful commands, you can think of it as similar to a Makefile without the C build system bits.
-Running `just` or `just help` give the list of available commands.
+## Quick Start
 
-## Testing and Debugging
+To get started, first install the dependencies:
 
-Integration tests can be run with `just test`.
+1. Install Rust (see the [instructions](https://rust-lang.org/tools/install)).
+2. Install [Just](https://github.com/casey/just) (can be installed with `cargo install just`).
+3. Install `qemu-system-riscv64`:
+    - On Ubuntu: `sudo apt install qemu-system-riscv64`.
+    - On macOS: `brew install qemu`.
 
-The firmware can be selected as an additional argument to `just run`.
-Valid firmware are either names of firmware under the `./firmware/` directory, some pre-build binaries (such as `opensbi`), or paths to external firmware images.
-Thus, `just run opensbi` will execute OpenSBI on top of Miralis.
+Then, in the Miralis folder:
 
-We provide support for debugging with GDB.
-To start a GDB session, first run Miralis with `just debug` and then run `just gdb` in another terminal.
-Similar to `just run`, `just debug` takes an optional firmware argument which can be used to debug a particular image.
-Debugging with GDB requires a RISC-V capable GDB executable in path.
-If `just gdb` can't locate such a binary it will provide a list of supported GDB binaries, installing any one of them will resolve the issue.
+4. Run `just install-toolchain` to install the required Rust components.
+5. Run `just run` to run Miralis with a small firmware.
 
-The log level can be adjusted using a `config.toml` file. See `./config/example.config.toml` for reference.
+You should see an "Hello, world!".
 
-## Contributing
+Now, to run something slightly more interesting, try `just run linux-shell`.
+This will download an OpenSBI + Linux image and run it on top of Miralis.
+Although it looks like a standard Linux environment, the M-mode firmware (OpenSBI) is actually running in user-space!
 
-See [docs/contributing.md](./docs/contributing.md).
+## Going Further
+
+For more details, user guides, and platform support see the [documentation](https://miralis-firmware.github.io/docs/introduction).
+If you think Miralis can be useful to you, get in touch!
+We are always looking for new use-cases.
+
