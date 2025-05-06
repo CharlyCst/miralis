@@ -7,7 +7,7 @@ use miralis_core::sbi_codes::SBI_ERR_DENIED;
 use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
-use crate::arch::pmp::pmplayout::POLICY_OFFSET;
+use crate::arch::pmp::pmplayout::MODULE_OFFSET;
 use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
 use crate::config::{ALL_HARTS_MASK, TARGET_PAYLOAD_ADDRESS};
 use crate::host::MiralisContext;
@@ -120,9 +120,9 @@ impl Module for ProtectPayloadPolicy {
         self.clear_supervisor_csr(ctx);
 
         // Lock memory
-        mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
+        mctx.pmp.set_inactive(MODULE_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp
-            .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
+            .set_tor(MODULE_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
     }
 
     fn switch_from_firmware_to_payload(
@@ -139,8 +139,8 @@ impl Module for ProtectPayloadPolicy {
         }
 
         // Unlock memory
-        mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
-        mctx.pmp.set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::RWX);
+        mctx.pmp.set_inactive(MODULE_OFFSET, TARGET_PAYLOAD_ADDRESS);
+        mctx.pmp.set_tor(MODULE_OFFSET + 1, usize::MAX, pmpcfg::RWX);
 
         // We restore the supervisor csr registers
         self.restore_supervisor_csr(ctx);
@@ -173,9 +173,9 @@ impl Module for ProtectPayloadPolicy {
     // In this policy module, if we receive an interrupt from Miralis, it implies we need to lock the memory
     fn on_interrupt(&mut self, _ctx: &mut VirtContext, mctx: &mut MiralisContext) {
         // Lock memory
-        mctx.pmp.set_inactive(POLICY_OFFSET, TARGET_PAYLOAD_ADDRESS);
+        mctx.pmp.set_inactive(MODULE_OFFSET, TARGET_PAYLOAD_ADDRESS);
         mctx.pmp
-            .set_tor(POLICY_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
+            .set_tor(MODULE_OFFSET + 1, usize::MAX, pmpcfg::NO_PERMISSIONS);
     }
 }
 

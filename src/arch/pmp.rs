@@ -9,8 +9,8 @@ use core::fmt::Formatter;
 use super::Architecture;
 use crate::arch::pmp::pmpcfg::{INACTIVE, NAPOT, TOR};
 use crate::arch::pmp::pmplayout::{
-    ALL_CATCH_OFFSET, DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP,
-    POLICY_OFFSET, POLICY_SIZE, VIRTUAL_PMP_OFFSET,
+    DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP, MODULE_OFFSET,
+    MODULE_SIZE, MPRV_EMULATION_OFFSET, VIRTUAL_PMP_OFFSET,
 };
 use crate::arch::Arch;
 use crate::platform::{Plat, Platform};
@@ -18,33 +18,85 @@ use crate::{config, logger};
 
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
 
+/// This modules keeps track of the PMP layout within Miralis.
+///
+/// Miralis needs to multiplex the limited number of physical PMP to both protect itself, perform
+/// emulation of hardware, and expose virtual PMPs to the firmware.
+///
+/// PMP entries have priorities, the first matching entry will determine the access right of the
+/// load/store operation. Therefore, all PMP entries used to enforce isolation *must* have a higher
+/// precedence than entries controlled by the virtual firmware, which would otherwise be able to
+/// overwrite memory protection.
+///
+/// The current PMP layout is depicted bellow. The first block is used for Miralis' internal usage,
+/// including protecting its own memory and hardware emulation. Modules can also claim PMP entries,
+/// which enables the definition of security policies. MPRV emulation is a bit of a special case.
+/// MPRV stands for Memory Privilege, or maybe Modify Privilege, the spec is not clear. In any
+/// case, when the MPRV bit is set to 1 all data memory accesses are performed with the access
+/// rights of the privilege mode in MPP. Doing so for the virtual firmware requires software
+/// emulation, hence the need for an entry to trap all loads and stores.
+///
+/// A null entry is required before the virtual PMP. The reason is that for the ToR (Top of Range)
+/// matching mode uses the previous PMP entry address is used as the lower bound, but for PMP 0 the
+/// previous address is hardwired at 0. We need to emulate this behavior, and therefore keep an
+/// entry to 0 before virtual PMP 1.
+///
+/// The virtual PMP entries are controlled by the virtual firmware. Miralis of course has to do
+/// some filtering, for instance it removes the lock bit.
+///
+/// Finally, the last entry is used to emulate the default hardware behavior, which is to grant
+/// access to all memory when running the firmware, and deny all access when running the firmware.
+///
+/// The diagram below is an indicative PMP allocation for 8 physical PMPs. The exact allocations
+/// depends on the number of devices, modules loaded, and total number of physical PMP entries.
+///
+/// ```txt
+///                     ┌─ ┌─────────┐                     
+///                     │  │  PMP 0  │── Protect Miralis   
+///                     │  ├─────────┤                     
+///                     │  │  PMP 1  │── Virtual device(s)
+///     For Miralis use │  ├─────────┤                     
+///                     │  │  PMP 2  │── For module(s) use
+///                     │  ├─────────┤                     
+///                     │  │  PMP 3  │── MPRV emulation    
+///                     ├─ ├─────────┤                     
+///          Null entry │  │    0    │                     
+///                     ├─ ├─────────┤                     
+///                     │  │ vPMP 0  │                     
+///         Virtual PMP │  ├─────────┤                     
+///                     │  │ vPMP 1  │                     
+///                     ├─ ├─────────┤                     
+///  Default allow/deny │  │   all   │                     
+///                     └─ └─────────┘
+/// ```
 pub mod pmplayout {
     use crate::modules::{MainModule, Module};
     use crate::platform::{Plat, Platform};
 
-    /// First entry used to catch all pmp entries
-    pub const ALL_CATCH_SIZE: usize = 1;
-    pub const ALL_CATCH_OFFSET: usize = 0;
-
-    // PMP entry used to protect Miralis
+    /// PMP entry used to protect Miralis.
     pub const MIRALIS_SIZE: usize = 1;
-    pub const MIRALIS_OFFSET: usize = ALL_CATCH_SIZE;
+    pub const MIRALIS_OFFSET: usize = 0;
 
-    /// PMP entries used to protect the devices
+    /// PMP entries used to protect the devices.
     pub const DEVICES_SIZE: usize = Plat::NB_VIRT_DEVICES;
     pub const DEVICES_OFFSET: usize = MIRALIS_OFFSET + MIRALIS_SIZE;
 
-    /// PMP entries used by the policy
-    pub const POLICY_SIZE: usize = MainModule::NUMBER_PMPS;
-    pub const POLICY_OFFSET: usize = DEVICES_OFFSET + DEVICES_SIZE;
+    /// PMP entries used by the loaded modules.
+    pub const MODULE_SIZE: usize = MainModule::NUMBER_PMPS;
+    pub const MODULE_OFFSET: usize = DEVICES_OFFSET + DEVICES_SIZE;
 
-    /// Last PMP entry used in to emulate TOR correctly in the firmware
+    /// We need to reserve one entry to emulate the behavior of the MPRV bit (memory privilege) in
+    /// software.
+    pub const MPRV_EMULATION_SIZE: usize = 1;
+    pub const MPRV_EMULATION_OFFSET: usize = MODULE_OFFSET + MODULE_SIZE;
+
+    /// Last PMP entry used in to emulate TOR correctly in the firmware.
     pub const INACTIVE_ENTRY_SIZE: usize = 1;
-    pub const INACTIVE_ENTRY_OFFSET: usize = POLICY_OFFSET + POLICY_SIZE;
+    pub const INACTIVE_ENTRY_OFFSET: usize = MPRV_EMULATION_OFFSET + MPRV_EMULATION_SIZE;
 
-    /// Offset at which the virtual PMPs can start
+    /// Offset at which the virtual PMPs can start.
     pub const VIRTUAL_PMP_OFFSET: usize = INACTIVE_ENTRY_OFFSET + INACTIVE_ENTRY_SIZE;
-    /// At the very end, there is a last PMP entry
+    /// At the very end, there is a last PMP entry.
     pub const MIRALIS_TOTAL_PMP: usize = VIRTUAL_PMP_OFFSET + 1;
 }
 
@@ -216,7 +268,7 @@ impl PmpGroup {
         // Configure PMP registers, if available
         if pmp.nb_pmp >= 8 {
             // By activating this entry it's possible to catch all memory accesses
-            pmp.set_inactive(ALL_CATCH_OFFSET, 0);
+            pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
 
             // Protect Miralis
             pmp.set_napot(MIRALIS_OFFSET, start, size, pmpcfg::NO_PERMISSIONS);
@@ -239,8 +291,8 @@ impl PmpGroup {
 
             // This PMP entry is used by the policy module for its own purpose
             #[allow(clippy::reversed_empty_ranges)]
-            for idx in 0..POLICY_SIZE {
-                pmp.set_inactive(POLICY_OFFSET + idx, 0);
+            for idx in 0..MODULE_SIZE {
+                pmp.set_inactive(MODULE_OFFSET + idx, 0);
             }
 
             // Add an inactive 0 entry so that the next PMP sees 0 with TOR configuration
@@ -303,14 +355,14 @@ impl PmpGroup {
 
     pub fn set_from_policy(&mut self, idx: usize, addr: usize, cfg: u8) {
         #[allow(clippy::absurd_extreme_comparisons)]
-        if idx >= POLICY_SIZE {
+        if idx >= MODULE_SIZE {
             panic!(
                 "Policy isn't writing to its pmp entries index: {} number of registers: {} ",
-                idx, POLICY_SIZE
+                idx, MODULE_SIZE
             );
         }
 
-        self.set(POLICY_OFFSET + idx, addr, cfg);
+        self.set(MODULE_OFFSET + idx, addr, cfg);
     }
 
     /// Returns the array of pmpaddr registers.

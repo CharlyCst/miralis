@@ -6,7 +6,7 @@
 use core::cmp::PartialEq;
 use core::ptr;
 
-use crate::arch::pmp::pmplayout::POLICY_OFFSET;
+use crate::arch::pmp::pmplayout::MODULE_OFFSET;
 use crate::arch::pmp::{pmpcfg, Segment};
 use crate::arch::{
     parse_mpp_return_mode, set_mpp, write_pmp, Arch, Architecture, Csr, MCause, Mode, Register,
@@ -198,7 +198,7 @@ impl KeystonePolicy {
 
     /// Configure PMPs so that the enclave cannot be accessed
     fn lock_enclave(mctx: &mut MiralisContext, enclave: &mut Enclave) {
-        let pmp_id = POLICY_OFFSET + enclave.eid * 2;
+        let pmp_id = MODULE_OFFSET + enclave.eid * 2;
         mctx.pmp.set_inactive(pmp_id, enclave.epm.start());
         mctx.pmp.set_tor(
             pmp_id + 1,
@@ -213,7 +213,7 @@ impl KeystonePolicy {
 
     /// Configure PMPs so that only the enclave and the untrusted memory can be accessed
     fn unlock_enclave(mctx: &mut MiralisContext, enclave: &mut Enclave) {
-        let pmp_id = POLICY_OFFSET + enclave.eid * 2;
+        let pmp_id = MODULE_OFFSET + enclave.eid * 2;
 
         // Grant access to the enclave physical memory
         mctx.pmp.set_inactive(pmp_id, enclave.epm.start());
@@ -373,7 +373,7 @@ impl KeystonePolicy {
         self.enclaves[eid].state = EnclaveState::Invalid;
 
         // Clear enclave PMPs
-        let pmp_id = POLICY_OFFSET + eid * 2;
+        let pmp_id = MODULE_OFFSET + eid * 2;
         mctx.pmp.set_inactive(pmp_id, 0);
         mctx.pmp.set_inactive(pmp_id + 1, 0);
         unsafe {
