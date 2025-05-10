@@ -39,18 +39,19 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     let hart_id = Arch::read_csr(Csr::Mhartid);
 
     init();
-    log::info!("Hello, world!");
-    log::info!("Platform name: {}", Plat::name());
-    log::info!("Hart ID: {}", hart_id);
-    log::debug!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
-    log::debug!(
-        "vmisa:   0x{:x}",
-        Arch::read_csr(Csr::Misa) & !misa::DISABLED
-    );
-    log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
-    log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
 
-    log::info!("Preparing jump into firmware");
+    if hart_id == PLATFORM_BOOT_HART_ID {
+        log::info!("Hello, world!");
+        log::info!("Platform name: {}", Plat::name());
+        log::debug!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
+        log::debug!(
+            "vmisa:   0x{:x}",
+            Arch::read_csr(Csr::Misa) & !misa::DISABLED
+        );
+        log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
+        log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
+    }
+    log::info!("Hart {} is up", hart_id);
 
     let firmware_addr = Plat::load_firmware();
     log::debug!("Firmware loaded at: {:x}", firmware_addr);

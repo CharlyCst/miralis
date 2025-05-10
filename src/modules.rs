@@ -5,6 +5,8 @@
 
 use module_macro::{build_modules, for_each_module};
 
+use crate::arch::{Arch, Architecture, Csr};
+use crate::config::PLATFORM_BOOT_HART_ID;
 use crate::host::MiralisContext;
 use crate::virt::{ExecutionMode, VirtContext};
 
@@ -197,7 +199,13 @@ impl Module for MainModule {
                 $($module: Module::init()),*
             }
         );
-        module.log_all_modules();
+
+        // We log the lists of modules on the boot hart only to avoid cluttering the screen too
+        // much. Models are the same on all cores.
+        if Arch::read_csr(Csr::Mhartid) == PLATFORM_BOOT_HART_ID {
+            module.log_all_modules();
+        }
+
         module
     }
 
