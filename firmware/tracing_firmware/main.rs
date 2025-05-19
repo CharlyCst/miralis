@@ -9,8 +9,8 @@
 
 use core::arch::{asm, global_asm};
 
-use config_helpers::{parse_str_list, str_list_len};
 use miralis_abi::{failure, log, setup_binary, success};
+use miralis_config::helper::{parse_str_list, str_list_len};
 use miralis_core::sbi_codes;
 
 setup_binary!(main);

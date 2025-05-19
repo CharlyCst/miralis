@@ -33,7 +33,7 @@ members = [
     # Crates
     "crates/abi",
     "crates/core",
-    "crates/config_helpers",
+    "crates/config",
     "crates/config_select",
     "crates/module_macro",
     "crates/test_helpers",

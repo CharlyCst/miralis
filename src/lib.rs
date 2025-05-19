@@ -10,7 +10,6 @@
 
 pub mod arch;
 pub mod benchmark;
-pub mod config;
 pub mod debug;
 pub mod decoder;
 pub mod device;
@@ -25,6 +24,7 @@ pub mod virt;
 
 use arch::{Arch, Architecture, Csr, Register};
 use host::MiralisContext;
+use miralis_config as config;
 pub use platform::init;
 use platform::{Plat, Platform};
 use virt::traits::*;

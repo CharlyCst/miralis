@@ -1,6 +1,8 @@
-#![no_std]
+//! Config Helpers
+//!
+//! This modules hosts helper functions to parse the config environment variables at compile time.
 
-// ———————————————————————————————— Helpers ————————————————————————————————— //
+// ————————————————————————————————— Macros ————————————————————————————————— //
 
 /// Helper macro to check is boolean choice is enabled by the configuration, defaulting to yes.
 ///
@@ -31,6 +33,8 @@ macro_rules! is_enabled_default_false {
         }
     };
 }
+
+pub use {is_enabled, is_enabled_default_false};
 
 // ————————————————————————————— String Parsing ————————————————————————————— //
 
