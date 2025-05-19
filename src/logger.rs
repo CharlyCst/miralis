@@ -3,8 +3,8 @@
 use core::sync::atomic::{AtomicBool, Ordering};
 
 use log::{Level, LevelFilter, Metadata, Record};
+use miralis_config as config;
 
-use crate::config;
 use crate::platform::{Plat, Platform};
 use crate::utils::const_str_eq;
 

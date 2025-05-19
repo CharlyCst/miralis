@@ -2,6 +2,7 @@
 use core::slice;
 use core::sync::atomic::{AtomicBool, Ordering};
 
+use miralis_config::TARGET_PAYLOAD_ADDRESS;
 use miralis_core::sbi_codes;
 use miralis_core::sbi_codes::SBI_ERR_DENIED;
 use tiny_keccak::{Hasher, Sha3};
@@ -9,11 +10,10 @@ use tiny_keccak::{Hasher, Sha3};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::MODULE_OFFSET;
 use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
-use crate::config::{ALL_HARTS_MASK, TARGET_PAYLOAD_ADDRESS};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::modules::{Module, ModuleAction};
-use crate::platform::{Plat, Platform};
+use crate::platform::{Plat, Platform, ALL_HARTS_MASK};
 use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
 use crate::virt::traits::*;
 use crate::virt::{VirtContext, VirtCsr};

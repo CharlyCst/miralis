@@ -144,10 +144,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
-name = "config_helpers"
-version = "0.1.0"
-
-[[package]]
 name = "config_select"
 version = "0.1.0"
 dependencies = [
@@ -267,10 +263,10 @@ checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
 name = "miralis"
 version = "0.1.0"
 dependencies = [
- "config_helpers",
  "config_select",
  "log",
  "miralis_abi",
+ "miralis_config",
  "miralis_core",
  "module_macro",
  "spin",
@@ -282,10 +278,14 @@ dependencies = [
 name = "miralis_abi"
 version = "0.1.0"
 dependencies = [
- "config_helpers",
  "log",
+ "miralis_config",
  "miralis_core",
 ]
+
+[[package]]
+name = "miralis_config"
+version = "0.1.0"
 
 [[package]]
 name = "miralis_core"
@@ -377,9 +377,9 @@ name = "runner"
 version = "0.1.0"
 dependencies = [
  "clap",
- "config_helpers",
  "indexmap",
  "log",
+ "miralis_config",
  "serde",
  "toml",
  "walkdir",
@@ -551,8 +551,8 @@ dependencies = [
 name = "tracing_firmware"
 version = "0.1.0"
 dependencies = [
- "config_helpers",
  "miralis_abi",
+ "miralis_config",
  "miralis_core",
 ]
 

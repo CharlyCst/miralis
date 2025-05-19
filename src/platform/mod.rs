@@ -15,6 +15,24 @@ use crate::device::clint::VirtClint;
 use crate::driver::clint::ClintDriver;
 use crate::{debug, device, logger};
 
+// ——————————————————————————— Platform Constants ——————————————————————————— //
+
+/// The expected number of harts.
+pub const PLATFORM_NB_HARTS: usize = {
+    use miralis_config::PLATFORM_NB_HARTS;
+
+    if PLATFORM_NB_HARTS < Plat::NB_HARTS {
+        PLATFORM_NB_HARTS
+    } else {
+        Plat::NB_HARTS
+    }
+};
+
+/// A mask containing all harts
+pub const ALL_HARTS_MASK: usize = (1 << PLATFORM_NB_HARTS) - 1;
+
+// ———————————————————————————— Platform Choice ————————————————————————————— //
+
 /// Export the current platform.
 ///
 /// We use a custom proc macro that checks the value of an environment variable and select the
@@ -27,6 +45,9 @@ pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
     _             => virt::VirtPlatform
 
 ];
+
+// ————————————————————————————— Platform Trait ————————————————————————————— //
+
 pub trait Platform {
     fn name() -> &'static str;
     fn debug_print(level: Level, args: fmt::Arguments);
@@ -112,6 +133,11 @@ pub trait Platform {
     const NB_VIRT_DEVICES: usize;
 }
 
+// ————————————————————————————— Platform Utils ————————————————————————————— //
+
+/// Initializes the platform.
+///
+/// Mut be called as the first action when booting Miralis.
 pub fn init() {
     Plat::init();
     logger::init();

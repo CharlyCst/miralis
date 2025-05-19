@@ -8,4 +8,4 @@ license = "MIT"
 [dependencies]
 miralis_core = { path = "../core" }
 log = { workspace = true }
-config_helpers = { path = "../config_helpers"}
+miralis_config = { path = "../config"}

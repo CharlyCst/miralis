@@ -10,8 +10,9 @@
 use core::fmt::{self, Write};
 use core::hint;
 
-pub use config_helpers::{is_enabled, parse_usize_or};
 use log::Level;
+pub use miralis_config::helper::is_enabled;
+pub use miralis_config::{TARGET_FIRMWARE_STACK_SIZE, TARGET_PAYLOAD_STACK_SIZE};
 use miralis_core::abi;
 
 use crate::logger::StackBuffer;
@@ -129,13 +130,12 @@ macro_rules! setup_binary {
             _bss_stop = sym _bss_stop,
         );
 
-        static STACK_SIZE: usize = $crate::parse_usize_or(
+        static STACK_SIZE: usize =
             if $crate::is_enabled!("IS_TARGET_FIRMWARE") {
-                option_env!("MIRALIS_TARGET_FIRMWARE_STACK_SIZE")
+                $crate::TARGET_FIRMWARE_STACK_SIZE
             } else {
-                option_env!("MIRALIS_TARGET_PAYLOAD_STACK_SIZE")
-            }
-        , 0x8000);
+                $crate::TARGET_PAYLOAD_STACK_SIZE
+            };
 
         pub extern "C" fn _start() -> ! {
             // Validate the signature of the entry point.
@@ -221,8 +221,3 @@ pub unsafe fn ecall3(
 unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
     ecall3(abi::MIRALIS_EID, fid, 0, 0, 0)
 }
-
-// ——————————————————————————————— Constants ———————————————————————————————— //
-
-/// Number of iterations to be used by benchmark firmware.
-pub const BENCHMARK_NB_ITER: usize = parse_usize_or(option_env!("MIRALIS_BENCHMARK_NB_ITER"), 1);

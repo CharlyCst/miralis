@@ -8,6 +8,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::{fmt, fs};
 
+use miralis_config as config;
 use serde::Deserialize;
 use walkdir::WalkDir;
 
@@ -208,25 +209,25 @@ impl Log {
         let mut envs = EnvVars::new();
 
         // Global log level
-        envs.insert("MIRALIS_LOG_LEVEL", &self.level);
+        envs.insert(config::LOG_LEVEL_ENV, &self.level);
 
         // Decides between colored and gray output
-        envs.insert("MIRALIS_LOG_COLOR", &self.color);
+        envs.insert(config::LOG_COLOR_ENV, &self.color);
 
         // Modules logged at error level
-        envs.insert_array("MIRALIS_LOG_ERROR", &self.error);
+        envs.insert_array(config::LOG_ERROR_ENV, &self.error);
 
         // Modules logged at warn level
-        envs.insert_array("MIRALIS_LOG_WARN", &self.warn);
+        envs.insert_array(config::LOG_WARN_ENV, &self.warn);
 
         // Modules logged at info level
-        envs.insert_array("MIRALIS_LOG_INFO", &self.info);
+        envs.insert_array(config::LOG_INFO_ENV, &self.info);
 
         // Modules logged at debug level
-        envs.insert_array("MIRALIS_LOG_DEBUG", &self.debug);
+        envs.insert_array(config::LOG_DEBUG_ENV, &self.debug);
 
         // Modules logged at trace level
-        envs.insert_array("MIRALIS_LOG_TRACE", &self.trace);
+        envs.insert_array(config::LOG_TRACE_ENV, &self.trace);
 
         envs.envs
     }
@@ -235,8 +236,8 @@ impl Log {
 impl Debug {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
-        envs.insert("MIRALIS_DEBUG_MAX_FIRMWARE_EXITS", &self.max_firmware_exits);
-        envs.insert("MIRALIS_BENCHMARK_NB_ITER", &self.nb_iter);
+        envs.insert(config::MAX_FIRMWARE_EXIT_ENV, &self.max_firmware_exits);
+        envs.insert(config::BENCHMARK_NB_ITER_ENV, &self.nb_iter);
         envs.envs
     }
 }
@@ -244,9 +245,9 @@ impl Debug {
 impl VCpu {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
-        envs.insert("MIRALIS_VCPU_MAX_PMP", &self.max_pmp);
+        envs.insert(config::VCPU_MAX_PMP_ENV, &self.max_pmp);
         envs.insert(
-            "MIRALIS_DELEGATE_PERF_COUNTER",
+            config::DELEGATE_PERF_COUNTER_ENV,
             &self.delegate_perf_counters,
         );
         envs.envs
@@ -256,9 +257,9 @@ impl VCpu {
 impl Platform {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
-        envs.insert("MIRALIS_PLATFORM_NAME", &self.name);
-        envs.insert("MIRALIS_PLATFORM_NB_HARTS", &self.nb_harts);
-        envs.insert("MIRALIS_PLATFORM_BOOT_HART_ID", &self.boot_hart_id);
+        envs.insert(config::PLATFORM_NAME_ENV, &self.name);
+        envs.insert(config::PLATFORM_NB_HARTS_ENV, &self.nb_harts);
+        envs.insert(config::PLATFORM_BOOT_HART_ID_ENV, &self.boot_hart_id);
         envs.envs
     }
 }
@@ -266,22 +267,38 @@ impl Platform {
 impl Targets {
     fn build_envs(&self) -> HashMap<String, String> {
         let mut envs = EnvVars::new();
+
+        // Miralis
         envs.insert(
-            "MIRALIS_TARGET_START_ADDRESS",
+            config::TARGET_START_ADDRESS_ENV,
             &self.miralis.start_address.or(Some(0x80000000)),
         );
         envs.insert(
-            "MIRALIS_TARGET_FIRMWARE_ADDRESS",
+            config::TARGET_STACK_SIZE_ENV,
+            &self.miralis.stack_size.or(Some(0x8000)),
+        );
+
+        // Firmware
+        envs.insert(
+            config::TARGET_FIRMWARE_ADDRESS_ENV,
             &self.firmware.start_address.or(Some(0x80200000)),
         );
         envs.insert(
-            "MIRALIS_TARGET_STACK_SIZE",
+            config::TARGET_FIRMWARE_STACK_SIZE_ENV,
             &self.firmware.stack_size.or(Some(0x8000)),
         );
-        envs.insert(
-            "MIRALIS_TARGET_FIRMWARE_STACK_SIZE",
-            &self.miralis.stack_size.or(Some(0x8000)),
-        );
+
+        // Payload
+        if let Some(payload_target) = &self.payload {
+            envs.insert(
+                config::TARGET_PAYLOAD_ADDRESS_ENV,
+                &payload_target.start_address.or(Some(0x80200000)),
+            );
+            envs.insert(
+                config::TARGET_PAYLOAD_STACK_SIZE_ENV,
+                &payload_target.stack_size.or(Some(0x8000)),
+            );
+        }
 
         envs.envs
     }
@@ -297,7 +314,7 @@ impl Modules {
             .collect::<Vec<String>>()
             .join(",");
         if !modules.is_empty() {
-            envs.insert("MIRALIS_MODULES", &Some(modules));
+            envs.insert(config::MODULES_ENV, &Some(modules));
         }
         envs.envs
     }

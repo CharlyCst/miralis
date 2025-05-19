@@ -14,15 +14,15 @@ use core::arch::global_asm;
 
 use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
-use miralis::config::{
-    DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
-    TARGET_STACK_SIZE,
-};
 use miralis::host::MiralisContext;
 use miralis::modules::{MainModule, Module};
 use miralis::platform::{init, Plat, Platform};
 use miralis::virt::traits::*;
 use miralis::virt::VirtContext;
+use miralis_config::{
+    DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
+    TARGET_STACK_SIZE,
+};
 
 // Memory layout, defined in the linker script.
 extern "C" {

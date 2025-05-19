@@ -10,6 +10,6 @@ clap = { version = "4.4.11", features = ["derive"] }
 serde = { version = "1.0.196", features = ["derive"] }
 toml = { version = "0.8.10", features = ["default", "preserve_order"] }
 indexmap = { version = "2.6.0", features = ["serde"] }
-config_helpers = { path = "../crates/config_helpers" }
+miralis_config = { path = "../crates/config" }
 walkdir = "2"
 log =  {workspace = true}
