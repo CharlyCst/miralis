@@ -39,6 +39,10 @@ nb_iter = 1000
 # No maximum by default.
 max_pmp = 8
 
+# Wether to delegate performance counters to the firmware
+# By default Miralis does not delegate the performance counters.
+delegate_perf_counters = false
+
 [platform]
 # Name of the platform (i.e. board) to compile for.
 # Default to "qemu_virt"
@@ -67,7 +71,7 @@ cpu = "none"
 # Amount of memory 
 memory = "2048M"
 
-# The name of a disk artifact
+# The name of a disk artifact (optional)
 disk = "ubuntu"
 
 [target.miralis]
@@ -108,3 +112,8 @@ start_address = 0x80400000
 # Size of the payload stack for each hart (i.e. core)
 # Default to 0x8000
 stack_size = 0x8000
+
+[modules]
+# The list of modules to enable
+# Defaults to none
+modules = ["offload", "keystone", "exit_counter"]
