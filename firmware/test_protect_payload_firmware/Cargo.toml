@@ -11,3 +11,4 @@ path = "main.rs"
 
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
+miralis_config = { path = "../../crates/config" }
