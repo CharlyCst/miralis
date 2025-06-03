@@ -9,13 +9,14 @@
 use core::arch::{asm, global_asm};
 
 use miralis_abi::{failure, setup_binary};
+use miralis_config::TARGET_PAYLOAD_ADDRESS;
 
 setup_binary!(main);
 
 fn main() -> ! {
     install_trap_handler();
 
-    let os: usize = 0x80400000;
+    let os: usize = TARGET_PAYLOAD_ADDRESS;
     let mpp = 0b1 << 11; // MPP = S-mode
 
     unsafe {
