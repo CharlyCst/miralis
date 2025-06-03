@@ -494,6 +494,7 @@ name = "test_protect_payload_firmware"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
+ "miralis_config",
 ]
 
 [[package]]
