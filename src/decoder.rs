@@ -1,5 +1,5 @@
 //! RISC-V instruction decoder
-use crate::arch::{Csr, Register, Width};
+use crate::arch::{csr, Csr, Register, Width};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
@@ -366,75 +366,75 @@ impl MiralisContext {
 
     pub fn decode_csr(&self, csr: usize) -> Csr {
         match csr {
-            0x300 => Csr::Mstatus,
-            0x301 => Csr::Misa,
-            0x304 => Csr::Mie,
-            0x305 => Csr::Mtvec,
-            0x340 => Csr::Mscratch,
-            0x344 => Csr::Mip,
-            0xF14 => Csr::Mhartid,
-            0xF11 => Csr::Mvendorid,
-            0xF12 => Csr::Marchid,
-            0xF13 => Csr::Mimpid,
-            0x3A0..=0x3AF => {
-                let id = csr - 0x3A0;
+            csr::MSTATUS => Csr::Mstatus,
+            csr::MISA => Csr::Misa,
+            csr::MIE => Csr::Mie,
+            csr::MTVEC => Csr::Mtvec,
+            csr::MSCRATCH => Csr::Mscratch,
+            csr::MIP => Csr::Mip,
+            csr::MHARTID => Csr::Mhartid,
+            csr::MVENDORID => Csr::Mvendorid,
+            csr::MARCHID => Csr::Marchid,
+            csr::MIMPID => Csr::Mimpid,
+            csr::PMPCFG0..=csr::PMPCFG15 => {
+                let id = csr - csr::PMPCFG0;
                 if id % 2 == 0 {
                     Csr::Pmpcfg(id)
                 } else {
                     Csr::Unknown // Invalid on rv64
                 }
             }
-            0x3B0..=0x3EF => Csr::Pmpaddr(csr - 0x3B0),
-            0xB00 => Csr::Mcycle,
-            0xB02 => Csr::Minstret,
-            0xC00 => {
+            csr::PMPADDR0..=csr::PMPADDR63 => Csr::Pmpaddr(csr - csr::PMPADDR0),
+            csr::MCYCLE => Csr::Mcycle,
+            csr::MINSTRET => Csr::Minstret,
+            csr::CYCLE => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Cycle
                 } else {
                     Csr::Unknown
                 }
             }
-            0xC01 => {
+            csr::TIME => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Time
                 } else {
                     Csr::Unknown
                 }
             }
-            0xC02 => {
+            csr::INSTRET => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Instret
                 } else {
                     Csr::Unknown
                 }
             }
-            0xB03..=0xB1F => {
+            csr::MHPMCOUNTER3..=csr::MHPMCOUNTER31 => {
                 // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
                 if self.hw.extensions.has_zihpm_extension {
-                    Csr::Mhpmcounter(csr - 0xB03)
+                    Csr::Mhpmcounter(csr - csr::MHPMCOUNTER3)
                 } else {
                     Csr::Unknown
                 }
             }
-            0x320 => Csr::Mcountinhibit,
-            0x323..=0x33F => {
+            csr::MCOUNTINHIBIT => Csr::Mcountinhibit,
+            csr::MHPMEVENT3..=csr::MHPMEVENT31 => {
                 if self.hw.extensions.has_zihpm_extension {
-                    Csr::Mhpmevent(csr - 0x323)
+                    Csr::Mhpmevent(csr - csr::MHPMEVENT3)
                 } else {
                     Csr::Unknown
                 }
             }
-            0x306 => Csr::Mcounteren,
-            0x30a => Csr::Menvcfg,
-            0x747 => {
+            csr::MCOUNTEREN => Csr::Mcounteren,
+            csr::MENVCFG => Csr::Menvcfg,
+            csr::MSECCFG => {
                 if !self.hw.extensions.has_tee_extension {
                     Csr::Unknown
                 } else {
                     Csr::Mseccfg
                 }
             }
-            0xF15 => Csr::Mconfigptr,
-            0x302 => {
+            csr::MCONFIGPTR => Csr::Mconfigptr,
+            csr::MEDELEG => {
                 if !self.hw.extensions.has_s_extension {
                     log::warn!(
                         "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
@@ -445,7 +445,7 @@ impl MiralisContext {
                     Csr::Medeleg
                 }
             }
-            0x303 => {
+            csr::MIDELEG => {
                 if !self.hw.extensions.has_s_extension {
                     log::warn!(
                         "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
@@ -456,7 +456,7 @@ impl MiralisContext {
                     Csr::Mideleg
                 }
             }
-            0x34A => {
+            csr::MTINST => {
                 if !self.hw.extensions.has_h_extension {
                     log::warn!(
                     "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
@@ -467,7 +467,7 @@ impl MiralisContext {
                     Csr::Mtinst
                 }
             }
-            0x34B => {
+            csr::MTVAL2 => {
                 if !self.hw.extensions.has_h_extension {
                     log::warn!(
                     "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
@@ -478,57 +478,57 @@ impl MiralisContext {
                     Csr::Mtval2
                 }
             }
-            0x7A0 => Csr::Tselect,
-            0x7A1 => {
+            csr::TSELECT => Csr::Tselect,
+            csr::TDATA1 => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Tdata1
                 }
             }
-            0x7A2 => {
+            csr::TDATA2 => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Tdata2
                 }
             }
-            0x7A3 => {
+            csr::TDATA3 => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Tdata3
                 }
             }
-            0x7A8 => {
+            csr::MCONTEXT => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Mcontext
                 }
             }
-            0x7B0 => {
+            csr::DCSR => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Dcsr
                 }
             }
-            0x7B1 => {
+            csr::DPC => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Dpc
                 }
             }
-            0x7B2 => {
+            csr::DSCRATCH0 => {
                 if true {
                     Csr::Unknown
                 } else {
                     Csr::Dscratch0
                 }
             }
-            0x7B3 => {
+            csr::DSCRATCH1 => {
                 if true {
                     Csr::Unknown
                 } else {
@@ -543,95 +543,95 @@ impl MiralisContext {
                     Csr::Unknown
                 }
             }
-            0x342 => Csr::Mcause,
-            0x341 => Csr::Mepc,
-            0x343 => Csr::Mtval,
+            csr::MCAUSE => Csr::Mcause,
+            csr::MEPC => Csr::Mepc,
+            csr::MTVAL => Csr::Mtval,
             // Supervisor-level CSRs
-            0x100 => {
+            csr::SSTATUS => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sstatus
                 }
             }
-            0x104 => {
+            csr::SIE => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sie
                 }
             }
-            0x105 => {
+            csr::STVEC => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Stvec
                 }
             }
-            0x106 => {
+            csr::SCOUNTEREN => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Scounteren
                 }
             }
-            0x10A => {
+            csr::SENVCFG => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Senvcfg
                 }
             }
-            0x140 => {
+            csr::SSCRATCH => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sscratch
                 }
             }
-            0x141 => {
+            csr::SEPC => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sepc
                 }
             }
-            0x142 => {
+            csr::SCAUSE => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Scause
                 }
             }
-            0x143 => {
+            csr::STVAL => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Stval
                 }
             }
-            0x144 => {
+            csr::SIP => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Sip
                 }
             }
-            0x14d => {
+            csr::STIMECMP => {
                 if !self.hw.extensions.is_sstc_enabled {
                     Csr::Unknown
                 } else {
                     Csr::Stimecmp
                 }
             }
-            0x180 => {
+            csr::SATP => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
                     Csr::Satp
                 }
             }
-            0x5A8 => {
+            csr::SCONTEXT => {
                 if !self.hw.extensions.has_s_extension {
                     Csr::Unknown
                 } else {
@@ -640,161 +640,161 @@ impl MiralisContext {
             }
 
             // Hypervisor and Virtual Supervisor CSRs
-            0x600 => {
+            csr::HSTATUS => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hstatus
                 }
             }
-            0x602 => {
+            csr::HEDELEG => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hedeleg
                 }
             }
-            0x603 => {
+            csr::HIDELEG => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hideleg
                 }
             }
-            0x645 => {
+            csr::HVIP => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hvip
                 }
             }
-            0x644 => {
+            csr::HIP => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hip
                 }
             }
-            0x604 => {
+            csr::HIE => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hie
                 }
             }
-            0xe12 => {
+            csr::HGEIP => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hgeip
                 }
             }
-            0x607 => {
+            csr::HGEIE => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hgeie
                 }
             }
-            0x60a => {
+            csr::HENVCFG => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Henvcfg
                 }
             }
-            0x606 => {
+            csr::HCOUNTEREN => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hcounteren
                 }
             }
-            0x605 => {
+            csr::HTIMEDELTA => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Htimedelta
                 }
             }
-            0x643 => {
+            csr::HTVAL => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Htval
                 }
             }
-            0x64a => {
+            csr::HTINST => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Htinst
                 }
             }
-            0x680 => {
+            csr::HGATP => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Hgatp
                 }
             }
-            0x200 => {
+            csr::VSSTATUS => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsstatus
                 }
             }
-            0x204 => {
+            csr::VSIE => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsie
                 }
             }
-            0x205 => {
+            csr::VSTVEC => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vstvec
                 }
             }
-            0x240 => {
+            csr::VSSCRATCH => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsscratch
                 }
             }
-            0x241 => {
+            csr::VSEPC => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsepc
                 }
             }
-            0x242 => {
+            csr::VSCAUSE => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vscause
                 }
             }
-            0x243 => {
+            csr::VSTVAL => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vstval
                 }
             }
-            0x244 => {
+            csr::VSIP => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vsip
                 }
             }
-            0x280 => {
+            csr::VSATP => {
                 if !self.hw.extensions.has_h_extension {
                     Csr::Unknown
                 } else {
@@ -803,56 +803,56 @@ impl MiralisContext {
             }
 
             // Vector extension
-            0x8 => {
+            csr::VSTART => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vstart
                 }
             }
-            0x9 => {
+            csr::VXSAT => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vxsat
                 }
             }
-            0xa => {
+            csr::VXRM => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vxrm
                 }
             }
-            0xf => {
+            csr::VCSR => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vcsr
                 }
             }
-            0xc20 => {
+            csr::VL => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vl
                 }
             }
-            0xc21 => {
+            csr::VTYPE => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vtype
                 }
             }
-            0xc22 => {
+            csr::VLENB => {
                 if !self.hw.extensions.has_v_extension {
                     Csr::Unknown
                 } else {
                     Csr::Vlenb
                 }
             }
-            0x15 => {
+            csr::SEED => {
                 // Crypto extension
                 if !self.hw.extensions.has_crypto_extension {
                     Csr::Unknown

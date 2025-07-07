@@ -20,7 +20,7 @@ pub mod userspace;
 use core::ptr;
 
 use pmp::{PmpFlush, PmpGroup};
-pub use registers::{Csr, Register};
+pub use registers::{csr, Csr, Register};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET, SPP_FILTER, SPP_OFFSET};
