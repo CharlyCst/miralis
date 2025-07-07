@@ -402,6 +402,109 @@ impl Csr {
     pub fn is_unknown(self) -> bool {
         self == Csr::Unknown
     }
+
+    /// Return the index of the CSR (i.e. its addess in the CSR address space).
+    pub fn idx(self) -> usize {
+        match self {
+            // Machine mode CSRs
+            Csr::Mhartid => csr::MHARTID,
+            Csr::Mstatus => csr::MSTATUS,
+            Csr::Misa => csr::MISA,
+            Csr::Mie => csr::MIE,
+            Csr::Mtvec => csr::MTVEC,
+            Csr::Mscratch => csr::MSCRATCH,
+            Csr::Mip => csr::MIP,
+            Csr::Mvendorid => csr::MVENDORID,
+            Csr::Marchid => csr::MARCHID,
+            Csr::Mimpid => csr::MIMPID,
+            Csr::Pmpcfg(id) => csr::PMPCFG0 + id,
+            Csr::Pmpaddr(id) => csr::PMPADDR0 + id,
+            Csr::Mcycle => csr::MCYCLE,
+            Csr::Minstret => csr::MINSTRET,
+            Csr::Cycle => csr::CYCLE,
+            Csr::Time => csr::TIME,
+            Csr::Instret => csr::INSTRET,
+            Csr::Mhpmcounter(id) => csr::MHPMCOUNTER3 + id,
+            Csr::Mcountinhibit => csr::MCOUNTINHIBIT,
+            Csr::Mhpmevent(id) => csr::MHPMEVENT3 + id,
+            Csr::Mcounteren => csr::MCOUNTEREN,
+            Csr::Menvcfg => csr::MENVCFG,
+            Csr::Mseccfg => csr::MSECCFG,
+            Csr::Mconfigptr => csr::MCONFIGPTR,
+            Csr::Medeleg => csr::MEDELEG,
+            Csr::Mideleg => csr::MIDELEG,
+            Csr::Mtinst => csr::MTINST,
+            Csr::Mtval2 => csr::MTVAL2,
+            Csr::Tselect => csr::TSELECT,
+            Csr::Tdata1 => csr::TDATA1,
+            Csr::Tdata2 => csr::TDATA2,
+            Csr::Tdata3 => csr::TDATA3,
+            Csr::Mcontext => csr::MCONTEXT,
+            Csr::Dcsr => csr::DCSR,
+            Csr::Dpc => csr::DPC,
+            Csr::Dscratch0 => csr::DSCRATCH0,
+            Csr::Dscratch1 => csr::DSCRATCH1,
+            Csr::Mepc => csr::MEPC,
+            Csr::Mcause => csr::MCAUSE,
+            Csr::Mtval => csr::MTVAL,
+
+            // Supervisor mode CSRs
+            Csr::Sstatus => csr::SSTATUS,
+            Csr::Sie => csr::SIE,
+            Csr::Stvec => csr::STVEC,
+            Csr::Scounteren => csr::SCOUNTEREN,
+            Csr::Senvcfg => csr::SENVCFG,
+            Csr::Sscratch => csr::SSCRATCH,
+            Csr::Sepc => csr::SEPC,
+            Csr::Scause => csr::SCAUSE,
+            Csr::Stval => csr::STVAL,
+            Csr::Sip => csr::SIP,
+            Csr::Satp => csr::SATP,
+            Csr::Scontext => csr::SCONTEXT,
+            Csr::Stimecmp => csr::STIMECMP,
+
+            // Hypervisor and Virtual Supervisor CSRs
+            Csr::Hstatus => csr::HSTATUS,
+            Csr::Hedeleg => csr::HEDELEG,
+            Csr::Hideleg => csr::HIDELEG,
+            Csr::Hvip => csr::HVIP,
+            Csr::Hip => csr::HIP,
+            Csr::Hie => csr::HIE,
+            Csr::Hgeip => csr::HGEIP,
+            Csr::Hgeie => csr::HGEIE,
+            Csr::Henvcfg => csr::HENVCFG,
+            Csr::Hcounteren => csr::HCOUNTEREN,
+            Csr::Htimedelta => csr::HTIMEDELTA,
+            Csr::Htval => csr::HTVAL,
+            Csr::Htinst => csr::HTINST,
+            Csr::Hgatp => csr::HGATP,
+            Csr::Vsstatus => csr::VSSTATUS,
+            Csr::Vsie => csr::VSIE,
+            Csr::Vstvec => csr::VSTVEC,
+            Csr::Vsscratch => csr::VSSCRATCH,
+            Csr::Vsepc => csr::VSEPC,
+            Csr::Vscause => csr::VSCAUSE,
+            Csr::Vstval => csr::VSTVAL,
+            Csr::Vsip => csr::VSIP,
+            Csr::Vsatp => csr::VSATP,
+
+            // Vector extension CSRs
+            Csr::Vstart => csr::VSTART,
+            Csr::Vxsat => csr::VXSAT,
+            Csr::Vxrm => csr::VXRM,
+            Csr::Vcsr => csr::VCSR,
+            Csr::Vl => csr::VL,
+            Csr::Vtype => csr::VTYPE,
+            Csr::Vlenb => csr::VLENB,
+
+            // Crypto extension CSRs
+            Csr::Seed => csr::SEED,
+
+            // Custom and Unknown CSRs
+            Csr::Custom(addr) => addr,
+            Csr::Unknown => panic!("Cannot get index of unknown CSR"),
+        }
+    }
 }
 
 // —————————————————————————————— Conversions ——————————————————————————————— //
