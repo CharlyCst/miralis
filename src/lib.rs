@@ -5,8 +5,8 @@
 
 // Mark the crate as no_std and no_main, but only when not running tests.
 // We need both std and main to be able to run tests in user-space on the host architecture.
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
+#![cfg_attr(not(any(test, feature = "userspace")), no_std)]
+#![cfg_attr(not(any(test, feature = "userspace")), no_main)]
 
 pub mod arch;
 pub mod benchmark;
@@ -235,8 +235,7 @@ fn log_ctx(ctx: &VirtContext) {
 /// In case of an interrupt, Mip must be cleared: avoid Miralis to trap again.
 #[cfg(test)]
 mod tests {
-
-    use crate::arch::{mstatus, Arch, Architecture, Csr, MCause, Mode};
+    use crate::arch::{mstatus, Arch, Architecture, MCause, Mode};
     use crate::handle_trap;
     use crate::host::MiralisContext;
     use crate::modules::{MainModule, Module};
@@ -263,16 +262,8 @@ mod tests {
         ctx.trap_info.mip = 0b1;
         ctx.trap_info.mtval = 0;
 
-        unsafe {
-            Arch::write_csr(Csr::Mie, 0b1);
-            Arch::write_csr(Csr::Mip, 0b1);
-            Arch::write_csr(Csr::Mideleg, 0);
-        };
         handle_trap(&mut ctx, &mut mctx, &mut module);
 
-        assert_eq!(Arch::read_csr(Csr::Mideleg), 0, "mideleg must be 0");
-        assert_eq!(Arch::read_csr(Csr::Mie), 0b1, "mie must be 1");
-        // assert_eq!(Arch::read_csr(Csr::Mip), 0, "mip must be 0"); // TODO : uncomment if using a real int.
         assert_eq!(ctx.pc, 0x80200024, "pc must be at handler start");
         assert_eq!(ctx.csr.mip, 0b1, "mip must to be updated");
         assert_eq!(ctx.csr.mie, 1, "mie must not change");

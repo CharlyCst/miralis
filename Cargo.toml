@@ -43,8 +43,6 @@ members = [
 
     # Testing and verification
     "model_checking",
-    "model_checking/sail_prelude",
-    "model_checking/sail_model",
 ]
 
 # Setting the runner as the default member makes it easier to invoke (no need
@@ -53,6 +51,7 @@ default-members = ["runner"]
 
 [workspace.dependencies]
 log = "0.4.17"
+softcore-rv64 = "0.4.0"
 
 [profile.dev]
 panic = "abort"
