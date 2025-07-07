@@ -168,14 +168,14 @@ impl Architecture for MetalArch {
 
     unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
         macro_rules! asm_write_pmpcfg {
-        ($idx:literal, $cfg:expr) => {
-            asm!(
-                concat!("csrw pmpcfg", $idx, ", {cfg}"),
-                cfg = in(reg) $cfg,
-                options(nomem)
-            )
-        };
-    }
+            ($idx:literal, $cfg:expr) => {
+                asm!(
+                    concat!("csrw pmpcfg", $idx, ", {cfg}"),
+                    cfg = in(reg) $cfg,
+                    options(nomem)
+                )
+            };
+        }
 
         match index {
             0 => asm_write_pmpcfg!(0, pmpcfg),

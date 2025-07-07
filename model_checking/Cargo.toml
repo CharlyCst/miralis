@@ -5,9 +5,7 @@ edition = "2021"
 
 [dependencies]
 miralis = { path = "../src", features = ["userspace"] }
-sail_prelude = { path = "sail_prelude"}
-sail_model = { path = "sail_model"}
-sail_decoder = { path = "sail_decoder"}
+softcore-rv64 = { workspace = true }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

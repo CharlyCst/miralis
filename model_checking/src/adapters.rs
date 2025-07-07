@@ -8,121 +8,157 @@
 use miralis::arch::{Csr, Mode, Register, Width};
 use miralis::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use miralis::host::MiralisContext;
-use miralis::utils::bits_to_int;
 use miralis::virt::VirtContext;
-use sail_model::{ast, csrop, word_width, Privilege, SailVirtCtx};
-use sail_prelude::{BitField, BitVector};
+use softcore_rv64::config::U74;
+use softcore_rv64::prelude::{bv, BitVector};
+use softcore_rv64::raw::{ast, csrop, word_width, Core, Pmpcfg_ent, Privilege};
+use softcore_rv64::registers as reg;
+use softcore_rv64::{new_core, raw};
 
-pub fn miralis_to_sail(ctx: &VirtContext) -> SailVirtCtx {
-    let mut sail_ctx = new_sail_ctx();
+pub fn miralis_to_rv_core(ctx: &VirtContext) -> Core {
+    let mut core = new_core(U74);
+    core.reset();
 
-    sail_ctx.nextPC = BitVector::new(ctx.pc as u64);
-    sail_ctx.PC = BitVector::new(ctx.pc as u64);
+    core.nextPC = bv(ctx.pc as u64);
+    core.PC = bv(ctx.pc as u64);
 
-    sail_ctx.cur_privilege = match ctx.mode {
+    core.cur_privilege = match ctx.mode {
         Mode::U => Privilege::User,
         Mode::S => Privilege::Supervisor,
         Mode::M => Privilege::Machine,
     };
 
     // Transfer hart id
-    sail_ctx.mhartid = BitVector::new(ctx.hart_id as u64);
+    core.mhartid = bv(ctx.hart_id as u64);
 
     // Transfer all csr
-    sail_ctx.mstatus = BitField::new(ctx.csr.mstatus as u64);
-    sail_ctx.misa = BitField::new(ctx.csr.misa as u64);
-    sail_ctx.mie = BitField::new(ctx.csr.mie as u64);
-    sail_ctx.mip = BitField::new(ctx.csr.mip as u64);
-    sail_ctx.mtvec = BitField::new(ctx.csr.mtvec as u64);
-    sail_ctx.mscratch = BitVector::new(ctx.csr.mscratch as u64);
-    sail_ctx.mvendorid = BitVector::new(ctx.csr.mvendorid as u64);
-    sail_ctx.marchid = BitVector::new(ctx.csr.marchid as u64);
-    sail_ctx.mimpid = BitVector::new(ctx.csr.mimpid as u64);
-    sail_ctx.mcycle = BitVector::new(ctx.csr.mcycle as u64);
-    sail_ctx.minstret = BitVector::new(ctx.csr.minstret as u64);
-    sail_ctx.mcountinhibit = BitField::new(ctx.csr.mcountinhibit as u64);
-    sail_ctx.mcounteren = BitField::new(ctx.csr.mcounteren as u64);
-    sail_ctx.menvcfg = BitField::new(ctx.csr.menvcfg as u64);
+    core.mstatus = raw::Mstatus {
+        bits: bv(ctx.csr.mstatus as u64),
+    };
+    core.misa = raw::Misa {
+        bits: bv(ctx.csr.misa as u64),
+    };
+    core.mie = raw::Minterrupts {
+        bits: bv(ctx.csr.mie as u64),
+    };
+    core.mip = raw::Minterrupts {
+        bits: bv(ctx.csr.mip as u64),
+    };
+    core.mtvec = raw::Mtvec {
+        bits: bv(ctx.csr.mtvec as u64),
+    };
+    core.mscratch = bv(ctx.csr.mscratch as u64);
+    core.mvendorid = bv(ctx.csr.mvendorid as u64);
+    core.marchid = bv(ctx.csr.marchid as u64);
+    core.mimpid = bv(ctx.csr.mimpid as u64);
+    core.mcycle = bv(ctx.csr.mcycle as u64);
+    core.minstret = bv(ctx.csr.minstret as u64);
+    core.mcountinhibit = raw::Counterin {
+        bits: bv(ctx.csr.mcountinhibit as u64),
+    };
+    core.mcounteren = raw::Counteren {
+        bits: bv(ctx.csr.mcounteren as u64),
+    };
+    core.menvcfg = raw::MEnvcfg {
+        bits: bv(ctx.csr.menvcfg as u64),
+    };
     // sail_ctx.mseccfg = BitField::new(ctx.csr.mseccfg as u64);
-    sail_ctx.mcause = BitField::new(ctx.csr.mcause as u64);
-    sail_ctx.mepc = BitVector::new(ctx.csr.mepc as u64);
-    sail_ctx.mtval = BitVector::new(ctx.csr.mtval as u64);
+    core.mcause = raw::Mcause {
+        bits: bv(ctx.csr.mcause as u64),
+    };
+    core.mepc = bv(ctx.csr.mepc as u64);
+    core.mtval = bv(ctx.csr.mtval as u64);
     // sail_ctx.mtval2 = BitField::new(ctx.csr.mtval2 as u64);
-    sail_ctx.mstatus = BitField::new(ctx.csr.mstatus as u64);
+    core.mstatus = raw::Mstatus {
+        bits: bv(ctx.csr.mstatus as u64),
+    };
     // sail_ctx.mtinst = BitField::new(ctx.csr.mtinst as u64);
 
-    sail_ctx.mconfigptr = BitVector::new(ctx.csr.mconfigptr as u64);
-    sail_ctx.stvec = BitField::new(ctx.csr.stvec as u64);
-    sail_ctx.scounteren = BitField::new(ctx.csr.scounteren as u64);
-    sail_ctx.senvcfg = BitField::new(ctx.csr.senvcfg as u64);
+    core.mconfigptr = bv(ctx.csr.mconfigptr as u64);
+    core.stvec = raw::Mtvec {
+        bits: bv(ctx.csr.stvec as u64),
+    };
+    core.scounteren = raw::Counteren {
+        bits: bv(ctx.csr.scounteren as u64),
+    };
+    core.senvcfg = raw::SEnvcfg {
+        bits: bv(ctx.csr.senvcfg as u64),
+    };
 
-    sail_ctx.sscratch = BitVector::new(ctx.csr.sscratch as u64);
-    sail_ctx.sepc = BitVector::new(ctx.csr.sepc as u64);
-    sail_ctx.scause = BitField::new(ctx.csr.scause as u64);
-    sail_ctx.stval = BitVector::new(ctx.csr.stval as u64);
-    sail_ctx.satp = BitVector::new(ctx.csr.satp as u64);
+    core.sscratch = bv(ctx.csr.sscratch as u64);
+    core.sepc = bv(ctx.csr.sepc as u64);
+    core.scause = raw::Mcause {
+        bits: bv(ctx.csr.scause as u64),
+    };
+    core.stval = bv(ctx.csr.stval as u64);
+    core.satp = bv(ctx.csr.satp as u64);
     // sail_ctx.scontext = BitField::new(ctx.csr.scontext as u64);
-    sail_ctx.medeleg = BitField::new(ctx.csr.medeleg as u64);
-    sail_ctx.mideleg = BitField::new(ctx.csr.mideleg as u64);
+    core.medeleg = raw::Medeleg {
+        bits: bv(ctx.csr.medeleg as u64),
+    };
+    core.mideleg = raw::Minterrupts {
+        bits: bv(ctx.csr.mideleg as u64),
+    };
 
-    sail_ctx.pmpcfg_n = pmpcfg_miralis_to_sail(ctx.csr.pmpcfg);
-    sail_ctx.pmpaddr_n = pmpaddr_miralis_to_sail(ctx.csr.pmpaddr);
+    core.pmpcfg_n = pmpcfg_miralis_to_sail(ctx.csr.pmpcfg);
+    core.pmpaddr_n = pmpaddr_miralis_to_sail(ctx.csr.pmpaddr);
     // ctx.csr.mhpmcounter=  [kani::any(); 29]; TODO: What should we do with this?
     // ctx.csr.mhpmevent=  [kani::any(); 29]; TODO: What should we do with this?
 
     // New added
-    sail_ctx.tselect = BitVector::<64>::new(ctx.csr.tselect as u64);
-    sail_ctx.vstart = BitVector::<16>::new(ctx.csr.vstart as u64);
-    sail_ctx.vxsat = BitVector::new(if ctx.csr.vxsat { 1 } else { 0 });
-    sail_ctx.vxrm = BitVector::new(ctx.csr.vxrm as u64);
-    sail_ctx.vcsr = BitField::new(ctx.csr.vcsr as u64);
-    sail_ctx.vl = BitVector::new(ctx.csr.vl as u64);
-    sail_ctx.vtype = BitField::new(ctx.csr.vtype as u64);
-    sail_ctx.vlenb = BitVector::new(ctx.csr.vlenb as u64);
+    core.tselect = BitVector::<64>::new(ctx.csr.tselect as u64);
+    core.vstart = BitVector::<16>::new(ctx.csr.vstart as u64);
+    core.vcsr = raw::Vcsr {
+        bits: bv(ctx.csr.vcsr as u64),
+    };
+    core.vl = bv(ctx.csr.vl as u64);
+    core.vtype = raw::Vtype {
+        bits: bv(ctx.csr.vtype as u64),
+    };
 
     // Transfer the general purpose registers
-    sail_ctx.x1 = BitVector::new(ctx.regs[1] as u64);
-    sail_ctx.x2 = BitVector::new(ctx.regs[2] as u64);
-    sail_ctx.x3 = BitVector::new(ctx.regs[3] as u64);
-    sail_ctx.x4 = BitVector::new(ctx.regs[4] as u64);
-    sail_ctx.x5 = BitVector::new(ctx.regs[5] as u64);
-    sail_ctx.x6 = BitVector::new(ctx.regs[6] as u64);
-    sail_ctx.x7 = BitVector::new(ctx.regs[7] as u64);
-    sail_ctx.x8 = BitVector::new(ctx.regs[8] as u64);
-    sail_ctx.x9 = BitVector::new(ctx.regs[9] as u64);
-    sail_ctx.x10 = BitVector::new(ctx.regs[10] as u64);
-    sail_ctx.x11 = BitVector::new(ctx.regs[11] as u64);
-    sail_ctx.x12 = BitVector::new(ctx.regs[12] as u64);
-    sail_ctx.x13 = BitVector::new(ctx.regs[13] as u64);
-    sail_ctx.x14 = BitVector::new(ctx.regs[14] as u64);
-    sail_ctx.x15 = BitVector::new(ctx.regs[15] as u64);
-    sail_ctx.x16 = BitVector::new(ctx.regs[16] as u64);
-    sail_ctx.x17 = BitVector::new(ctx.regs[17] as u64);
-    sail_ctx.x18 = BitVector::new(ctx.regs[18] as u64);
-    sail_ctx.x19 = BitVector::new(ctx.regs[19] as u64);
-    sail_ctx.x20 = BitVector::new(ctx.regs[20] as u64);
-    sail_ctx.x21 = BitVector::new(ctx.regs[21] as u64);
-    sail_ctx.x22 = BitVector::new(ctx.regs[22] as u64);
-    sail_ctx.x23 = BitVector::new(ctx.regs[23] as u64);
-    sail_ctx.x24 = BitVector::new(ctx.regs[24] as u64);
-    sail_ctx.x25 = BitVector::new(ctx.regs[25] as u64);
-    sail_ctx.x26 = BitVector::new(ctx.regs[26] as u64);
-    sail_ctx.x27 = BitVector::new(ctx.regs[27] as u64);
-    sail_ctx.x28 = BitVector::new(ctx.regs[28] as u64);
-    sail_ctx.x29 = BitVector::new(ctx.regs[29] as u64);
-    sail_ctx.x30 = BitVector::new(ctx.regs[30] as u64);
-    sail_ctx.x31 = BitVector::new(ctx.regs[31] as u64);
+    core.x1 = bv(ctx.regs[1] as u64);
+    core.x2 = bv(ctx.regs[2] as u64);
+    core.x3 = bv(ctx.regs[3] as u64);
+    core.x4 = bv(ctx.regs[4] as u64);
+    core.x5 = bv(ctx.regs[5] as u64);
+    core.x6 = bv(ctx.regs[6] as u64);
+    core.x7 = bv(ctx.regs[7] as u64);
+    core.x8 = bv(ctx.regs[8] as u64);
+    core.x9 = bv(ctx.regs[9] as u64);
+    core.x10 = bv(ctx.regs[10] as u64);
+    core.x11 = bv(ctx.regs[11] as u64);
+    core.x12 = bv(ctx.regs[12] as u64);
+    core.x13 = bv(ctx.regs[13] as u64);
+    core.x14 = bv(ctx.regs[14] as u64);
+    core.x15 = bv(ctx.regs[15] as u64);
+    core.x16 = bv(ctx.regs[16] as u64);
+    core.x17 = bv(ctx.regs[17] as u64);
+    core.x18 = bv(ctx.regs[18] as u64);
+    core.x19 = bv(ctx.regs[19] as u64);
+    core.x20 = bv(ctx.regs[20] as u64);
+    core.x21 = bv(ctx.regs[21] as u64);
+    core.x22 = bv(ctx.regs[22] as u64);
+    core.x23 = bv(ctx.regs[23] as u64);
+    core.x24 = bv(ctx.regs[24] as u64);
+    core.x25 = bv(ctx.regs[25] as u64);
+    core.x26 = bv(ctx.regs[26] as u64);
+    core.x27 = bv(ctx.regs[27] as u64);
+    core.x28 = bv(ctx.regs[28] as u64);
+    core.x29 = bv(ctx.regs[29] as u64);
+    core.x30 = bv(ctx.regs[30] as u64);
+    core.x31 = bv(ctx.regs[31] as u64);
 
-    sail_ctx
+    core
 }
 
-pub fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
-    let mut output: [BitField<8>; 64] = [BitField::<8>::new(0); 64];
+pub fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [Pmpcfg_ent; 64] {
+    let mut output: [Pmpcfg_ent; 64] = [Pmpcfg_ent { bits: bv(0) }; 64];
 
     for i in 0..64 {
         let idx = i / 8;
         let offset = i % 8;
-        output[i] = BitField::<8>::new(((cfgs[idx] >> (8 * offset)) & 0xFF) as u64);
+        output[i].bits = bv(((cfgs[idx] >> (8 * offset)) & 0xFF) as u64);
     }
 
     output
@@ -131,186 +167,13 @@ pub fn pmpcfg_miralis_to_sail(cfgs: [usize; 8]) -> [BitField<8>; 64] {
 pub fn pmpaddr_miralis_to_sail(addresses: [usize; 64]) -> [BitVector<64>; 64] {
     let mut output: [BitVector<64>; 64] = [BitVector::<64>::new(0); 64];
     for i in 0..64 {
-        output[i] = BitVector::new(addresses[i] as u64);
+        output[i] = bv(addresses[i] as u64);
     }
 
     output
 }
 
-/// Creates a fresh Sail context
-///
-/// NOTE: in the future we hope to replace it with a [Default] implementation, but there are some
-/// blockers for now (e.g. arrays of 64 elements do not yet implement [Default] and we can't set
-/// default values for members).
-pub fn new_sail_ctx() -> SailVirtCtx {
-    SailVirtCtx {
-        elen: BitVector::default(),
-        vlen: BitVector { bits: 3 },
-        __monomorphize_reads: false,
-        __monomorphize_writes: false,
-        PC: BitVector::default(),
-        nextPC: BitVector::default(),
-        instbits: BitVector::default(),
-        x1: BitVector::default(),
-        x2: BitVector::default(),
-        x3: BitVector::default(),
-        x4: BitVector::default(),
-        x5: BitVector::default(),
-        x6: BitVector::default(),
-        x7: BitVector::default(),
-        x8: BitVector::default(),
-        x9: BitVector::default(),
-        x10: BitVector::default(),
-        x11: BitVector::default(),
-        x12: BitVector::default(),
-        x13: BitVector::default(),
-        x14: BitVector::default(),
-        x15: BitVector::default(),
-        x16: BitVector::default(),
-        x17: BitVector::default(),
-        x18: BitVector::default(),
-        x19: BitVector::default(),
-        x20: BitVector::default(),
-        x21: BitVector::default(),
-        x22: BitVector::default(),
-        x23: BitVector::default(),
-        x24: BitVector::default(),
-        x25: BitVector::default(),
-        x26: BitVector::default(),
-        x27: BitVector::default(),
-        x28: BitVector::default(),
-        x29: BitVector::default(),
-        x30: BitVector::default(),
-        x31: BitVector::default(),
-        cur_privilege: Privilege::User,
-        cur_inst: BitVector::default(),
-        misa: BitField::default(),
-        mstatush: BitField::default(),
-        mstatus: BitField::default(),
-        mip: BitField::default(),
-        mie: BitField::default(),
-        mideleg: BitField::default(),
-        medeleg: BitField::default(),
-        mtvec: BitField::default(),
-        mcause: BitField::default(),
-        mepc: BitVector::default(),
-        mtval: BitVector::default(),
-        mscratch: BitVector::default(),
-        mcounteren: BitField::default(),
-        scounteren: BitField::default(),
-        mcountinhibit: BitField::default(),
-        mcycle: BitVector::default(),
-        mtime: BitVector::default(),
-        minstret: BitVector::default(),
-        minstret_increment: false,
-        mvendorid: BitVector::default(),
-        mimpid: BitVector::default(),
-        marchid: BitVector::default(),
-        mhartid: BitVector::default(),
-        mconfigptr: BitVector::default(),
-        sedeleg: BitField::default(),
-        sideleg: BitField::default(),
-        stvec: BitField::default(),
-        sscratch: BitVector::default(),
-        sepc: BitVector::default(),
-        scause: BitField::default(),
-        stval: BitVector::default(),
-        tselect: BitVector::default(),
-        menvcfg: BitField::default(),
-        senvcfg: BitField::default(),
-        vstart: BitVector::default(),
-        vxsat: BitVector::default(),
-        vxrm: BitVector::default(),
-        vl: BitVector::default(),
-        vlenb: BitVector::default(),
-        vtype: BitField::default(),
-        pmpcfg_n: [BitField::default(); 64],
-        pmpaddr_n: [BitVector::default(); 64],
-        vr0: BitVector::default(),
-        vr1: BitVector::default(),
-        vr2: BitVector::default(),
-        vr3: BitVector::default(),
-        vr4: BitVector::default(),
-        vr5: BitVector::default(),
-        vr6: BitVector::default(),
-        vr7: BitVector::default(),
-        vr8: BitVector::default(),
-        vr9: BitVector::default(),
-        vr10: BitVector::default(),
-        vr11: BitVector::default(),
-        vr12: BitVector::default(),
-        vr13: BitVector::default(),
-        vr14: BitVector::default(),
-        vr15: BitVector::default(),
-        vr16: BitVector::default(),
-        vr17: BitVector::default(),
-        vr18: BitVector::default(),
-        vr19: BitVector::default(),
-        vr20: BitVector::default(),
-        vr21: BitVector::default(),
-        vr22: BitVector::default(),
-        vr23: BitVector::default(),
-        vr24: BitVector::default(),
-        vr25: BitVector::default(),
-        vr26: BitVector::default(),
-        vr27: BitVector::default(),
-        vr28: BitVector::default(),
-        vr29: BitVector::default(),
-        vr30: BitVector::default(),
-        vr31: BitVector::default(),
-        vcsr: BitField::default(),
-        utvec: BitField::default(),
-        uscratch: BitVector::default(),
-        uepc: BitVector::default(),
-        ucause: BitField::default(),
-        utval: BitVector::default(),
-        float_result: BitVector::default(),
-        float_fflags: BitVector::default(),
-        f0: BitVector::default(),
-        f1: BitVector::default(),
-        f2: BitVector::default(),
-        f3: BitVector::default(),
-        f4: BitVector::default(),
-        f5: BitVector::default(),
-        f6: BitVector::default(),
-        f7: BitVector::default(),
-        f8: BitVector::default(),
-        f9: BitVector::default(),
-        f10: BitVector::default(),
-        f11: BitVector::default(),
-        f12: BitVector::default(),
-        f13: BitVector::default(),
-        f14: BitVector::default(),
-        f15: BitVector::default(),
-        f16: BitVector::default(),
-        f17: BitVector::default(),
-        f18: BitVector::default(),
-        f19: BitVector::default(),
-        f20: BitVector::default(),
-        f21: BitVector::default(),
-        f22: BitVector::default(),
-        f23: BitVector::default(),
-        f24: BitVector::default(),
-        f25: BitVector::default(),
-        f26: BitVector::default(),
-        f27: BitVector::default(),
-        f28: BitVector::default(),
-        f29: BitVector::default(),
-        f30: BitVector::default(),
-        f31: BitVector::default(),
-        fcsr: BitField::default(),
-        mtimecmp: BitVector::default(),
-        htif_tohost: BitVector::default(),
-        htif_done: false,
-        htif_exit_code: BitVector::default(),
-        htif_cmd_write: false,
-        htif_payload_writes: BitVector::default(),
-        tlb: None,
-        satp: BitVector::default(),
-    }
-}
-
-pub fn sail_to_miralis(sail_ctx: SailVirtCtx, mctx: &MiralisContext) -> VirtContext {
+pub fn rv_core_to_miralis(mut sail_ctx: Core, mctx: &MiralisContext) -> VirtContext {
     let mut ctx = VirtContext::new(0, 0, mctx.hw.extensions.clone());
 
     ctx.mode = match sail_ctx.cur_privilege {
@@ -324,7 +187,8 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx, mctx: &MiralisContext) -> VirtCont
     // Transfer hart id
     ctx.hart_id = sail_ctx.mhartid.bits() as usize;
 
-    ctx.nb_pmp = 64; // Fixed for now
+    ctx.nb_pmp = sail_ctx.config.memory.pmp.count as usize;
+    ctx.pmp_grain = sail_ctx.config.memory.pmp.grain as usize;
 
     // Transfer all csr
     ctx.csr.mstatus = sail_ctx.mstatus.bits.bits() as usize;
@@ -365,50 +229,47 @@ pub fn sail_to_miralis(sail_ctx: SailVirtCtx, mctx: &MiralisContext) -> VirtCont
     // New added
     ctx.csr.tselect = sail_ctx.tselect.bits() as usize;
     ctx.csr.vstart = sail_ctx.vstart.bits() as u16;
-    ctx.csr.vxsat = sail_ctx.vxsat.bits() != 0;
-    ctx.csr.vxrm = sail_ctx.vxrm.bits() as u8;
     ctx.csr.vcsr = sail_ctx.vcsr.bits.bits() as u8;
     ctx.csr.vl = sail_ctx.vl.bits() as usize;
     ctx.csr.vtype = sail_ctx.vtype.bits.bits() as usize;
-    ctx.csr.vlenb = sail_ctx.vlenb.bits() as usize;
 
     // Transfer the general purpose registers
-    ctx.regs[1] = sail_ctx.x1.bits as usize;
-    ctx.regs[2] = sail_ctx.x2.bits as usize;
-    ctx.regs[3] = sail_ctx.x3.bits as usize;
-    ctx.regs[4] = sail_ctx.x4.bits as usize;
-    ctx.regs[5] = sail_ctx.x5.bits as usize;
-    ctx.regs[6] = sail_ctx.x6.bits as usize;
-    ctx.regs[7] = sail_ctx.x7.bits as usize;
-    ctx.regs[8] = sail_ctx.x8.bits as usize;
-    ctx.regs[9] = sail_ctx.x9.bits as usize;
-    ctx.regs[10] = sail_ctx.x10.bits as usize;
-    ctx.regs[11] = sail_ctx.x11.bits as usize;
-    ctx.regs[12] = sail_ctx.x12.bits as usize;
-    ctx.regs[13] = sail_ctx.x13.bits as usize;
-    ctx.regs[14] = sail_ctx.x14.bits as usize;
-    ctx.regs[15] = sail_ctx.x15.bits as usize;
-    ctx.regs[16] = sail_ctx.x16.bits as usize;
-    ctx.regs[17] = sail_ctx.x17.bits as usize;
-    ctx.regs[18] = sail_ctx.x18.bits as usize;
-    ctx.regs[19] = sail_ctx.x19.bits as usize;
-    ctx.regs[20] = sail_ctx.x20.bits as usize;
-    ctx.regs[21] = sail_ctx.x21.bits as usize;
-    ctx.regs[22] = sail_ctx.x22.bits as usize;
-    ctx.regs[23] = sail_ctx.x23.bits as usize;
-    ctx.regs[24] = sail_ctx.x24.bits as usize;
-    ctx.regs[25] = sail_ctx.x25.bits as usize;
-    ctx.regs[26] = sail_ctx.x26.bits as usize;
-    ctx.regs[27] = sail_ctx.x27.bits as usize;
-    ctx.regs[28] = sail_ctx.x28.bits as usize;
-    ctx.regs[29] = sail_ctx.x29.bits as usize;
-    ctx.regs[30] = sail_ctx.x30.bits as usize;
-    ctx.regs[31] = sail_ctx.x31.bits as usize;
+    ctx.regs[1] = sail_ctx.get(reg::X1) as usize;
+    ctx.regs[2] = sail_ctx.get(reg::X2) as usize;
+    ctx.regs[3] = sail_ctx.get(reg::X3) as usize;
+    ctx.regs[4] = sail_ctx.get(reg::X4) as usize;
+    ctx.regs[5] = sail_ctx.get(reg::X5) as usize;
+    ctx.regs[6] = sail_ctx.get(reg::X6) as usize;
+    ctx.regs[7] = sail_ctx.get(reg::X7) as usize;
+    ctx.regs[8] = sail_ctx.get(reg::X8) as usize;
+    ctx.regs[9] = sail_ctx.get(reg::X9) as usize;
+    ctx.regs[10] = sail_ctx.get(reg::X10) as usize;
+    ctx.regs[11] = sail_ctx.get(reg::X11) as usize;
+    ctx.regs[12] = sail_ctx.get(reg::X12) as usize;
+    ctx.regs[13] = sail_ctx.get(reg::X13) as usize;
+    ctx.regs[14] = sail_ctx.get(reg::X14) as usize;
+    ctx.regs[15] = sail_ctx.get(reg::X15) as usize;
+    ctx.regs[16] = sail_ctx.get(reg::X16) as usize;
+    ctx.regs[17] = sail_ctx.get(reg::X17) as usize;
+    ctx.regs[18] = sail_ctx.get(reg::X18) as usize;
+    ctx.regs[19] = sail_ctx.get(reg::X19) as usize;
+    ctx.regs[20] = sail_ctx.get(reg::X20) as usize;
+    ctx.regs[21] = sail_ctx.get(reg::X21) as usize;
+    ctx.regs[22] = sail_ctx.get(reg::X22) as usize;
+    ctx.regs[23] = sail_ctx.get(reg::X23) as usize;
+    ctx.regs[24] = sail_ctx.get(reg::X24) as usize;
+    ctx.regs[25] = sail_ctx.get(reg::X25) as usize;
+    ctx.regs[26] = sail_ctx.get(reg::X26) as usize;
+    ctx.regs[27] = sail_ctx.get(reg::X27) as usize;
+    ctx.regs[28] = sail_ctx.get(reg::X28) as usize;
+    ctx.regs[29] = sail_ctx.get(reg::X29) as usize;
+    ctx.regs[30] = sail_ctx.get(reg::X30) as usize;
+    ctx.regs[31] = sail_ctx.get(reg::X31) as usize;
 
     ctx
 }
 
-pub fn pmpcfg_sail_to_miralis(cfgs: [BitField<8>; 64]) -> [usize; 8] {
+pub fn pmpcfg_sail_to_miralis(cfgs: [Pmpcfg_ent; 64]) -> [usize; 8] {
     let mut output: [usize; 8] = [0; 8];
 
     for i in 0..64 {
@@ -423,7 +284,7 @@ pub fn pmpcfg_sail_to_miralis(cfgs: [BitField<8>; 64]) -> [usize; 8] {
 pub fn pmpaddr_sail_to_miralis(addresses: [BitVector<64>; 64]) -> [usize; 64] {
     let mut output: [usize; 64] = [0; 64];
     for i in 0..64 {
-        output[i] = addresses[i].bits as usize;
+        output[i] = addresses[i].bits() as usize;
     }
 
     output
@@ -490,8 +351,8 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
         b_143 if { b_143 == BitVector::<12>::new(0b110000100001) } => Csr::Vtype,
         b_144 if { b_144 == BitVector::<12>::new(0b110000100010) } => Csr::Vlenb,
         // Manually added
-        b_155 if { BitVector::new(0x5A8) == b_155 } => Csr::Scontext,
-        b_156 if { BitVector::new(0xf13) == b_156 } => Csr::Mimpid,
+        b_155 if { bv(0x5A8) == b_155 } => Csr::Scontext,
+        b_156 if { bv(0xf13) == b_156 } => Csr::Mimpid,
         // End manually added
         _ => Csr::Unknown,
     }
@@ -509,28 +370,28 @@ fn size_to_width(size: word_width) -> Width {
 pub fn ast_to_miralis_load(ast_entry: ast) -> LoadInstr {
     match ast_entry {
         ast::C_LW((imm, rs1, rd)) => LoadInstr {
-            rd: Register::from(rd.bits as usize + 8),
-            rs1: Register::from(rs1.bits as usize + 8),
-            imm: (imm.bits << 2) as isize,
+            rd: Register::from(rd.bits() as usize + 8),
+            rs1: Register::from(rs1.bits() as usize + 8),
+            imm: (imm.bits() << 2) as isize,
             len: Width::Byte4,
             is_compressed: true,
             is_unsigned: false,
         },
         ast::C_LD((imm, rs1, rd)) => LoadInstr {
-            rd: Register::from(rd.bits as usize + 8),
-            rs1: Register::from(rs1.bits as usize + 8),
-            imm: (imm.bits << 3) as isize,
+            rd: Register::from(rd.bits() as usize + 8),
+            rs1: Register::from(rs1.bits() as usize + 8),
+            imm: (imm.bits() << 3) as isize,
             len: Width::Byte8,
             is_compressed: true,
             is_unsigned: false,
         },
         ast::LOAD((imm, rs1, rd, is_unsigned, size, ..)) => LoadInstr {
-            rd: Register::from(rd.bits as usize),
-            rs1: Register::from(rs1.bits as usize),
-            imm: bits_to_int(imm.bits as usize, 0, 11),
+            rd: Register::from(rd.bits() as usize),
+            rs1: Register::from(rs1.bits() as usize),
+            imm: imm.signed() as isize,
             len: size_to_width(size),
             is_compressed: false,
-            is_unsigned: is_unsigned,
+            is_unsigned,
         },
         _ => unreachable!(),
     }
@@ -539,24 +400,24 @@ pub fn ast_to_miralis_load(ast_entry: ast) -> LoadInstr {
 pub fn ast_to_miralis_store(ast_entry: ast) -> StoreInstr {
     match ast_entry {
         ast::C_SW((imm, rs1, rs2)) => StoreInstr {
-            rs2: Register::from(rs2.bits as usize + 8),
-            rs1: Register::from(rs1.bits as usize + 8),
-            imm: (imm.bits << 2) as isize,
+            rs2: Register::from(rs2.bits() as usize + 8),
+            rs1: Register::from(rs1.bits() as usize + 8),
+            imm: (imm.bits() << 2) as isize,
             len: Width::Byte4,
             is_compressed: true,
         },
         ast::C_SD((imm, rs1, rs2)) => StoreInstr {
-            rs2: Register::from(rs2.bits as usize + 8),
-            rs1: Register::from(rs1.bits as usize + 8),
-            imm: (imm.bits << 3) as isize,
+            rs2: Register::from(rs2.bits() as usize + 8),
+            rs1: Register::from(rs1.bits() as usize + 8),
+            imm: (imm.bits() << 3) as isize,
             len: Width::Byte8,
             is_compressed: true,
         },
 
         ast::STORE((imm, rs2, rs1, size, ..)) => StoreInstr {
-            rs2: Register::from(rs2.bits as usize),
-            rs1: Register::from(rs1.bits as usize),
-            imm: bits_to_int(imm.bits as usize, 0, 11),
+            rs2: Register::from(rs2.bits() as usize),
+            rs1: Register::from(rs1.bits() as usize),
+            imm: imm.signed() as isize,
             len: size_to_width(size),
             is_compressed: false,
         },
@@ -571,53 +432,61 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> IllegalInst {
         ast::ECALL(()) => panic!("Miralis does not need to decode ecalls"),
         ast::EBREAK(()) => panic!("Miralis does not need to decode ebreaks"),
         ast::SFENCE_VMA((rs1, rs2)) => IllegalInst::Sfencevma {
-            rs1: Register::from(rs1.bits as usize),
-            rs2: Register::from(rs2.bits as usize),
+            rs1: Register::from(rs1.bits() as usize),
+            rs2: Register::from(rs2.bits() as usize),
         },
-        ast::HFENCE_VVMA((rs1, rs2)) => IllegalInst::Hfencevvma {
-            rs1: Register::from(rs1.bits as usize),
-            rs2: Register::from(rs2.bits as usize),
-        },
-        ast::HFENCE_GVMA((rs1, rs2)) => IllegalInst::Hfencegvma {
-            rs1: Register::from(rs1.bits as usize),
-            rs2: Register::from(rs2.bits as usize),
-        },
-        ast::CSR((csrreg, rs1, rd, is_immediate, op)) => {
+        // NOTE: Uncomment those once upstream softcore-rv64 adds support for H-mode
+        //
+        // ast::HFENCE_VVMA((rs1, rs2)) => IllegalInst::Hfencevvma {
+        //     rs1: Register::from(rs1.bits as usize),
+        //     rs2: Register::from(rs2.bits as usize),
+        // },
+        // ast::HFENCE_GVMA((rs1, rs2)) => IllegalInst::Hfencegvma {
+        //     rs1: Register::from(rs1.bits as usize),
+        //     rs2: Register::from(rs2.bits as usize),
+        // },
+        ast::CSRReg((csrreg, rs1, rd, op)) => {
             let csr_register: Csr = decode_csr_register(csrreg);
-
             let rs1_miralis = Register::from(rs1.bits() as usize);
             let rd_miralis = Register::from(rd.bits() as usize);
 
-            match (op, is_immediate) {
-                (csrop::CSRRW, false) => IllegalInst::Csrrw {
+            match op {
+                csrop::CSRRW => IllegalInst::Csrrw {
                     csr: csr_register,
                     rd: rd_miralis,
                     rs1: rs1_miralis,
                 },
-                (csrop::CSRRC, false) => IllegalInst::Csrrc {
+                csrop::CSRRC => IllegalInst::Csrrc {
                     csr: csr_register,
                     rd: rd_miralis,
                     rs1: rs1_miralis,
                 },
-                (csrop::CSRRS, false) => IllegalInst::Csrrs {
+                csrop::CSRRS => IllegalInst::Csrrs {
                     csr: csr_register,
                     rd: rd_miralis,
                     rs1: rs1_miralis,
                 },
-                (csrop::CSRRW, true) => IllegalInst::Csrrwi {
+            }
+        }
+        ast::CSRImm((csrreg, imm, rd, op)) => {
+            let csr_register: Csr = decode_csr_register(csrreg);
+            let rd_miralis = Register::from(rd.bits() as usize);
+
+            match op {
+                csrop::CSRRW => IllegalInst::Csrrwi {
                     csr: csr_register,
                     rd: rd_miralis,
-                    uimm: rs1.bits as usize,
+                    uimm: imm.bits() as usize,
                 },
-                (csrop::CSRRC, true) => IllegalInst::Csrrci {
+                csrop::CSRRC => IllegalInst::Csrrci {
                     csr: csr_register,
                     rd: rd_miralis,
-                    uimm: rs1.bits as usize,
+                    uimm: imm.bits() as usize,
                 },
-                (csrop::CSRRS, true) => IllegalInst::Csrrsi {
+                csrop::CSRRS => IllegalInst::Csrrsi {
                     csr: csr_register,
                     rd: rd_miralis,
-                    uimm: rs1.bits as usize,
+                    uimm: imm.bits() as usize,
                 },
             }
         }

@@ -8,7 +8,8 @@ use miralis::arch::{menvcfg, mie, misa, mstatus, Arch, Architecture, ExtensionsC
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
-use sail_model::SailVirtCtx;
+use softcore_rv64::Core;
+// use sail_model::SailVirtCtx;
 
 use crate::adapters;
 
@@ -64,7 +65,8 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
 
     // We don't want overflows here
     ctx.pc = any!(usize) % (usize::MAX - 4);
-    ctx.nb_pmp = 64;
+    ctx.nb_pmp = 16;
+    ctx.pmp_grain = 10;
 
     // Pick a previous privilege mode
     let mpp = match any!(u8) % 3 {
@@ -128,6 +130,11 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
         }
     }
 
+    // Zero-out unsupported PMP registers
+    for i in ctx.nb_pmp..64 {
+        ctx.csr.pmpaddr[i] = 0;
+    }
+
     // We don't have compressed instructions in Miralis
     ctx.csr.misa &= !misa::DISABLED;
 
@@ -157,16 +164,15 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
 /// A [MiralisContext] containing concrete value is also returned, it is required for emulation by
 /// Miralis and mostly containst the list of hardware extensions (which are fixed during model
 /// checking).
-pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, SailVirtCtx) {
+pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, Core) {
     // Initialize Miralis's own context
-    let mut hw = unsafe { Arch::detect_hardware() };
-    hw.available_reg.nb_pmp = 64; // We assume 64 PMPs during model checking
+    let hw = unsafe { Arch::detect_hardware() };
     let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
 
     // We first create a symbolic context
     let ctx = new_ctx(mctx.hw.extensions.clone());
     // Then we copy the symbolic values into a Sail context
-    let sail_ctx = adapters::miralis_to_sail(&ctx);
+    let core = adapters::miralis_to_rv_core(&ctx);
 
-    (ctx, mctx, sail_ctx)
+    (ctx, mctx, core)
 }
