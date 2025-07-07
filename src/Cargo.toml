@@ -20,7 +20,7 @@ path = "main.rs"
 
 [dependencies]
 uart_16550 = "0.3.0"
-spin = "0.5.2"
+spin = { version = "0.10", default-features = false, features = ["mutex", "spin_mutex"] }
 log = { workspace = true }
 miralis_core = { path = "../crates/core", version = "0.1.0" }
 miralis_abi = { path = "../crates/abi", version = "0.1.0" }
@@ -29,11 +29,12 @@ config_select = { path = "../crates/config_select", version = "0.1.0" }
 module_macro = { path = "../crates/module_macro", version = "0.1.0" }
 # This import is only used in the protect payload policy
 tiny-keccak = { version = "2.0.0", features = ["sha3"] }
+softcore-rv64 = { workspace = true, optional = true }
 
 [features]
 # When running on host architecture as a userspace application, such as when
 # running unit tests.
-userspace = []
+userspace = ["dep:softcore-rv64"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn",  check-cfg = ["cfg(kani)"] }
