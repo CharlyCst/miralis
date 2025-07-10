@@ -74,6 +74,9 @@ memory = "2048M"
 # The name of a disk artifact (optional)
 disk = "ubuntu"
 
+# Path of QEMU executable (optional)
+path = "/usr/bin"
+
 [target.miralis]
 # Build profile for Miralis (dev profile is set by default)
 profile = "dev"

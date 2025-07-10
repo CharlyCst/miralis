@@ -121,7 +121,12 @@ pub fn get_qemu_cmd(
     debug: bool,
     stop: bool,
 ) -> Result<Command, ()> {
-    let mut qemu_cmd = Command::new(QEMU);
+    let mut qemu_cmd = if let Some(path) = &cfg.qemu.path {
+        Command::new([path, QEMU].join("/"))
+    } else {
+        Command::new(QEMU)
+    };
+
     qemu_cmd.args(QEMU_ARGS);
     if let Some(machine) = &cfg.qemu.machine {
         qemu_cmd.arg("-machine").arg(machine);
