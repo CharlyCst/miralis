@@ -291,7 +291,6 @@ pub mod mstatus {
     /// Constant to filter out WPRI fields of sstatus
     pub const SSTATUS_FILTER: usize = UIE_FILTER
         | SIE_FILTER
-        | UPIE_FILTER
         | SPIE_FILTER
         | UBE_FILTER
         | SPP_FILTER
