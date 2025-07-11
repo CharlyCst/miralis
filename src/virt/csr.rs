@@ -102,7 +102,21 @@ impl RegisterContextGetter<Csr> for VirtContext {
                     // This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmpaddr[pmp_addr_idx]
+                let pmpcfg = self.get_pmpcfg(pmp_addr_idx);
+                let addr = self.csr.pmpaddr[pmp_addr_idx];
+                let a1 = (pmpcfg & 0b10000) != 0;
+                let g = self.pmp_grain;
+                match a1 {
+                    true if g >= 2 => {
+                        let mask = (1 << (g - 1)) - 1;
+                        addr | mask
+                    }
+                    false if g >= 1 => {
+                        let mask = (1 << g) - 1;
+                        addr & !mask
+                    }
+                    _ => addr,
+                }
             }
             Csr::Mcycle => self.csr.mcycle,
             Csr::Minstret => self.csr.minstret,
@@ -780,5 +794,18 @@ where
     #[inline]
     fn set_csr(&mut self, register: &'a R, value: usize, mctx: &mut MiralisContext) {
         self.set_csr(*register, value, mctx)
+    }
+}
+
+// ———————————————————————————————— Helpers ————————————————————————————————— //
+
+impl VirtContext {
+    /// Return the PMP configuration for a given PMP index.
+    pub fn get_pmpcfg(&self, index: usize) -> u8 {
+        let reg_idx = index / 8;
+        let inner_idx = index % 8;
+        let reg = self.csr.pmpcfg[reg_idx];
+        let cfg = (reg >> (inner_idx * 8)) & 0xff;
+        cfg as u8
     }
 }

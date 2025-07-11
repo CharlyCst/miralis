@@ -37,6 +37,11 @@ pub struct VirtContext {
     pub mode: Mode,
     /// Number of virtual PMPs
     pub nb_pmp: usize,
+    /// The PMP granularity (G)
+    ///
+    /// The minimal sizes of regions protected by the PMP is 2^(G+2). See specification for
+    /// detailled explanation of the PMP grain.
+    pub pmp_grain: usize,
     /// Availables RISC-V extensions
     pub extensions: ExtensionsCapability,
     /// Hart ID
@@ -133,6 +138,7 @@ impl VirtContext {
             pc: 0,
             mode: Mode::M,
             nb_pmp: nb_pmp_registers_left,
+            pmp_grain: 0,
             trap_info: TrapInfo {
                 mepc: 0,
                 mstatus: 0,
