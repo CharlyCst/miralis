@@ -53,6 +53,13 @@ default-members = ["runner"]
 log = "0.4.17"
 softcore-rv64 = "0.4.0"
 
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn",  check-cfg = ["cfg(kani)"] }
+
+[workspace.lints.clippy]
+uninlined_format_args = "allow"
+result_unit_err = "allow"
+
 [profile.dev]
 panic = "abort"
 opt-level = 3

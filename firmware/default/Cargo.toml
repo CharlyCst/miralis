@@ -9,6 +9,9 @@ license = "MIT"
 name = "default"
 path = "main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
 log = { workspace = true }

@@ -9,5 +9,8 @@ license = "MIT"
 name = "os_ctx_switch"
 path = "main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }

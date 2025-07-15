@@ -1,12 +1,16 @@
 mod miralis;
 mod premierp550;
-pub mod virt;
-pub mod visionfive2;
+mod virt;
+mod visionfive2;
 
 use core::{fmt, hint};
 
 use config_select::select_env;
 use log::Level;
+pub use miralis::MiralisPlatform;
+pub use premierp550::PremierP550Platform;
+pub use virt::VirtPlatform;
+pub use visionfive2::VisionFive2Platform;
 
 // Re-export virt platform by default for now
 use crate::arch::{Arch, Architecture};
@@ -41,7 +45,7 @@ pub const ALL_HARTS_MASK: usize = (1 << PLATFORM_NB_HARTS) - 1;
 pub type Plat = select_env!["MIRALIS_PLATFORM_NAME":
     "miralis"     => miralis::MiralisPlatform
     "visionfive2" => visionfive2::VisionFive2Platform
-    "premierp550"             => premierp550::PremierP550Platform
+    "premierp550" => premierp550::PremierP550Platform
     _             => virt::VirtPlatform
 
 ];

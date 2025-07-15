@@ -60,8 +60,8 @@ unsafe fn get_max_stack_usage(stack_top: usize, stack_bottom: usize) -> usize {
     const PATTERN_SIZE: usize = core::mem::size_of::<u32>();
 
     assert!(stack_bottom < stack_top);
-    assert!(stack_bottom % 4 == 0);
-    assert!(stack_top % 4 == 0);
+    assert!(stack_bottom.is_multiple_of(4));
+    assert!(stack_top.is_multiple_of(4));
 
     let stack_ptr = stack_bottom as *const u32;
     let len = (stack_top - stack_bottom) / PATTERN_SIZE;
