@@ -481,10 +481,18 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     return;
                 }
 
-                // W = 1 & R = 0 is reserved
+                // Legalize individual pmpcfg entries
                 for idx in 0..8 {
-                    if (value >> (idx * 8)) & 0b11 == 0b10 {
-                        value &= !(0b111 << (idx * 8));
+                    let offset = idx * 8; // Bit offset
+
+                    // W = 1 & R = 0 is reserved
+                    if (value >> offset) & 0b11 == 0b10 {
+                        value &= !(0b111 << offset);
+                    }
+
+                    // NA4 can not be selected if the PMP grain G >= 1
+                    if self.pmp_grain >= 1 && (value >> offset) & 0b11000 == 0b10000 {
+                        value &= !(0b11000 << offset);
                     }
                 }
 
