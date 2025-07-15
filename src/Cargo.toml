@@ -36,8 +36,5 @@ softcore-rv64 = { workspace = true, optional = true }
 # running unit tests.
 userspace = ["dep:softcore-rv64"]
 
-[lints.rust]
-unexpected_cfgs = { level = "warn",  check-cfg = ["cfg(kani)"] }
-
-[lints.clippy]
-result_unit_err = "allow"
+[lints]
+workspace = true

@@ -7,8 +7,7 @@ use core::cell::RefCell;
 use core::marker::PhantomData;
 use std::thread_local;
 
-use softcore_rv64::registers as reg;
-use softcore_rv64::{config, new_core, Core};
+use softcore_rv64::{config, new_core, registers as reg, Core};
 
 use super::{mie, Architecture, Csr, ExtensionsCapability, Mode};
 use crate::arch::HardwareCapability;

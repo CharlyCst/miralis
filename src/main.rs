@@ -119,7 +119,7 @@ fn get_miralis_size() -> usize {
 // ————————————————————————————— Panic Handler —————————————————————————————— //
 
 #[panic_handler]
-#[cfg(not(test))]
+#[cfg(not(any(test, feature = "userspace")))]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     log::error!("Panicked at {:#?} ", info);
     unsafe { miralis::debug::log_stack_usage(&raw const _stack_start as usize) };

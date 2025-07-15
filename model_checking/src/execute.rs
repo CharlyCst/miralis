@@ -1,8 +1,8 @@
-use crate::model::{execute_MRET, execute_SFENCE_VMA, execute_WFI, sail_decoder_illegal};
 use softcore_rv64::prelude::{bv, BitVector};
-use softcore_rv64::raw;
 use softcore_rv64::raw::ast;
-use softcore_rv64::Core;
+use softcore_rv64::{raw, Core};
+
+use crate::model::{execute_MRET, execute_SFENCE_VMA, execute_WFI, sail_decoder_illegal};
 
 pub fn execute_ast(core_ctx: &mut Core, instr: usize) {
     match sail_decoder_illegal::encdec_backwards(core_ctx, BitVector::new(instr as u64)) {

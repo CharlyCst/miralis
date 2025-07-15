@@ -7,5 +7,5 @@ edition = "2021"
 miralis = { path = "../src", features = ["userspace"] }
 softcore-rv64 = { workspace = true }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+[lints]
+workspace = true

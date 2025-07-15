@@ -7,6 +7,9 @@ edition = "2021"
 name = "clint_interrupt"
 path = "main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
 test_helpers = { path = "../../crates/test_helpers" }

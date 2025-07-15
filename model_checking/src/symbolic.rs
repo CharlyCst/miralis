@@ -9,8 +9,8 @@ use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
 use softcore_rv64::Core;
-// use sail_model::SailVirtCtx;
 
+// use sail_model::SailVirtCtx;
 use crate::adapters;
 
 /// Generates an arbitrary value.

@@ -58,7 +58,7 @@ impl DeviceAccess for VirtPlic {
         _ctx: &mut VirtContext,
     ) -> Result<(), &'static str> {
         // Validate the write width and alignment
-        if offset % 4 != 0 && w_width != Width::Byte4 {
+        if !offset.is_multiple_of(4) && w_width != Width::Byte4 {
             debug::warn_once!(
                 "Unexpected write width/alignment: offset 0x{:x}, width: {}",
                 offset,

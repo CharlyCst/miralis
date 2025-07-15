@@ -9,5 +9,8 @@ license = "MIT"
 name = "ecall"
 path = "main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
