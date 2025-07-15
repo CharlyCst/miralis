@@ -15,6 +15,7 @@ mod metal;
 pub mod pmp;
 mod registers;
 mod trap;
+#[cfg(any(test, feature = "userspace"))]
 pub mod userspace;
 
 use core::ptr;

@@ -4,7 +4,6 @@
 //! These two components together make sure we enforce the protect payload policy correctly.
 #![no_std]
 #![no_main]
-#![feature(start)]
 
 // ———————————————————————————————— Guest OS ———————————————————————————————— //
 

@@ -9,5 +9,8 @@ license = "MIT"
 name = "test_protect_payload_payload"
 path = "main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }

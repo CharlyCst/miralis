@@ -378,7 +378,7 @@ impl MiralisContext {
             csr::MIMPID => Csr::Mimpid,
             csr::PMPCFG0..=csr::PMPCFG15 => {
                 let id = csr - csr::PMPCFG0;
-                if id % 2 == 0 {
+                if id.is_multiple_of(2) {
                     Csr::Pmpcfg(id)
                 } else {
                     Csr::Unknown // Invalid on rv64

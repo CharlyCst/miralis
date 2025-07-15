@@ -56,5 +56,5 @@ pub fn kani_is_available() -> bool {
     kani_cmd
         .status()
         .ok()
-        .map_or(false, |status| status.success())
+        .is_some_and(|status| status.success())
 }
