@@ -126,7 +126,19 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
     // Lock mode is not supported at the moment in Miralis
     for i in 0..8 {
         for j in 0..8 {
-            ctx.csr.pmpcfg[i] &= !(1 << (7 + j * 8));
+            let offset = j * 8;
+            let mut pmpcfg = ctx.csr.pmpcfg[i];
+
+            // Lock mode not supported
+            pmpcfg &= !(1 << (7 + offset));
+
+            // NA4 not supported for PMP grain >= 1
+            // If bit 4 is 1, then either NA4 or NAPOT is selected.
+            // In that case, we set bit 3, which forces NAPOT.
+            let nax = pmpcfg & (0b00010000 << offset);
+            pmpcfg |= nax >> 1;
+
+            ctx.csr.pmpcfg[i] = pmpcfg;
         }
     }
 
