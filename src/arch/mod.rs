@@ -162,6 +162,8 @@ pub struct ExtensionsCapability {
     pub has_crypto_extension: bool,
     /// Zicntr - Standard Extension for Base Counters and Timers
     pub has_zicntr: bool,
+    /// Zfinx - Floating points in integer registers
+    pub has_zfinx: bool,
     /// If the sstc extension is supported
     pub has_sstc_extension: bool,
     /// If the sstc extension is enabled
@@ -210,7 +212,7 @@ pub fn parse_spp_return_mode(mstatus_reg: usize) -> Mode {
 
 impl Mode {
     /// Returns the bit pattern corresponding to the given mode.
-    pub fn to_bits(self) -> usize {
+    pub const fn to_bits(self) -> usize {
         match self {
             Mode::U => 0,
             Mode::S => 1,
@@ -289,7 +291,9 @@ pub mod mstatus {
         | TSR_FILTER
         | SXL_FILTER
         | SBE_FILTER
-        | MBE_FILTER;
+        | MBE_FILTER
+        | GVA_FILTER
+        | MPV_FILTER;
 
     /// Constant to filter out WPRI fields of sstatus
     pub const SSTATUS_FILTER: usize = UIE_FILTER
@@ -372,6 +376,9 @@ pub mod mstatus {
     /// MBE
     pub const MBE_OFFSET: usize = 37;
     pub const MBE_FILTER: usize = 0b1 << MBE_OFFSET;
+    /// GVA
+    pub const GVA_OFFSET: usize = 38;
+    pub const GVA_FILTER: usize = 0b1 << GVA_OFFSET;
     /// MPV
     pub const MPV_OFFSET: usize = 39;
     pub const MPV_FILTER: usize = 0b1 << MPV_OFFSET;

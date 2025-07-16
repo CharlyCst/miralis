@@ -536,6 +536,7 @@ impl Architecture for MetalArch {
                 has_v_extension: false,
                 has_crypto_extension: false,
                 has_zicntr: false,
+                has_zfinx: false,
                 has_zihpm_extension: true,
                 has_tee_extension: true,
             },

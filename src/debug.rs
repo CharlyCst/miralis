@@ -29,6 +29,7 @@ pub(crate) use warn_once;
 /// Kani succeed when reached rather than fail.
 ///
 /// See [Kani discussion](https://github.com/model-checking/kani/discussions/3746) for background.
+#[allow(unused)]
 macro_rules! unimplemented {
    ($($arg:tt)*) => {
        #[cfg(kani)]
@@ -37,6 +38,7 @@ macro_rules! unimplemented {
     };
 }
 
+#[allow(unused)]
 pub(crate) use unimplemented;
 
 // ———————————————————————————— Max Stack Usage ————————————————————————————— //
