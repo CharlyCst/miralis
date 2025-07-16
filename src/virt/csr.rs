@@ -572,7 +572,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                if self.get(Csr::Misa) & misa::C != 0 {
+                if hw.extensions.has_c_extension {
                     self.csr.mepc = value & !0b1
                 } else {
                     self.csr.mepc = value & !0b11
@@ -621,7 +621,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if value > Plat::get_max_valid_address() {
                     return;
                 }
-                if self.get(Csr::Misa) & misa::C != 0 {
+                if hw.extensions.has_c_extension {
                     self.csr.sepc = value & !0b1
                 } else {
                     self.csr.sepc = value & !0b11

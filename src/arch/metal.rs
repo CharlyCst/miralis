@@ -528,6 +528,7 @@ impl Architecture for MetalArch {
             extensions: ExtensionsCapability {
                 has_h_extension: (misa as usize & misa::H) != 0,
                 has_s_extension: (misa as usize & misa::S) != 0,
+                has_c_extension: (misa as usize & misa::C) != 0,
                 has_sstc_extension,
                 has_zicbom_extension,
                 has_zicboz_extension,
