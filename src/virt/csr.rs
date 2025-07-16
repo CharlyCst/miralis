@@ -615,8 +615,20 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.scounteren = (value & mask) as u32
             }
             Csr::Senvcfg => {
-                // We only change the value of FIOM here
-                self.csr.senvcfg = (value & 0b1) | (self.csr.senvcfg & !0b1)
+                let mut mask = menvcfg::FIOM_FILTER
+                    | menvcfg::CBIE_FILTER
+                    | menvcfg::CBZE_FILTER
+                    | menvcfg::CBCFE_FILTER;
+
+                // Filter valid values based on implemented extensions.
+                if !mctx.hw.extensions.has_zicbom_extension {
+                    mask &= !(menvcfg::CBIE_FILTER | menvcfg::CBCFE_FILTER);
+                }
+                if !mctx.hw.extensions.has_zicboz_extension {
+                    mask &= !menvcfg::CBZE_FILTER;
+                }
+
+                self.csr.senvcfg = value & mask
             }
             Csr::Sscratch => self.csr.sscratch = value,
             Csr::Sepc => {
@@ -644,7 +656,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     // Sv39 mode
                     0b1000 => self.csr.satp = value,
                     // Sv48 mode
-                    0b1001 => self.csr.satp = value,
+                    0b1001 => {} // Not yet supported
                     // No mode
                     _ => { /* Nothing to change */ }
                 }
