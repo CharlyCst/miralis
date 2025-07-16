@@ -156,6 +156,8 @@ pub struct ExtensionsCapability {
     pub has_s_extension: bool,
     /// Vector extension
     pub has_v_extension: bool,
+    /// Compressed Instructions extension
+    pub has_c_extension: bool,
     /// Crypto extension
     pub has_crypto_extension: bool,
     /// Zicntr - Standard Extension for Base Counters and Timers
