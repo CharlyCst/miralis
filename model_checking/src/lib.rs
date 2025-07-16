@@ -190,9 +190,8 @@ pub fn read_csr() {
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
 pub fn write_csr() {
-    let mut csr_register = generate_csr_register();
-
     let (mut ctx, mut mctx, mut core) = symbolic::new_symbolic_contexts();
+    let mut csr_register = generate_csr_register();
 
     let is_mideleg = csr_register == 0b001100000011;
 
@@ -225,7 +224,7 @@ pub fn write_csr() {
     assert_eq!(
         rv_core_to_miralis(core, &mctx).csr,
         ctx.csr,
-        "Write equivalence"
+        "CSR write does not match the specification"
     );
 }
 

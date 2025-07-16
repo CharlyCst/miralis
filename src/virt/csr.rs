@@ -5,7 +5,6 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
-use crate::arch::mstatus::{MBE_FILTER, MPV_FILTER, MPV_OFFSET, SBE_FILTER, UBE_FILTER};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
 use crate::{debug, logger, MiralisContext, Plat, Platform};
@@ -257,15 +256,15 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
-                // TODO: create some constant values
-                let mut new_value = value & mstatus::MSTATUS_FILTER; //self.csr.mstatus;
-                                                                     // MPP : 11 : write legal : 0,1,3
+                let mut new_value = value & mstatus::MSTATUS_FILTER;
+
+                // MPP : 11 : write legal : 0,1,3
                 let mpp = (value & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET;
                 VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::MPP_OFFSET,
                     mstatus::MPP_FILTER,
-                    if mpp == 0 || mpp == 1 || mpp == 3 {
+                    if mpp == 0 || (mpp == 1 && hw.extensions.has_s_extension) || mpp == 3 {
                         mpp
                     } else {
                         0
@@ -296,8 +295,6 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 let previous_mprv =
                     (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
 
-                let pmp = &mut mctx.pmp;
-
                 // When vMPRV transitions from 0 to 1, set up a PMP entry to protect all memory.
                 // This allows catching accesses that occur with vMPRV=1, which require a special virtual access handler.
                 // When vMPRV transitions back to 0, remove the protection.
@@ -305,115 +302,58 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if mprv != previous_mprv {
                     logger::trace!("vMPRV set to {:b}", mprv);
                     if mprv != 0 {
-                        pmp.set_tor(0, usize::MAX, pmpcfg::X);
+                        mctx.pmp.set_tor(0, usize::MAX, pmpcfg::X);
                     } else {
-                        pmp.set_inactive(0, usize::MAX);
+                        mctx.pmp.set_inactive(0, usize::MAX);
                     }
+                    // TODO: it seems the PMP are not yet written to hardware here,
+                    // that seems like a bug to me. We should investigate.
+                    // unsafe { write_pmp(&mctx.pmp).flush() };
                     unsafe { Arch::sfencevma(None, None) };
                 }
 
-                VirtCsr::set_csr_field(
-                    &mut new_value,
-                    mstatus::MPRV_OFFSET,
-                    mstatus::MPRV_FILTER,
-                    mprv,
-                );
-                // MBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & MBE_FILTER != 0 {
-                    debug::unimplemented!("MBE filter is not implemented - please implement it");
+                if !mctx.hw.extensions.has_s_extension || self.csr.misa & misa::S == 0 {
+                    // When S mode is not active, we set a bunch of bits to 0
+                    new_value &= !(mstatus::TVM_FILTER
+                        | mstatus::TSR_FILTER
+                        | mstatus::MXR_FILTER
+                        | mstatus::SUM_FILTER
+                        | mstatus::SPP_FILTER
+                        | mstatus::SPIE_FILTER
+                        | mstatus::SIE_FILTER);
                 }
-                // SBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & SBE_FILTER != 0 {
-                    debug::unimplemented!("SBE filter is not implemented - please implement it");
+
+                if mctx.hw.extensions.has_zfinx {
+                    // F and Zfinx are mutually exclusive
+                    new_value &= !mstatus::FS_FILTER;
                 }
-                // UBE - We currently don't implement the feature as it is a very nice feature
-                if new_value & UBE_FILTER != 0 {
-                    debug::unimplemented!("UBE filter is not implemented - please implement it");
-                }
-                // TVM & TSR are read only when no S-mode is available
-                if !mctx.hw.extensions.has_s_extension {
-                    // TVM : 20
-                    if !mctx.hw.extensions.has_s_extension {
-                        VirtCsr::set_csr_field(
-                            &mut new_value,
-                            mstatus::TVM_OFFSET,
-                            mstatus::TVM_FILTER,
-                            0,
-                        );
-                    }
-                    // TSR : 22
-                    if !mctx.hw.extensions.has_s_extension {
-                        VirtCsr::set_csr_field(
-                            &mut new_value,
-                            mstatus::TSR_OFFSET,
-                            mstatus::TSR_FILTER,
-                            0,
-                        );
-                    }
-                }
-                // FS : 13 : read-only 0 (NO S-MODE, F extension)
-                if !mctx.hw.extensions.has_s_extension {
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::FS_OFFSET,
-                        mstatus::FS_FILTER,
-                        0,
-                    );
-                }
-                // VS : 9 : read-only 0 if no supervisor and no v registers
-                if !mctx.hw.extensions.has_s_extension {
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::VS_OFFSET,
-                        mstatus::VS_FILTER,
-                        0,
-                    );
-                }
-                // XS : 15 : read-only 0 (NO FS nor VS)
-                VirtCsr::set_csr_field(&mut new_value, mstatus::XS_OFFSET, mstatus::XS_FILTER, 0);
+
+                // We do not support changing endianness (MBE, SBE, UBE)
+                new_value &= !(mstatus::MBE_FILTER | mstatus::SBE_FILTER | mstatus::UBE_FILTER);
+
+                // No support for extensions -> XS read-only 0
+                new_value &= !mstatus::XS_FILTER;
+
                 // SD : 63 : read-only 0 (if NO FS/VS/XS)
+                let fs: usize = (new_value & mstatus::FS_FILTER) >> mstatus::FS_OFFSET;
+                let vs: usize = (new_value & mstatus::VS_FILTER) >> mstatus::VS_OFFSET;
+                let dirty = fs == 0b11 || vs == 0b11;
                 VirtCsr::set_csr_field(
                     &mut new_value,
                     mstatus::SD_OFFSET,
                     mstatus::SD_FILTER,
-                    if mctx.hw.extensions.has_s_extension {
-                        let fs: usize = (value & mstatus::FS_FILTER) >> mstatus::FS_OFFSET;
-                        let vs: usize = (value & mstatus::VS_FILTER) >> mstatus::VS_OFFSET;
-                        if fs == 0b11 || vs == 0b11 {
-                            0b1
-                        } else {
-                            0b0
-                        }
-                    } else {
-                        0
-                    },
+                    if dirty { 0b1 } else { 0b0 },
                 );
+
                 // UIE and UPIE should be zero if user-space interrupts are disabled
                 if self.csr.misa & misa::N == 0 {
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::UIE_OFFSET,
-                        mstatus::UIE_FILTER,
-                        0,
-                    );
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::UPIE_OFFSET,
-                        mstatus::UPIE_FILTER,
-                        0,
-                    );
+                    new_value &= !(mstatus::UIE_FILTER | mstatus::UPIE_FILTER);
                 }
 
                 // If the hypervisor extension is enabled, we can modify the machine previous virtualisation bit
                 // This bit is similar to MPP but enables and disables virtualisation when jumping using mret
-                if self.extensions.has_h_extension {
-                    let mpv_value = (value >> MPV_OFFSET) & MPV_FILTER;
-                    VirtCsr::set_csr_field(
-                        &mut new_value,
-                        mstatus::MPV_OFFSET,
-                        mstatus::MPV_FILTER,
-                        mpv_value,
-                    );
+                if !self.extensions.has_h_extension {
+                    new_value &= !(mstatus::GVA_FILTER | mstatus::MPV_FILTER);
                 }
 
                 self.csr.mstatus = new_value;

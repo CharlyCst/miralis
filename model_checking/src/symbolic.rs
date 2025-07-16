@@ -97,19 +97,30 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
     ctx.csr.mepc = any!(usize) & (!0b11);
     ctx.csr.mtval = any!();
     // ctx.csr.mtval2 = any!(); - TODO: What should we do with this?
-    ctx.csr.mstatus =
-        any!(usize) & !mstatus::MPP_FILTER & !mstatus::SXL_FILTER & !mstatus::UXL_FILTER
-            | (mpp << mstatus::MPP_OFFSET)
-            | (xlen << mstatus::SXL_OFFSET)
-            | (xlen << mstatus::UXL_OFFSET);
-    // We fix the endianess to little endian
-    ctx.csr.mstatus =
-        ctx.csr.mstatus & !mstatus::UBE_FILTER & !mstatus::SBE_FILTER & !mstatus::MBE_OFFSET;
+    ctx.csr.mstatus = any!(usize)
+        & (mstatus::SD_FILTER
+            | mstatus::TSR_FILTER
+            | mstatus::TW_FILTER
+            | mstatus::TVM_FILTER
+            | mstatus::MXR_FILTER
+            | mstatus::SUM_FILTER
+            | mstatus::MPRV_FILTER
+            | mstatus::FS_FILTER
+            | mstatus::VS_FILTER
+            | mstatus::SPP_FILTER
+            | mstatus::MPIE_FILTER
+            | mstatus::SPIE_FILTER
+            | mstatus::MIE_FILTER
+            | mstatus::SIE_FILTER);
+    ctx.csr.mstatus = ctx.csr.mstatus
+        | (xlen << mstatus::SXL_OFFSET)
+        | (xlen << mstatus::UXL_OFFSET)
+        | (mpp << mstatus::MPP_OFFSET);
     // ctx.csr.mtinst = any!();
     ctx.csr.mconfigptr = any!();
     // ctx.csr.stvec = any!();
     ctx.csr.scounteren = any!();
-    ctx.csr.senvcfg = any!();
+    ctx.csr.senvcfg = any!(usize) & menvcfg::FIOM_FILTER;
     ctx.csr.sscratch = any!();
     ctx.csr.sepc = any!(usize) & (!0b11);
     ctx.csr.scause = any!();
@@ -152,6 +163,9 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
 
     // We don't have the userspace interrupt delegation in Miralis
     ctx.csr.misa &= !misa::N;
+
+    // The model does not support H mode
+    ctx.csr.misa &= !misa::H;
 
     // We fix the architecture type to 64 bits
     ctx.csr.misa = (xlen << 62) | (ctx.csr.misa & ((1 << 62) - 1));
