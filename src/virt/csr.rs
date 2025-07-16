@@ -511,13 +511,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Minstret => self.csr.minstret = value,
             Csr::Mhpmcounter(_counter_idx) => (), // Read-only 0
             Csr::Mcountinhibit => {
-                self.csr.mcountinhibit &= !0b101;
-                self.csr.mcountinhibit |= (value & 0b101) as u32;
+                let mask = 0b101; // We do not support counters for now
+                self.csr.mcountinhibit = (value & mask) as u32;
             }
             Csr::Mhpmevent(_event_idx) => (), // Read-only 0
             Csr::Mcounteren => {
                 // Only show IR, TM and CY (for cycle, time and instret counters)
-                self.csr.mcounteren = (self.csr.mcounteren & !0b111) | (value & 0b111) as u32
+                let mask = 0b111; // We do not support counters beyond basic ones for now
+                self.csr.mcounteren = (value & mask) as u32
             }
             Csr::Menvcfg => {
                 let mut mask: usize = menvcfg::ALL;
@@ -610,7 +611,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Scounteren => {
                 // Only show IR, TM and CY (for cycle, time and instret counters)
-                self.csr.scounteren = (self.csr.scounteren & !0b111) | (value & 0b111) as u32
+                let mask = 0b111; // We do not support counters beyond basic ones for now
+                self.csr.scounteren = (value & mask) as u32
             }
             Csr::Senvcfg => {
                 // We only change the value of FIOM here
