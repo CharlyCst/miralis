@@ -424,8 +424,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     debug::warn_once!("MEIE bit in 'mie' is not yet supported");
                 }
 
-                self.csr.mie = hw.interrupts
-                    & ((value & mie::MIE_WRITE_FILTER) | (self.csr.mie & !mie::MIE_WRITE_FILTER))
+                self.csr.mie = hw.interrupts & value & mie::MIE_WRITE_FILTER;
             }
             Csr::Mip => {
                 let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
