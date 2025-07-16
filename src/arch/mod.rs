@@ -385,7 +385,8 @@ pub mod mstatus {
 #[allow(unused)]
 pub mod mie {
     /// Constant to filter out SIE bits of mstatus
-    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER | LCOFIE_FILTER;
+    //  Note: LCOFIE is not yet supported in the upstream Sail model
+    pub const SIE_FILTER: usize = SSIE_FILTER | STIE_FILTER | SEIE_FILTER /* | LCOFIE_FILTER */;
 
     /// Constant to filter out writable bits of mie.
     pub const MIE_WRITE_FILTER: usize = SIE_FILTER | MSIE_FILTER | MTIE_FILTER | MEIE_FILTER;
@@ -431,13 +432,9 @@ pub mod mie {
     pub const LCOFIE_FILTER: usize = 0b1 << LCOFIE_OFFSET;
 
     /// Mask with all valid interrupt bits
-    pub const ALL_INT: usize = SSIE_FILTER
-        | MSIE_FILTER
-        | STIE_FILTER
-        | MTIE_FILTER
-        | SEIE_FILTER
-        | MEIE_FILTER
-        | LCOFIE_FILTER;
+    pub const ALL_INT: usize =
+        SSIE_FILTER | MSIE_FILTER | STIE_FILTER | MTIE_FILTER | SEIE_FILTER | MEIE_FILTER;
+    // | LCOFIE_FILTER; // Not yet supported in the Sail model
 }
 
 // ———————————————————— Machine Trap-Vector Base-Address ———————————————————— //
