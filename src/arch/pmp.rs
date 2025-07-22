@@ -194,12 +194,13 @@ impl fmt::Display for PmpGroup {
 
         for i in 0..self.nb_pmp {
             let addr = self.pmpaddr[i as usize];
-            let cfg = self.get_cfg(i as usize);
+            let cfg = self.get_pmpcfg(i as usize);
 
             // Parse configuration
             let r = if cfg & 0b001 != 0 { 'R' } else { '_' };
             let w = if cfg & 0b010 != 0 { 'W' } else { '_' };
             let x = if cfg & 0b100 != 0 { 'X' } else { '_' };
+            let l = if cfg & 0b10000000 != 0 { 'L' } else { ' ' };
             let a = (cfg >> 3) & 0b11;
             let mode = match a {
                 0 => "OFF",
@@ -241,8 +242,8 @@ impl fmt::Display for PmpGroup {
             // Pretty print
             write!(
                 f,
-                "\nPMP {:2}  {:16x} {:16x} | {}{}{}  {}",
-                i, start, end, r, w, x, mode
+                "\nPMP {:2}  {:16x} {:16x} | {}{}{}{} {}",
+                i, start, end, r, w, x, l, mode
             )?;
         }
 
@@ -385,7 +386,7 @@ impl PmpGroup {
         self.pmpcfg[reg_idx] |= (cfg as usize) << shift
     }
 
-    pub fn get_cfg(&self, index: usize) -> u8 {
+    pub fn get_pmpcfg(&self, index: usize) -> u8 {
         let reg_idx = index / 8;
         let inner_idx = index % 8;
         let reg = self.pmpcfg[reg_idx];
@@ -417,11 +418,12 @@ impl PmpGroup {
         }
     }
 
-    /// Clears `nb_pmp` PMP registers starting from `start`.
-    pub fn clear_range(&mut self, start: usize, nb_pmp: usize) {
+    /// Set RWX permission for `nb_pmp` PMP registers starting from `start`.
+    pub fn set_range_rwx(&mut self, start: usize, nb_pmp: usize) {
         for idx in 0..nb_pmp {
-            self.pmpaddr[start + idx] = 0;
-            self.set_pmpcfg(start + idx, pmpcfg::INACTIVE);
+            let idx = start + idx;
+            let cfg = self.get_pmpcfg(idx);
+            self.set_pmpcfg(idx, cfg | pmpcfg::RWX);
         }
     }
 }
@@ -500,7 +502,7 @@ impl Iterator for PmpIterator<'_> {
         let pmps = &self.pmps;
         let nb_pmps = pmps.nb_pmp as usize;
         while self.idx < nb_pmps {
-            let cfg = pmps.get_cfg(self.idx);
+            let cfg = pmps.get_pmpcfg(self.idx);
             let addr = pmps.pmpaddr[self.idx];
             let prev_addr = self.prev_addr;
             self.idx += 1;

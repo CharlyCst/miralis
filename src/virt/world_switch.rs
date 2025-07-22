@@ -197,8 +197,9 @@ impl VirtContext {
             self.csr.vsatp = Arch::write_csr(Csr::Vsatp, 0);
         }
 
-        // Remove Firmware PMP from the hardware
-        mctx.pmp.clear_range(mctx.pmp.virt_pmp_offset, self.nb_pmp);
+        // Set firmware PMP as RWX to emulate access to all memory in vM-mode
+        mctx.pmp
+            .set_range_rwx(mctx.pmp.virt_pmp_offset, self.nb_pmp);
         // Allow all addresses by default
         let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
         mctx.pmp.set_napot(last_pmp_idx, 0, usize::MAX, pmpcfg::RWX);
@@ -209,8 +210,6 @@ impl VirtContext {
 
 #[cfg(test)]
 mod tests {
-    use core::usize;
-
     use crate::arch::{mstatus, Arch, Architecture, Csr, Mode};
     use crate::host::MiralisContext;
     use crate::virt::VirtContext;

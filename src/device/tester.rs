@@ -5,7 +5,7 @@ use crate::virt::VirtContext;
 
 // ————————————————————————————— Virtual Test Device —————————————————————————————— //
 
-pub const TEST_DEVICE_SIZE: usize = 0x8;
+pub const TEST_DEVICE_SIZE: usize = 0x10000;
 
 /// Devices and drivers are used to communicate with the external world and therefore produce
 /// non-deterministic events. This makes testing a virtual device interface harder. This structure

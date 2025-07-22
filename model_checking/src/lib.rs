@@ -1,9 +1,9 @@
-use miralis::arch::pmp::pmplayout::VIRTUAL_PMP_OFFSET;
-use miralis::arch::pmp::PmpGroup;
+use miralis::arch::pmp::pmplayout;
 use miralis::arch::userspace::SOFT_CORE;
-use miralis::arch::{csr, mie, write_pmp, MCause, Register};
+use miralis::arch::{csr, mie, mstatus, write_pmp, MCause, Register};
 use miralis::decoder::IllegalInst;
 use miralis::host::MiralisContext;
+use miralis::platform::{Plat, Platform};
 use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use miralis::virt::VirtContext;
 use softcore_rv64::prelude::{bv, BitVector};
@@ -12,8 +12,9 @@ use softcore_rv64::raw::{regidx, AccessType, Minterrupts, Pmpcfg_ent, Privilege}
 
 use crate::adapters::{
     ast_to_miralis_instr, ast_to_miralis_load, ast_to_miralis_store, decode_csr_register,
-    miralis_to_rv_core, pmpaddr_sail_to_miralis, pmpcfg_sail_to_miralis, rv_core_to_miralis,
+    miralis_to_rv_core, rv_core_to_miralis,
 };
+use crate::symbolic::MIRALIS_SIZE;
 
 #[macro_use]
 mod symbolic;
@@ -324,17 +325,16 @@ fn fill_trap_info_structure(ctx: &mut VirtContext, mctx: &MiralisContext, cause:
     ctx.trap_info.mip = new_miralis_ctx.csr.mip;
 }
 
+/// Checks that Miralis configures PMPs properly configured, meaning that the virtual firmware
+/// executes as it would if it were to execute in M-mode on a reference machine.
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
-pub fn pmp_equivalence() {
-    let (_, _, mut reference_core) = symbolic::new_symbolic_contexts();
+pub fn pmp_virtualization() {
+    let (mut ctx, mut mctx, mut reference_core) = symbolic::new_symbolic_contexts();
 
-    // Generation of the entire address space we want to check
-    let address_to_check = any!(u64) >> 4;
-
-    // The virtual firmware is always running in userspace
-    let virtual_firmware_privilege = Privilege::User;
-
+    // We pick an arbitrary address and acces type
+    let address_to_check = any!(u64) >> 8; // 56 bits of address space on rv64
+    let access_width = 8; // in bytes
     let access_type = match any!(u8) % 4 {
         0 => AccessType::Read(()),
         1 => AccessType::Write(()),
@@ -342,47 +342,92 @@ pub fn pmp_equivalence() {
         _ => AccessType::InstructionFetch(()),
     };
 
-    let virtual_offset = VIRTUAL_PMP_OFFSET;
-    let nb_phys_pmp = raw::sys_pmp_count(&mut reference_core, ()) as usize;
-    let nb_virtual_pmps = nb_phys_pmp - virtual_offset;
-
-    // Deactivate the last pmp entries in the physical context
-    for idx in nb_virtual_pmps..nb_phys_pmp {
+    // Miralis emulates a machine with less PMPs than there is in reality.
+    // We deactivate the last PMP entries to reduce the total number of PMP entres.
+    for idx in mctx.pmp.nb_virt_pmp..64 {
         reference_core.pmpcfg_n[idx] = Pmpcfg_ent { bits: bv(0) };
         reference_core.pmpaddr_n[idx] = bv(0);
     }
 
-    reference_core.set_mode(virtual_firmware_privilege);
+    // We disable the MPRV (Memory PRIvilege) bit, as Miralis will trap all Read/Write accesses
+    // when the bit is on.
+    ctx.csr.mstatus &= !mstatus::MPRV_FILTER;
+    reference_core.set_csr(csr::MSTATUS as u64, ctx.csr.mstatus as u64);
+
+    // The reference core is executing in M-mode
+    // This corresponds to the scenario where the firmware is running on bare metal
+    reference_core.set_mode(Privilege::Machine);
     let physical_check = reference_core.pmp_check(address_to_check, access_type);
 
+    // Now we perform the checks when the firmware is virtualized.
+    // In this case, Miralis is running in M-mode and multiplexing the PMP registers, while the
+    // firmware executes in U-mode.
     let virtual_check = {
-        // Creation of the PMP group
-        let mut pmp_group = PmpGroup::new(nb_phys_pmp);
-        pmp_group.virt_pmp_offset = virtual_offset;
-
-        // Physical write of the pmp registers
-        pmp_group.load_with_offset(
-            &pmpaddr_sail_to_miralis(reference_core.pmpaddr_n),
-            &pmpcfg_sail_to_miralis(reference_core.pmpcfg_n),
-            virtual_offset,
-            nb_virtual_pmps,
+        // Here we load the PMPs in the virtual context into the physical core.
+        mctx.pmp.load_with_offset(
+            &ctx.csr.pmpaddr,
+            &ctx.csr.pmpcfg,
+            pmplayout::VIRTUAL_PMP_OFFSET,
+            mctx.pmp.nb_virt_pmp,
         );
-        unsafe {
-            write_pmp(&pmp_group).flush();
-        }
+        mctx.pmp
+            .set_range_rwx(mctx.pmp.virt_pmp_offset, mctx.pmp.nb_virt_pmp);
+        unsafe { write_pmp(&mctx.pmp).flush() };
 
-        // Execution of the pmp check function using the core Miralis is executing on
+        // And then we can perform a PMP check on the physical core.
+        // We configure the core to execute in U-mode, to simulate accesses from the virtual
+        // firmware.
         SOFT_CORE.with_borrow_mut(|miralis_core| {
-            miralis_core.set_mode(virtual_firmware_privilege);
+            miralis_core.set_mode(Privilege::User);
             miralis_core.pmp_check(address_to_check, access_type)
         })
     };
 
-    // Check pmp equivalence
-    assert_eq!(
-        physical_check, virtual_check,
-        "pmp are not installed correctly in Miralis"
+    if addr_is_within_miralis_or_device(address_to_check, access_width) {
+        // If the address is pointing to Miralis, then it should trap when accessed from the
+        // virtualized firmware.
+        assert!(virtual_check.is_some());
+    } else {
+        // Otherwise the result of the PMP check should be the same, wether the firmware is
+        // virtualized or not.
+        assert_eq!(
+            physical_check, virtual_check,
+            "pmp are not installed correctly in Miralis"
+        );
+    }
+}
+
+/// Returns true if the address is within the memory range of Miralis or any of the virtual
+/// devices.
+///
+/// The `width` parameters control the width of the access. On RISC-V supportes sizes are 1, 2, 4
+/// and 8 bytes.
+fn addr_is_within_miralis_or_device(addr: u64, width: u64) -> bool {
+    assert!(
+        width == 1 || width == 2 || width == 4 || width == 8,
+        "Supported width values are 1, 2, 4, and 8"
     );
+
+    // Return true if an access is overlapping the [start, size[ segment.
+    let check_access = |start: u64, size: u64| {
+        let end = start + size;
+        let start = start - width + 1; // take the access with into account
+        (start..end).contains(&addr)
+    };
+
+    // Check if within the bounds of Miralis memory
+    if check_access(Plat::get_miralis_start() as u64, MIRALIS_SIZE as u64) {
+        return true;
+    }
+
+    // Then if matching any of the devices
+    for device in Plat::get_virtual_devices() {
+        if check_access(device.start_addr as u64, device.size as u64) {
+            return true;
+        }
+    }
+
+    false
 }
 
 #[cfg_attr(kani, kani::proof)]
