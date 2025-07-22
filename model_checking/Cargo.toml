@@ -3,9 +3,13 @@ name = "model_checking"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+rand = ["dep:rand"]
+
 [dependencies]
 miralis = { path = "../src", features = ["userspace"] }
 softcore-rv64 = { workspace = true }
+rand = { version = "0.8", features = ["std", "std_rng", "small_rng"], default-features = false, optional = true }
 
 [lints]
 workspace = true

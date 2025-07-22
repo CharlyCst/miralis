@@ -28,9 +28,13 @@ macro_rules! any {
         {
             kani::any()
         }
-        #[cfg(not(kani))]
+        #[cfg(all(not(kani), not(feature = "rand")))]
         {
             Default::default()
+        }
+        #[cfg(all(not(kani), feature = "rand"))]
+        {
+            rand::random()
         }
     }};
     ($t:ty) => {{
@@ -38,9 +42,13 @@ macro_rules! any {
         {
             kani::any::<$t>()
         }
-        #[cfg(not(kani))]
+        #[cfg(all(not(kani), not(feature = "rand")))]
         {
             <$t>::default()
+        }
+        #[cfg(all(not(kani), feature = "rand"))]
+        {
+            rand::random::<$t>()
         }
     }};
     ($t:ty, $value:tt) => {{
