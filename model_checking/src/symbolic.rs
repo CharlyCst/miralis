@@ -13,6 +13,9 @@ use softcore_rv64::Core;
 // use sail_model::SailVirtCtx;
 use crate::adapters;
 
+/// A dummy size for Miralis, used to initialize the PMP for symbolic execution.
+pub const MIRALIS_SIZE: usize = 0x1000;
+
 /// Generates an arbitrary value.
 ///
 /// A type can be provided as argument, otherwise it will be inferred if possible.
@@ -138,7 +141,8 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
     ctx.csr.medeleg = any!();
     ctx.csr.mideleg = (any!(usize) & mie::ALL_INT) | mie::MIDELEG_READ_ONLY_ONE;
     ctx.csr.pmpcfg = [any!(); 8];
-    ctx.csr.pmpaddr = [any!(usize) >> 4; 64];
+    ctx.csr.pmpaddr = [any!(usize) >> 10; 64]; // encodes bits [56:2] of the 56 bits address space
+
     // ctx.csr.mhpmcounter = [any!(); 29]; todo: What should we do?
     // ctx.csr.mhpmevent = [any!(); 29]; todo: What should we do?
 
@@ -156,6 +160,12 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
             // In that case, we set bit 3, which forces NAPOT.
             let nax = pmpcfg & (0b00010000 << offset);
             pmpcfg |= nax >> 1;
+
+            // If R = 0 and W = 1, then we set RWX to 0
+            // This is what the Sail spec does too.
+            if pmpcfg & (0b11 << offset) == 0b10 {
+                pmpcfg &= !(0b111 << offset)
+            }
 
             ctx.csr.pmpcfg[i] = pmpcfg;
         }
@@ -201,7 +211,7 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
 pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, Core) {
     // Initialize Miralis's own context
     let hw = unsafe { Arch::detect_hardware() };
-    let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), 0x1000);
+    let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), MIRALIS_SIZE);
 
     // We first create a symbolic context
     let ctx = new_ctx(mctx.hw.extensions.clone());

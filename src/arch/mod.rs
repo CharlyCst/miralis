@@ -714,12 +714,12 @@ pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
         "Invalid number of PMP registers"
     );
 
-    for (idx, pmp_addr_entry) in pmpaddr.iter().enumerate().take(nb_pmp) {
-        Arch::write_pmpaddr(idx, *pmp_addr_entry);
-    }
-
     for (idx, cfg) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
         Arch::write_pmpcfg(idx * 2, *cfg);
+    }
+
+    for (idx, pmp_addr_entry) in pmpaddr.iter().enumerate().take(nb_pmp) {
+        Arch::write_pmpaddr(idx, *pmp_addr_entry);
     }
 
     PmpFlush()
