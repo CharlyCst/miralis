@@ -293,7 +293,7 @@ impl Targets {
         if let Some(payload_target) = &self.payload {
             envs.insert(
                 config::TARGET_PAYLOAD_ADDRESS_ENV,
-                &payload_target.start_address.or(Some(0x80200000)),
+                &payload_target.start_address.or(Some(0x80400000)),
             );
             envs.insert(
                 config::TARGET_PAYLOAD_STACK_SIZE_ENV,
