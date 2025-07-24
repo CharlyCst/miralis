@@ -302,7 +302,6 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
     }
 
     match arg_hashtag_ {
-        b_11 if { b_11 == BitVector::<12>::new(0b000000010101) } => Csr::Seed,
         b_12 if { b_12 == BitVector::<12>::new(0b110000000000) } => Csr::Cycle,
         b_13 if { b_13 == BitVector::<12>::new(0b110000000001) } => Csr::Time,
         b_14 if { b_14 == BitVector::<12>::new(0b110000000010) } => Csr::Instret,
@@ -338,17 +337,18 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
         b_130 if { b_130 == BitVector::<12>::new(0b101100000000) } => Csr::Mcycle,
         b_131 if { b_131 == BitVector::<12>::new(0b101100000010) } => Csr::Minstret,
         b_134 if { b_134 == BitVector::<12>::new(0b011110100000) } => Csr::Tselect,
-        // Manually removed
+        // Manually removed: the new version of softcore disables the corresponding features
         // b_135 if { b_135 == BitVector::<12>::new(0b011110100001) } => Csr::Tdata1,
         // b_136 if { b_136 == BitVector::<12>::new(0b011110100010) } => Csr::Tdata2,
         // b_137 if { b_137 == BitVector::<12>::new(0b011110100011) } => Csr::Tdata3,
-        b_138 if { b_138 == BitVector::<12>::new(0b000000001000) } => Csr::Vstart,
-        b_139 if { b_139 == BitVector::<12>::new(0b000000001001) } => Csr::Vxsat,
-        b_140 if { b_140 == BitVector::<12>::new(0b000000001010) } => Csr::Vxrm,
-        b_141 if { b_141 == BitVector::<12>::new(0b000000001111) } => Csr::Vcsr,
-        b_142 if { b_142 == BitVector::<12>::new(0b110000100000) } => Csr::Vl,
-        b_143 if { b_143 == BitVector::<12>::new(0b110000100001) } => Csr::Vtype,
-        b_144 if { b_144 == BitVector::<12>::new(0b110000100010) } => Csr::Vlenb,
+        // b_138 if { b_138 == BitVector::<12>::new(0b000000001000) } => Csr::Vstart,
+        // b_139 if { b_139 == BitVector::<12>::new(0b000000001001) } => Csr::Vxsat,
+        // b_140 if { b_140 == BitVector::<12>::new(0b000000001010) } => Csr::Vxrm,
+        // b_141 if { b_141 == BitVector::<12>::new(0b000000001111) } => Csr::Vcsr,
+        // b_142 if { b_142 == BitVector::<12>::new(0b110000100000) } => Csr::Vl,
+        // b_143 if { b_143 == BitVector::<12>::new(0b110000100001) } => Csr::Vtype,
+        // b_144 if { b_144 == BitVector::<12>::new(0b110000100010) } => Csr::Vlenb,
+        // b_11 if { b_11 == BitVector::<12>::new(0b000000010101) } => Csr::Seed,
         // Manually added
         b_155 if { bv(0x5A8) == b_155 } => Csr::Scontext,
         b_156 if { bv(0xf13) == b_156 } => Csr::Mimpid,
@@ -428,8 +428,8 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> IllegalInst {
     match ast_entry {
         ast::MRET(()) => IllegalInst::Mret,
         ast::WFI(()) => IllegalInst::Wfi,
-        ast::ECALL(()) => panic!("Miralis does not need to decode ecalls"),
-        ast::EBREAK(()) => panic!("Miralis does not need to decode ebreaks"),
+        ast::ECALL(()) => IllegalInst::Unknown, // Miralis does not need to decode ecalls"
+        ast::EBREAK(()) => IllegalInst::Unknown, // Miralis does not need to decode ebreaks
         ast::SFENCE_VMA((rs1, rs2)) => IllegalInst::Sfencevma {
             rs1: Register::from(rs1.bits() as usize),
             rs2: Register::from(rs2.bits() as usize),
