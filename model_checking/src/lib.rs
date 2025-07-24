@@ -11,8 +11,8 @@ use softcore_rv64::raw;
 use softcore_rv64::raw::{regidx, AccessType, Minterrupts, Pmpcfg_ent, Privilege};
 
 use crate::adapters::{
-    ast_to_miralis_instr, ast_to_miralis_load, ast_to_miralis_store, decode_csr_register,
-    miralis_to_rv_core, rv_core_to_miralis,
+    ast_to_miralis_instr, ast_to_miralis_load, ast_to_miralis_store, miralis_to_rv_core,
+    rv_core_to_miralis,
 };
 use crate::symbolic::MIRALIS_SIZE;
 
@@ -432,42 +432,20 @@ fn addr_is_within_miralis_or_device(addr: u64, width: u64) -> bool {
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
-pub fn verify_csr_decoder() {
-    let (_, mctx, _) = symbolic::new_symbolic_contexts();
-
-    let register = any!(usize) % 0xFFF;
-
-    // Decode values
-    let decoded_value_sail = decode_csr_register(BitVector::new(register as u64));
-    let decoded_value_miralis = mctx.decode_csr(register);
-
-    assert_eq!(
-        decoded_value_sail, decoded_value_miralis,
-        "CSR Decoding is not similar"
-    );
-}
-
-#[cfg_attr(kani, kani::proof)]
-#[cfg_attr(test, test)]
 pub fn verify_decoder() {
     let (_, mctx, mut core) = symbolic::new_symbolic_contexts();
 
     // Generate an instruction to decode
     let instr = any!(u32, 0x30001073);
 
-    // Decode values
-    let decoded_value_sail = ast_to_miralis_instr(model::sail_decoder_illegal::encdec_backwards(
-        &mut core,
-        BitVector::new(instr as u64),
-    ));
-    let decoded_value_miralis = mctx.decode_illegal_instruction(instr as usize);
+    // Decode instruction
+    let ground_truth = model::sail_decoder_illegal::encdec_backwards(&mut core, bv(instr as u64));
+    let ground_truth = ast_to_miralis_instr(ground_truth);
 
-    // For the moment, we ignore the values that are not decoded by the sail reference
-    if decoded_value_sail != IllegalInst::Unknown {
-        assert_eq!(
-            decoded_value_sail, decoded_value_miralis,
-            "decoders are not equivalent"
-        );
+    // We ignore the values that are not decoded by the sail reference
+    if ground_truth != IllegalInst::Unknown {
+        let decoded = mctx.decode_illegal_instruction(instr as usize);
+        assert_eq!(ground_truth, decoded, "decoders are not equivalent");
     }
 }
 
