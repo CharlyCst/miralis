@@ -5,8 +5,9 @@ use miralis_abi::{setup_binary, success};
 
 setup_binary!(main);
 
-const TEST_DEVICE_MAGIC_REGISTER: usize = 0x3000000;
-const TEST_DEVICE_REMOTE_REGISTER: usize = 0x3000004;
+const TEST_DEVICE_BASE: usize = 0x2020000;
+const TEST_DEVICE_MAGIC_REGISTER: usize = TEST_DEVICE_BASE;
+const TEST_DEVICE_REMOTE_REGISTER: usize = TEST_DEVICE_BASE + 0x4;
 
 fn main() -> ! {
     log::info!("Hello from driver tester firmware!");
