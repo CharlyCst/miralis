@@ -20,7 +20,7 @@ const SERIAL_PORT_BASE_ADDRESS: usize = 0x10000000;
 const TEST_MMIO_ADDRESS: usize = 0x100000;
 const CLINT_BASE: usize = 0x2000000;
 const PLIC_BASE: usize = 0xC000000;
-const TEST_DEVICE_BASE: usize = 0x3000000;
+const TEST_DEVICE_BASE: usize = 0x2020000;
 
 // —————————————————————————— Spike Parameters ——————————————————————————— //
 
