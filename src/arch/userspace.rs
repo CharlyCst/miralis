@@ -118,7 +118,7 @@ impl Architecture for HostArch {
                 has_v_extension: false,
                 has_c_extension: true,
                 has_crypto_extension: false,
-                has_zicntr: true,
+                has_zicntr: false,
                 has_zfinx: false,
                 has_sstc_extension: false,
                 is_sstc_enabled: false,
