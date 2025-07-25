@@ -506,9 +506,9 @@ checksum = "f2af447028cf7063a7b6a4409dc96bdc5d8614f6bc482f3d2e6bc45ab11d5bf2"
 
 [[package]]
 name = "softcore-rv64"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeb074b707583321522451ad8cf6d22d5fd5496b4e01cb6bcc7b9b944e24604f"
+checksum = "b295b28fe9c12915a7631d7646de9d501673e062e09fdc38e0c83670df6489ec"
 dependencies = [
  "softcore-prelude",
 ]
