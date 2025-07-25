@@ -302,9 +302,6 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
     }
 
     match arg_hashtag_ {
-        b_12 if { b_12 == BitVector::<12>::new(0b110000000000) } => Csr::Cycle,
-        b_13 if { b_13 == BitVector::<12>::new(0b110000000001) } => Csr::Time,
-        b_14 if { b_14 == BitVector::<12>::new(0b110000000010) } => Csr::Instret,
         b_18 if { b_18 == BitVector::<12>::new(0b000100000000) } => Csr::Sstatus,
         b_21 if { b_21 == BitVector::<12>::new(0b000100000100) } => Csr::Sie,
         b_22 if { b_22 == BitVector::<12>::new(0b000100000101) } => Csr::Stvec,
@@ -334,10 +331,14 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
         b_47 if { b_47 == BitVector::<12>::new(0b001101000010) } => Csr::Mcause,
         b_48 if { b_48 == BitVector::<12>::new(0b001101000011) } => Csr::Mtval,
         b_49 if { b_49 == BitVector::<12>::new(0b001101000100) } => Csr::Mip,
+        b_134 if { b_134 == BitVector::<12>::new(0b011110100000) } => Csr::Tselect,
+        b_12 if { b_12 == BitVector::<12>::new(0b110000000000) } => Csr::Cycle,
+        b_13 if { b_13 == BitVector::<12>::new(0b110000000001) } => Csr::Time,
+        b_14 if { b_14 == BitVector::<12>::new(0b110000000010) } => Csr::Instret,
         b_130 if { b_130 == BitVector::<12>::new(0b101100000000) } => Csr::Mcycle,
         b_131 if { b_131 == BitVector::<12>::new(0b101100000010) } => Csr::Minstret,
-        b_134 if { b_134 == BitVector::<12>::new(0b011110100000) } => Csr::Tselect,
         // Manually removed: the new version of softcore disables the corresponding features
+        // or the core model we use does not have them.
         // b_135 if { b_135 == BitVector::<12>::new(0b011110100001) } => Csr::Tdata1,
         // b_136 if { b_136 == BitVector::<12>::new(0b011110100010) } => Csr::Tdata2,
         // b_137 if { b_137 == BitVector::<12>::new(0b011110100011) } => Csr::Tdata3,

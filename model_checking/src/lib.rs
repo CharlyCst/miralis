@@ -455,28 +455,39 @@ pub fn formally_verify_emulation_privileged_instructions() {
     let (mut ctx, mut mctx, mut core) = symbolic::new_symbolic_contexts();
 
     // Generate instruction to decode and emulate
-    let mut instr: usize = any!(u32) as usize;
+    let instr: usize = any!(u32) as usize;
 
-    // For the moment, we verify the behavior only for MRET and WFI
-    instr = match instr {
-        // MRET
-        0b00110000001000000000000001110011 => 0b00110000001000000000000001110011,
-        // WFI
-        _ => 0b00110000001000000000000001110011,
-    };
+    // Miralis only emulates the privileged instructions, thus we first decode the instruction to
+    // check if it is supported. All privileged instructions should be supported by Miralis.
+    let decoded_instr = model::sail_decoder_illegal::encdec_backwards(&mut core, bv(instr as u64));
+    let decoded_instr = ast_to_miralis_instr(decoded_instr);
+    match decoded_instr {
+        // We ignore instructions that are not implemented in the model
+        IllegalInst::Unknown => (),
+        // We skip unknown CSR too
+        IllegalInst::Csrrw { csr, .. }
+        | IllegalInst::Csrrs { csr, .. }
+        | IllegalInst::Csrrc { csr, .. }
+        | IllegalInst::Csrrwi { csr, .. }
+        | IllegalInst::Csrrsi { csr, .. }
+        | IllegalInst::Csrrci { csr, .. }
+            if csr.is_unknown() => {}
+        // For all other instructions we check the equivalence
+        _ => {
+            // Emulate instruction in Miralis
+            ctx.emulate_illegal_instruction(&mut mctx, instr);
 
-    // Emulate instruction in Miralis
-    ctx.emulate_illegal_instruction(&mut mctx, instr);
+            // Execute value in sail
+            execute::execute_ast(&mut core, instr);
 
-    // Execute value in sail
-    execute::execute_ast(&mut core, instr);
-
-    // Check the equivalence
-    assert_eq!(
-        ctx.csr.mstatus,
-        rv_core_to_miralis(core, &mctx).csr.mstatus,
-        "emulation of privileged instructions isn't equivalent"
-    );
+            // Check the equivalence
+            assert_eq!(
+                ctx.csr,
+                rv_core_to_miralis(core, &mctx).csr,
+                "emulation of privileged instructions is not equivalent"
+            );
+        }
+    }
 }
 
 #[cfg_attr(kani, kani::proof)]
