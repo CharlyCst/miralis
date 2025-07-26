@@ -556,7 +556,7 @@ pub fn download_disk_image(name: &str, url_path: &str) {
             format!("artifacts/{}-miralis.img", name),
         )
         .unwrap();
-        fs::remove_file(file_name).unwrap();
+        fs::remove_file(file_name).ok();
 
         log::info!("Disk image ready to use");
     } else {
