@@ -17,6 +17,7 @@ use softcore_rv64::{new_core, raw, registers as reg};
 pub fn miralis_to_rv_core(ctx: &VirtContext) -> Core {
     let mut core = new_core(U74);
     core.reset();
+    core.config.extensions.Zicntr.supported = true; // DEBUG! Remove that!
 
     core.nextPC = bv(ctx.pc as u64);
     core.PC = bv(ctx.pc as u64);
@@ -334,11 +335,11 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
         b_134 if { b_134 == BitVector::<12>::new(0b011110100000) } => Csr::Tselect,
         // Manually removed: the new version of softcore disables the corresponding features
         // or the core model we use does not have them.
-        // b_12 if { b_12 == BitVector::<12>::new(0b110000000000) } => Csr::Cycle,
-        // b_13 if { b_13 == BitVector::<12>::new(0b110000000001) } => Csr::Time,
-        // b_14 if { b_14 == BitVector::<12>::new(0b110000000010) } => Csr::Instret,
-        // b_130 if { b_130 == BitVector::<12>::new(0b101100000000) } => Csr::Mcycle,
-        // b_131 if { b_131 == BitVector::<12>::new(0b101100000010) } => Csr::Minstret,
+        b_12 if { b_12 == BitVector::<12>::new(0b110000000000) } => Csr::Cycle,
+        b_13 if { b_13 == BitVector::<12>::new(0b110000000001) } => Csr::Time,
+        b_14 if { b_14 == BitVector::<12>::new(0b110000000010) } => Csr::Instret,
+        b_130 if { b_130 == BitVector::<12>::new(0b101100000000) } => Csr::Mcycle,
+        b_131 if { b_131 == BitVector::<12>::new(0b101100000010) } => Csr::Minstret,
         // b_135 if { b_135 == BitVector::<12>::new(0b011110100001) } => Csr::Tdata1,
         // b_136 if { b_136 == BitVector::<12>::new(0b011110100010) } => Csr::Tdata2,
         // b_137 if { b_137 == BitVector::<12>::new(0b011110100011) } => Csr::Tdata3,

@@ -45,6 +45,7 @@ thread_local! {
     pub static SOFT_CORE: RefCell<Core> = {
         let mut core = new_core(config::U74);
         core.reset();
+        core.config.extensions.Zicntr.supported = true; // DEBUG! Remove that!
         RefCell::new(core)
     };
 }

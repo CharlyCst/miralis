@@ -484,8 +484,10 @@ impl Architecture for MetalArch {
             0
         };
         let nb_pmp = find_nb_of_non_zero_pmp(nb_implemented_pmp);
-
         log::debug!("Number of PMP: {}", nb_pmp);
+
+        // Detect performance counter extensions
+        let is_mcycle_present: bool = register_present!("mcycle");
 
         // Save current CSRs
         let mstatus = Self::read_csr(Csr::Mstatus);
@@ -535,7 +537,7 @@ impl Architecture for MetalArch {
                 is_sstc_enabled: false, // Since the virtual menvcfg is initialized with 0
                 has_v_extension: false,
                 has_crypto_extension: false,
-                has_zicntr: false,
+                has_zicntr: is_mcycle_present,
                 has_zfinx: false,
                 has_zihpm_extension: true,
                 has_tee_extension: true,

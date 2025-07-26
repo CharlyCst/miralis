@@ -385,8 +385,20 @@ impl MiralisContext {
                 }
             }
             csr::PMPADDR0..=csr::PMPADDR63 => Csr::Pmpaddr(csr - csr::PMPADDR0),
-            csr::MCYCLE => Csr::Mcycle,
-            csr::MINSTRET => Csr::Minstret,
+            csr::MCYCLE => {
+                if self.hw.extensions.has_zicntr {
+                    Csr::Mcycle
+                } else {
+                    Csr::Unknown
+                }
+            }
+            csr::MINSTRET => {
+                if self.hw.extensions.has_zicntr {
+                    Csr::Minstret
+                } else {
+                    Csr::Unknown
+                }
+            }
             csr::CYCLE => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Cycle
