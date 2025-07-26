@@ -62,7 +62,7 @@ repo = "https://github.com/FredKhayat/miralis-artifact-keystone"
 
 [disk.ubuntu]
 description = "A RISC-V Ubuntu image that can be used with Miralis"
-url = "https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.1-preinstalled-server-riscv64.img.xz"
+url = "https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.2-preinstalled-server-riscv64.img.xz"
 repo = "https://cdimage.ubuntu.com/"
 
 [disk.opensuse]
