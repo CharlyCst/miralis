@@ -6,6 +6,9 @@
 use core::cmp::PartialEq;
 use core::ptr;
 
+use miralis_config::DELEGATE_PERF_COUNTER;
+
+use crate::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use crate::arch::pmp::pmplayout::MODULE_OFFSET;
 use crate::arch::pmp::{pmpcfg, Segment};
 use crate::arch::{
@@ -340,6 +343,9 @@ impl KeystonePolicy {
         enclave.ctx.satp = 0; // Enclave uses physical addresses in the first run
         enclave.ctx.mideleg = 0; // No interrupts are delegated in the first run
         enclave.ctx.mpp = Mode::S; // Enclave starts in S-mode
+        if DELEGATE_PERF_COUNTER {
+            enclave.ctx.scounteren = DELGATE_PERF_COUNTERS_MASK;
+        }
 
         Self::lock_enclave(mctx, enclave);
 

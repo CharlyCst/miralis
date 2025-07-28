@@ -57,8 +57,8 @@ repo = "https://github.com/FredKhayat/miralis-artifact-keystone"
 
 [disk.keystone]
 description = "A .ext2 filesystem image that contains the Keystone driver and some example keystone enclaves"
-url = "https://github.com/FredKhayat/miralis-artifact-keystone/releases/download/v1.4.0/keystone.ext2"
-repo = "https://github.com/FredKhayat/miralis-artifact-keystone"
+url = "https://github.com/epfl-dcsl/miralis-artifact-keystone/releases/download/v1.4.11/keystone.ext2"
+repo = "https://github.com/epfl-dcsl/miralis-artifact-keystone"
 
 [disk.ubuntu]
 description = "A RISC-V Ubuntu image that can be used with Miralis"

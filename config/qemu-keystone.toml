@@ -6,6 +6,7 @@ color = true
 
 [vcpu]
 max_pmp = 0
+delegate_perf_counters = true
 
 [qemu]
 memory = "8G"
@@ -26,4 +27,4 @@ start_address = 0x80200000
 stack_size = 0x8000
 
 [modules]
-modules = ["keystone"]
+modules = ["keystone", "exit_counter"]

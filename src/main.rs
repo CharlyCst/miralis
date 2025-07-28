@@ -79,6 +79,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         ctx.pc = firmware_addr;
 
         if DELEGATE_PERF_COUNTER {
+            log::info!("Delegating performance counters");
             Arch::write_csr(Csr::Mcounteren, DELGATE_PERF_COUNTERS_MASK);
             Arch::write_csr(Csr::Scounteren, DELGATE_PERF_COUNTERS_MASK);
         }
