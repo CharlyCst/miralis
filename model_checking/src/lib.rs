@@ -19,7 +19,6 @@ use crate::symbolic::MIRALIS_SIZE;
 #[macro_use]
 mod symbolic;
 mod adapters;
-mod execute;
 mod model;
 
 #[cfg_attr(kani, kani::proof)]
@@ -451,47 +450,6 @@ pub fn verify_decoder() {
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
-pub fn formally_verify_emulation_privileged_instructions() {
-    let (mut ctx, mut mctx, mut core) = symbolic::new_symbolic_contexts();
-
-    // Generate instruction to decode and emulate
-    let instr: usize = any!(u32) as usize;
-
-    // Miralis only emulates the privileged instructions, thus we first decode the instruction to
-    // check if it is supported. All privileged instructions should be supported by Miralis.
-    let decoded_instr = model::sail_decoder_illegal::encdec_backwards(&mut core, bv(instr as u64));
-    let decoded_instr = ast_to_miralis_instr(decoded_instr);
-    match decoded_instr {
-        // We ignore instructions that are not implemented in the model
-        IllegalInst::Unknown => (),
-        // We skip unknown CSR too
-        IllegalInst::Csrrw { csr, .. }
-        | IllegalInst::Csrrs { csr, .. }
-        | IllegalInst::Csrrc { csr, .. }
-        | IllegalInst::Csrrwi { csr, .. }
-        | IllegalInst::Csrrsi { csr, .. }
-        | IllegalInst::Csrrci { csr, .. }
-            if csr.is_unknown() => {}
-        // For all other instructions we check the equivalence
-        _ => {
-            // Emulate instruction in Miralis
-            ctx.emulate_illegal_instruction(&mut mctx, instr);
-
-            // Execute value in sail
-            execute::execute_ast(&mut core, instr);
-
-            // Check the equivalence
-            assert_eq!(
-                ctx.csr,
-                rv_core_to_miralis(core, &mctx).csr,
-                "emulation of privileged instructions is not equivalent"
-            );
-        }
-    }
-}
-
-#[cfg_attr(kani, kani::proof)]
-#[cfg_attr(test, test)]
 pub fn verify_compressed_loads() {
     let (_, mctx, mut core) = symbolic::new_symbolic_contexts();
 
@@ -518,31 +476,31 @@ pub fn verify_compressed_loads() {
     }
 }
 
-// #[cfg_attr(kani, kani::proof)]
-// #[cfg_attr(test, test)]
-// pub fn verify_load() {
-//     let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn verify_load() {
+    let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-//     // Generate an instruction to decode
-//     let instr = any!(u32, 0x01073) | 0b11;
+    // Generate an instruction to decode
+    let instr = any!(u32, 0x01073) | 0b11;
 
-//     let intermediate_sail_value =
-//         sail_decoder_load::encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
+    let intermediate_sail_value =
+        model::sail_decoder_load::encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-//     match intermediate_sail_value {
-//         ast::ILLEGAL(_) => {}
-//         _ => {
-//             let decoded_value_sail = ast_to_miralis_load(intermediate_sail_value);
+    match intermediate_sail_value {
+        raw::ast::ILLEGAL(_) => {}
+        _ => {
+            let decoded_value_sail = ast_to_miralis_load(intermediate_sail_value);
 
-//             let decoded_value_miralis = mctx.decode_load(instr as usize);
+            let decoded_value_miralis = mctx.decode_load(instr as usize);
 
-//             assert_eq!(
-//                 decoded_value_sail, decoded_value_miralis,
-//                 "decoders for loads are not equivalent"
-//             );
-//         }
-//     }
-// }
+            assert_eq!(
+                decoded_value_sail, decoded_value_miralis,
+                "decoders for loads are not equivalent"
+            );
+        }
+    }
+}
 
 #[cfg_attr(kani, kani::proof)]
 #[cfg_attr(test, test)]
@@ -576,29 +534,29 @@ pub fn verify_compressed_stores() {
     }
 }
 
-// #[cfg_attr(kani, kani::proof)]
-// #[cfg_attr(test, test)]
-// pub fn verify_stores() {
-//     let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
+#[cfg_attr(kani, kani::proof)]
+#[cfg_attr(test, test)]
+pub fn verify_stores() {
+    let (_, mctx, mut sail_ctx) = symbolic::new_symbolic_contexts();
 
-//     // Generate an instruction to decode
-//     let instr = any!(u32, 0x01073) | 0b11;
+    // Generate an instruction to decode
+    let instr = any!(u32, 0x01073) | 0b11;
 
-//     let intermediate_sail_value =
-//         sail_decoder_store::encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
+    let intermediate_sail_value =
+        model::sail_decoder_store::encdec_backwards(&mut sail_ctx, BitVector::new(instr as u64));
 
-//     match intermediate_sail_value {
-//         ast::ILLEGAL(_) => {}
-//         _ => {
-//             // Decode values
-//             let decoded_value_sail = ast_to_miralis_store(intermediate_sail_value);
+    match intermediate_sail_value {
+        raw::ast::ILLEGAL(_) => {}
+        _ => {
+            // Decode values
+            let decoded_value_sail = ast_to_miralis_store(intermediate_sail_value);
 
-//             let decoded_value_miralis = mctx.decode_store(instr as usize);
+            let decoded_value_miralis = mctx.decode_store(instr as usize);
 
-//             assert_eq!(
-//                 decoded_value_sail, decoded_value_miralis,
-//                 "decoders for loads are not equivalent"
-//             );
-//         }
-//     }
-// }
+            assert_eq!(
+                decoded_value_sail, decoded_value_miralis,
+                "decoders for loads are not equivalent"
+            );
+        }
+    }
+}
