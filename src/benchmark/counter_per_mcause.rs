@@ -128,6 +128,7 @@ impl CounterPerMcauseBenchmark {
             && ctx.get(Register::X16) == abi::MIRALIS_READ_COUNTERS_FID
         {
             self.read_counters(ctx);
+            ctx.pc += 4;
             ModuleAction::Overwrite
         } else {
             ModuleAction::Ignore

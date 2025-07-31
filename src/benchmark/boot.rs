@@ -94,6 +94,7 @@ impl BootBenchmark {
             && ctx.get(Register::X16) == abi::MIRALIS_READ_COUNTERS_FID
         {
             self.display_benchmark(ctx.hart_id);
+            ctx.pc += 4;
             ModuleAction::Overwrite
         } else {
             ModuleAction::Ignore

@@ -130,6 +130,7 @@ impl CounterBenchmark {
             && ctx.get(Register::X16) == abi::MIRALIS_READ_COUNTERS_FID
         {
             self.read_counters(ctx);
+            ctx.pc += 4;
             ModuleAction::Overwrite
         } else {
             ModuleAction::Ignore
@@ -139,6 +140,17 @@ impl CounterBenchmark {
     fn read_counters(&mut self, ctx: &mut VirtContext) {
         let hart_to_read = ctx.get(Register::X10);
         let exception_category = ExceptionCategory::try_from(ctx.get(Register::X11)).unwrap();
+
+        if hart_to_read >= PLATFORM_NB_HARTS {
+            log::warn!(
+                "Trying to read counters for category {} from hart {}, but system has only {} hards",
+                exception_category as usize,
+                hart_to_read,
+                PLATFORM_NB_HARTS
+            );
+            ctx.set(Register::X10, 0);
+            return;
+        }
 
         let measure = match exception_category {
             ExceptionCategory::NotOffloaded => {
