@@ -24,4 +24,4 @@ start_address = 0x40000000
 profile = "release"
 
 [modules]
-modules = ["protect_payload", "exit_counter"]
+modules = ["exit_counter", "offload", "protect_payload"]

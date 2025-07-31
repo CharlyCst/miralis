@@ -18,6 +18,8 @@ use crate::virt::traits::RegisterContextGetter;
 use crate::virt::{ExecutionMode, VirtContext};
 
 const NUMBER_CATEGORIES: usize = 8;
+
+#[derive(Clone, Copy, Debug)]
 pub enum ExceptionCategory {
     NotOffloaded = 0,
     ReadTime = 1,
