@@ -505,9 +505,12 @@ pub fn download_disk_image(name: &str, url_path: &str) {
     if !is_file_present(&format!("artifacts/{}-miralis.img", name)) {
         // Download image
         log::info!("Disk image not found. Fetching the image...");
-        let mut image_downloader = Command::new("wget");
-        image_downloader.arg(url_path);
-        image_downloader
+        let mut curl_cmd = Command::new("curl");
+        curl_cmd
+            .arg("-o")
+            .arg(file_name)
+            .arg("-L")
+            .arg(url_path)
             .status()
             .expect("Failed to download disk image");
 
