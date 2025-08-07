@@ -4,3 +4,4 @@ config.toml
 artifacts
 /.vscode
 /.idea
+.DS_Store
