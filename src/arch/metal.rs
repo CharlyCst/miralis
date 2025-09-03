@@ -1345,12 +1345,13 @@ global_asm!(
 .align 4
 .global _tracing_trap_handler
 _tracing_trap_handler:
+    // Save x5
+    csrw mscratch, x5
     // Skip illegal instruction (pc += 4)
-    csrrw x5, mepc, x5
+    csrr x5, mepc
     addi x5, x5, 4
-    csrrw x5, mepc, x5
+    csrw mepc, x5
     // Set mscratch to 1
-    csrrw x5, mscratch, x5
     addi x5, x0, 1
     csrrw x5, mscratch, x5
     // Return back to miralis
