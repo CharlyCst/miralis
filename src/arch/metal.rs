@@ -57,6 +57,7 @@ macro_rules! asm_mprv_mem_op {
             "csrw mtvec, {1}",
             out(reg) _,
             out(reg) _,
+            out("t5") _, // t5 can be modified by the trap handler
             mtvec = in(reg) (_mprv_trap_handler as usize),
             addr = in(reg) $addr,
             rd = inout(reg) $value,
