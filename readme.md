@@ -64,6 +64,7 @@ Although it looks like a standard Linux environment, the M-mode firmware (OpenSB
 ## Going Further
 
 For more details, user guides, and platform support see the [documentation][Documentation].
+You can also check-out the [reproducible artifact](https://github.com/epfl-dcsl/miralis-sosp25-artifact) from the SOSP'25 paper.
 If you think Miralis can be useful to you, get in touch!
 We are always looking for new use-cases.
 
