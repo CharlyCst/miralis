@@ -24,7 +24,7 @@ use crate::platform::{Plat, Platform};
 use crate::utils::sign_extend;
 use crate::{debug, device, logger, utils};
 
-/// Wether to continue execution of the virtual firmware or payload, or terminate the run loop.
+/// Whether to continue execution of the virtual firmware or payload, or terminate the run loop.
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum ExitResult {
     /// Continue execution of the virtual firmware or payload.

@@ -892,8 +892,8 @@ mod tests {
     use super::*;
     use crate::arch::{Arch, Architecture};
 
-    /// Decodes priviledged instructions
-    /// Here is an handy tool to double check:
+    /// Decodes privileged instructions
+    /// Here is a handy tool to double check:
     /// https://luplab.gitlab.io/rvcodecjs/
     #[test]
     fn system_instructions() {

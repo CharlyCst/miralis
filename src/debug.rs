@@ -25,7 +25,7 @@ pub(crate) use warn_once;
 
 /// Mark a code path as not yet implemented, causing a runtime panic.
 ///
-/// This macro si equivalent to the standard [unimplemented!], except it makes model checking with
+/// This macro is equivalent to the standard [unimplemented!], except it makes model checking with
 /// Kani succeed when reached rather than fail.
 ///
 /// See [Kani discussion](https://github.com/model-checking/kani/discussions/3746) for background.

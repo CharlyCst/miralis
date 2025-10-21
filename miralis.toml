@@ -83,7 +83,7 @@ description = "Check that Miralis is protected from the firmware"
 [test.interrupt]
 firmware = "interrupt"
 config = "qemu-virt"
-description = "Ensure that the firmware can receive"
+description = "Ensure that the firmware can receive interrupts"
 
 [test.os-ecall]
 firmware = "os_ecall"
@@ -123,7 +123,7 @@ description = "A test for cross-hart Machine Software Interrupts (MSI)"
 [test.release-build]
 firmware = "default"
 config = "qemu-virt-release"
-description = "Build and run a simply firmware in release mode"
+description = "Build and run a simple firmware in release mode"
 
 [test.nested-virtualization]
 firmware = "miralis"

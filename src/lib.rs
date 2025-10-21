@@ -33,15 +33,15 @@ use virt::{ExecutionMode, ExitResult, VirtContext};
 use crate::arch::write_pmp;
 use crate::modules::{MainModule, Module};
 
-/// The virtuam firmware monitor main loop.
+/// The virtual firmware monitor main loop.
 ///
 /// Runs the firmware and payload in a loop, handling the traps and interrupts and switching world
-/// when required..
+/// when required.
 ///
 /// # Safety
 ///
 /// This function will start by passing control to the firmware. The hardware must have
-/// been initialized properly (including calling `miralis::init` and loading the firmware.
+/// been initialized properly (including calling `miralis::init` and loading the firmware).
 pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, module: &mut MainModule) {
     Arch::run_vcpu(ctx);
 

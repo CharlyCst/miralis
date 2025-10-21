@@ -1,6 +1,6 @@
 //! CSR getters and setters
 //!
-//! This module models the CSR registers, it validates valid bit patters according to the RISC-V
+//! This module models the CSR registers, it validates valid bit patterns according to the RISC-V
 //! specification.
 
 use super::{VirtContext, VirtCsr};
@@ -31,7 +31,7 @@ pub trait RegisterContextSetter<R> {
 }
 
 /// A trait implemented by virtual contexts to write registers whose value depends on
-/// hardware capabilities..
+/// hardware capabilities.
 pub trait HwRegisterContextSetter<R> {
     fn set_csr(&mut self, register: R, value: usize, mctx: &mut MiralisContext);
 }
@@ -64,7 +64,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
                 // NOTE: here we return only the software writeable bits from the virtual context,
                 // but reads the hardware normally OR the result with a special read-only bit
                 // (SEIE) that comes from the hardware controller. That bit is separate from the
-                // software SEIE, but it is only over possible to read the OR of those two bits.
+                // software SEIE, but it is only ever possible to read the OR of those two bits.
                 //
                 // The issue is that the hardware bit is ignored by `csrrs` and `csrrc`, see from
                 // the manual:
