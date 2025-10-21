@@ -1,6 +1,6 @@
 //! Miralis Modules
 //!
-//! This file defines the Miralis module interface, and host the [MainModule] struct that is generated
+//! This file defines the Miralis module interface, and hosts the [MainModule] struct that is generated
 //! from combining all modules selected at compile time.
 
 use module_macro::{build_modules, for_each_module};
@@ -16,7 +16,7 @@ use crate::virt::{ExecutionMode, VirtContext};
 ///
 /// By default Miralis does nothing more than virtualizing a RISC-V firmware (M-mode program), any
 /// extra amount of functionalities, such as intercepting firmware traps or enforcing isolation
-/// policies, has to be done thought modules.
+/// policies, has to be done through modules.
 ///
 /// The [Module] trait exposes functions (called hooks) that are called by Miralis during firmware
 /// virtualization and allow extending the functionalities of Miralis. For instance, modules can be

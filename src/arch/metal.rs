@@ -47,7 +47,7 @@ macro_rules! asm_mprv_mem_op {
             "csrs mstatus, {0}",
 
             // The 'norvc' guarantees that instructions are 4 bytes wide.
-            // This prevent the compiler from using compressed load/stores.
+            // This prevents the compiler from using compressed load/stores.
             ".option push",
             ".option norvc",
             concat!($instr, " {rd}, 0({addr})"),

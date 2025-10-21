@@ -76,5 +76,5 @@ install-toolchain:
 	cargo install --locked kani-verifier
 	cargo kani setup
 
-# The following line gives highlighting on vim
+# The following line gives highlighting in vim
 # vim: set ft=make :

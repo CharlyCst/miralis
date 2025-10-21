@@ -1,6 +1,6 @@
 //! Utils
 //!
-//! This module expose utilities used accross Miralis, such as types or helper functions.
+//! This module exposes utilities used across Miralis, such as types or helper functions.
 
 use core::marker::PhantomData;
 
@@ -28,7 +28,7 @@ pub fn sign_extend(value: usize, width: Width) -> usize {
     }
 }
 
-/// Extracts the bitwise representation and set to the corresponding signed valuec
+/// Extracts the bitwise representation and set to the corresponding signed value
 pub fn bits_to_int(raw: usize, start_bit: isize, end_bit: isize) -> isize {
     let mask = (1 << (end_bit - start_bit + 1)) - 1;
     let value = (raw >> start_bit) & mask;

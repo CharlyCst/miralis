@@ -13,7 +13,7 @@ use crate::arch::{mie, misa, ExtensionsCapability, Mode, TrapInfo};
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecutionMode {
-    /// Virtualized virmware, running in U-mode.
+    /// Virtualized firmware, running in U-mode.
     Firmware,
     /// Native payload, running in U or S-mode.
     Payload,
@@ -29,7 +29,7 @@ pub struct VirtContext {
     pub regs: [usize; 32],
     /// Program Counter
     pub pc: usize,
-    /// Information on the trap that ocurred, used to handle traps
+    /// Information on the trap that occurred, used to handle traps
     pub trap_info: TrapInfo,
     /// Virtual Control and Status Registers
     pub csr: VirtCsr,
@@ -40,15 +40,15 @@ pub struct VirtContext {
     /// The PMP granularity (G)
     ///
     /// The minimal sizes of regions protected by the PMP is 2^(G+2). See specification for
-    /// detailled explanation of the PMP grain.
+    /// detailed explanation of the PMP grain.
     pub pmp_grain: usize,
     /// Availables RISC-V extensions
     pub extensions: ExtensionsCapability,
     /// Hart ID
     pub hart_id: usize,
-    /// Number of exists to Miralis
+    /// Number of exits to Miralis
     pub nb_exits: usize,
-    /// Wether the vCPU is currently in Wait For Interrupt mode (WFI)
+    /// Whether the vCPU is currently in Wait For Interrupt mode (WFI)
     pub is_wfi: bool,
 }
 

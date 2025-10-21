@@ -21,7 +21,7 @@ pub fn emulate_misaligned_read(ctx: &mut VirtContext, mctx: &mut MiralisContext)
 
     assert!(
         len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
-        "Implement support for other than 2,4,8 bytes misalinged accesses"
+        "Implement support for other than 2,4,8 bytes misaligned accesses"
     );
 
     // Build the value
@@ -44,7 +44,7 @@ pub fn emulate_misaligned_read(ctx: &mut VirtContext, mctx: &mut MiralisContext)
             u16::from_le_bytes(value_to_read) as usize
         }
         _ => {
-            unreachable!("Misaligned read with a unexpected byte length")
+            unreachable!("Misaligned read with an unexpected byte length")
         }
     };
 
@@ -75,7 +75,7 @@ pub fn emulate_misaligned_write(
 
     assert!(
         len.to_bytes() == 8 || len.to_bytes() == 4 || len.to_bytes() == 2,
-        "Implement support for other than 2,4,8 bytes misalinged accesses"
+        "Implement support for other than 2,4,8 bytes misaligned accesses"
     );
 
     // Build the value
@@ -98,7 +98,7 @@ pub fn emulate_misaligned_write(
             success = unsafe { Arch::store_bytes_from_mode(&mut value_to_store, start_addr, mode) };
         }
         _ => {
-            unreachable!("Misaligned write with a unexpected byte length")
+            unreachable!("Misaligned write with an unexpected byte length")
         }
     };
 

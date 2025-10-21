@@ -1,6 +1,6 @@
 //! Physical Memory Protection
 //!
-//! This module handles exposes structure to store and manipulate PMPs, including checking for
+//! This module exposes structures to store and manipulate PMPs, including checking for
 //! addresses matching PMP ranges.
 
 use core::fmt;
@@ -18,7 +18,7 @@ use crate::{config, logger};
 
 // ——————————————————————————— PMP Configuration ———————————————————————————— //
 
-/// This modules keeps track of the PMP layout within Miralis.
+/// This module keeps track of the PMP layout within Miralis.
 ///
 /// Miralis needs to multiplex the limited number of physical PMP to both protect itself, perform
 /// emulation of hardware, and expose virtual PMPs to the firmware.
@@ -28,7 +28,7 @@ use crate::{config, logger};
 /// precedence than entries controlled by the virtual firmware, which would otherwise be able to
 /// overwrite memory protection.
 ///
-/// The current PMP layout is depicted bellow. The first block is used for Miralis' internal usage,
+/// The current PMP layout is depicted below. The first block is used for Miralis' internal usage,
 /// including protecting its own memory and hardware emulation. Modules can also claim PMP entries,
 /// which enables the definition of security policies. MPRV emulation is a bit of a special case.
 /// MPRV stands for Memory Privilege, or maybe Modify Privilege, the spec is not clear. In any
@@ -37,7 +37,7 @@ use crate::{config, logger};
 /// emulation, hence the need for an entry to trap all loads and stores.
 ///
 /// A null entry is required before the virtual PMP. The reason is that for the ToR (Top of Range)
-/// matching mode uses the previous PMP entry address is used as the lower bound, but for PMP 0 the
+/// matching mode, the previous PMP entry address is used as the lower bound, but for PMP 0 the
 /// previous address is hardwired at 0. We need to emulate this behavior, and therefore keep an
 /// entry to 0 before virtual PMP 1.
 ///
@@ -45,7 +45,7 @@ use crate::{config, logger};
 /// some filtering, for instance it removes the lock bit.
 ///
 /// Finally, the last entry is used to emulate the default hardware behavior, which is to grant
-/// access to all memory when running the firmware, and deny all access when running the firmware.
+/// access to all memory when running the firmware, and deny all access when running the payload.
 ///
 /// The diagram below is an indicative PMP allocation for 8 physical PMPs. The exact allocations
 /// depends on the number of devices, modules loaded, and total number of physical PMP entries.
@@ -183,7 +183,7 @@ pub struct PmpGroup {
 /// effective immediately.
 ///
 /// This struct is marked as `#[must_use]`, which will rise a warning if the struct is not
-/// consumed. This is handy to prevent forgetting to flush the caches and introduce suble bugs.
+/// consumed. This is handy to prevent forgetting to flush the caches and introduce subtle bugs.
 #[must_use = "caches must be flushed before PMP change can take effect"]
 pub struct PmpFlush();
 
@@ -435,7 +435,7 @@ impl PmpFlush {
     }
 
     /// Do not flush the caches, PMP changes will not take effect predictably which can lead to
-    /// suble bugs.
+    /// subtle bugs.
     #[allow(dead_code)] // TODO: remove once used or part of the public API
     pub fn no_flush(self) {
         // Do nothing

@@ -20,7 +20,7 @@ Usually, low level software is granted high privilege.
 For instance, on RISC-V, platform-specific operations such as cache configuration and power management are handled in M-mode, with full access to all the machine's code and data.
 This is not a great situation: any bug or vulnerability in the machine's firmware can take down or compromise the whole system.
 
-This can be easily solved by re-designing system firmware, leveraging ideas from the multitude of micro-kernels.
+This can be easily solved by redesigning system firmware, leveraging ideas from the multitude of micro-kernels.
 Unfortunately, it is hard to convince all hardware vendors to re-design their firmware.
 Miralis provides an alternative solution by efficiently de-privileging unmodified vendor firmware.
 
