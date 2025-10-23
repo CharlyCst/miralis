@@ -10,8 +10,8 @@ use miralis::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use miralis::host::MiralisContext;
 use miralis::virt::VirtContext;
 use softcore_rv64::config::U74;
-use softcore_rv64::prelude::{bv, BitVector};
-use softcore_rv64::raw::{ast, csrop, word_width, Core, Pmpcfg_ent, Privilege};
+use softcore_rv64::prelude::{BitVector, bv};
+use softcore_rv64::raw::{Core, Pmpcfg_ent, Privilege, ast, csrop, word_width};
 use softcore_rv64::{new_core, raw, registers as reg};
 
 pub fn miralis_to_rv_core(ctx: &VirtContext) -> Core {

@@ -1,5 +1,5 @@
 //! RISC-V instruction decoder
-use crate::arch::{csr, Csr, Register, Width};
+use crate::arch::{Csr, Register, Width, csr};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::platform::{Plat, Platform};
@@ -471,9 +471,9 @@ impl MiralisContext {
             csr::MTINST => {
                 if !self.hw.extensions.has_h_extension {
                     log::warn!(
-                    "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
-                    csr
-                );
+                        "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
+                        csr
+                    );
                     Csr::Unknown
                 } else {
                     Csr::Mtinst
@@ -482,9 +482,9 @@ impl MiralisContext {
             csr::MTVAL2 => {
                 if !self.hw.extensions.has_h_extension {
                     log::warn!(
-                    "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
-                    csr
-                );
+                        "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
+                        csr
+                    );
                     Csr::Unknown
                 } else {
                     Csr::Mtval2

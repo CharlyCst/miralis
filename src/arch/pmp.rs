@@ -7,12 +7,12 @@ use core::fmt;
 use core::fmt::Formatter;
 
 use super::Architecture;
+use crate::arch::Arch;
 use crate::arch::pmp::pmpcfg::{INACTIVE, NAPOT, TOR};
 use crate::arch::pmp::pmplayout::{
     DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP, MODULE_OFFSET,
     MODULE_SIZE, MPRV_EMULATION_OFFSET, VIRTUAL_PMP_OFFSET,
 };
-use crate::arch::Arch;
 use crate::platform::{Plat, Platform};
 use crate::{config, logger};
 
@@ -431,7 +431,7 @@ impl PmpGroup {
 impl PmpFlush {
     /// Flush the caches, which is required for PMP changes to take effect.
     pub fn flush(self) {
-        unsafe { Arch::sfencevma(None, None) }
+        Arch::sfencevma(None, None)
     }
 
     /// Do not flush the caches, PMP changes will not take effect predictably which can lead to

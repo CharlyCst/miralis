@@ -10,15 +10,15 @@ use miralis_config::DELEGATE_PERF_COUNTER;
 
 use crate::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use crate::arch::pmp::pmplayout::MODULE_OFFSET;
-use crate::arch::pmp::{pmpcfg, Segment};
+use crate::arch::pmp::{Segment, pmpcfg};
 use crate::arch::{
-    parse_mpp_return_mode, set_mpp, write_pmp, Arch, Architecture, Csr, MCause, Mode, Register,
+    Arch, Architecture, Csr, MCause, Mode, Register, parse_mpp_return_mode, set_mpp, write_pmp,
 };
 use crate::host::MiralisContext;
 use crate::modules::{Module, ModuleAction};
 use crate::policy::keystone::ReturnCode::IllegalArgument;
 use crate::virt::traits::*;
-use crate::{logger, RegisterContextGetter, VirtContext};
+use crate::{RegisterContextGetter, VirtContext, logger};
 
 /// Keystone parameters
 ///

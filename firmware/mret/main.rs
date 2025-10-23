@@ -54,6 +54,6 @@ _raw_breakpoint_trap_handler:
 "#,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _raw_breakpoint_trap_handler();
 }

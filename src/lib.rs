@@ -43,10 +43,10 @@ use crate::modules::{MainModule, Module};
 /// This function will start by passing control to the firmware. The hardware must have
 /// been initialized properly (including calling `miralis::init` and loading the firmware).
 pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, module: &mut MainModule) {
-    Arch::run_vcpu(ctx);
+    unsafe { Arch::run_vcpu(ctx) };
 
     while handle_trap(ctx, mctx, module) != ExitResult::Done {
-        Arch::run_vcpu(ctx);
+        unsafe { Arch::run_vcpu(ctx) };
     }
 }
 
@@ -59,12 +59,12 @@ fn handle_trap(
         log_ctx(ctx);
     }
 
-    if let Some(max_exit) = config::MAX_FIRMWARE_EXIT {
-        if ctx.nb_exits + 1 >= max_exit {
-            log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
-            module.on_shutdown();
-            Plat::exit_failure();
-        }
+    if let Some(max_exit) = config::MAX_FIRMWARE_EXIT
+        && ctx.nb_exits + 1 >= max_exit
+    {
+        log::error!("Reached maximum number of exits: {}", ctx.nb_exits);
+        module.on_shutdown();
+        Plat::exit_failure();
     }
 
     if ctx.trap_info.is_from_mmode() {
@@ -235,7 +235,7 @@ fn log_ctx(ctx: &VirtContext) {
 /// In case of an interrupt, Mip must be cleared: avoid Miralis to trap again.
 #[cfg(test)]
 mod tests {
-    use crate::arch::{mstatus, Arch, Architecture, MCause, Mode};
+    use crate::arch::{Arch, Architecture, MCause, Mode, mstatus};
     use crate::handle_trap;
     use crate::host::MiralisContext;
     use crate::modules::{MainModule, Module};

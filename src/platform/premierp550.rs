@@ -6,12 +6,12 @@ use core::fmt::Write;
 use log::Level;
 use spin::Mutex;
 
+use crate::Platform;
 use crate::arch::{read_custom_csr, write_custom_csr};
-use crate::device::clint::{VirtClint, CLINT_SIZE};
 use crate::device::VirtDevice;
+use crate::device::clint::{CLINT_SIZE, VirtClint};
 use crate::driver::clint::ClintDriver;
 use crate::driver::uart::UartDriver;
-use crate::Platform;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 

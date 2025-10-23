@@ -148,7 +148,7 @@ macro_rules! setup_binary {
         }
 
         // Defined in the linker script
-        extern "C" {
+        unsafe extern "C" {
             pub(crate) static _stack_start: u8;
             pub(crate) static _bss_start: u8;
             pub(crate) static _bss_stop: u8;
@@ -201,23 +201,21 @@ pub unsafe fn ecall3(
     let error: usize;
     let value: usize;
 
-    core::arch::asm!(
-    "ecall",
-    inout("a0") a0 => error,
-    inout("a1") a1 => value,
-    in("a2") a2,
-    in("a6") fid,
-    in("a7") eid,
-    );
-
-    if error != 0 {
-        Err(error)
-    } else {
-        Ok(value)
+    unsafe {
+        core::arch::asm!(
+            "ecall",
+            inout("a0") a0 => error,
+            inout("a1") a1 => value,
+            in("a2") a2,
+            in("a6") fid,
+            in("a7") eid,
+        );
     }
+
+    if error != 0 { Err(error) } else { Ok(value) }
 }
 
 #[inline]
 unsafe fn miralis_ecall(fid: usize) -> Result<usize, usize> {
-    ecall3(abi::MIRALIS_EID, fid, 0, 0, 0)
+    unsafe { ecall3(abi::MIRALIS_EID, fid, 0, 0, 0) }
 }

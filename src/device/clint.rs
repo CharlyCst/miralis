@@ -2,11 +2,11 @@ use core::cmp::min;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use crate::arch::{mie, Arch, Architecture, Csr, Mode};
+use crate::arch::{Arch, Architecture, Csr, Mode, mie};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::device::{DeviceAccess, Width};
 use crate::driver::clint::{
-    ClintDriver, MSIP_OFFSET, MSIP_WIDTH, MTIMECMP_OFFSET, MTIMECMP_WIDTH, MTIME_OFFSET,
+    ClintDriver, MSIP_OFFSET, MSIP_WIDTH, MTIME_OFFSET, MTIMECMP_OFFSET, MTIMECMP_WIDTH,
 };
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
@@ -356,7 +356,7 @@ impl VirtClint {
     /// handling timer interrupt from the payload and returning to the payload without a world
     /// switch.
     unsafe fn set_physical_stip(&self) {
-        Arch::set_csr_bits(Csr::Mip, mie::STIE_FILTER);
+        unsafe { Arch::set_csr_bits(Csr::Mip, mie::STIE_FILTER) };
     }
 
     /// Clear the `mip.STIP` bit within the physical registers.
@@ -366,6 +366,6 @@ impl VirtClint {
     /// handling timer interrupt from the payload and returning to the payload without a world
     /// switch.
     unsafe fn clear_physical_stip(&self) {
-        Arch::clear_csr_bits(Csr::Mip, mie::STIE_FILTER);
+        unsafe { Arch::clear_csr_bits(Csr::Mip, mie::STIE_FILTER) };
     }
 }

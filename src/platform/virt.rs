@@ -9,10 +9,10 @@ use uart_16550::MmioSerialPort;
 
 use super::Platform;
 use crate::config::PLATFORM_NAME;
-use crate::device::clint::{VirtClint, CLINT_SIZE};
-use crate::device::plic::VirtPlic;
-use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
 use crate::device::VirtDevice;
+use crate::device::clint::{CLINT_SIZE, VirtClint};
+use crate::device::plic::VirtPlic;
+use crate::device::tester::{TEST_DEVICE_SIZE, VirtTestDevice};
 use crate::driver::clint::ClintDriver;
 use crate::driver::plic::PlicDriver;
 
@@ -25,13 +25,15 @@ const TEST_DEVICE_BASE: usize = 0x2020000;
 // —————————————————————————— Spike Parameters ——————————————————————————— //
 
 /// Symbol used by the Spike simulator.
-#[no_mangle]
 #[used]
+#[allow(non_upper_case_globals)]
+#[unsafe(no_mangle)]
 static mut tohost: u64 = 0;
 
 /// Symbol used by the Spike simulator.
-#[no_mangle]
 #[used]
+#[allow(non_upper_case_globals)]
+#[unsafe(no_mangle)]
 static mut fromhost: u64 = 0;
 
 // ———————————————————————————— Platform Devices ———————————————————————————— //

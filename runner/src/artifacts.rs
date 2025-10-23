@@ -11,14 +11,14 @@ use std::{env, fs};
 
 use serde::Deserialize;
 
+use crate::ArtifactArgs;
 use crate::config::{Config, Profiles};
 use crate::path::{
+    EXT2_EXTENSION, GZ_COMPRESSION, IMG_EXTENSION, XZ_COMPRESSION, ZST_COMPRESSION,
     extract_file_extension, extract_file_name, get_artifact_manifest_path, get_artifacts_path,
     get_target_config_path, get_target_dir_path, get_workspace_path, is_file_present, is_older,
-    remove_file_extention, EXT2_EXTENSION, GZ_COMPRESSION, IMG_EXTENSION, XZ_COMPRESSION,
-    ZST_COMPRESSION,
+    remove_file_extention,
 };
-use crate::ArtifactArgs;
 
 // —————————————————————————— Target & Build Info ——————————————————————————— //
 
@@ -322,7 +322,9 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
         Target::Miralis => {
             // Linker arguments
             let start_address = cfg.target.miralis.start_address.unwrap_or(0x80000000);
-            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={start_address}");
+            let linker_args = format!(
+                "-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={start_address}"
+            );
             build_cmd.arg("--package").arg("miralis");
             build_cmd.env("RUSTFLAGS", linker_args);
 
@@ -332,7 +334,9 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
 
         Target::Firmware(ref firmware) => {
             let firmware_address = cfg.target.firmware.start_address.unwrap_or(0x80200000);
-            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={firmware_address}");
+            let linker_args = format!(
+                "-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={firmware_address}"
+            );
             build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.env("IS_TARGET_FIRMWARE", "true");
             build_cmd.envs(cfg.build_envs());
@@ -350,7 +354,9 @@ pub fn build_target(target: Target, cfg: &Config) -> PathBuf {
                 .as_ref()
                 .and_then(|payload| payload.start_address)
                 .unwrap_or(0x80400000);
-            let linker_args = format!("-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={payload_address}");
+            let linker_args = format!(
+                "-C link-arg=-Tmisc/linker-script.x -C link-arg=--defsym=_start_address={payload_address}"
+            );
             build_cmd.env("RUSTFLAGS", linker_args);
             build_cmd.env("IS_TARGET_FIRMWARE", "false");
             build_cmd.envs(cfg.build_envs());

@@ -4,7 +4,7 @@
 //! context. We make sure that this module can compile and be tested even without Kani installed,
 //! in which case concrete values are used in place of symbolic ones.
 
-use miralis::arch::{menvcfg, mie, misa, mstatus, Arch, Architecture, ExtensionsCapability, Mode};
+use miralis::arch::{Arch, Architecture, ExtensionsCapability, Mode, menvcfg, mie, misa, mstatus};
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;

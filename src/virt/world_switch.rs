@@ -5,7 +5,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
-use crate::arch::{mie, mstatus, set_mpp, Arch, Architecture, Csr, Mode};
+use crate::arch::{Arch, Architecture, Csr, Mode, mie, mstatus, set_mpp};
 use crate::config::DELEGATE_PERF_COUNTER;
 use crate::host::MiralisContext;
 
@@ -26,70 +26,73 @@ impl VirtContext {
             self.mode.to_bits(),
         );
 
-        if mctx.hw.available_reg.senvcfg {
-            Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
-        }
-        if mctx.hw.available_reg.henvcfg {
-            Arch::write_csr(Csr::Henvcfg, self.csr.henvcfg);
-        }
-        if mctx.hw.available_reg.menvcfg {
-            Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
-        }
-
-        Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
-        Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
-        Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
-        Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren as usize);
-
-        // NOTE: `mip` mut be set _after_ `menvcfg`, because `menvcfg` might change which bits in
-        // `mip` are writeable. For more information see the Sstc extension specification.
-        Arch::write_csr(Csr::Mip, self.csr.mip);
-        // NOTE: we do not enable Machine External Interrupts (MIE) as we can't emulate them
-        // efficiently with the PLIC. This mean that firmware can't receive external interrupts for
-        // now. In the future we should add the MIE bit if the virtual PLIC is enabled.
-        Arch::write_csr(
-            Csr::Mie,
-            (self.csr.mie | mie::MIDELEG_READ_ONLY_ZERO) & !mie::MEIE_FILTER,
-        );
-
-        // If S extension is present - save the registers
-        if mctx.hw.extensions.has_s_extension {
-            Arch::write_csr(Csr::Stvec, self.csr.stvec);
-            Arch::write_csr(Csr::Scounteren, self.csr.scounteren as usize);
-            Arch::write_csr(Csr::Satp, self.csr.satp);
-            Arch::write_csr(Csr::Sscratch, self.csr.sscratch);
-            Arch::write_csr(Csr::Sepc, self.csr.sepc);
-            Arch::write_csr(Csr::Scause, self.csr.scause);
-            Arch::write_csr(Csr::Stval, self.csr.stval);
-            if mctx.hw.extensions.is_sstc_enabled {
-                Arch::write_csr(Csr::Stimecmp, self.csr.stimecmp);
+        // Restore all the CSRs
+        unsafe {
+            if mctx.hw.available_reg.senvcfg {
+                Arch::write_csr(Csr::Senvcfg, self.csr.senvcfg);
             }
-        }
+            if mctx.hw.available_reg.henvcfg {
+                Arch::write_csr(Csr::Henvcfg, self.csr.henvcfg);
+            }
+            if mctx.hw.available_reg.menvcfg {
+                Arch::write_csr(Csr::Menvcfg, self.csr.menvcfg);
+            }
 
-        // If H extension is present - save the registers
-        if mctx.hw.extensions.has_h_extension {
-            Arch::write_csr(Csr::Hstatus, self.csr.hstatus);
-            Arch::write_csr(Csr::Hedeleg, self.csr.hedeleg);
-            Arch::write_csr(Csr::Hideleg, self.csr.hideleg);
-            Arch::write_csr(Csr::Hvip, self.csr.hvip);
-            Arch::write_csr(Csr::Hip, self.csr.hip);
-            Arch::write_csr(Csr::Hie, self.csr.hie);
-            Arch::write_csr(Csr::Hgeip, self.csr.hgeip);
-            Arch::write_csr(Csr::Hgeie, self.csr.hgeie);
-            Arch::write_csr(Csr::Hcounteren, self.csr.hcounteren);
-            Arch::write_csr(Csr::Htval, self.csr.htval);
-            Arch::write_csr(Csr::Htinst, self.csr.htinst);
-            Arch::write_csr(Csr::Hgatp, self.csr.hgatp);
+            Arch::write_csr(Csr::Mstatus, mstatus & !mstatus::MIE_FILTER);
+            Arch::write_csr(Csr::Mideleg, self.csr.mideleg);
+            Arch::write_csr(Csr::Medeleg, self.csr.medeleg);
+            Arch::write_csr(Csr::Mcounteren, self.csr.mcounteren as usize);
 
-            Arch::write_csr(Csr::Vsstatus, self.csr.vsstatus);
-            Arch::write_csr(Csr::Vsie, self.csr.vsie);
-            Arch::write_csr(Csr::Vstvec, self.csr.vstvec);
-            Arch::write_csr(Csr::Vsscratch, self.csr.vsscratch);
-            Arch::write_csr(Csr::Vsepc, self.csr.vsepc);
-            Arch::write_csr(Csr::Vscause, self.csr.vscause);
-            Arch::write_csr(Csr::Vstval, self.csr.vstval);
-            Arch::write_csr(Csr::Vsip, self.csr.vsip);
-            Arch::write_csr(Csr::Vsatp, self.csr.vsatp);
+            // NOTE: `mip` mut be set _after_ `menvcfg`, because `menvcfg` might change which bits
+            // in `mip` are writeable. For more information see the Sstc extension specification.
+            Arch::write_csr(Csr::Mip, self.csr.mip);
+            // NOTE: we do not enable Machine External Interrupts (MIE) as we can't emulate them
+            // efficiently with the PLIC. This mean that firmware can't receive external interrupts
+            // for now. In the future we should add the MIE bit if the virtual PLIC is enabled.
+            Arch::write_csr(
+                Csr::Mie,
+                (self.csr.mie | mie::MIDELEG_READ_ONLY_ZERO) & !mie::MEIE_FILTER,
+            );
+
+            // If S extension is present - save the registers
+            if mctx.hw.extensions.has_s_extension {
+                Arch::write_csr(Csr::Stvec, self.csr.stvec);
+                Arch::write_csr(Csr::Scounteren, self.csr.scounteren as usize);
+                Arch::write_csr(Csr::Satp, self.csr.satp);
+                Arch::write_csr(Csr::Sscratch, self.csr.sscratch);
+                Arch::write_csr(Csr::Sepc, self.csr.sepc);
+                Arch::write_csr(Csr::Scause, self.csr.scause);
+                Arch::write_csr(Csr::Stval, self.csr.stval);
+                if mctx.hw.extensions.is_sstc_enabled {
+                    Arch::write_csr(Csr::Stimecmp, self.csr.stimecmp);
+                }
+            }
+
+            // If H extension is present - save the registers
+            if mctx.hw.extensions.has_h_extension {
+                Arch::write_csr(Csr::Hstatus, self.csr.hstatus);
+                Arch::write_csr(Csr::Hedeleg, self.csr.hedeleg);
+                Arch::write_csr(Csr::Hideleg, self.csr.hideleg);
+                Arch::write_csr(Csr::Hvip, self.csr.hvip);
+                Arch::write_csr(Csr::Hip, self.csr.hip);
+                Arch::write_csr(Csr::Hie, self.csr.hie);
+                Arch::write_csr(Csr::Hgeip, self.csr.hgeip);
+                Arch::write_csr(Csr::Hgeie, self.csr.hgeie);
+                Arch::write_csr(Csr::Hcounteren, self.csr.hcounteren);
+                Arch::write_csr(Csr::Htval, self.csr.htval);
+                Arch::write_csr(Csr::Htinst, self.csr.htinst);
+                Arch::write_csr(Csr::Hgatp, self.csr.hgatp);
+
+                Arch::write_csr(Csr::Vsstatus, self.csr.vsstatus);
+                Arch::write_csr(Csr::Vsie, self.csr.vsie);
+                Arch::write_csr(Csr::Vstvec, self.csr.vstvec);
+                Arch::write_csr(Csr::Vsscratch, self.csr.vsscratch);
+                Arch::write_csr(Csr::Vsepc, self.csr.vsepc);
+                Arch::write_csr(Csr::Vscause, self.csr.vscause);
+                Arch::write_csr(Csr::Vstval, self.csr.vstval);
+                Arch::write_csr(Csr::Vsip, self.csr.vsip);
+                Arch::write_csr(Csr::Vsatp, self.csr.vsatp);
+            }
         }
 
         // Load virtual PMP registers into Miralis's own registers
@@ -119,82 +122,85 @@ impl VirtContext {
         // For mstatus we read the current value and clear the two MPP bits to jump into U-mode
         // (virtual firmware) during the next mret.
 
-        self.csr.mstatus = self.csr.mstatus & !mstatus::SSTATUS_FILTER
-            | Arch::read_csr(Csr::Mstatus) & mstatus::SSTATUS_FILTER;
-        set_mpp(Mode::U);
-        Arch::write_csr(Csr::Mideleg, 0); // Do not delegate any interrupts
-        Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
+        unsafe {
+            self.csr.mstatus = self.csr.mstatus & !mstatus::SSTATUS_FILTER
+                | Arch::read_csr(Csr::Mstatus) & mstatus::SSTATUS_FILTER;
+            set_mpp(Mode::U);
+            Arch::write_csr(Csr::Mideleg, 0); // Do not delegate any interrupts
+            Arch::write_csr(Csr::Medeleg, 0); // Do not delegate any exceptions
 
-        let mie_hw_bits = Arch::read_csr(Csr::Mie) & !(mie::MIDELEG_READ_ONLY_ZERO);
-        let mie_sw_bits = self.csr.mie & mie::MIDELEG_READ_ONLY_ZERO;
-        self.csr.mie = mie_hw_bits | mie_sw_bits;
-        // NOTE: we do not enable Machine External Interrupts (MIE) as we can't emulate them
-        // efficiently with the PLIC. This mean that firmware can't receive external interrupts for
-        // now. In the future we should add the MIE bit if the virtual PLIC is enabled.
-        Arch::write_csr(Csr::Mie, mie::MSIE_FILTER | mie::MTIE_FILTER);
+            let mie_hw_bits = Arch::read_csr(Csr::Mie) & !(mie::MIDELEG_READ_ONLY_ZERO);
+            let mie_sw_bits = self.csr.mie & mie::MIDELEG_READ_ONLY_ZERO;
+            self.csr.mie = mie_hw_bits | mie_sw_bits;
+            // NOTE: we do not enable Machine External Interrupts (MIE) as we can't emulate them
+            // efficiently with the PLIC. This mean that firmware can't receive external interrupts
+            // for now. In the future we should add the MIE bit if the virtual PLIC is enabled.
+            Arch::write_csr(Csr::Mie, mie::MSIE_FILTER | mie::MTIE_FILTER);
 
-        // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only in S-Mode or U-Mode.
-        // But csrr is modified for SEIE and return the logical-OR of SEIE and the interrupt signal from interrupt
-        // controller. (refer to documentation for further detail).
-        // MSIE, MTIE, and MEIE are virtualized by Miralis.
-        let mip_hw_bits =
-            Arch::read_csr(Csr::Mip) & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
-        let mip_sw_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
-        self.csr.mip = mip_hw_bits | mip_sw_bits;
+            // Real mip.SEIE bit should not be different from virtual mip.SEIE as it is read-only
+            // in S-Mode or U-Mode. But csrr is modified for SEIE and return the logical-OR of SEIE
+            // and the interrupt signal from interrupt controller. (refer to documentation for
+            // further detail). MSIE, MTIE, and MEIE are virtualized by Miralis.
+            let mip_hw_bits =
+                Arch::read_csr(Csr::Mip) & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+            let mip_sw_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+            self.csr.mip = mip_hw_bits | mip_sw_bits;
 
-        let delegate_perf_counter_mask: usize = if DELEGATE_PERF_COUNTER { 1 } else { 0 };
+            let delegate_perf_counter_mask: usize = if DELEGATE_PERF_COUNTER { 1 } else { 0 };
 
-        self.csr.mcounteren = Arch::write_csr(Csr::Mcounteren, delegate_perf_counter_mask) as u32;
+            self.csr.mcounteren =
+                Arch::write_csr(Csr::Mcounteren, delegate_perf_counter_mask) as u32;
 
-        if mctx.hw.available_reg.senvcfg {
-            self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
-        }
-        if mctx.hw.available_reg.henvcfg {
-            self.csr.henvcfg = Arch::write_csr(Csr::Henvcfg, 0);
-        }
-        if mctx.hw.available_reg.menvcfg {
-            self.csr.menvcfg = Arch::write_csr(Csr::Menvcfg, 0);
-        }
-
-        // If S extension is present - save the registers
-        if mctx.hw.extensions.has_s_extension {
-            self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
-            self.csr.scounteren =
-                Arch::write_csr(Csr::Scounteren, delegate_perf_counter_mask) as u32;
-            self.csr.satp = Arch::write_csr(Csr::Satp, 0);
-            self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
-            self.csr.sepc = Arch::write_csr(Csr::Sepc, 0);
-            self.csr.scause = Arch::write_csr(Csr::Scause, 0);
-            self.csr.stval = Arch::write_csr(Csr::Stval, 0);
-            if mctx.hw.extensions.is_sstc_enabled {
-                self.csr.stimecmp = Arch::write_csr(Csr::Stimecmp, 0);
+            if mctx.hw.available_reg.senvcfg {
+                self.csr.senvcfg = Arch::write_csr(Csr::Senvcfg, 0);
             }
-        }
+            if mctx.hw.available_reg.henvcfg {
+                self.csr.henvcfg = Arch::write_csr(Csr::Henvcfg, 0);
+            }
+            if mctx.hw.available_reg.menvcfg {
+                self.csr.menvcfg = Arch::write_csr(Csr::Menvcfg, 0);
+            }
 
-        // If H extension is present - save the registers
-        if mctx.hw.extensions.has_h_extension {
-            self.csr.hstatus = Arch::write_csr(Csr::Hstatus, 0);
-            self.csr.hedeleg = Arch::write_csr(Csr::Hedeleg, 0);
-            self.csr.hideleg = Arch::write_csr(Csr::Hideleg, 0);
-            self.csr.hvip = Arch::write_csr(Csr::Hvip, 0);
-            self.csr.hip = Arch::write_csr(Csr::Hip, 0);
-            self.csr.hie = Arch::write_csr(Csr::Hie, 0);
-            self.csr.hgeip = Arch::write_csr(Csr::Hgeip, 0); // Read only register, this write will have no effect
-            self.csr.hgeie = Arch::write_csr(Csr::Hgeie, 0);
-            self.csr.hcounteren = Arch::write_csr(Csr::Hcounteren, 0);
-            self.csr.htval = Arch::write_csr(Csr::Htval, 0);
-            self.csr.htinst = Arch::write_csr(Csr::Htinst, 0);
-            self.csr.hgatp = Arch::write_csr(Csr::Hgatp, 0);
+            // If S extension is present - save the registers
+            if mctx.hw.extensions.has_s_extension {
+                self.csr.stvec = Arch::write_csr(Csr::Stvec, 0);
+                self.csr.scounteren =
+                    Arch::write_csr(Csr::Scounteren, delegate_perf_counter_mask) as u32;
+                self.csr.satp = Arch::write_csr(Csr::Satp, 0);
+                self.csr.sscratch = Arch::write_csr(Csr::Sscratch, 0);
+                self.csr.sepc = Arch::write_csr(Csr::Sepc, 0);
+                self.csr.scause = Arch::write_csr(Csr::Scause, 0);
+                self.csr.stval = Arch::write_csr(Csr::Stval, 0);
+                if mctx.hw.extensions.is_sstc_enabled {
+                    self.csr.stimecmp = Arch::write_csr(Csr::Stimecmp, 0);
+                }
+            }
 
-            self.csr.vsstatus = Arch::write_csr(Csr::Vsstatus, 0);
-            self.csr.vsie = Arch::write_csr(Csr::Vsie, 0);
-            self.csr.vstvec = Arch::write_csr(Csr::Vstvec, 0);
-            self.csr.vsscratch = Arch::write_csr(Csr::Vsscratch, 0);
-            self.csr.vsepc = Arch::write_csr(Csr::Vsepc, 0);
-            self.csr.vscause = Arch::write_csr(Csr::Vscause, 0);
-            self.csr.vstval = Arch::write_csr(Csr::Vstval, 0);
-            self.csr.vsip = Arch::write_csr(Csr::Vsip, 0);
-            self.csr.vsatp = Arch::write_csr(Csr::Vsatp, 0);
+            // If H extension is present - save the registers
+            if mctx.hw.extensions.has_h_extension {
+                self.csr.hstatus = Arch::write_csr(Csr::Hstatus, 0);
+                self.csr.hedeleg = Arch::write_csr(Csr::Hedeleg, 0);
+                self.csr.hideleg = Arch::write_csr(Csr::Hideleg, 0);
+                self.csr.hvip = Arch::write_csr(Csr::Hvip, 0);
+                self.csr.hip = Arch::write_csr(Csr::Hip, 0);
+                self.csr.hie = Arch::write_csr(Csr::Hie, 0);
+                self.csr.hgeip = Arch::write_csr(Csr::Hgeip, 0); // Read only register, this write will have no effect
+                self.csr.hgeie = Arch::write_csr(Csr::Hgeie, 0);
+                self.csr.hcounteren = Arch::write_csr(Csr::Hcounteren, 0);
+                self.csr.htval = Arch::write_csr(Csr::Htval, 0);
+                self.csr.htinst = Arch::write_csr(Csr::Htinst, 0);
+                self.csr.hgatp = Arch::write_csr(Csr::Hgatp, 0);
+
+                self.csr.vsstatus = Arch::write_csr(Csr::Vsstatus, 0);
+                self.csr.vsie = Arch::write_csr(Csr::Vsie, 0);
+                self.csr.vstvec = Arch::write_csr(Csr::Vstvec, 0);
+                self.csr.vsscratch = Arch::write_csr(Csr::Vsscratch, 0);
+                self.csr.vsepc = Arch::write_csr(Csr::Vsepc, 0);
+                self.csr.vscause = Arch::write_csr(Csr::Vscause, 0);
+                self.csr.vstval = Arch::write_csr(Csr::Vstval, 0);
+                self.csr.vsip = Arch::write_csr(Csr::Vsip, 0);
+                self.csr.vsatp = Arch::write_csr(Csr::Vsatp, 0);
+            }
         }
 
         // Set firmware PMP as RWX to emulate access to all memory in vM-mode
@@ -210,7 +216,7 @@ impl VirtContext {
 
 #[cfg(test)]
 mod tests {
-    use crate::arch::{mstatus, Arch, Architecture, Csr, Mode};
+    use crate::arch::{Arch, Architecture, Csr, Mode, mstatus};
     use crate::host::MiralisContext;
     use crate::virt::VirtContext;
 

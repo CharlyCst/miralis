@@ -13,19 +13,19 @@
 use core::arch::global_asm;
 
 use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
-use miralis::arch::{misa, set_mpp, write_pmp, Arch, Architecture, Csr, Mode, Register};
+use miralis::arch::{Arch, Architecture, Csr, Mode, Register, misa, set_mpp, write_pmp};
 use miralis::host::MiralisContext;
 use miralis::modules::{MainModule, Module};
-use miralis::platform::{init, Plat, Platform};
-use miralis::virt::traits::*;
+use miralis::platform::{Plat, Platform, init};
 use miralis::virt::VirtContext;
+use miralis::virt::traits::*;
 use miralis_config::{
     DELEGATE_PERF_COUNTER, PLATFORM_BOOT_HART_ID, PLATFORM_NAME, PLATFORM_NB_HARTS,
     TARGET_STACK_SIZE,
 };
 
 // Memory layout, defined in the linker script.
-extern "C" {
+unsafe extern "C" {
     static _stack_start: u8;
     static _bss_start: u8;
     static _bss_stop: u8;

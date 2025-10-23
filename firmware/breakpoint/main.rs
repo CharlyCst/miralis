@@ -22,7 +22,7 @@ fn main() -> ! {
 }
 
 /// This function should be called from the raw trap handler
-extern "C" fn trap_handler() {
+unsafe extern "C" fn trap_handler() {
     // Test here
 
     // mcause = breakpoint
@@ -63,7 +63,7 @@ _raw_breakpoint_trap_handler:
     trap_handler = sym trap_handler,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _raw_breakpoint_trap_handler();
 }
 

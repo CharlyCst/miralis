@@ -9,12 +9,12 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 use std::str::FromStr;
 
-use crate::artifacts::{
-    build_target, download_disk_image, get_external_artifacts, prepare_firmware_artifact,
-    prepare_payload_artifact, DiskArtifact, Target,
-};
-use crate::config::{read_config, Config, Platforms};
 use crate::RunArgs;
+use crate::artifacts::{
+    DiskArtifact, Target, build_target, download_disk_image, get_external_artifacts,
+    prepare_firmware_artifact, prepare_payload_artifact,
+};
+use crate::config::{Config, Platforms, read_config};
 
 // ————————————————————————————— QEMU Arguments ————————————————————————————— //
 
@@ -181,25 +181,24 @@ pub fn get_qemu_cmd(
     }
 
     // If a disk is present add the appropriate device
-    if let Some(disk) = &cfg.qemu.disk {
-        if let Some(DiskArtifact::Downloaded { name, url }) =
+    if let Some(disk) = &cfg.qemu.disk
+        && let Some(DiskArtifact::Downloaded { name, url }) =
             get_external_artifacts().disk.get(disk)
-        {
-            download_disk_image(name, url);
+    {
+        download_disk_image(name, url);
 
-            qemu_cmd
-                .arg("-device")
-                .arg("virtio-net-device,netdev=eth0")
-                .arg("-netdev")
-                .arg("user,id=eth0")
-                .arg("-device")
-                .arg("virtio-rng-pci")
-                .arg("-drive")
-                .arg(format!(
-                    "file=artifacts/{}-miralis.img,format=raw,if=virtio",
-                    name
-                ));
-        }
+        qemu_cmd
+            .arg("-device")
+            .arg("virtio-net-device,netdev=eth0")
+            .arg("-netdev")
+            .arg("user,id=eth0")
+            .arg("-device")
+            .arg("virtio-rng-pci")
+            .arg("-drive")
+            .arg(format!(
+                "file=artifacts/{}-miralis.img,format=raw,if=virtio",
+                name
+            ));
     }
 
     if let Some(nb_harts) = cfg.platform.nb_harts {

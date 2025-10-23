@@ -9,11 +9,11 @@ use tiny_keccak::{Hasher, Sha3};
 
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::MODULE_OFFSET;
-use crate::arch::{get_raw_faulting_instr, mie, mstatus, MCause, Register};
+use crate::arch::{MCause, Register, get_raw_faulting_instr, mie, mstatus};
 use crate::host::MiralisContext;
 use crate::logger;
 use crate::modules::{Module, ModuleAction};
-use crate::platform::{Plat, Platform, ALL_HARTS_MASK};
+use crate::platform::{ALL_HARTS_MASK, Plat, Platform};
 use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
 use crate::virt::traits::*;
 use crate::virt::{VirtContext, VirtCsr};
@@ -199,7 +199,9 @@ impl ProtectPayloadPolicy {
             MCause::EcallFromSMode
                 if ctx.get(Register::X17) == sbi_codes::SBI_DEBUG_CONSOLE_EXTENSION_EID =>
             {
-                logger::debug!("Ignoring console ecall to the debug_console_extension, please implement a bounce buffer if the feature is required");
+                logger::debug!(
+                    "Ignoring console ecall to the debug_console_extension, please implement a bounce buffer if the feature is required"
+                );
                 // Explicitly tell the payload this feature is not available
                 ctx.set(Register::X10, SBI_ERR_DENIED);
                 ctx.pc += 4;

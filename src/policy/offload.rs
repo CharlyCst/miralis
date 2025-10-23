@@ -6,15 +6,15 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use miralis_core::sbi_codes;
 
 use crate::arch::{
-    get_raw_faulting_instr, mie, Arch, Architecture, Csr, MCause, Mode, Register, PAGE_SIZE,
+    Arch, Architecture, Csr, MCause, Mode, PAGE_SIZE, Register, get_raw_faulting_instr, mie,
 };
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
 use crate::modules::{Module, ModuleAction};
 use crate::platform::{Plat, Platform};
+use crate::virt::VirtContext;
 use crate::virt::memory::{emulate_misaligned_read, emulate_misaligned_write};
 use crate::virt::traits::{RegisterContextGetter, RegisterContextSetter};
-use crate::virt::VirtContext;
 
 /// Policy Supervisor Software Interrupt (MSI) map
 static POLICY_SSI_ARRAY: [AtomicBool; PLATFORM_NB_HARTS] =
@@ -117,9 +117,7 @@ impl Module for OffloadPolicy {
             .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
         {
-            unsafe {
-                Arch::ifence();
-            }
+            Arch::ifence();
         }
 
         if FENCE_VMA_ARRAY[mctx.hw.hart]
@@ -129,10 +127,10 @@ impl Module for OffloadPolicy {
             let start = FENCE_VMA_START[mctx.hw.hart].load(Ordering::SeqCst);
             let size = FENCE_VMA_SIZE[mctx.hw.hart].load(Ordering::SeqCst);
             if (start == 0 && size == 0) || size >= 0xf0000 {
-                unsafe { Arch::sfencevma(None, None) };
+                Arch::sfencevma(None, None);
             } else {
                 for address in (start..start + size).step_by(PAGE_SIZE) {
-                    unsafe { Arch::sfencevma(Some(address), None) };
+                    Arch::sfencevma(Some(address), None);
                 }
             }
         }
@@ -220,6 +218,8 @@ impl OffloadPolicy {
     }
 
     unsafe fn set_physical_ssip(&self) {
-        Arch::set_csr_bits(Csr::Mip, mie::SSIE_FILTER);
+        unsafe {
+            Arch::set_csr_bits(Csr::Mip, mie::SSIE_FILTER);
+        }
     }
 }

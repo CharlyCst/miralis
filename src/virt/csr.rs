@@ -6,8 +6,8 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{hstatus, menvcfg, mie, misa, mstatus, Arch, Architecture, Csr, Register};
-use crate::{debug, logger, MiralisContext, Plat, Platform};
+use crate::arch::{Arch, Architecture, Csr, Register, hstatus, menvcfg, mie, misa, mstatus};
+use crate::{MiralisContext, Plat, Platform, debug, logger};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
 ///
@@ -309,7 +309,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     // TODO: it seems the PMP are not yet written to hardware here,
                     // that seems like a bug to me. We should investigate.
                     // unsafe { write_pmp(&mctx.pmp).flush() };
-                    unsafe { Arch::sfencevma(None, None) };
+                    Arch::sfencevma(None, None);
                 }
 
                 if !mctx.hw.extensions.has_s_extension || self.csr.misa & misa::S == 0 {

@@ -2,9 +2,9 @@
 
 use std::process::ExitCode;
 
-use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
-use crate::config::read_config;
 use crate::BuildArgs;
+use crate::artifacts::{Target, build_target, prepare_firmware_artifact};
+use crate::config::read_config;
 
 pub fn build(args: &BuildArgs) -> ExitCode {
     let cfg = read_config(&args.config);

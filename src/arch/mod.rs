@@ -21,7 +21,7 @@ pub mod userspace;
 use core::ptr;
 
 use pmp::{PmpFlush, PmpGroup};
-pub use registers::{csr, Csr, Register};
+pub use registers::{Csr, Register, csr};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET, SPP_FILTER, SPP_OFFSET};
@@ -72,10 +72,10 @@ pub trait Architecture {
     /// environment.
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize;
 
-    unsafe fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
-    unsafe fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
-    unsafe fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);
-    unsafe fn ifence();
+    fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
+    fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
+    fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);
+    fn ifence();
     unsafe fn run_vcpu(ctx: &mut VirtContext);
 
     /// Wait for interrupt
@@ -663,7 +663,7 @@ pub(crate) use {read_custom_csr, write_custom_csr};
 pub unsafe fn set_mpp(mode: Mode) -> Mode {
     let value = mode.to_bits() << mstatus::MPP_OFFSET;
     let prev_mstatus = Arch::read_csr(Csr::Mstatus);
-    Arch::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value);
+    unsafe { Arch::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value) };
     parse_mpp_return_mode(prev_mstatus)
 }
 
@@ -690,7 +690,7 @@ pub unsafe fn get_raw_faulting_instr(ctx: &VirtContext) -> usize {
             // doing so would slow down that path quite a lot until we have an optimized
             // [Arch::read_bytes_from_mode] implementation.
             let instr_ptr = ctx.trap_info.mepc as *const u32;
-            let instr = ptr::read_unaligned(instr_ptr);
+            let instr = unsafe { ptr::read_unaligned(instr_ptr) };
             instr as usize
         }
         mode => {
@@ -698,7 +698,7 @@ pub unsafe fn get_raw_faulting_instr(ctx: &VirtContext) -> usize {
             // We need to read the instructions using MPRV.
             let mut instr: [u8; 4] = [0, 0, 0, 0];
             let instr_ptr = ctx.trap_info.mepc as *const u8;
-            Arch::read_bytes_from_mode(instr_ptr, &mut instr, mode).unwrap();
+            unsafe { Arch::read_bytes_from_mode(instr_ptr, &mut instr, mode).unwrap() };
             u32::from_le_bytes(instr) as usize
         }
     }
@@ -715,11 +715,11 @@ pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
     );
 
     for (idx, cfg) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
-        Arch::write_pmpcfg(idx * 2, *cfg);
+        unsafe { Arch::write_pmpcfg(idx * 2, *cfg) };
     }
 
     for (idx, pmp_addr_entry) in pmpaddr.iter().enumerate().take(nb_pmp) {
-        Arch::write_pmpaddr(idx, *pmp_addr_entry);
+        unsafe { Arch::write_pmpaddr(idx, *pmp_addr_entry) };
     }
 
     PmpFlush()

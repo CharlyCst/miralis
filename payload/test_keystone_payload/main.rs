@@ -105,11 +105,13 @@ unsafe fn trap_handler() {
     log::info!("The enclave memory is protected.");
 
     // Destroy the enclave
-    ecall3(MIRALIS_KEYSTONE_EID, DESTROY_ENCLAVE_FID, EID, 0, 0)
-        .expect("Failed to destroy enclave");
+    unsafe {
+        ecall3(MIRALIS_KEYSTONE_EID, DESTROY_ENCLAVE_FID, EID, 0, 0)
+            .expect("Failed to destroy enclave")
+    };
     log::info!("Enclave destroyed successfully");
 
-    let y = *(_enclave as *const usize);
+    let y = unsafe { *(_enclave as *const usize) };
     log::info!("The enclave is no longer protected: {:x}.", y);
     success()
 }
@@ -146,6 +148,6 @@ _enclave:
 "#,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _enclave();
 }
