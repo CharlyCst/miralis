@@ -1,5 +1,5 @@
+use miralis::arch::metal::SOFT_CORE;
 use miralis::arch::pmp::pmplayout;
-use miralis::arch::userspace::SOFT_CORE;
 use miralis::arch::{MCause, Register, csr, mie, mstatus, write_pmp};
 use miralis::decoder::IllegalInst;
 use miralis::host::MiralisContext;

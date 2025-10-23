@@ -51,7 +51,8 @@ default-members = ["runner"]
 
 [workspace.dependencies]
 log = "0.4.17"
-softcore-rv64 = "0.4.1"
+softcore-rv64 = "0.6.0"
+softcore-asm-rv64 = "0.2.0"
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "warn",  check-cfg = ["cfg(kani)"] }
