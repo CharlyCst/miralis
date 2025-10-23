@@ -10,13 +10,10 @@
 // once done.
 #![allow(clippy::missing_safety_doc)]
 
-#[cfg(not(feature = "userspace"))]
-mod metal;
+pub mod metal;
 pub mod pmp;
 mod registers;
 mod trap;
-#[cfg(any(test, feature = "userspace"))]
-pub mod userspace;
 
 use core::ptr;
 
@@ -31,13 +28,10 @@ use crate::virt::{ExecutionMode, VirtContext};
 
 // —————————————————————————— Select Architecture ——————————————————————————— //
 
-/// Risc-V bare-metal M-mode architecture.
-#[cfg(not(feature = "userspace"))]
+/// This is the reminder of the legacy way of handling compilation to both bare metal and host
+/// architecture. We now instead rely on softcore-rs, so there is no need to use a separate type to
+/// access the architecture, because there is only one.
 pub type Arch = metal::MetalArch;
-
-/// Host architecture, running in userspace.
-#[cfg(feature = "userspace")]
-pub type Arch = userspace::HostArch;
 
 // ———————————————————————— Architecture Definition ————————————————————————— //
 

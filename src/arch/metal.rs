@@ -1,5 +1,4 @@
 //! Bare metal RISC-V
-use core::arch::{asm, global_asm};
 use core::marker::PhantomData;
 
 use super::{Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability, menvcfg};
@@ -23,6 +22,106 @@ impl MetalArch {
     }
 }
 
+// ———————————————————————————————— Softcore ———————————————————————————————— //
+// For unit testing and verification we compile Miralis on the native host    //
+// architecture using softcore-rv64 as a RISC-V emulator. Using the           //
+// softcore-asm-rv64 macro we can replace all assembly by equivalent and      //
+// cross-platform Rust code that operates against the softcore registers      //
+// rather than real hardware.                                                 //
+// —————————————————————————————————————————————————————————————————————————— //
+
+#[cfg(any(test, feature = "userspace"))]
+use softcore_rv64::{Core, config, new_core};
+
+// Each thread gets its own copy of the core, this prevent tests using different threads inside a
+// same process to share the same core.
+#[cfg(any(test, feature = "userspace"))]
+std::thread_local! {
+    /// A software RISC-V core that emulates a real CPU.
+    ///
+    /// When running Miralis in user-space (on any architecture) we use an in-process software
+    /// implementation of a RISC-V core. We perform all privileged operations that would normally
+    /// require assembly against that software core. For instance, all CSR operations are executed
+    /// against the software core.
+    ///
+    /// The software core can be queried, for instance to check which addresses are currently
+    /// protected by the PMP, or if there are any pending interrupts. This enables testing how
+    /// Miralis interacts with the hardware directly from unit tests, rather than within QEMU.
+    ///
+    /// We use one core per thread to prevent interference among threads, such as when running
+    /// `cargo test`. Therefore, the core lives in threat local storage and must be access using
+    /// the `thread_loca!` API.
+    ///
+    /// Usage:
+    ///
+    /// ```
+    /// SOFT_CORE.with_borrow_mut(|core| {
+    ///     // The `core` can be accessed within the closure
+    ///     core.set(reg::X1, 0x42);
+    ///     core.csrrw(reg::X0, csr::MSCRATCH, reg::X1).unwrap();
+    /// });
+    /// ```
+    pub static SOFT_CORE: core::cell::RefCell<Core> = {
+        let mut core = new_core(config::U74);
+        core.reset();
+        core::cell::RefCell::new(core)
+    };
+}
+
+/// Unsafe placeholder function to make softcore-asm unsafe.
+unsafe fn _unsafe_marker() {}
+
+/// An assembly wrapper macro proxying to real assembly or softcore-rs.
+///
+/// The macro either emit standard `core::arch::asm` assembly, or calls into
+/// `softcore_asm_rv64::asm` when running tests or verification.
+macro_rules! soft_asm {
+    ($($asm:tt)*) => {{
+        #[cfg(not(any(test, feature = "userspace")))]
+        core::arch::asm!(
+            $($asm)*
+        );
+
+        #[cfg(any(test, feature = "userspace"))]
+        softcore_asm_rv64::asm!(
+            $($asm)*,
+            softcore(SOFT_CORE.with_borrow_mut),
+            softcore_trap_handlers(_tracing_trap_handler, _mprv_trap_handler, _raw_trap_handler)
+        );
+
+        #[cfg(any(test, feature = "userspace"))]
+        _unsafe_marker();
+    }};
+}
+
+/// An assembly wrapper macro for naked function.
+///
+/// The macro either emit a naked function with inline `core::arch::naked_asm` or a standard Rust
+/// function with `softcore_asm_v64::asm` as body.
+macro_rules! naked_soft_asm {
+    ($name:ident, $($asm:tt)*) => {
+        #[cfg(not(any(test, feature = "userspace")))]
+        #[unsafe(naked)]
+        #[unsafe(no_mangle)]
+        extern "C" fn $name() {
+            core::arch::naked_asm!(
+                $($asm)*
+            );
+        }
+
+        #[cfg(any(test, feature = "userspace"))]
+        extern "C" fn $name() {
+            unsafe {
+                _unsafe_marker();
+                softcore_asm_rv64::asm!(
+                    $($asm)*,
+                    softcore(SOFT_CORE.with_borrow_mut)
+                );
+            }
+        }
+    };
+}
+
 // ————————————————————————————————— Utils —————————————————————————————————— //
 
 /// Loads or store a value using MPRV (memory privileged).
@@ -39,7 +138,7 @@ impl MetalArch {
 macro_rules! asm_mprv_mem_op {
     ($instr:literal, $addr:expr, $value:ident) => {{
         let mut success = 1;
-        asm!(
+        soft_asm!(
             "csrr {old_mtvec}, mtvec", // Save current mtvec
             "csrw mtvec, {mtvec}",     // Install our MPRV-aware trap handler
 
@@ -91,15 +190,15 @@ impl Architecture for MetalArch {
 
     #[inline]
     fn wfi() {
-        unsafe { asm!("wfi") };
+        unsafe { soft_asm!("wfi") };
     }
 
     unsafe fn write_pmpaddr(index: usize, pmpaddr: usize) {
         macro_rules! asm_write_pmpaddr {
             ($idx:literal, $addr:expr) => {
-                asm!(
+                soft_asm!(
                     concat!("csrw pmpaddr", $idx, ", {addr}"),
-                    addr = in(reg) pmpaddr,
+                    addr = in(reg) $addr,
                     options(nomem)
                 )
             };
@@ -179,7 +278,7 @@ impl Architecture for MetalArch {
     unsafe fn write_pmpcfg(index: usize, pmpcfg: usize) {
         macro_rules! asm_write_pmpcfg {
             ($idx:literal, $cfg:expr) => {
-                asm!(
+                soft_asm!(
                     concat!("csrw pmpcfg", $idx, ", {cfg}"),
                     cfg = in(reg) $cfg,
                     options(nomem)
@@ -207,7 +306,7 @@ impl Architecture for MetalArch {
 
         macro_rules! asm_write_csr {
             ($reg:literal) => {
-                asm!(
+                soft_asm!(
                     concat!("csrrw {prev}, ", $reg, ", {val}"),
                     val = in(reg) value,
                     prev = out(reg) prev_value,
@@ -316,7 +415,7 @@ impl Architecture for MetalArch {
         macro_rules! asm_read_csr {
             ($reg:literal) => {
                 unsafe {
-                    asm!(
+                    soft_asm!(
                         concat!("csrr {x}, ", $reg),
                         x = out(reg) value,
                         options(nomem)
@@ -428,16 +527,16 @@ impl Architecture for MetalArch {
 
                  // Perform detection
                  let mut _dummy_variable: usize = 0;
-                 let mut tracer_var: usize;
+                 let tracer_var: usize;
                  unsafe {
-                     asm!(
+                     soft_asm!(
                         "csrw mscratch, zero",
                         concat!("csrr {0}, ", $reg),
                         "csrr {1}, mscratch",
                         out(reg) _dummy_variable,
                         out(reg) tracer_var,
-                        );
-                    }
+                    );
+                }
 
                  // Restore normal handler
                  Self::install_handler(_raw_trap_handler as usize);
@@ -513,7 +612,7 @@ impl Architecture for MetalArch {
         // Detect available interrupt IDs
         let available_int: usize;
         unsafe {
-            asm!(
+            soft_asm!(
                 "csrc mstatus, {clear_mie}",   // Disable interrupts by clearing MIE in mstatus
                 "csrrw {tmp}, mie, {all_int}", // Set all bits in the mie register
                 "csrr {available_int}, mie",   // Read back wich bits are set to 1
@@ -563,24 +662,25 @@ impl Architecture for MetalArch {
 
     unsafe fn run_vcpu(ctx: &mut VirtContext) {
         unsafe {
-            asm!(
+            soft_asm!(
                 // We need to save some registers manually, the compiler can't handle those
-                "add sp, sp, -32",
+                "addi sp, sp, -32",
                 "sd x3, (8*0)(sp)",
                 "sd x4, (8*1)(sp)",
                 "sd x8, (8*2)(sp)",
                 "sd x9, (8*3)(sp)",
                 // Jump into context switch code
-                "jal x30, _run_vcpu",
+                "// #[abi(\"C\", 0)]",
+                "call {run_vcpu}",
                 // Restore registers
                 "ld x3, (8*0)(sp)",
                 "ld x4, (8*1)(sp)",
                 "ld x8, (8*2)(sp)",
                 "ld x9, (8*3)(sp)",
-                "add sp, sp, 32",
+                "addi sp, sp, 32",
                 // Clobber all other registers, so that the compiler automatically
                 // saves and restores the ones it needs
-                inout("x31") ctx => _,
+                inout("x31") ctx as *mut _ => _,
                 out("x1") _,
                 out("x5") _,
                 out("x6") _,
@@ -606,6 +706,7 @@ impl Architecture for MetalArch {
                 out("x28") _,
                 out("x29") _,
                 out("x30") _,
+                run_vcpu = sym _run_vcpu,
             );
         }
 
@@ -626,16 +727,16 @@ impl Architecture for MetalArch {
     fn sfencevma(vaddr: Option<usize>, asid: Option<usize>) {
         unsafe {
             match (vaddr, asid) {
-                (None, None) => asm!("sfence.vma"),
-                (None, Some(asid)) => asm!(
+                (None, None) => soft_asm!("sfence.vma"),
+                (None, Some(asid)) => soft_asm!(
                     "sfence.vma x0, {asid}",
                     asid = in(reg) asid,
                 ),
-                (Some(vaddr), None) => asm!(
+                (Some(vaddr), None) => soft_asm!(
                     "sfence.vma {vaddr}, x0",
                     vaddr = in(reg) vaddr
                 ),
-                (Some(vaddr), Some(asid)) => asm!(
+                (Some(vaddr), Some(asid)) => soft_asm!(
                     "sfence.vma {vaddr}, {asid}",
                     vaddr = in(reg) vaddr,
                     asid = in(reg) asid
@@ -647,16 +748,16 @@ impl Architecture for MetalArch {
     fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>) {
         unsafe {
             match (vaddr, asid) {
-                (None, None) => asm!("hfence.gvma"),
-                (None, Some(asid)) => asm!(
+                (None, None) => soft_asm!("hfence.gvma"),
+                (None, Some(asid)) => soft_asm!(
                     "hfence.gvma x0, {asid}",
                     asid = in(reg) asid,
                 ),
-                (Some(vaddr), None) => asm!(
+                (Some(vaddr), None) => soft_asm!(
                     "hfence.gvma {vaddr}, x0",
                     vaddr = in(reg) vaddr
                 ),
-                (Some(vaddr), Some(asid)) => asm!(
+                (Some(vaddr), Some(asid)) => soft_asm!(
                     "hfence.gvma {vaddr}, {asid}",
                     vaddr = in(reg) vaddr,
                     asid = in(reg) asid
@@ -668,16 +769,16 @@ impl Architecture for MetalArch {
     fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>) {
         unsafe {
             match (vaddr, asid) {
-                (None, None) => asm!("hfence.vvma"),
-                (None, Some(asid)) => asm!(
+                (None, None) => soft_asm!("hfence.vvma"),
+                (None, Some(asid)) => soft_asm!(
                     "hfence.vvma x0, {asid}",
                     asid = in(reg) asid,
                 ),
-                (Some(vaddr), None) => asm!(
+                (Some(vaddr), None) => soft_asm!(
                     "hfence.vvma {vaddr}, x0",
                     vaddr = in(reg) vaddr
                 ),
-                (Some(vaddr), Some(asid)) => asm!(
+                (Some(vaddr), Some(asid)) => soft_asm!(
                     "hfence.vvma {vaddr}, {asid}",
                     vaddr = in(reg) vaddr,
                     asid = in(reg) asid
@@ -687,14 +788,14 @@ impl Architecture for MetalArch {
     }
 
     fn ifence() {
-        unsafe { asm!("fence.i") };
+        unsafe { soft_asm!("fence.i") };
     }
 
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
         let mut prev_value: usize = 0;
         macro_rules! asm_clear_csr_bits {
             ($reg:literal) => {
-                asm!(
+                soft_asm!(
                     concat!("csrrc {prev}, ", $reg, ", {x}"),
                     x = in(reg) bits_mask,
                     prev = out(reg) prev_value,
@@ -802,7 +903,7 @@ impl Architecture for MetalArch {
 
         macro_rules! asm_set_csr_bits {
             ($reg:literal) => {
-                asm!(
+                soft_asm!(
                     concat!("csrrs {prev}, ", $reg, ", {x}"),
                     x = in(reg) bits_mask,
                     prev = out(reg) prev_value,
@@ -1095,7 +1196,7 @@ unsafe fn find_nb_of_non_zero_pmp(nb_implemented: usize) -> usize {
     macro_rules! test_pmp {
         ($idx:literal) => {{
             let read_addr: usize;
-            asm!(
+            soft_asm!(
                 // We save try to write a non-zero value in pmpaddr and read it back
                 concat!("csrrw {tmp}, pmpaddr", $idx, ", {addr}"),
                 concat!("csrrw {addr}, pmpaddr", $idx, ", {tmp}"),
@@ -1187,132 +1288,113 @@ unsafe fn find_nb_of_non_zero_pmp(nb_implemented: usize) -> usize {
         test_pmp!(63);
     }
 
-    return 64;
+    64
 }
 
 // ————————————————————————————— Context Switch ————————————————————————————— //
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _run_vcpu
-_run_vcpu:
-    csrw mscratch, x31        // Save context in mscratch
-    sd x30, (0)(sp)           // Store return address
-    sd sp,(8*0)(x31)          // Store host stack
-    ld x1,(8+8*32)(x31)       // Read guest PC
-    csrw mepc,x1              // Restore guest PC in mepc
-
-    ld x1,(8+8*1)(x31)        // Load guest general purpose registers
-    ld x2,(8+8*2)(x31)
-    ld x3,(8+8*3)(x31)
-    ld x4,(8+8*4)(x31)
-    ld x5,(8+8*5)(x31)
-    ld x6,(8+8*6)(x31)
-    ld x7,(8+8*7)(x31)
-    ld x8,(8+8*8)(x31)
-    ld x9,(8+8*9)(x31)
-    ld x10,(8+8*10)(x31)
-    ld x11,(8+8*11)(x31)
-    ld x12,(8+8*12)(x31)
-    ld x13,(8+8*13)(x31)
-    ld x14,(8+8*14)(x31)
-    ld x15,(8+8*15)(x31)
-    ld x16,(8+8*16)(x31)
-    ld x17,(8+8*17)(x31)
-    ld x18,(8+8*18)(x31)
-    ld x19,(8+8*19)(x31)
-    ld x20,(8+8*20)(x31)
-    ld x21,(8+8*21)(x31)
-    ld x22,(8+8*22)(x31)
-    ld x23,(8+8*23)(x31)
-    ld x24,(8+8*24)(x31)
-    ld x25,(8+8*25)(x31)
-    ld x26,(8+8*26)(x31)
-    ld x27,(8+8*27)(x31)
-    ld x28,(8+8*28)(x31)
-    ld x29,(8+8*29)(x31)
-    ld x30,(8+8*30)(x31)
-    ld x31,(8+8*31)(x31)
-    mret                      // Jump into firmware or payload
-"#,
+naked_soft_asm!(
+    _run_vcpu,
+    "csrw mscratch, x31",  // Save context in mscratch
+    "sd ra, (0)(sp)",      // Store return address <- Is that a bug? We should bump the stack!
+    "sd sp,(8*0)(x31)",    // Store host stack
+    "ld x1,(8+8*32)(x31)", // Read guest PC
+    "csrw mepc,x1",        // Restore guest PC in mepc
+    "ld x1,(8+8*1)(x31)",  // Load guest general purpose registers
+    "ld x2,(8+8*2)(x31)",
+    "ld x3,(8+8*3)(x31)",
+    "ld x4,(8+8*4)(x31)",
+    "ld x5,(8+8*5)(x31)",
+    "ld x6,(8+8*6)(x31)",
+    "ld x7,(8+8*7)(x31)",
+    "ld x8,(8+8*8)(x31)",
+    "ld x9,(8+8*9)(x31)",
+    "ld x10,(8+8*10)(x31)",
+    "ld x11,(8+8*11)(x31)",
+    "ld x12,(8+8*12)(x31)",
+    "ld x13,(8+8*13)(x31)",
+    "ld x14,(8+8*14)(x31)",
+    "ld x15,(8+8*15)(x31)",
+    "ld x16,(8+8*16)(x31)",
+    "ld x17,(8+8*17)(x31)",
+    "ld x18,(8+8*18)(x31)",
+    "ld x19,(8+8*19)(x31)",
+    "ld x20,(8+8*20)(x31)",
+    "ld x21,(8+8*21)(x31)",
+    "ld x22,(8+8*22)(x31)",
+    "ld x23,(8+8*23)(x31)",
+    "ld x24,(8+8*24)(x31)",
+    "ld x25,(8+8*25)(x31)",
+    "ld x26,(8+8*26)(x31)",
+    "ld x27,(8+8*27)(x31)",
+    "ld x28,(8+8*28)(x31)",
+    "ld x29,(8+8*29)(x31)",
+    "ld x30,(8+8*30)(x31)",
+    "ld x31,(8+8*31)(x31)",
+    "mret" // Jump into firmware or payload
 );
 
 // —————————————————————————————— Trap Handler —————————————————————————————— //
 
-global_asm!(
-    r#"
-.text
-.align 4
-.global _raw_trap_handler
-_raw_trap_handler:
-    csrrw x31, mscratch, x31 // Restore context by swapping x31 and mscratch
-    sd x0,(8+8*0)(x31)       // Save all general purpose registers
-    sd x1,(8+8*1)(x31)
-    sd x2,(8+8*2)(x31)
-    sd x3,(8+8*3)(x31)
-    sd x4,(8+8*4)(x31)
-    sd x5,(8+8*5)(x31)
-    sd x6,(8+8*6)(x31)
-    sd x7,(8+8*7)(x31)
-    sd x8,(8+8*8)(x31)
-    sd x9,(8+8*9)(x31)
-    sd x10,(8+8*10)(x31)
-    sd x11,(8+8*11)(x31)
-    sd x12,(8+8*12)(x31)
-    sd x13,(8+8*13)(x31)
-    sd x14,(8+8*14)(x31)
-    sd x15,(8+8*15)(x31)
-    sd x16,(8+8*16)(x31)
-    sd x17,(8+8*17)(x31)
-    sd x18,(8+8*18)(x31)
-    sd x19,(8+8*19)(x31)
-    sd x20,(8+8*20)(x31)
-    sd x21,(8+8*21)(x31)
-    sd x22,(8+8*22)(x31)
-    sd x23,(8+8*23)(x31)
-    sd x24,(8+8*24)(x31)
-    sd x25,(8+8*25)(x31)
-    sd x26,(8+8*26)(x31)
-    sd x27,(8+8*27)(x31)
-    sd x28,(8+8*28)(x31)
-    sd x29,(8+8*29)(x31)
-    sd x30,(8+8*30)(x31)
-    csrr x30, mscratch    // Restore x31 into x30 from mscratch
-    sd x30,(8+8*31)(x31)  // Save x31 (whose value is stored in x30)
-
+naked_soft_asm!(
+    _raw_trap_handler,
+    "csrrw x31, mscratch, x31", // Restore context by swapping x31 and mscratch
+    "sd x0,(8+8*0)(x31)",       // Save all general purpose registers
+    "sd x1,(8+8*1)(x31)",
+    "sd x2,(8+8*2)(x31)",
+    "sd x3,(8+8*3)(x31)",
+    "sd x4,(8+8*4)(x31)",
+    "sd x5,(8+8*5)(x31)",
+    "sd x6,(8+8*6)(x31)",
+    "sd x7,(8+8*7)(x31)",
+    "sd x8,(8+8*8)(x31)",
+    "sd x9,(8+8*9)(x31)",
+    "sd x10,(8+8*10)(x31)",
+    "sd x11,(8+8*11)(x31)",
+    "sd x12,(8+8*12)(x31)",
+    "sd x13,(8+8*13)(x31)",
+    "sd x14,(8+8*14)(x31)",
+    "sd x15,(8+8*15)(x31)",
+    "sd x16,(8+8*16)(x31)",
+    "sd x17,(8+8*17)(x31)",
+    "sd x18,(8+8*18)(x31)",
+    "sd x19,(8+8*19)(x31)",
+    "sd x20,(8+8*20)(x31)",
+    "sd x21,(8+8*21)(x31)",
+    "sd x22,(8+8*22)(x31)",
+    "sd x23,(8+8*23)(x31)",
+    "sd x24,(8+8*24)(x31)",
+    "sd x25,(8+8*25)(x31)",
+    "sd x26,(8+8*26)(x31)",
+    "sd x27,(8+8*27)(x31)",
+    "sd x28,(8+8*28)(x31)",
+    "sd x29,(8+8*29)(x31)",
+    "sd x30,(8+8*30)(x31)",
+    "csrr x30, mscratch",   // Restore x31 into x30 from mscratch
+    "sd x30,(8+8*31)(x31)", // Save x31 (whose value is stored in x30)
     // TODO: restore host misa
-
-    csrr x30, mepc              // Read guest PC
-    sd x30, (8+8*32)(x31)       // Save the PC
-
-    ld sp,(8*0)(x31)      // Restore host stack
-    ld x30,(sp)           // Load return address from stack
-    jr x30                // Return
-"#,
+    "csrr x30, mepc",        // Read guest PC
+    "sd x30, (8+8*32)(x31)", // Save the PC
+    "ld sp,(8*0)(x31)",      // Restore host stack
+    "ld ra,(sp)",            // Load return address from stack
+    "jr ra",                 // Return
 );
 
 // —————————————————————————————— Tracing trap Handler —————————————————————————————— //
 
-global_asm!(
-    r"
-.text
-.align 4
-.global _tracing_trap_handler
-_tracing_trap_handler:
+naked_soft_asm!(
+    _tracing_trap_handler,
     // Save x5
-    csrw mscratch, x5
+    "csrw mscratch, x5",
     // Skip illegal instruction (pc += 4)
-    csrr x5, mepc
-    addi x5, x5, 4
-    csrw mepc, x5
+    "csrr x5, mepc",
+    "addi x5, x5, 4",
+    "csrw mepc, x5",
     // Set mscratch to 1
-    addi x5, x0, 1
-    csrrw x5, mscratch, x5
+    "addi x5, x0, 1",
+    "csrrw x5, mscratch, x5",
     // Return back to miralis
-    mret
-#"
+    "mret",
 );
 
 // —————————————————————————————— Virtual Trap Handler —————————————————————————————— //
@@ -1329,22 +1411,11 @@ _tracing_trap_handler:
 //
 // The trap handler overwrite the content of the 't5' register (also named 'x30'). When returning,
 // t5 is set ot 0 to indicate that a trap occurred.
-global_asm!(
-    r#"
-.text
-.align 4
-.global _mprv_trap_handler
-_mprv_trap_handler:
-   csrr t5, mepc
-   addi t5, t5, 4
-   csrw mepc, t5
-   li t5, 0
-   mret
-"#,
+naked_soft_asm!(
+    _mprv_trap_handler,
+    "csrr t5, mepc",
+    "addi t5, t5, 4",
+    "csrw mepc, t5",
+    "li t5, 0",
+    "mret"
 );
-
-unsafe extern "C" {
-    fn _raw_trap_handler();
-    fn _tracing_trap_handler();
-    fn _mprv_trap_handler();
-}
