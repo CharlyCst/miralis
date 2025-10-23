@@ -12,7 +12,7 @@ use miralis_core::sbi_codes::{
 
 use crate::arch::{MCause, Register};
 use crate::benchmark::ExceptionCategory::{
-    FirmwareTrap, MisalignedOp, NotOffloaded, PageFault, ReadTime, RemoteFence, SetTimer, IPI,
+    FirmwareTrap, IPI, MisalignedOp, NotOffloaded, PageFault, ReadTime, RemoteFence, SetTimer,
 };
 use crate::virt::traits::RegisterContextGetter;
 use crate::virt::{ExecutionMode, VirtContext};

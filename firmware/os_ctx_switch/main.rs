@@ -96,7 +96,7 @@ _raw_os:
 "#,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _raw_trap_handler();
     fn _raw_os();
 }

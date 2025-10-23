@@ -3,7 +3,7 @@
 use std::env;
 use std::process::{Command, ExitCode};
 
-use crate::{VerifyArgs, RUNNER_STRICT_MODE};
+use crate::{RUNNER_STRICT_MODE, VerifyArgs};
 
 pub fn verify(args: &mut VerifyArgs) -> ExitCode {
     if env::var(RUNNER_STRICT_MODE).is_ok() && !args.strict {

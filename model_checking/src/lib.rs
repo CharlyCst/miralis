@@ -1,14 +1,14 @@
 use miralis::arch::pmp::pmplayout;
 use miralis::arch::userspace::SOFT_CORE;
-use miralis::arch::{csr, mie, mstatus, write_pmp, MCause, Register};
+use miralis::arch::{MCause, Register, csr, mie, mstatus, write_pmp};
 use miralis::decoder::IllegalInst;
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
-use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
 use miralis::virt::VirtContext;
-use softcore_rv64::prelude::{bv, BitVector};
+use miralis::virt::traits::{HwRegisterContextSetter, RegisterContextGetter};
+use softcore_rv64::prelude::{BitVector, bv};
 use softcore_rv64::raw;
-use softcore_rv64::raw::{regidx, AccessType, Minterrupts, Pmpcfg_ent, Privilege};
+use softcore_rv64::raw::{AccessType, Minterrupts, Pmpcfg_ent, Privilege, regidx};
 
 use crate::adapters::{
     ast_to_miralis_instr, ast_to_miralis_load, ast_to_miralis_store, miralis_to_rv_core,

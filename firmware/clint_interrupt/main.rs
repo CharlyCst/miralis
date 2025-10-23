@@ -37,10 +37,12 @@ fn main() -> ! {
 
 /// Enables interrupts by setting `mstatus.MIE` to 1.
 unsafe fn enable_interrupts() {
-    asm!(
-        "csrs mstatus, {mstatus_mie}",  // Enable global interrupts (MIE), expect to trap immediately
-        mstatus_mie = in(reg) 0x8,
-    )
+    unsafe {
+        asm!(
+            "csrs mstatus, {mstatus_mie}",  // Enable global interrupts (MIE), expect to trap immediately
+            mstatus_mie = in(reg) 0x8,
+        )
+    }
 }
 
 // ———————————————————————————— Timer Interrupt ————————————————————————————— //
@@ -121,6 +123,6 @@ _raw_interrupt_trap_handler:
     trap_handler = sym trap_handler,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _raw_interrupt_trap_handler();
 }

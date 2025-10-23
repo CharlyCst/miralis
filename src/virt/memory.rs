@@ -1,6 +1,6 @@
 //! Emulation logic for misaligned loads and stores
 
-use crate::arch::{get_raw_faulting_instr, parse_mpp_return_mode, Arch, Architecture};
+use crate::arch::{Arch, Architecture, get_raw_faulting_instr, parse_mpp_return_mode};
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::host::MiralisContext;
 use crate::virt::VirtContext;

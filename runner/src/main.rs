@@ -1,7 +1,7 @@
 use core::panic;
 use std::env;
 use std::path::PathBuf;
-use std::process::{exit, Command, ExitCode};
+use std::process::{Command, ExitCode, exit};
 
 use clap::{Args, Parser, Subcommand};
 use log::LevelFilter;

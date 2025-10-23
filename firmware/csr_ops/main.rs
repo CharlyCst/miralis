@@ -131,14 +131,16 @@ fn check_csrrw(in_rs1: usize, in_csr: usize, out_csr: usize, out_rd: usize) {
 unsafe fn csrrw(csr: usize, rd: usize, rs1: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
-    asm!(
-        "csrw mscratch, {2}",       // Initialize mscratch
-        "csrrw {0}, mscratch, {1}", // Perform the CSR operation
-        "csrr {2}, mscratch",       // Retrieve new mscratch value
-        inout(reg) rd,
-        in(reg) rs1,
-        inout(reg) csr,
-    );
+    unsafe {
+        asm!(
+            "csrw mscratch, {2}",       // Initialize mscratch
+            "csrrw {0}, mscratch, {1}", // Perform the CSR operation
+            "csrr {2}, mscratch",       // Retrieve new mscratch value
+            inout(reg) rd,
+            in(reg) rs1,
+            inout(reg) csr,
+        );
+    }
 
     (csr, rd)
 }
@@ -151,14 +153,16 @@ fn check_csrrs(in_rs1: usize, in_csr: usize, out_csr: usize, out_rd: usize) {
 unsafe fn csrrs(csr: usize, rd: usize, rs1: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
-    asm!(
-        "csrw mscratch, {2}",       // Initialize mscratch
-        "csrrs {0}, mscratch, {1}", // Perform the CSR operation
-        "csrr {2}, mscratch",       // Retrieve new mscratch value
-        inout(reg) rd,
-        in(reg) rs1,
-        inout(reg) csr,
-    );
+    unsafe {
+        asm!(
+            "csrw mscratch, {2}",       // Initialize mscratch
+            "csrrs {0}, mscratch, {1}", // Perform the CSR operation
+            "csrr {2}, mscratch",       // Retrieve new mscratch value
+            inout(reg) rd,
+            in(reg) rs1,
+            inout(reg) csr,
+        );
+    }
 
     (csr, rd)
 }
@@ -171,13 +175,15 @@ fn check_csrrwi(in_csr: usize, out_csr: usize, out_rd: usize) {
 unsafe fn csrrwi(csr: usize, rd: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
-    asm!(
-        "csrw mscratch, {1}",       // Initialize mscratch
-        "csrrwi {0}, mscratch, 27", // Perform the CSR operation
-        "csrr {1}, mscratch",       // Retrieve new mscratch value
-        inout(reg) rd,
-        inout(reg) csr,
-    );
+    unsafe {
+        asm!(
+            "csrw mscratch, {1}",       // Initialize mscratch
+            "csrrwi {0}, mscratch, 27", // Perform the CSR operation
+            "csrr {1}, mscratch",       // Retrieve new mscratch value
+            inout(reg) rd,
+            inout(reg) csr,
+        );
+    }
 
     (csr, rd)
 }
@@ -190,13 +196,15 @@ fn check_csrrsi(in_csr: usize, out_csr: usize, out_rd: usize) {
 unsafe fn csrrsi(csr: usize, rd: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
-    asm!(
-        "csrw mscratch, {1}",       // Initialize mscratch
-        "csrrsi {0}, mscratch, 27", // Perform the CSR operation
-        "csrr {1}, mscratch",       // Retrieve new mscratch value
-        inout(reg) rd,
-        inout(reg) csr,
-    );
+    unsafe {
+        asm!(
+            "csrw mscratch, {1}",       // Initialize mscratch
+            "csrrsi {0}, mscratch, 27", // Perform the CSR operation
+            "csrr {1}, mscratch",       // Retrieve new mscratch value
+            inout(reg) rd,
+            inout(reg) csr,
+        );
+    }
 
     (csr, rd)
 }
@@ -209,14 +217,16 @@ fn check_csrrc(in_rs1: usize, in_csr: usize, out_csr: usize, out_rd: usize) {
 unsafe fn csrrc(csr: usize, rd: usize, rs1: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
-    asm!(
-        "csrw mscratch, {2}",       // Initialize mscratch
-        "csrrc {0}, mscratch, {1}", // Perform the CSR operation
-        "csrr {2}, mscratch",       // Retrieve new mscratch value
-        inout(reg) rd,
-        in(reg) rs1,
-        inout(reg) csr,
-    );
+    unsafe {
+        asm!(
+            "csrw mscratch, {2}",       // Initialize mscratch
+            "csrrc {0}, mscratch, {1}", // Perform the CSR operation
+            "csrr {2}, mscratch",       // Retrieve new mscratch value
+            inout(reg) rd,
+            in(reg) rs1,
+            inout(reg) csr,
+        );
+    }
 
     (csr, rd)
 }
@@ -229,13 +239,15 @@ fn check_csrrci(in_csr: usize, out_csr: usize, out_rd: usize) {
 unsafe fn csrrci(csr: usize, rd: usize) -> (usize, usize) {
     let mut rd = rd;
     let mut csr = csr;
-    asm!(
-        "csrw mscratch, {1}",       // Initialize mscratch
-        "csrrci {0}, mscratch, 27", // Perform the CSR operation
-        "csrr {1}, mscratch",       // Retrieve new mscratch value
-        inout(reg) rd,
-        inout(reg) csr,
-    );
+    unsafe {
+        asm!(
+            "csrw mscratch, {1}",       // Initialize mscratch
+            "csrrci {0}, mscratch, 27", // Perform the CSR operation
+            "csrr {1}, mscratch",       // Retrieve new mscratch value
+            inout(reg) rd,
+            inout(reg) csr,
+        );
+    }
 
     (csr, rd)
 }

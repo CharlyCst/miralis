@@ -8,7 +8,7 @@ mod world_switch;
 pub use csr::traits;
 pub use emulator::ExitResult;
 
-use crate::arch::{mie, misa, ExtensionsCapability, Mode, TrapInfo};
+use crate::arch::{ExtensionsCapability, Mode, TrapInfo, mie, misa};
 
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

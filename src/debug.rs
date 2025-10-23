@@ -67,14 +67,22 @@ unsafe fn get_max_stack_usage(stack_top: usize, stack_bottom: usize) -> usize {
 
     let stack_ptr = stack_bottom as *const u32;
     let len = (stack_top - stack_bottom) / PATTERN_SIZE;
-    let stack = core::slice::from_raw_parts(stack_ptr, len);
-
     let mut counter = 0;
-    for data in stack.iter() {
-        if *data != MEMORY_PATTERN {
-            break;
+
+    // Read the stack
+    //
+    // # Safety
+    //
+    // The caller must ensure that the stack is valid and not mutated for the whole duration of the
+    // operation.
+    unsafe {
+        let stack = core::slice::from_raw_parts(stack_ptr, len);
+        for data in stack.iter() {
+            if *data != MEMORY_PATTERN {
+                break;
+            }
+            counter += 1;
         }
-        counter += 1;
     }
 
     // Return used memory
@@ -85,17 +93,23 @@ unsafe fn get_max_stack_usage(stack_top: usize, stack_bottom: usize) -> usize {
 ///
 /// # Safety
 ///
-/// This function assumes a single-core system for now.
+/// This function assumes the stack is not shared across cores.
 pub unsafe fn log_stack_usage(stack_start: usize) {
     /// Percent usage threshold for emitting a warning.
     const WARNING_THRESHOLD: usize = 80;
 
     // Get stack usage
-    let stack_bottom = stack_start;
-    let hart_id = Arch::read_csr(Csr::Mhartid);
-    let stack_bottom = stack_bottom + hart_id * TARGET_STACK_SIZE;
-    let stack_top = stack_bottom + TARGET_STACK_SIZE;
-    let max_stack_usage = get_max_stack_usage(stack_top, stack_bottom);
+    //
+    // # Safety:
+    //
+    // We rely on the correct computation of the stack size here.
+    let max_stack_usage = unsafe {
+        let stack_bottom = stack_start;
+        let hart_id = Arch::read_csr(Csr::Mhartid);
+        let stack_bottom = stack_bottom + hart_id * TARGET_STACK_SIZE;
+        let stack_top = stack_bottom + TARGET_STACK_SIZE;
+        get_max_stack_usage(stack_top, stack_bottom)
+    };
 
     // Compute percentage with one 1 decimal precision
     let permil = (1000 * max_stack_usage + TARGET_STACK_SIZE / 2) / TARGET_STACK_SIZE;

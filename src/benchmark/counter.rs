@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use miralis_core::abi;
 
 use crate::arch::Register;
-use crate::benchmark::{get_exception_category, ExceptionCategory};
+use crate::benchmark::{ExceptionCategory, get_exception_category};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
 use crate::modules::{Module, ModuleAction};

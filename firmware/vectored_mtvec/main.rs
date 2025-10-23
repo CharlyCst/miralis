@@ -84,6 +84,6 @@ _raw_interrupt_trap_handler:
     success_trap_handler = sym success_trap_handler,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _raw_interrupt_trap_handler();
 }

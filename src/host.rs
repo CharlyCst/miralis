@@ -2,8 +2,8 @@
 //!
 //! This module exposes the host context as [MiralisCtx], which holds Miralis's own configuration registers.
 
-use crate::arch::pmp::PmpGroup;
 use crate::arch::HardwareCapability;
+use crate::arch::pmp::PmpGroup;
 use crate::device;
 use crate::platform::{Plat, Platform};
 

@@ -103,7 +103,7 @@ _empty_handler:
 "#,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _empty_handler();
 }
 

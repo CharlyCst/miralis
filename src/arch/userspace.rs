@@ -7,9 +7,9 @@ use core::cell::RefCell;
 use core::marker::PhantomData;
 use std::thread_local;
 
-use softcore_rv64::{config, new_core, registers as reg, Core};
+use softcore_rv64::{Core, config, new_core, registers as reg};
 
-use super::{mie, Architecture, Csr, ExtensionsCapability, Mode};
+use super::{Architecture, Csr, ExtensionsCapability, Mode, mie};
 use crate::arch::HardwareCapability;
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::logger;
@@ -85,19 +85,19 @@ impl Architecture for HostArch {
         todo!()
     }
 
-    unsafe fn sfencevma(_vaddr: Option<usize>, _asid: Option<usize>) {
+    fn sfencevma(_vaddr: Option<usize>, _asid: Option<usize>) {
         logger::debug!("Userspace sfencevma");
     }
 
-    unsafe fn hfencegvma(_: Option<usize>, _: Option<usize>) {
+    fn hfencegvma(_: Option<usize>, _: Option<usize>) {
         logger::debug!("Userspace hfencegvma")
     }
 
-    unsafe fn hfencevvma(_: Option<usize>, _: Option<usize>) {
+    fn hfencevvma(_: Option<usize>, _: Option<usize>) {
         logger::debug!("Userspace hfencevvma")
     }
 
-    unsafe fn ifence() {
+    fn ifence() {
         logger::debug!("Userspace ifence");
     }
 
@@ -146,11 +146,11 @@ impl Architecture for HostArch {
     }
 
     unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
-        Self::write_csr(csr, Self::read_csr(csr) & !bits_mask)
+        unsafe { Self::write_csr(csr, Self::read_csr(csr) & !bits_mask) }
     }
 
     unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
-        Self::write_csr(csr, Self::read_csr(csr) | bits_mask)
+        unsafe { Self::write_csr(csr, Self::read_csr(csr) | bits_mask) }
     }
 
     unsafe fn handle_virtual_load(_instr: LoadInstr, _ctx: &mut VirtContext) {

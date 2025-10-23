@@ -4,7 +4,7 @@ use miralis_core::abi;
 
 use super::csr::traits::*;
 use super::{VirtContext, VirtCsr};
-use crate::arch::hstatus::{GVA_FILTER, SPVP_FILTER, SPV_FILTER};
+use crate::arch::hstatus::{GVA_FILTER, SPV_FILTER, SPVP_FILTER};
 use crate::arch::mie::{
     MEIE_OFFSET, MSIE_OFFSET, MTIE_OFFSET, SEIE_OFFSET, SIE_FILTER, SSIE_FILTER, SSIE_OFFSET,
     STIE_OFFSET,
@@ -13,8 +13,8 @@ use crate::arch::mstatus::{
     MPP_FILTER, MPP_OFFSET, MPV_FILTER, SPIE_FILTER, SPIE_OFFSET, SPP_FILTER, SPP_OFFSET,
 };
 use crate::arch::{
-    get_raw_faulting_instr, mie, misa, mstatus, mtvec, parse_mpp_return_mode,
-    parse_spp_return_mode, Arch, Architecture, Csr, MCause, Mode, Register,
+    Arch, Architecture, Csr, MCause, Mode, Register, get_raw_faulting_instr, mie, misa, mstatus,
+    mtvec, parse_mpp_return_mode, parse_spp_return_mode,
 };
 use crate::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use crate::device::VirtDevice;
@@ -959,17 +959,15 @@ impl VirtContext {
         rs1: &Register,
         rs2: &Register,
     ) {
-        unsafe {
-            let vaddr = match rs1 {
-                Register::X0 => None,
-                reg => Some(self.get(reg)),
-            };
-            let asid = match rs2 {
-                Register::X0 => None,
-                reg => Some(self.get(reg)),
-            };
-            Arch::sfencevma(vaddr, asid);
-        }
+        let vaddr = match rs1 {
+            Register::X0 => None,
+            reg => Some(self.get(reg)),
+        };
+        let asid = match rs2 {
+            Register::X0 => None,
+            reg => Some(self.get(reg)),
+        };
+        Arch::sfencevma(vaddr, asid);
     }
 
     pub fn emulate_hfence_gvma(
@@ -978,17 +976,15 @@ impl VirtContext {
         rs1: &Register,
         rs2: &Register,
     ) {
-        unsafe {
-            let vaddr = match rs1 {
-                Register::X0 => None,
-                reg => Some(self.get(reg)),
-            };
-            let asid = match rs2 {
-                Register::X0 => None,
-                reg => Some(self.get(reg)),
-            };
-            Arch::hfencegvma(vaddr, asid);
-        }
+        let vaddr = match rs1 {
+            Register::X0 => None,
+            reg => Some(self.get(reg)),
+        };
+        let asid = match rs2 {
+            Register::X0 => None,
+            reg => Some(self.get(reg)),
+        };
+        Arch::hfencegvma(vaddr, asid);
     }
 
     pub fn emulate_hfence_vvma(
@@ -997,17 +993,15 @@ impl VirtContext {
         rs1: &Register,
         rs2: &Register,
     ) {
-        unsafe {
-            let vaddr = match rs1 {
-                Register::X0 => None,
-                reg => Some(self.get(reg)),
-            };
-            let asid = match rs2 {
-                Register::X0 => None,
-                reg => Some(self.get(reg)),
-            };
-            Arch::hfencevvma(vaddr, asid);
-        }
+        let vaddr = match rs1 {
+            Register::X0 => None,
+            reg => Some(self.get(reg)),
+        };
+        let asid = match rs2 {
+            Register::X0 => None,
+            reg => Some(self.get(reg)),
+        };
+        Arch::hfencevvma(vaddr, asid);
     }
 }
 
@@ -1048,10 +1042,10 @@ fn get_next_interrupt(mie: usize, mip: usize, mideleg: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::get_next_interrupt;
-    use crate::arch::{mie, Arch, Architecture, Csr};
+    use crate::HwRegisterContextSetter;
+    use crate::arch::{Arch, Architecture, Csr, mie};
     use crate::host::MiralisContext;
     use crate::virt::VirtContext;
-    use crate::HwRegisterContextSetter;
 
     /// If the firmware wants to read the `mip` register after cleaning `vmip.SEIP`,
     /// and we don't sync `vmip.SEIP` with `mip.SEIP`, it can't know if there is an interrupt

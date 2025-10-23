@@ -12,8 +12,8 @@ use miralis_config as config;
 use serde::Deserialize;
 use walkdir::WalkDir;
 
-use crate::path::get_workspace_path;
 use crate::CheckConfigArgs;
+use crate::path::get_workspace_path;
 
 // ——————————————————————————— Config Definition ———————————————————————————— //
 

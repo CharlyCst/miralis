@@ -4,7 +4,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::artifacts::{Target, FIRMWARE_TARGET, MIRALIS_TARGET, PAYLOAD_TARGET};
+use crate::artifacts::{FIRMWARE_TARGET, MIRALIS_TARGET, PAYLOAD_TARGET, Target};
 use crate::config::Profiles;
 
 pub const PROJECT_CONFIG_FILE: &str = "miralis.toml";
@@ -25,10 +25,10 @@ pub fn find_project_root() -> Option<PathBuf> {
         // Check if the config file is in this directory
         let mut root_config_file = dir.clone();
         root_config_file.push(PROJECT_CONFIG_FILE);
-        if let Ok(metadata) = root_config_file.metadata() {
-            if metadata.is_file() {
-                return Some(dir);
-            }
+        if let Ok(metadata) = root_config_file.metadata()
+            && metadata.is_file()
+        {
+            return Some(dir);
         }
 
         match dir.parent() {
@@ -156,10 +156,10 @@ pub fn extract_file_name(image_path: &str) -> &str {
 }
 
 pub fn remove_file_extention(path: &str) -> String {
-    if let Some(stem) = Path::new(path).file_stem() {
-        if let Some(parent) = Path::new(path).parent() {
-            return parent.join(stem).to_string_lossy().into_owned();
-        }
+    if let Some(stem) = Path::new(path).file_stem()
+        && let Some(parent) = Path::new(path).parent()
+    {
+        return parent.join(stem).to_string_lossy().into_owned();
     }
     path.to_string()
 }

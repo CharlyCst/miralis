@@ -4,12 +4,12 @@
 
 use core::panic;
 use std::io;
-use std::process::{exit, Command, Stdio};
+use std::process::{Command, Stdio, exit};
 
-use crate::artifacts::Target;
-use crate::config::{read_config, Profiles};
-use crate::path::get_target_dir_path;
 use crate::GdbArgs;
+use crate::artifacts::Target;
+use crate::config::{Profiles, read_config};
+use crate::path::get_target_dir_path;
 
 // ——————————————————————————————— Constants ———————————————————————————————— //
 

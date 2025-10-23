@@ -75,6 +75,6 @@ _raw_trap_handler:
 "#,
 );
 
-extern "C" {
+unsafe extern "C" {
     fn _raw_trap_handler();
 }

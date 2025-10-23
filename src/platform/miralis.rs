@@ -5,11 +5,11 @@ use core::fmt;
 use log::Level;
 use miralis_abi::{failure, miralis_log_fmt, success};
 
-use crate::device::clint::{VirtClint, CLINT_SIZE};
-use crate::device::tester::{VirtTestDevice, TEST_DEVICE_SIZE};
-use crate::device::VirtDevice;
-use crate::driver::clint::ClintDriver;
 use crate::Platform;
+use crate::device::VirtDevice;
+use crate::device::clint::{CLINT_SIZE, VirtClint};
+use crate::device::tester::{TEST_DEVICE_SIZE, VirtTestDevice};
+use crate::driver::clint::ClintDriver;
 
 // —————————————————————————— Platform Parameters ——————————————————————————— //
 

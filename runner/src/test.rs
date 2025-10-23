@@ -6,12 +6,12 @@ use std::path::PathBuf;
 use std::process::{ExitCode, Stdio};
 use std::{env, fs};
 
-use crate::artifacts::{build_target, prepare_firmware_artifact, Target};
-use crate::config::{read_config, Config, Platforms};
+use crate::artifacts::{Target, build_target, prepare_firmware_artifact};
+use crate::config::{Config, Platforms, read_config};
 use crate::path::{get_project_config_path, make_path_relative_to_root};
 use crate::project::{ProjectConfig, Test};
-use crate::run::{get_qemu_cmd, get_spike_cmd, qemu_is_available, spike_is_available, QEMU, SPIKE};
-use crate::{TestArgs, RUNNER_STRICT_MODE};
+use crate::run::{QEMU, SPIKE, get_qemu_cmd, get_spike_cmd, qemu_is_available, spike_is_available};
+use crate::{RUNNER_STRICT_MODE, TestArgs};
 
 #[derive(Debug, PartialEq, Eq)]
 struct TestGroup {
@@ -97,10 +97,10 @@ pub fn run_tests(args: &mut TestArgs) -> ExitCode {
         let cfg = read_config(&Some(&test_group.config_path));
         for (test_name, test) in &test_group.tests {
             // Filter tests if a pattern is provided
-            if let Some(pattern) = &args.pattern {
-                if !test_name.starts_with(pattern) {
-                    continue;
-                }
+            if let Some(pattern) = &args.pattern
+                && !test_name.starts_with(pattern)
+            {
+                continue;
             }
 
             // Skip tests if emulator not available
