@@ -444,14 +444,6 @@ impl Module for KeystonePolicy {
         Self::default()
     }
 
-    fn ecall_from_firmware(
-        &mut self,
-        _mctx: &mut MiralisContext,
-        _ctx: &mut VirtContext,
-    ) -> ModuleAction {
-        ModuleAction::Ignore
-    }
-
     fn ecall_from_payload(
         &mut self,
         mctx: &mut MiralisContext,
@@ -459,12 +451,12 @@ impl Module for KeystonePolicy {
     ) -> ModuleAction {
         let eid = ctx.get(Register::X17);
         let fid = ctx.get(Register::X16);
-        let enclave_running = self.get_active_enclave(ctx).is_some();
 
         if eid != sbi::KEYSTONE_EID {
             return ModuleAction::Ignore;
         }
 
+        let enclave_running = self.get_active_enclave(ctx).is_some();
         let return_code: ReturnCode = match (enclave_running, fid) {
             (false, sbi::CREATE_ENCLAVE_FID) => self.create_enclave(mctx, ctx),
             (false, sbi::DESTROY_ENCLAVE_FID) => self.destroy_enclave(mctx, ctx),
@@ -484,19 +476,27 @@ impl Module for KeystonePolicy {
 
     fn switch_from_payload_to_firmware(
         &mut self,
-        _ctx: &mut VirtContext,
-        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
     ) {
+        // If the enclave is currently active, we lock it before transfering control to the
+        // firmware
+        if let Some(enclave) = self.get_active_enclave(ctx) {
+            Self::lock_enclave(mctx, enclave);
+        }
     }
 
     fn switch_from_firmware_to_payload(
         &mut self,
-        _ctx: &mut VirtContext,
-        _mctx: &mut MiralisContext,
+        ctx: &mut VirtContext,
+        mctx: &mut MiralisContext,
     ) {
+        // If the enclave is currently active, switching to the payload actually switches to the
+        // enclave. We need to un-lock it before jumping back.
+        if let Some(enclave) = self.get_active_enclave(ctx) {
+            Self::unlock_enclave(mctx, enclave);
+        }
     }
-
-    fn on_interrupt(&mut self, _ctx: &mut VirtContext, _mctx: &mut MiralisContext) {}
 
     const NUMBER_PMPS: usize = ENCL_MAX * 2; // Each enclave uses 2 PMPs because of TOR addressing
 }
