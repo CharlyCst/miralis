@@ -1,7 +1,6 @@
 //! Bare metal RISC-V
 use core::arch::{asm, global_asm};
 use core::marker::PhantomData;
-use core::usize;
 
 use super::{Arch, Architecture, Csr, ExtensionsCapability, Mode, RegistersCapability, menvcfg};
 use crate::arch::Csr::{Mtinst, Mtval2};
@@ -32,37 +31,45 @@ impl MetalArch {
 /// privileged mode in `mstatus`). For instance if S-mode was running last, this will perform a
 /// load/store using the installed S-mode page tables.
 ///
+/// Returns `true` on success, or `false` if the access trapped.
+///
 /// This macro sets up a special trap handler, [_mprv_trap_handler], to catch traps if the
 /// load/store fails. The regular trap handler can't be used because of the MPRV bit which would
 /// cause read/writes with another privilege mode's access rights.
 macro_rules! asm_mprv_mem_op {
-    ($instr:literal, $addr:expr, $value:ident) => {
+    ($instr:literal, $addr:expr, $value:ident) => {{
+        let mut success = 1;
         asm!(
-            "csrr {1}, mtvec",      // Save regular mtvec
-            "csrw mtvec, {mtvec}",  // Set up mtvec to an address-space independent
+            "csrr {old_mtvec}, mtvec", // Save current mtvec
+            "csrw mtvec, {mtvec}",     // Install our MPRV-aware trap handler
 
-            // Set MPRV bit to 1
-            "li {0}, 1",
-            "slli {0}, {0}, 17",
-            "csrs mstatus, {0}",
+            // Enable MPRV
+            //
+            // From that point onward, load and store instructions use the privileges in mstatus.MPP
+            // when computing addresses and access rights. In other words, the loads and store will
+            // behaves as if they were executed from S or U-mode.
+            "csrs mstatus, {mprv_bit}",
 
             // The 'norvc' guarantees that instructions are 4 bytes wide.
             // This prevents the compiler from using compressed load/stores.
+            // The trap handler uses this assumption when computing the return address.
             ".option push",
             ".option norvc",
             concat!($instr, " {rd}, 0({addr})"),
             ".option pop",
 
-            "csrc mstatus, {0}",    // Restore values
-            "csrw mtvec, {1}",
-            out(reg) _,
-            out(reg) _,
-            out("t5") _, // t5 can be modified by the trap handler
+            "csrc mstatus, {mprv_bit}", // Disable MPRV
+            "csrw mtvec, {old_mtvec}",  // Restore mtvec
+            old_mtvec = out(reg) _,
             mtvec = in(reg) (_mprv_trap_handler as usize),
             addr = in(reg) $addr,
             rd = inout(reg) $value,
-        )
-    };
+            mprv_bit = in(reg) mstatus::MPRV_FILTER,
+            inout("t5") success, // The trap handler sets t5 to 0 when trapping
+        );
+        // Return true if the access succeeded
+        success == 1
+    }};
 }
 
 // —————————————————————————— Arch Implementation ——————————————————————————— //
@@ -901,13 +908,11 @@ impl Architecture for MetalArch {
     /// Emulates a load instruction using MPRV = 1.
     ///
     /// # Safety
+    ///
     /// This function performs a load using MPRV = 1, whose behavior depends on the privilegd state
     /// and in particular PMP and page tables. The privileged state must be configured properly to
     /// ensure the proper access rights are enforced.
     unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext) {
-        // Zero out mcause to check if a trap occured during emulation
-        unsafe { Self::write_csr(Csr::Mcause, 0) };
-
         // Set the MPP mode to match the vMPP
         let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
         let prev_satp = unsafe { Self::write_csr(Csr::Satp, ctx.csr.satp) };
@@ -915,11 +920,12 @@ impl Architecture for MetalArch {
         // Changes to SATP require an sfence instruction to take effect
         Self::sfencevma(None, None);
 
+        let success;
         let mut value: usize = 0;
         let addr: usize = utils::calculate_addr(ctx.get(instr.rs1), instr.imm);
 
         unsafe {
-            match (instr.len, instr.is_unsigned) {
+            success = match (instr.len, instr.is_unsigned) {
                 (Width::Byte, false) => asm_mprv_mem_op!("lb", addr, value),
                 (Width::Byte2, false) => asm_mprv_mem_op!("lh", addr, value),
                 (Width::Byte4, false) => asm_mprv_mem_op!("lw", addr, value),
@@ -931,10 +937,8 @@ impl Architecture for MetalArch {
             };
         }
 
-        // If `mcause` is not zero then the load caused a trap.
-        // In that case we need to update the trap info and inject the trap back.
-        let cause = Self::read_csr(Csr::Mcause);
-        if cause != 0 {
+        if !success {
+            // The access trapped, we need to update the trap info and inject the trap back.
             ctx.emulate_firmware_trap();
         } else {
             ctx.set(instr.rd, value);
@@ -958,9 +962,6 @@ impl Architecture for MetalArch {
     /// state and in particular PMP and page tables. The privileged state must be configured
     /// properly to ensure the proper access rights are enforced.
     unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext) {
-        // Zero out mcause to check if a trap occured during emulation
-        unsafe { Self::write_csr(Csr::Mcause, 0) };
-
         // Set the MPP mode to match the vMPP
         let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
         let prev_satp = unsafe { Self::write_csr(Csr::Satp, ctx.csr.satp) };
@@ -968,11 +969,12 @@ impl Architecture for MetalArch {
         // Changes to SATP require an sfence instruction to take effect
         Self::sfencevma(None, None);
 
+        let success;
         let mut value: usize = ctx.get(instr.rs2);
         let addr: usize = utils::calculate_addr(ctx.get(instr.rs1), instr.imm);
 
         unsafe {
-            match instr.len {
+            success = match instr.len {
                 Width::Byte => asm_mprv_mem_op!("sb", addr, value),
                 Width::Byte2 => asm_mprv_mem_op!("sh", addr, value),
                 Width::Byte4 => asm_mprv_mem_op!("sw", addr, value),
@@ -983,10 +985,8 @@ impl Architecture for MetalArch {
         // Silence unused warning caused by the macro
         let _ = value;
 
-        // If `mcause` is not zero then the load caused a trap.
-        // In that case we need to update the trap info and inject the trap back.
-        let cause = Self::read_csr(Csr::Mcause);
-        if cause != 0 {
+        if success {
+            // In that case we need to update the trap info and inject the trap back.
             ctx.emulate_firmware_trap();
         } else {
             ctx.pc += if instr.is_compressed { 2 } else { 4 };
@@ -1003,8 +1003,7 @@ impl Architecture for MetalArch {
     }
 
     unsafe fn read_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()> {
-        let mut src = src as usize;
-        let mut success: usize = 1;
+        let mut addr = src as usize;
 
         // Save the state of exception-related CSRs, as we might overwrite them if an error occurs
         let prev_mepc = Self::read_csr(Csr::Mepc);
@@ -1014,41 +1013,11 @@ impl Architecture for MetalArch {
         unsafe {
             // Set mstatus.MPP to mode
             let prev_mode = set_mpp(mode);
-            for i in 0..dest.len() {
+            for dest_byte in dest {
                 let mut byte_read: u8 = 0;
-                asm!(
-                    // Try
-                    "la {r_mtvec}, 0f",
-                    "csrrw {r_mtvec}, mtvec, {r_mtvec}",  // Trap to catch-block if an exception occurs
+                let success = asm_mprv_mem_op!("lbu", addr, byte_read);
 
-                    // Set the mstatus.MPRV bit to 1
-                    "csrs mstatus, {mprv_filter}",
-                    // Read byte at src
-                    "lb {byte}, 0x00({src})",
-                    // Set the mstatus.MPRV bit to 0
-                    "csrc mstatus, {mprv_filter}",
-                    "j 1f", // Jump to finally if the read was successful
-
-                    // Catch
-                    ".align 4",
-                    "0:",
-                    "li {success}, 0",
-                    "la {byte}, 1f",
-                    "csrw mepc, {byte}",
-                    "mret",  // Jump to finally and set mstatus.MPRV to 0
-
-                    // Finally
-                    ".align 4",
-                    "1:",
-                    "csrw mtvec, {r_mtvec}", // Restore mtvec
-                    src = in(reg) src,
-                    mprv_filter = in(reg) mstatus::MPRV_FILTER,
-                    byte = inout(reg) byte_read,
-                    success = inout(reg) success,
-                    r_mtvec = out(reg) _,
-                );
-
-                if success == 0 {
+                if !success {
                     // Restore previous registers
                     Self::write_csr(Csr::Mepc, prev_mepc);
                     Self::write_csr(Csr::Mcause, prev_mcause);
@@ -1056,8 +1025,8 @@ impl Architecture for MetalArch {
                     return Err(());
                 }
 
-                dest[i] = byte_read;
-                src += 1;
+                *dest_byte = byte_read;
+                addr += 1;
             }
 
             set_mpp(prev_mode);
@@ -1067,7 +1036,6 @@ impl Architecture for MetalArch {
 
     unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()> {
         let mut dest = dest as usize;
-        let mut success: usize = 1;
 
         // Save the state of exception-related CSRs, as we might overwrite them if an error occurs
         let prev_mepc = Self::read_csr(Csr::Mepc);
@@ -1077,41 +1045,12 @@ impl Architecture for MetalArch {
         unsafe {
             // Set mstatus.MPP to mode
             let prev_mode = set_mpp(mode);
-            for i in 0..src.len() {
-                let byte_value: u8 = src[i];
-                asm!(
-                    // Try
-                    "la {r_mtvec}, 0f",
-                    "csrrw {r_mtvec}, mtvec, {r_mtvec}",  // Trap to catch-block if an exception occurs
+            for src_byte in src {
+                let mut byte_value: u8 = *src_byte;
+                let success = asm_mprv_mem_op!("sb", dest, byte_value);
+                let _ = byte_value; // Silence warning, 'sb' does not update byte_value
 
-                    // Set the mstatus.MPRV bit to 1
-                    "csrs mstatus, {mprv_filter}",
-                    // Store byte at src
-                    "sb {byte}, 0x00({dest})",
-                    // Set the mstatus.MPRV bit to 0
-                    "csrc mstatus, {mprv_filter}",
-                    "j 1f", // Jump to finally if the read was successful
-
-                    // Catch
-                    ".align 4",
-                    "0:",
-                    "li {success}, 0",
-                    "la {byte}, 1f",
-                    "csrw mepc, {byte}",
-                    "mret",  // Jump to finally and set mstatus.MPRV to 0
-
-                    // Finally
-                    ".align 4",
-                    "1:",
-                    "csrw mtvec, {r_mtvec}", // Restore mtvec
-                    dest = in(reg) dest,
-                    mprv_filter = in(reg) mstatus::MPRV_FILTER,
-                    byte = in(reg) byte_value,
-                    success = inout(reg) success,
-                    r_mtvec = out(reg) _,
-                );
-
-                if success == 0 {
+                if !success {
                     // Restore previous registers
                     Self::write_csr(Csr::Mepc, prev_mepc);
                     Self::write_csr(Csr::Mcause, prev_mcause);
@@ -1385,16 +1324,22 @@ _tracing_trap_handler:
 // To address this issue, we set mtvec to point to this custom trap handler.
 // The purpose of this handler is straightforward: it skips the illegal instruction, assuming it is
 // 4 bytes wide.
+//
+// # SAFETY:
+//
+// The trap handler overwrite the content of the 't5' register (also named 'x30'). When returning,
+// t5 is set ot 0 to indicate that a trap occurred.
 global_asm!(
     r#"
 .text
 .align 4
 .global _mprv_trap_handler
 _mprv_trap_handler:
-    csrrw t5, mepc, t5
-    addi  t5, t5, 4
-    csrrw t5, mepc, t5
-    mret
+   csrr t5, mepc
+   addi t5, t5, 4
+   csrw mepc, t5
+   li t5, 0
+   mret
 "#,
 );
 
