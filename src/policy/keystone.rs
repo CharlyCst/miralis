@@ -11,14 +11,12 @@ use miralis_config::DELEGATE_PERF_COUNTER;
 use crate::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
 use crate::arch::pmp::pmplayout::MODULE_OFFSET;
 use crate::arch::pmp::{Segment, pmpcfg};
-use crate::arch::{
-    Arch, Architecture, Csr, MCause, Mode, Register, parse_mpp_return_mode, set_mpp, write_pmp,
-};
+use crate::arch::{Csr, MCause, Mode, Register, parse_mpp_return_mode, set_mpp, write_pmp};
 use crate::host::MiralisContext;
 use crate::modules::{Module, ModuleAction};
 use crate::policy::keystone::ReturnCode::IllegalArgument;
 use crate::virt::traits::*;
-use crate::{RegisterContextGetter, VirtContext, logger};
+use crate::{RegisterContextGetter, VirtContext, arch, logger};
 
 /// Keystone parameters
 ///
@@ -140,21 +138,21 @@ impl EnclaveCtx {
         unsafe {
             // Swap S-mode registers
             if mctx.hw.available_reg.senvcfg {
-                self.senvcfg = Arch::write_csr(Csr::Senvcfg, self.senvcfg);
+                self.senvcfg = arch::write_csr(Csr::Senvcfg, self.senvcfg);
             }
-            self.sie = Arch::write_csr(Csr::Sie, self.sie);
-            self.sip = Arch::write_csr(Csr::Sip, self.sip);
-            self.satp = Arch::write_csr(Csr::Satp, self.satp);
-            self.sepc = Arch::write_csr(Csr::Sepc, self.sepc);
-            self.stvec = Arch::write_csr(Csr::Stvec, self.stvec);
-            self.stval = Arch::write_csr(Csr::Stval, self.stval);
-            self.scause = Arch::write_csr(Csr::Scause, self.scause);
-            self.sstatus = Arch::write_csr(Csr::Sstatus, self.sstatus);
-            self.sscratch = Arch::write_csr(Csr::Sscratch, self.sscratch);
-            self.scounteren = Arch::write_csr(Csr::Scounteren, self.scounteren);
+            self.sie = arch::write_csr(Csr::Sie, self.sie);
+            self.sip = arch::write_csr(Csr::Sip, self.sip);
+            self.satp = arch::write_csr(Csr::Satp, self.satp);
+            self.sepc = arch::write_csr(Csr::Sepc, self.sepc);
+            self.stvec = arch::write_csr(Csr::Stvec, self.stvec);
+            self.stval = arch::write_csr(Csr::Stval, self.stval);
+            self.scause = arch::write_csr(Csr::Scause, self.scause);
+            self.sstatus = arch::write_csr(Csr::Sstatus, self.sstatus);
+            self.sscratch = arch::write_csr(Csr::Sscratch, self.sscratch);
+            self.scounteren = arch::write_csr(Csr::Scounteren, self.scounteren);
 
             // Swap M-mode registers
-            self.mideleg = Arch::write_csr(Csr::Mideleg, self.mideleg);
+            self.mideleg = arch::write_csr(Csr::Mideleg, self.mideleg);
             self.mpp = set_mpp(self.mpp);
         }
     }
@@ -307,8 +305,8 @@ impl KeystonePolicy {
         const ARGS_SIZE: usize = size_of::<CreateArgs>();
         let src = ctx.get(Register::X10) as *const u8;
         let mut dest: [u8; ARGS_SIZE] = [0; ARGS_SIZE];
-        let mode = parse_mpp_return_mode(Arch::read_csr(Csr::Mstatus));
-        let res = unsafe { Arch::read_bytes_from_mode(src, &mut dest, mode) };
+        let mode = parse_mpp_return_mode(arch::read_csr(Csr::Mstatus));
+        let res = unsafe { arch::read_bytes_from_mode(src, &mut dest, mode) };
         if res.is_err() {
             return ReturnCode::IllegalArgument;
         }

@@ -5,7 +5,8 @@ use core::sync::atomic::{AtomicU64, Ordering};
 
 use miralis_core::abi;
 
-use crate::arch::{Arch, Architecture, Csr, MCause, Register};
+use crate::arch;
+use crate::arch::{Csr, MCause, Register};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
 use crate::modules::{Module, ModuleAction};
@@ -177,5 +178,5 @@ impl CounterPerMcauseBenchmark {
 
 /// Return the current hart id
 fn hard_id() -> usize {
-    Arch::read_csr(Csr::Mhartid)
+    arch::read_csr(Csr::Mhartid)
 }

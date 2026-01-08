@@ -1,6 +1,7 @@
 //! Debug utils for Miralis
 
-use crate::arch::{Arch, Architecture, Csr};
+use crate::arch;
+use crate::arch::Csr;
 use crate::config::TARGET_STACK_SIZE;
 
 // ————————————————————————————— Logging Utils —————————————————————————————— //
@@ -105,7 +106,7 @@ pub unsafe fn log_stack_usage(stack_start: usize) {
     // We rely on the correct computation of the stack size here.
     let max_stack_usage = unsafe {
         let stack_bottom = stack_start;
-        let hart_id = Arch::read_csr(Csr::Mhartid);
+        let hart_id = arch::read_csr(Csr::Mhartid);
         let stack_bottom = stack_bottom + hart_id * TARGET_STACK_SIZE;
         let stack_top = stack_bottom + TARGET_STACK_SIZE;
         get_max_stack_usage(stack_top, stack_bottom)

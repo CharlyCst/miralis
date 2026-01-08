@@ -5,9 +5,8 @@ use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use miralis_core::sbi_codes;
 
-use crate::arch::{
-    Arch, Architecture, Csr, MCause, Mode, PAGE_SIZE, Register, get_raw_faulting_instr, mie,
-};
+use crate::arch;
+use crate::arch::{Csr, MCause, Mode, PAGE_SIZE, Register, get_raw_faulting_instr, mie};
 use crate::config::PLATFORM_NB_HARTS;
 use crate::host::MiralisContext;
 use crate::modules::{Module, ModuleAction};
@@ -84,7 +83,7 @@ impl Module for OffloadPolicy {
                     let func3_mask = instr & 0b111000000000000;
                     match func3_mask {
                         0x2000 => {
-                            ctx.set(Register::try_from(rd).unwrap(), Arch::read_csr(Csr::Time));
+                            ctx.set(Register::try_from(rd).unwrap(), arch::read_csr(Csr::Time));
                             ctx.pc += 4;
                             return ModuleAction::Overwrite;
                         }
@@ -117,7 +116,7 @@ impl Module for OffloadPolicy {
             .compare_exchange(true, false, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
         {
-            Arch::ifence();
+            arch::ifence();
         }
 
         if FENCE_VMA_ARRAY[mctx.hw.hart]
@@ -127,10 +126,10 @@ impl Module for OffloadPolicy {
             let start = FENCE_VMA_START[mctx.hw.hart].load(Ordering::SeqCst);
             let size = FENCE_VMA_SIZE[mctx.hw.hart].load(Ordering::SeqCst);
             if (start == 0 && size == 0) || size >= 0xf0000 {
-                Arch::sfencevma(None, None);
+                arch::sfencevma(None, None);
             } else {
                 for address in (start..start + size).step_by(PAGE_SIZE) {
-                    Arch::sfencevma(Some(address), None);
+                    arch::sfencevma(Some(address), None);
                 }
             }
         }
@@ -219,7 +218,7 @@ impl OffloadPolicy {
 
     unsafe fn set_physical_ssip(&self) {
         unsafe {
-            Arch::set_csr_bits(Csr::Mip, mie::SSIE_FILTER);
+            arch::set_csr_bits(Csr::Mip, mie::SSIE_FILTER);
         }
     }
 }

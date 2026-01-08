@@ -12,8 +12,9 @@
 
 use core::arch::global_asm;
 
+use miralis::arch;
 use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
-use miralis::arch::{Arch, Architecture, Csr, Mode, Register, misa, set_mpp, write_pmp};
+use miralis::arch::{Csr, Mode, Register, misa, set_mpp, write_pmp};
 use miralis::host::MiralisContext;
 use miralis::modules::{MainModule, Module};
 use miralis::platform::{Plat, Platform, init};
@@ -36,19 +37,19 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
     // On the VisionFive2 board there is an issue with a hart_id
     // Identification, so we have to reassign it for now
 
-    let hart_id = Arch::read_csr(Csr::Mhartid);
+    let hart_id = arch::read_csr(Csr::Mhartid);
 
     init();
 
     if hart_id == PLATFORM_BOOT_HART_ID {
         log::info!("Hello, world!");
         log::info!("Platform name: {}", Plat::name());
-        log::debug!("misa:    0x{:x}", Arch::read_csr(Csr::Misa));
+        log::debug!("misa:    0x{:x}", arch::read_csr(Csr::Misa));
         log::debug!(
             "vmisa:   0x{:x}",
-            Arch::read_csr(Csr::Misa) & !misa::DISABLED
+            arch::read_csr(Csr::Misa) & !misa::DISABLED
         );
-        log::debug!("mstatus: 0x{:x}", Arch::read_csr(Csr::Mstatus));
+        log::debug!("mstatus: 0x{:x}", arch::read_csr(Csr::Mstatus));
         log::debug!("DTS address: 0x{:x}", device_tree_blob_addr);
     }
     log::info!("Hart {} is up", hart_id);
@@ -60,7 +61,7 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
 
     // Detect hardware capabilities
     // SAFETY: this must happen before hardware initialization
-    let hw = unsafe { Arch::detect_hardware() };
+    let hw = unsafe { arch::detect_hardware() };
     // Initialize Miralis's own context
     let mut mctx = MiralisContext::new(hw, Plat::get_miralis_start(), get_miralis_size());
 
@@ -75,13 +76,13 @@ pub(crate) extern "C" fn main(_hart_id: usize, device_tree_blob_addr: usize) -> 
         // Configure the firmware context
         ctx.set(Register::X10, hart_id);
         ctx.set(Register::X11, device_tree_blob_addr);
-        ctx.csr.misa = Arch::read_csr(Csr::Misa) & !misa::DISABLED;
+        ctx.csr.misa = arch::read_csr(Csr::Misa) & !misa::DISABLED;
         ctx.pc = firmware_addr;
 
         if DELEGATE_PERF_COUNTER {
             log::info!("Delegating performance counters");
-            Arch::write_csr(Csr::Mcounteren, DELGATE_PERF_COUNTERS_MASK);
-            Arch::write_csr(Csr::Scounteren, DELGATE_PERF_COUNTERS_MASK);
+            arch::write_csr(Csr::Mcounteren, DELGATE_PERF_COUNTERS_MASK);
+            arch::write_csr(Csr::Scounteren, DELGATE_PERF_COUNTERS_MASK);
         }
     }
 

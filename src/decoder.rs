@@ -890,14 +890,14 @@ fn extract_last_two_bits(value: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::arch::{Arch, Architecture};
+    use crate::arch;
 
     /// Decodes privileged instructions
     /// Here is a handy tool to double check:
     /// https://luplab.gitlab.io/rvcodecjs/
     #[test]
     fn system_instructions() {
-        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x100000, 0x2000);
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x100000, 0x2000);
         // MRET: Return from machine mode.
         assert_eq!(
             mctx.decode_illegal_instruction(0x30200073),
@@ -932,7 +932,7 @@ mod tests {
 
     #[test]
     fn csr_instructions() {
-        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x100000, 0x2000);
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x100000, 0x2000);
 
         // CSRRW: Atomic Read/Write CSR.
         assert_eq!(
@@ -997,7 +997,7 @@ mod tests {
 
     #[test]
     fn access_instructions() {
-        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x10000, 0x2000);
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x10000, 0x2000);
 
         assert_eq!(
             mctx.decode_load(0xff87b703),
@@ -1176,7 +1176,7 @@ mod tests {
 
     #[test]
     fn decode_rd() {
-        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x10000, 0x2000);
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x10000, 0x2000);
 
         let base_instruction: usize = 0x30001073;
 
@@ -1231,7 +1231,7 @@ mod tests {
 
     #[test]
     fn decode_rs1() {
-        let mctx = MiralisContext::new(unsafe { Arch::detect_hardware() }, 0x10000, 0x2000);
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x10000, 0x2000);
 
         let base_instruction: usize = 0x30001073;
 
