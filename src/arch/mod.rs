@@ -17,96 +17,19 @@ mod trap;
 
 use core::ptr;
 
+// Re-export bare-metal interaction
+pub use metal::{
+    clear_csr_bits, detect_hardware, handle_virtual_load, handle_virtual_store, hfencegvma,
+    hfencevvma, ifence, init, read_bytes_from_mode, read_csr, run_vcpu, set_csr_bits, set_mpp,
+    sfencevma, store_bytes_from_mode, wfi, write_csr,
+};
 use pmp::{PmpFlush, PmpGroup};
 pub use registers::{Csr, Register, csr};
 pub use trap::{MCause, TrapInfo};
 
 use crate::arch::mstatus::{MPP_FILTER, MPP_OFFSET, SPP_FILTER, SPP_OFFSET};
-use crate::decoder::{LoadInstr, StoreInstr};
 use crate::utils::PhantomNotSendNotSync;
 use crate::virt::{ExecutionMode, VirtContext};
-
-// —————————————————————————— Select Architecture ——————————————————————————— //
-
-/// This is the reminder of the legacy way of handling compilation to both bare metal and host
-/// architecture. We now instead rely on softcore-rs, so there is no need to use a separate type to
-/// access the architecture, because there is only one.
-pub type Arch = metal::MetalArch;
-
-// ———————————————————————— Architecture Definition ————————————————————————— //
-
-/// Architecture abstraction layer.
-pub trait Architecture {
-    fn init();
-
-    /// Read a csr value
-    fn read_csr(csr: Csr) -> usize;
-
-    /// Write into csr and return previous value
-    ///
-    /// # Safety
-    ///
-    /// This function writes to the hardware CSR, use with caution as it might change the execution
-    /// environment.
-    unsafe fn write_csr(csr: Csr, value: usize) -> usize;
-
-    /// Clear csr_bits with mask and return previous Csr value
-    ///
-    /// # Safety
-    ///
-    /// This function writes to the hardware CSR, use with caution as it might change the execution
-    /// environment.
-    unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize;
-
-    /// Set csr_bits with mask and return previous Csr value
-    ///
-    /// # Safety
-    ///
-    /// This function writes to the hardware CSR, use with caution as it might change the execution
-    /// environment.
-    unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize;
-
-    fn sfencevma(vaddr: Option<usize>, asid: Option<usize>);
-    fn hfencegvma(vaddr: Option<usize>, asid: Option<usize>);
-    fn hfencevvma(vaddr: Option<usize>, asid: Option<usize>);
-    fn ifence();
-    unsafe fn run_vcpu(ctx: &mut VirtContext);
-
-    /// Wait for interrupt
-    fn wfi();
-
-    /// Detect available hardware capabilities.
-    ///
-    /// Capabilities are local to a core: two cores (harts in RISC-V parlance) can have different
-    /// sets of capabilities. This is modelled by the fact that [HardwareCapability] does not
-    /// implement Send and Sync, meaning that it can't be shared across cores (which is enforced by
-    /// the compiler and invariants in unsafe code).
-    ///
-    /// # Safety
-    ///
-    /// This function might temporarily change the state of the hart during the detection process.
-    /// For this reason it is only safe to execute as part of the core initialization, not during
-    /// standard operations.
-    /// It should not be assume that any of the core configuration is preserved by this function.
-    unsafe fn detect_hardware() -> HardwareCapability;
-
-    unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext);
-
-    unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext);
-
-    /// Copies dest.len() bytes from src to dest, using the provided mode to read from src.
-    /// This function can be useful to copy bytes from the virtual address space of a lower
-    /// privileged mode, to a buffer in M-mode.
-    ///
-    /// Returns whether the copy succeeded or not (for example, the copy might not succeed if we try
-    /// to read an address not accessible from the given mode).
-    unsafe fn read_bytes_from_mode(src: *const u8, dest: &mut [u8], mode: Mode) -> Result<(), ()>;
-
-    /// This function is similar to the function above except it is used to store bytes in virtual memory from a chphysical address.
-    unsafe fn store_bytes_from_mode(src: &mut [u8], dest: *const u8, mode: Mode) -> Result<(), ()>;
-    unsafe fn write_pmpaddr(idx: usize, value: usize);
-    unsafe fn write_pmpcfg(idx: usize, configuration: usize);
-}
 
 // ——————————————————————————— Hardware Detection ——————————————————————————— //
 
@@ -653,14 +576,6 @@ pub(crate) use {read_custom_csr, write_custom_csr};
 
 // ———————————————————————— Helpers ————————————————————————— //
 
-/// Change mstatus.MPP and return the previous mstatus.MPP
-pub unsafe fn set_mpp(mode: Mode) -> Mode {
-    let value = mode.to_bits() << mstatus::MPP_OFFSET;
-    let prev_mstatus = Arch::read_csr(Csr::Mstatus);
-    unsafe { Arch::write_csr(Csr::Mstatus, (prev_mstatus & !mstatus::MPP_FILTER) | value) };
-    parse_mpp_return_mode(prev_mstatus)
-}
-
 /// Return the faulting instruction at the provided exception PC.
 ///
 /// # Safety
@@ -692,7 +607,7 @@ pub unsafe fn get_raw_faulting_instr(ctx: &VirtContext) -> usize {
             // We need to read the instructions using MPRV.
             let mut instr: [u8; 4] = [0, 0, 0, 0];
             let instr_ptr = ctx.trap_info.mepc as *const u8;
-            unsafe { Arch::read_bytes_from_mode(instr_ptr, &mut instr, mode).unwrap() };
+            unsafe { metal::read_bytes_from_mode(instr_ptr, &mut instr, mode).unwrap() };
             u32::from_le_bytes(instr) as usize
         }
     }
@@ -709,11 +624,11 @@ pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
     );
 
     for (idx, cfg) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
-        unsafe { Arch::write_pmpcfg(idx * 2, *cfg) };
+        unsafe { metal::write_pmpcfg(idx * 2, *cfg) };
     }
 
     for (idx, pmp_addr_entry) in pmpaddr.iter().enumerate().take(nb_pmp) {
-        unsafe { Arch::write_pmpaddr(idx, *pmp_addr_entry) };
+        unsafe { metal::write_pmpaddr(idx, *pmp_addr_entry) };
     }
 
     PmpFlush()

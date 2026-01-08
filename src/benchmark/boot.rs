@@ -2,7 +2,8 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use miralis_core::abi;
 
-use crate::arch::{Arch, Architecture, Csr, Register};
+use crate::arch;
+use crate::arch::{Csr, Register};
 use crate::benchmark::{NUMBER_CATEGORIES, get_exception_category};
 use crate::config::MODULES;
 use crate::host::MiralisContext;
@@ -51,14 +52,14 @@ impl Module for BootBenchmark {
         next_mode: ExecutionMode,
     ) {
         if let Some(exception_offset) = get_exception_category(ctx, previous_mode, next_mode) {
-            let current_time_bin = Arch::read_csr(Csr::Time) / CYCLES_PER_INTERVALL;
+            let current_time_bin = arch::read_csr(Csr::Time) / CYCLES_PER_INTERVALL;
 
             if Self::is_done(current_time_bin) {
                 self.display_benchmark(ctx.hart_id);
 
                 // We block the core now, we got all the data we needed
                 loop {
-                    Arch::wfi();
+                    arch::wfi();
                 }
             }
 
@@ -84,7 +85,7 @@ impl Module for BootBenchmark {
     }
 
     fn on_shutdown(&mut self) {
-        self.display_benchmark(Arch::read_csr(Csr::Mhartid));
+        self.display_benchmark(arch::read_csr(Csr::Mhartid));
     }
 }
 
@@ -108,7 +109,7 @@ impl BootBenchmark {
     fn display_benchmark(&self, hart_id: usize) {
         if hart_id != 0 {
             loop {
-                Arch::wfi();
+                arch::wfi();
             }
         }
 

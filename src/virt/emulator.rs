@@ -13,8 +13,8 @@ use crate::arch::mstatus::{
     MPP_FILTER, MPP_OFFSET, MPV_FILTER, SPIE_FILTER, SPIE_OFFSET, SPP_FILTER, SPP_OFFSET,
 };
 use crate::arch::{
-    Arch, Architecture, Csr, MCause, Mode, Register, get_raw_faulting_instr, mie, misa, mstatus,
-    mtvec, parse_mpp_return_mode, parse_spp_return_mode,
+    Csr, MCause, Mode, Register, get_raw_faulting_instr, mie, misa, mstatus, mtvec,
+    parse_mpp_return_mode, parse_spp_return_mode,
 };
 use crate::decoder::{IllegalInst, LoadInstr, StoreInstr};
 use crate::device::VirtDevice;
@@ -22,7 +22,7 @@ use crate::host::MiralisContext;
 use crate::modules::{MainModule, Module};
 use crate::platform::{Plat, Platform};
 use crate::utils::sign_extend;
-use crate::{debug, device, logger, utils};
+use crate::{arch, debug, device, logger, utils};
 
 /// Whether to continue execution of the virtual firmware or payload, or terminate the run loop.
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -197,10 +197,10 @@ impl VirtContext {
             );
             match instr {
                 LoadStoreInstr::Load(instr) => unsafe {
-                    Arch::handle_virtual_load(instr, self);
+                    arch::handle_virtual_load(instr, self);
                 },
                 LoadStoreInstr::Store(instr) => unsafe {
-                    Arch::handle_virtual_store(instr, self);
+                    arch::handle_virtual_store(instr, self);
                 },
             }
         } else {
@@ -361,7 +361,7 @@ impl VirtContext {
 
         // Update hypervisor CSRs if going to HS-mode
         if self.extensions.has_h_extension && !next_is_virt {
-            let mut hstatus = Arch::read_csr(Csr::Hstatus);
+            let mut hstatus = arch::read_csr(Csr::Hstatus);
 
             if prev_is_virt {
                 // hstatus.SPVP is only updated if coming from VS/VU-mode
@@ -374,9 +374,9 @@ impl VirtContext {
                 hstatus |= if self.trap_info.gva { GVA_FILTER } else { 0 };
 
                 unsafe {
-                    Arch::write_csr(Csr::Hstatus, hstatus);
-                    Arch::write_csr(Csr::Htval, self.trap_info.mtval2);
-                    Arch::write_csr(Csr::Htinst, self.trap_info.mtinst);
+                    arch::write_csr(Csr::Hstatus, hstatus);
+                    arch::write_csr(Csr::Htval, self.trap_info.mtval2);
+                    arch::write_csr(Csr::Htinst, self.trap_info.mtinst);
                 }
             }
         }
@@ -385,20 +385,20 @@ impl VirtContext {
         if next_is_virt {
             // Update VS-mode exception info
             unsafe {
-                Arch::write_csr(Csr::Vstval, self.trap_info.mtval);
-                Arch::write_csr(Csr::Vsepc, self.trap_info.mepc);
-                Arch::write_csr(Csr::Vscause, self.trap_info.mcause);
+                arch::write_csr(Csr::Vstval, self.trap_info.mtval);
+                arch::write_csr(Csr::Vsepc, self.trap_info.mepc);
+                arch::write_csr(Csr::Vscause, self.trap_info.mcause);
             }
 
             // Set MEPC to VS-mode exception vector base
-            self.pc = Arch::read_csr(Csr::Vstvec);
+            self.pc = arch::read_csr(Csr::Vstvec);
 
             // Set MPP to VS-mode
             mstatus &= !MPP_FILTER;
             mstatus |= (Mode::S as usize) << MPP_OFFSET;
 
             // Get VS-mode SSTATUS CSR
-            let mut vsstatus = Arch::read_csr(Csr::Vsstatus);
+            let mut vsstatus = arch::read_csr(Csr::Vsstatus);
 
             // Set SPP for VS-mode
             vsstatus &= !SPP_FILTER;
@@ -417,18 +417,18 @@ impl VirtContext {
 
             // Update VS-mode SSTATUS CSR
             unsafe {
-                Arch::write_csr(Csr::Vsstatus, vsstatus);
+                arch::write_csr(Csr::Vsstatus, vsstatus);
             }
         } else {
             // Update S-mode exception info
             unsafe {
-                Arch::write_csr(Csr::Stval, self.trap_info.mtval);
-                Arch::write_csr(Csr::Sepc, self.trap_info.mepc);
-                Arch::write_csr(Csr::Scause, self.trap_info.mcause);
+                arch::write_csr(Csr::Stval, self.trap_info.mtval);
+                arch::write_csr(Csr::Sepc, self.trap_info.mepc);
+                arch::write_csr(Csr::Scause, self.trap_info.mcause);
             }
 
             // Jump to the Payload trap handler
-            self.pc = Arch::read_csr(Csr::Stvec);
+            self.pc = arch::read_csr(Csr::Stvec);
 
             // Set MPP to S-mode
             mstatus &= !MPP_FILTER;
@@ -451,7 +451,7 @@ impl VirtContext {
         }
 
         unsafe {
-            Arch::write_csr(Csr::Mstatus, mstatus);
+            arch::write_csr(Csr::Mstatus, mstatus);
         }
     }
 
@@ -726,12 +726,12 @@ impl VirtContext {
         let prev_mie: usize;
 
         // Set mie to csr.mie, even if mstatus.MIE bit is cleared.
-        unsafe { prev_mie = Arch::write_csr(Csr::Mie, self.csr.mie) };
+        unsafe { prev_mie = arch::write_csr(Csr::Mie, self.csr.mie) };
 
-        Arch::wfi();
+        arch::wfi();
 
         // Restore to previous mie value, including Miralis own bits
-        unsafe { Arch::write_csr(Csr::Mie, prev_mie) };
+        unsafe { arch::write_csr(Csr::Mie, prev_mie) };
     }
 
     pub fn emulate_csrrw(
@@ -967,7 +967,7 @@ impl VirtContext {
             Register::X0 => None,
             reg => Some(self.get(reg)),
         };
-        Arch::sfencevma(vaddr, asid);
+        arch::sfencevma(vaddr, asid);
     }
 
     pub fn emulate_hfence_gvma(
@@ -984,7 +984,7 @@ impl VirtContext {
             Register::X0 => None,
             reg => Some(self.get(reg)),
         };
-        Arch::hfencegvma(vaddr, asid);
+        arch::hfencegvma(vaddr, asid);
     }
 
     pub fn emulate_hfence_vvma(
@@ -1001,7 +1001,7 @@ impl VirtContext {
             Register::X0 => None,
             reg => Some(self.get(reg)),
         };
-        Arch::hfencevvma(vaddr, asid);
+        arch::hfencevvma(vaddr, asid);
     }
 }
 
@@ -1042,10 +1042,10 @@ fn get_next_interrupt(mie: usize, mip: usize, mideleg: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::get_next_interrupt;
-    use crate::HwRegisterContextSetter;
-    use crate::arch::{Arch, Architecture, Csr, mie};
+    use crate::arch::{Csr, mie};
     use crate::host::MiralisContext;
     use crate::virt::VirtContext;
+    use crate::{HwRegisterContextSetter, arch};
 
     /// If the firmware wants to read the `mip` register after cleaning `vmip.SEIP`,
     /// and we don't sync `vmip.SEIP` with `mip.SEIP`, it can't know if there is an interrupt
@@ -1056,7 +1056,7 @@ mod tests {
     /// Then, we need to synchronize vmip.SEIP with mip.SEIP.
     #[test]
     fn csrr_external_interrupt() {
-        let hw = unsafe { Arch::detect_hardware() };
+        let hw = unsafe { arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
@@ -1064,7 +1064,7 @@ mod tests {
         ctx.set_csr(Csr::Mip, mie::SEIE_FILTER, &mut mctx);
 
         assert_eq!(
-            Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
+            arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
             mie::SEIE_FILTER,
             "mip.SEIP must be 1"
         );
@@ -1073,7 +1073,7 @@ mod tests {
         ctx.set_csr(Csr::Mip, 0, &mut mctx);
 
         assert_eq!(
-            Arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
+            arch::read_csr(Csr::Mip) & mie::SEIE_FILTER,
             0,
             "mip.SEIP must be 0"
         );

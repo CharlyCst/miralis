@@ -1,6 +1,7 @@
 //! Emulation logic for misaligned loads and stores
 
-use crate::arch::{Arch, Architecture, get_raw_faulting_instr, parse_mpp_return_mode};
+use crate::arch;
+use crate::arch::{get_raw_faulting_instr, parse_mpp_return_mode};
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::host::MiralisContext;
 use crate::virt::VirtContext;
@@ -30,17 +31,17 @@ pub fn emulate_misaligned_read(ctx: &mut VirtContext, mctx: &mut MiralisContext)
     ctx.regs[rd as usize] = match len.to_bytes() {
         8 => {
             let mut value_to_read: [u8; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
-            success = unsafe { Arch::read_bytes_from_mode(start_addr, &mut value_to_read, mode) };
+            success = unsafe { arch::read_bytes_from_mode(start_addr, &mut value_to_read, mode) };
             u64::from_le_bytes(value_to_read) as usize
         }
         4 => {
             let mut value_to_read: [u8; 4] = [0, 0, 0, 0];
-            success = unsafe { Arch::read_bytes_from_mode(start_addr, &mut value_to_read, mode) };
+            success = unsafe { arch::read_bytes_from_mode(start_addr, &mut value_to_read, mode) };
             u32::from_le_bytes(value_to_read) as usize
         }
         2 => {
             let mut value_to_read: [u8; 2] = [0, 0];
-            success = unsafe { Arch::read_bytes_from_mode(start_addr, &mut value_to_read, mode) };
+            success = unsafe { arch::read_bytes_from_mode(start_addr, &mut value_to_read, mode) };
             u16::from_le_bytes(value_to_read) as usize
         }
         _ => {
@@ -84,18 +85,18 @@ pub fn emulate_misaligned_write(
     match len.to_bytes() {
         8 => {
             let val = ctx.regs[rs2 as usize] as u64;
-            let mut value_to_store: [u8; 8] = val.to_le_bytes();
-            success = unsafe { Arch::store_bytes_from_mode(&mut value_to_store, start_addr, mode) };
+            let value_to_store: [u8; 8] = val.to_le_bytes();
+            success = unsafe { arch::store_bytes_from_mode(&value_to_store, start_addr, mode) };
         }
         4 => {
             let val = ctx.regs[rs2 as usize] as u32;
-            let mut value_to_store: [u8; 4] = val.to_le_bytes();
-            success = unsafe { Arch::store_bytes_from_mode(&mut value_to_store, start_addr, mode) };
+            let value_to_store: [u8; 4] = val.to_le_bytes();
+            success = unsafe { arch::store_bytes_from_mode(&value_to_store, start_addr, mode) };
         }
         2 => {
             let val = ctx.regs[rs2 as usize] as u16;
-            let mut value_to_store: [u8; 2] = val.to_le_bytes();
-            success = unsafe { Arch::store_bytes_from_mode(&mut value_to_store, start_addr, mode) };
+            let value_to_store: [u8; 2] = val.to_le_bytes();
+            success = unsafe { arch::store_bytes_from_mode(&value_to_store, start_addr, mode) };
         }
         _ => {
             unreachable!("Misaligned write with an unexpected byte length")

@@ -4,7 +4,8 @@
 //! context. We make sure that this module can compile and be tested even without Kani installed,
 //! in which case concrete values are used in place of symbolic ones.
 
-use miralis::arch::{Arch, Architecture, ExtensionsCapability, Mode, menvcfg, mie, misa, mstatus};
+use miralis::arch;
+use miralis::arch::{ExtensionsCapability, Mode, menvcfg, mie, misa, mstatus};
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
 use miralis::virt::VirtContext;
@@ -210,7 +211,7 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
 /// checking).
 pub fn new_symbolic_contexts() -> (VirtContext, MiralisContext, Core) {
     // Initialize Miralis's own context
-    let hw = unsafe { Arch::detect_hardware() };
+    let hw = unsafe { arch::detect_hardware() };
     let mctx = MiralisContext::new(hw, Plat::get_miralis_start(), MIRALIS_SIZE);
 
     // We first create a symbolic context

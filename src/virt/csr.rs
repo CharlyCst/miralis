@@ -6,8 +6,8 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
 use crate::arch::pmp::pmpcfg;
-use crate::arch::{Arch, Architecture, Csr, Register, hstatus, menvcfg, mie, misa, mstatus};
-use crate::{MiralisContext, Plat, Platform, debug, logger};
+use crate::arch::{Csr, Register, hstatus, menvcfg, mie, misa, mstatus};
+use crate::{MiralisContext, Plat, Platform, arch, debug, logger};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
 ///
@@ -230,12 +230,12 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Vlenb => self.csr.vlenb,
 
             Csr::Cycle => self.csr.mcycle,
-            Csr::Time => Arch::read_csr(Csr::Time),
+            Csr::Time => arch::read_csr(Csr::Time),
             Csr::Instret => self.csr.minstret,
 
             // Crypto extension
             // To get a true random value we defer to the hardware.
-            Csr::Seed => Arch::read_csr(Csr::Seed),
+            Csr::Seed => arch::read_csr(Csr::Seed),
 
             // Platform-specific CSRs
             Csr::Custom(csr) => Plat::read_custom_csr(csr),
@@ -309,7 +309,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     // TODO: it seems the PMP are not yet written to hardware here,
                     // that seems like a bug to me. We should investigate.
                     // unsafe { write_pmp(&mctx.pmp).flush() };
-                    Arch::sfencevma(None, None);
+                    arch::sfencevma(None, None);
                 }
 
                 if !mctx.hw.extensions.has_s_extension || self.csr.misa & misa::S == 0 {
@@ -377,11 +377,11 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if (self.csr.mip ^ value) & mie::SEIE_FILTER != 0 {
                     if value & mie::SEIE_FILTER == 0 {
                         unsafe {
-                            Arch::clear_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                            arch::clear_csr_bits(Csr::Mip, mie::SEIE_FILTER);
                         }
                     } else {
                         unsafe {
-                            Arch::set_csr_bits(Csr::Mip, mie::SEIE_FILTER);
+                            arch::set_csr_bits(Csr::Mip, mie::SEIE_FILTER);
                         }
                     }
                 }

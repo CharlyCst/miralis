@@ -22,7 +22,7 @@ pub mod policy;
 pub mod utils;
 pub mod virt;
 
-use arch::{Arch, Architecture, Csr, Register};
+use arch::{Csr, Register};
 use host::MiralisContext;
 use miralis_config as config;
 pub use platform::init;
@@ -43,10 +43,10 @@ use crate::modules::{MainModule, Module};
 /// This function will start by passing control to the firmware. The hardware must have
 /// been initialized properly (including calling `miralis::init` and loading the firmware).
 pub unsafe fn main_loop(ctx: &mut VirtContext, mctx: &mut MiralisContext, module: &mut MainModule) {
-    unsafe { Arch::run_vcpu(ctx) };
+    unsafe { arch::run_vcpu(ctx) };
 
     while handle_trap(ctx, mctx, module) != ExitResult::Done {
-        unsafe { Arch::run_vcpu(ctx) };
+        unsafe { arch::run_vcpu(ctx) };
     }
 }
 
@@ -235,15 +235,15 @@ fn log_ctx(ctx: &VirtContext) {
 /// In case of an interrupt, Mip must be cleared: avoid Miralis to trap again.
 #[cfg(test)]
 mod tests {
-    use crate::arch::{Arch, Architecture, MCause, Mode, mstatus};
-    use crate::handle_trap;
+    use crate::arch::{MCause, Mode, mstatus};
     use crate::host::MiralisContext;
     use crate::modules::{MainModule, Module};
     use crate::virt::VirtContext;
+    use crate::{arch, handle_trap};
 
     #[test]
     fn handle_trap_state() {
-        let hw = unsafe { Arch::detect_hardware() };
+        let hw = unsafe { arch::detect_hardware() };
         let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
         let mut module = MainModule::init();
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());

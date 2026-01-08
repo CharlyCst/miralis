@@ -13,7 +13,7 @@ pub use virt::VirtPlatform;
 pub use visionfive2::VisionFive2Platform;
 
 // Re-export virt platform by default for now
-use crate::arch::{Arch, Architecture};
+use crate::arch;
 use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::VirtClint;
 use crate::driver::clint::ClintDriver;
@@ -67,7 +67,7 @@ pub trait Platform {
     /// The exact behavior is platform dependant.
     fn exit_success() -> ! {
         loop {
-            Arch::wfi();
+            arch::wfi();
             hint::spin_loop();
         }
     }
@@ -77,7 +77,7 @@ pub trait Platform {
     /// The exact behavior is platform dependant.
     fn exit_failure() -> ! {
         loop {
-            Arch::wfi();
+            arch::wfi();
             hint::spin_loop();
         }
     }
@@ -147,7 +147,7 @@ pub fn init() {
     logger::init();
 
     // Trap handler
-    Arch::init();
+    arch::init();
 
     // Ideally we would like to check this statically, until we find a good solution we assert it
     // at runtime.
