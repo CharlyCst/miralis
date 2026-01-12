@@ -41,6 +41,10 @@ enum LoadStoreInstr {
 }
 
 impl VirtContext {
+    /// Emulates a privileged instruction that caused an illegal instruction trap.
+    ///
+    /// Dispatches to the appropriate emulation handler based on the instruction type,
+    /// and increments the program counter by 4 bytes for all instructions (except MRET and SRET).
     fn emulate_privileged_instr(&mut self, instr: &IllegalInst, mctx: &mut MiralisContext) {
         match instr {
             IllegalInst::Wfi => self.emulate_wfi(mctx),
@@ -228,7 +232,7 @@ impl VirtContext {
     }
 
     /// Return the next pending interrupt, if any.
-    pub fn has_pending_interrupt(&mut self) -> Option<usize> {
+    fn has_pending_interrupt(&mut self) -> Option<usize> {
         if self.csr.mstatus & mstatus::MIE_FILTER == 0 && self.mode == Mode::M && !self.is_wfi {
             // Interrupts are disabled while in M-mode if mstatus.MIE is 0
             return None;
@@ -241,7 +245,7 @@ impl VirtContext {
     ///
     /// This function jumps to the trap handler for the corresponding interrupts and updates the
     /// virtual CSRs accordingly.
-    pub fn inject_interrupt(&mut self, next_int: usize) {
+    fn inject_interrupt(&mut self, next_int: usize) {
         // Update Mstatus to match the semantic of a trap
         VirtCsr::set_csr_field(
             &mut self.csr.mstatus,
@@ -647,7 +651,11 @@ impl VirtContext {
         ExitResult::Continue
     }
 
-    /// Ecalls may come from firmware or payload, resulting in different handling.
+    /// Handles Miralis-specific ecalls from firmware or payload.
+    ///
+    /// Miralis-specific ecalls are ecalls from the firmware or payload with extension ID (`eid`)
+    /// equal to `miralis_core::abi::MIRALIS_EID`. The individual ecall functon IDs (`fid`s) are
+    /// defined in the `miralis_core::abi` crate.
     fn handle_ecall(&mut self) -> ExitResult {
         let fid = self.get(Register::X16);
         match fid {
@@ -695,7 +703,8 @@ impl VirtContext {
         ExitResult::Continue
     }
 
-    pub fn emulate_illegal_instruction(&mut self, mctx: &mut MiralisContext, raw_instr: usize) {
+    /// Decodes and emulates an illegal instruction.
+    fn emulate_illegal_instruction(&mut self, mctx: &mut MiralisContext, raw_instr: usize) {
         let instr = mctx.decode_illegal_instruction(raw_instr);
         logger::trace!("Faulting instruction: {:?}", instr);
         self.emulate_privileged_instr(&instr, mctx);
@@ -734,6 +743,10 @@ impl VirtContext {
         unsafe { arch::write_csr(Csr::Mie, prev_mie) };
     }
 
+    /// Emulates the CSRRW (CSR Read-Write) instruction.
+    ///
+    /// Atomically swaps values between a CSR and a register: reads the CSR into `rd`,
+    /// then writes the value from `rs1` to the CSR.
     pub fn emulate_csrrw(
         &mut self,
         mctx: &mut MiralisContext,
@@ -746,6 +759,10 @@ impl VirtContext {
         self.set(rd, tmp);
     }
 
+    /// Emulates the CSRRS (CSR Read and Set Bits) instruction.
+    ///
+    /// Reads the CSR into `rd`, then sets bits in the CSR according to the mask in `rs1`.
+    /// If `rs1` is X0, the write is skipped.
     pub fn emulate_csrrs(
         &mut self,
         mctx: &mut MiralisContext,
@@ -766,6 +783,10 @@ impl VirtContext {
         self.set(rd, tmp);
     }
 
+    /// Emulates the CSRRWI (CSR Read-Write Immediate) instruction.
+    ///
+    /// Atomically swaps values between a CSR and an immediate: reads the CSR into `rd`,
+    /// then writes the immediate value `uimm` to the CSR.
     pub fn emulate_csrrwi(
         &mut self,
         mctx: &mut MiralisContext,
@@ -777,6 +798,10 @@ impl VirtContext {
         self.set_csr(csr, uimm, mctx);
     }
 
+    /// Emulates the CSRRSI (CSR Read and Set Bits Immediate) instruction.
+    ///
+    /// Reads the CSR into `rd`, then sets bits in the CSR according to the immediate mask.
+    /// If `uimm` is 0, the write is ignored per the RISC-V Sail specification.
     pub fn emulate_csrrsi(
         &mut self,
         mctx: &mut MiralisContext,
@@ -794,6 +819,10 @@ impl VirtContext {
         self.set(rd, tmp);
     }
 
+    /// Emulates the CSRRC (CSR Read and Clear Bits) instruction.
+    ///
+    /// Reads the CSR into `rd`, then clears bits in the CSR according to the mask in `rs1`.
+    /// If `rs1` is X0, the write is skipped.
     pub fn emulate_csrrc(
         &mut self,
         mctx: &mut MiralisContext,
@@ -814,6 +843,10 @@ impl VirtContext {
         self.set(rd, tmp);
     }
 
+    /// Emulates the CSRRCI (CSR Read and Clear Bits Immediate) instruction.
+    ///
+    /// Reads the CSR into `rd`, then clears bits in the CSR according to the immediate mask.
+    /// If `uimm` is 0, the write is ignored per the RISC-V Sail specification.
     pub fn emulate_csrrci(
         &mut self,
         mctx: &mut MiralisContext,
@@ -831,6 +864,7 @@ impl VirtContext {
         self.set(rd, tmp);
     }
 
+    /// Emulates the MRET (Machine Return) instruction.
     pub fn emulate_mret(&mut self, mctx: &mut MiralisContext) {
         match parse_mpp_return_mode(self.csr.mstatus) {
             Mode::M => {
@@ -899,6 +933,7 @@ impl VirtContext {
         self.pc = self.csr.mepc;
     }
 
+    /// Emulates the SRET (Supervisor Return) instruction.
     pub fn emulate_sret(&mut self, mctx: &mut MiralisContext) {
         match parse_spp_return_mode(self.csr.mstatus) {
             Mode::S if mctx.hw.extensions.has_s_extension => {
@@ -953,6 +988,7 @@ impl VirtContext {
         self.pc = self.csr.sepc;
     }
 
+    /// Emulate sfencevma by emitting a physical sfencevma.
     pub fn emulate_sfence_vma(
         &mut self,
         _mctx: &mut MiralisContext,
@@ -970,6 +1006,7 @@ impl VirtContext {
         arch::sfencevma(vaddr, asid);
     }
 
+    /// Emulate hfencegvma by emitting a physical hfencegvma.
     pub fn emulate_hfence_gvma(
         &mut self,
         _mctx: &mut MiralisContext,
@@ -987,6 +1024,7 @@ impl VirtContext {
         arch::hfencegvma(vaddr, asid);
     }
 
+    /// Emulate hfencevvma by emitting a physical hfencevvma.
     pub fn emulate_hfence_vvma(
         &mut self,
         _mctx: &mut MiralisContext,
@@ -1007,6 +1045,7 @@ impl VirtContext {
 
 // ————————————————————————————————— Utils —————————————————————————————————— //
 
+/// Returns true if the virtual machine has support for U-mode.
 fn has_user_mode(ctx: &VirtContext) -> bool {
     (ctx.csr.misa & misa::U) != 0
 }
