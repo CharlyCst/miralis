@@ -838,7 +838,7 @@ impl VirtContext {
                 // Mret is jumping back to machine mode, do nothing
             }
             Mode::S if mctx.hw.extensions.has_s_extension => {
-                logger::trace!("mret to s-mode with MPP to {:x}", self.trap_info.mepc);
+                logger::trace!("mret to s-mode to {:x}", self.trap_info.mepc);
                 // Mret is jumping to supervisor mode, the runner is the guest OS
                 self.mode = Mode::S;
 
@@ -850,7 +850,7 @@ impl VirtContext {
                 );
             }
             Mode::U => {
-                logger::trace!("mret to u-mode with MPP");
+                logger::trace!("mret to u-mode to {:x}", self.trap_info.mepc);
                 // Mret is jumping to user mode, the runner is the guest OS
                 self.mode = Mode::U;
 

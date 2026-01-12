@@ -9,7 +9,9 @@ level = "info"
 color = true
 
 [vcpu]
-max_pmp = 8
+# Set 0 vCPU because the u54 cores only has 8 PMPs
+# Some OpenSBI firmware will misonfigure PMPs if less thant 8 are available.
+max_pmp = 0
 
 [platform]
 nb_harts = 4
