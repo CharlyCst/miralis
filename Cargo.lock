@@ -647,9 +647,9 @@ dependencies = [
 
 [[package]]
 name = "softcore-asm-macro"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "db9f5f41af73d4d6dcefaee6cc1db17da7aae8347152b0c1bde685669774ed69"
+checksum = "c08a9ef38e03d82d985625e9199f332bdbedf4282bf77a8e68691a7363f0617a"
 dependencies = [
  "anyhow",
  "pest",
@@ -663,9 +663,9 @@ dependencies = [
 
 [[package]]
 name = "softcore-asm-rv64"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e1e060ee237ce04ad074fcab39eacba5264851f570abc78cade6b235769d624"
+checksum = "7105563f4d33ebaad72d1da6c4e4db50072c0f4958aaaa920de3eaa7ae180337"
 dependencies = [
  "softcore-asm-macro",
  "softcore-rv64",
