@@ -180,8 +180,7 @@ pub struct KeystonePolicy {
 impl KeystonePolicy {
     /// Allocate an enclave slot and returns the index of the newly allocated enclave
     fn allocate_enclave(&mut self) -> Result<usize, ReturnCode> {
-        for i in 0..ENCL_MAX {
-            let enclave = &mut self.enclaves[i];
+        for (i, enclave) in self.enclaves.iter().enumerate() {
             if let EnclaveState::Invalid = enclave.state {
                 return Ok(i);
             }

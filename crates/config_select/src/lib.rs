@@ -41,12 +41,12 @@ pub fn select_env(tokens: TokenStream) -> TokenStream {
         if let Some(env) = &env {
             panic!(
                 "Environment variable '{}' has value '{}' which doesn't match any case",
-                &select_macro.env_var, &env
+                select_macro.env_var, env
             );
         } else {
             panic!(
                 "Environment variable '{}' is not set, but there is no default case",
-                &select_macro.env_var
+                select_macro.env_var
             );
         }
     }

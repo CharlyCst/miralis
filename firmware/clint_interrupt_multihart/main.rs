@@ -2,7 +2,6 @@
 #![no_main]
 
 use core::arch::{asm, global_asm};
-use core::usize;
 
 use miralis_abi::{setup_binary, success};
 use test_helpers::clint;
@@ -26,7 +25,7 @@ fn main() -> ! {
             "csrr {0}, mhartid",
             "csrw mtvec, {handler}",
             out(reg) hart_id,
-            handler = in(reg) _raw_interrupt_trap_handler as usize,
+            handler = in(reg) _raw_interrupt_trap_handler as *const () as usize,
         );
     }
 

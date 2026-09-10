@@ -3,7 +3,6 @@
 
 use core::arch::{asm, global_asm};
 use core::sync::atomic::{AtomicUsize, Ordering};
-use core::usize;
 
 use miralis_abi::{setup_binary, success};
 use test_helpers::clint::{self, set_mtimecmp_deadline};
@@ -24,7 +23,7 @@ fn main() -> ! {
         asm!(
             "csrw mtvec, {handler}",       // Setup trap handler
             "csrs mie, {mtie}",            // Enable machine timer interrupt (MTIE)
-            handler = in(reg) _raw_interrupt_trap_handler as usize,
+            handler = in(reg) _raw_interrupt_trap_handler as *const () as usize,
             mtie = in(reg) 0x80,
         );
 

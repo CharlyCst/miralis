@@ -186,7 +186,10 @@ macro_rules! debug {
     };
 }
 
-pub(crate) use {debug, debug_enabled, trace, trace_enabled};
+pub(crate) use debug;
+pub(crate) use debug_enabled;
+pub(crate) use trace;
+pub(crate) use trace_enabled;
 
 // ————————————————————————————————— Utils —————————————————————————————————— //
 

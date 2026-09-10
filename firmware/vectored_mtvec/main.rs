@@ -14,7 +14,7 @@ fn main() -> ! {
     // Then produce an interrupt (MTI) to fall inside the vector
     // The redirection should end in success_trap_handler
     unsafe {
-        let _raw_interrupt_trap_handler = _raw_interrupt_trap_handler as usize | 0b1;
+        let _raw_interrupt_trap_handler = _raw_interrupt_trap_handler as *const () as usize | 0b1;
 
         asm!(
             "csrw mtvec, {handler}",       // Setup trap handler

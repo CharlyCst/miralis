@@ -42,7 +42,10 @@ fn main() -> ! {
 
 fn install_trap_handler() {
     unsafe {
-        asm!("csrw mtvec, {mtvec}", mtvec = in(reg) _raw_trap_handler as usize);
+        asm!(
+            "csrw mtvec, {mtvec}",
+            mtvec = in(reg) _raw_trap_handler as *const () as usize
+        );
     }
 }
 

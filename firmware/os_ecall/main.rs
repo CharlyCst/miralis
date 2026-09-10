@@ -13,8 +13,8 @@ fn main() -> ! {
     // Ecall from S-Mode                : OS -> Miralis
     // ecall intercepted by Miralis     : exit
 
-    let os: usize = _raw_os as usize;
-    let trap: usize = _raw_trap_handler as usize;
+    let os: usize = _raw_os as *const () as usize;
+    let trap: usize = _raw_trap_handler as *const () as usize;
     let mpp: i32 = 0b1 << 11; // MPP = S-mode
 
     unsafe {

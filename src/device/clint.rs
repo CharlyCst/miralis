@@ -324,7 +324,8 @@ impl VirtClint {
 
     /// Mark the policy MSI as pending for the harts given by the mask (bit 0 represents hart 0, bit 1 hart 1,....)
     pub fn set_all_policy_msi(&self, mask: usize) {
-        for hart_idx in 0..PLATFORM_NB_HARTS {
+        #[allow(clippy::needless_range_loop)]
+        for hart_idx in 0..self.policy_msi.len() {
             if mask & (1 << hart_idx) != 0 {
                 self.policy_msi[hart_idx].store(true, Ordering::SeqCst);
             }
