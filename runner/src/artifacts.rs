@@ -35,6 +35,7 @@ pub const PAYLOAD_TARGET: &str = "riscv-unknown-payload";
 const CARGO_ARGS: &[&str] = &[
     "-Zbuild-std=core,alloc",
     "-Zbuild-std-features=compiler-builtins-mem",
+    "-Zjson-target-spec",
 ];
 
 #[derive(PartialEq, Eq)]
