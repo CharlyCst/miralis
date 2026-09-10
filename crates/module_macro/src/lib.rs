@@ -164,11 +164,8 @@ fn process_tokens(modules: &[String], stream: TokenStream, output: &mut Vec<Toke
                 let mut transformed_group = Vec::new();
                 process_tokens(modules, group.stream(), &mut transformed_group);
                 output.push(
-                    Group::new(
-                        delimiter,
-                        TokenStream::from_iter(transformed_group.into_iter()),
-                    )
-                    .into_token_stream(),
+                    Group::new(delimiter, TokenStream::from_iter(transformed_group))
+                        .into_token_stream(),
                 );
             }
             _ => output.push(token.into()),

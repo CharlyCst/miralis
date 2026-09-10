@@ -132,7 +132,7 @@ macro_rules! asm_mprv_mem_op {
             "csrc mstatus, {mprv_bit}", // Disable MPRV
             "csrw mtvec, {old_mtvec}",  // Restore mtvec
             old_mtvec = out(reg) _,
-            mtvec = in(reg) (_mprv_trap_handler as usize),
+            mtvec = in(reg) (_mprv_trap_handler as *const () as usize),
             addr = in(reg) $addr,
             rd = inout(reg) $value,
             mprv_bit = in(reg) mstatus::MPRV_FILTER,
@@ -147,7 +147,7 @@ macro_rules! asm_mprv_mem_op {
 
 pub fn init() {
     // Install trap handler
-    install_handler(_raw_trap_handler as usize);
+    install_handler(_raw_trap_handler as *const () as usize);
     // Initialize `medeleg` to ensure all exceptions trap to Miralis
     unsafe { write_csr(Csr::Medeleg, 0) };
     // Initialize `mideleg` with read-only ones
@@ -522,7 +522,7 @@ pub unsafe fn detect_hardware() -> HardwareCapability {
             ($reg:expr) => {{
                 // Install "tracer" handler, it allows miralis to know if it executed an illegal instruction
                 // and thus detects which registers aren't available
-                install_handler(_tracing_trap_handler as usize);
+                install_handler(_tracing_trap_handler as *const () as usize);
 
                 // Perform detection
                 let mut _dummy_variable: usize = 0;
@@ -538,7 +538,7 @@ pub unsafe fn detect_hardware() -> HardwareCapability {
                }
 
                 // Restore normal handler
-                install_handler(_raw_trap_handler as usize);
+                install_handler(_raw_trap_handler as *const () as usize);
 
                 // Present if value is 0
                 tracer_var == 0

@@ -131,7 +131,7 @@ fn read_artifact_manifest() -> ArtifactManifest {
         Err(_) => {
             println!(
                 "Could not find artifact manifest at '{}'",
-                &manifest_path.display()
+                manifest_path.display()
             );
             // Creating a default config
             String::from("")

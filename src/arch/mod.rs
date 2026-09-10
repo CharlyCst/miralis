@@ -572,7 +572,8 @@ macro_rules! read_custom_csr {
     }}
 }
 
-pub(crate) use {read_custom_csr, write_custom_csr};
+pub(crate) use read_custom_csr;
+pub(crate) use write_custom_csr;
 
 // ———————————————————————— Helpers ————————————————————————— //
 

@@ -21,7 +21,7 @@ fn main() -> ! {
         // Setup trap handler
         asm!(
             "csrw mtvec, {handler}",
-            handler = in(reg) _raw_trap_handler as usize,
+            handler = in(reg) _raw_trap_handler as *const () as usize,
         );
 
         // Try to read (Load) an address that should be protected by Miralis

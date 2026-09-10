@@ -31,12 +31,10 @@ pub fn find_project_root() -> Option<PathBuf> {
             return Some(dir);
         }
 
-        match dir.parent() {
-            // Try again in the parent directory
-            Some(parent) => dir = parent.to_owned(),
-            // No root config found
-            None => return None,
-        }
+        // return early with None if no parent
+        let parent = dir.parent()?;
+        // Continue iterating otherwise
+        dir = parent.to_owned()
     }
 }
 

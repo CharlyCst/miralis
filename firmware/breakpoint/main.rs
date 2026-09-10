@@ -9,7 +9,7 @@ setup_binary!(main);
 
 fn main() -> ! {
     unsafe {
-        let handler = _raw_breakpoint_trap_handler as usize;
+        let handler = _raw_breakpoint_trap_handler as *const () as usize;
         // Let's rise an exception breakpoint directly
         asm!(
             "csrw mtvec, {0}", // Write mtvec

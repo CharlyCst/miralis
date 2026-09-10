@@ -2,7 +2,6 @@
 #![no_main]
 
 use core::arch::{asm, global_asm};
-use core::usize;
 
 use miralis_abi::{failure, setup_binary, success};
 use test_helpers::clint;
@@ -29,7 +28,7 @@ fn main() -> ! {
             "csrw mtvec, {handler}",        // Setup trap handler
             "csrs mstatus, {mstatus_mie}",  // Enable interrupts
             "csrs mie, {mie}",              // Enable MTIE and MSIE
-            handler = in(reg) _raw_interrupt_trap_handler as usize,
+            handler = in(reg) _raw_interrupt_trap_handler as *const () as usize,
             mie = in(reg) 0x88,
             mstatus_mie = in(reg) 0x8,
         );

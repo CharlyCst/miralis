@@ -92,7 +92,7 @@ fn test_timer_interrupts() -> ! {
             "csrw mtvec, {handler}",       // Setup trap handler
             "csrs mstatus, {mstatus_mie}", // Enable interrupts (MIE)
             "csrs mie, {mtie}",            // Enable machine timer interrupt (MTIE)
-            handler = in(reg) _raw_interrupt_trap_handler as usize,
+            handler = in(reg) _raw_interrupt_trap_handler as *const () as usize,
             mstatus_mie = in(reg) 0x8,
             mtie = in(reg) 0x80,
         );

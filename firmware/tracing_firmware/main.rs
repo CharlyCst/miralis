@@ -45,7 +45,7 @@ fn enable_mcycle_in_smode() {
 }
 
 fn main() -> ! {
-    let trap: usize = _empty_handler as usize;
+    let trap: usize = _empty_handler as *const () as usize;
 
     enable_mcycle_in_smode();
 
@@ -62,7 +62,7 @@ fn main() -> ! {
 
     log::info!("Start benchmarking from Payload");
 
-    let os: usize = operating_system as usize;
+    let os: usize = operating_system as *const () as usize;
     let mpp = 0b1 << 11; // MPP = S-mode
 
     unsafe {

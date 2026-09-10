@@ -19,8 +19,8 @@ fn main() -> ! {
     let mut mstatus: usize;
     let mut mepc: usize;
 
-    let os: usize = _raw_os as usize;
-    let trap: usize = _raw_trap_handler as usize;
+    let os: usize = _raw_os as *const () as usize;
+    let trap: usize = _raw_trap_handler as *const () as usize;
     let mpp = 0b1 << 11; // MPP = S-mode
 
     unsafe {
