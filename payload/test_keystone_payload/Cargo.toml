@@ -1,12 +1,11 @@
 [package]
-name = "test_keystone_payload"
+name = "test-keystone-payload"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "test_keystone_payload"
+name = "test-keystone-payload"
 path = "main.rs"
 
 [lints]

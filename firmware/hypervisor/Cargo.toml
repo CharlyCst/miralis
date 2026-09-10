@@ -9,6 +9,9 @@ license = "MIT"
 name = "hypervisor"
 path = "main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
 log = { workspace = true }

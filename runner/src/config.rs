@@ -82,7 +82,7 @@ pub struct Qemu {
 
 #[derive(Deserialize, Debug, Clone, Copy)]
 pub enum Platforms {
-    #[serde(rename = "qemu_virt")]
+    #[serde(rename = "qemu-virt")]
     QemuVirt,
     #[serde(rename = "spike")]
     Spike,
@@ -95,7 +95,7 @@ pub enum Platforms {
 impl fmt::Display for Platforms {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Platforms::QemuVirt => write!(f, "qemu_virt"),
+            Platforms::QemuVirt => write!(f, "qemu-virt"),
             Platforms::Spike => write!(f, "spike"),
             Platforms::VisionFive2 => write!(f, "visionfive2"),
             Platforms::PremierP550 => write!(f, "premierp550"),

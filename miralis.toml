@@ -46,7 +46,7 @@ config = "qemu-virt"
 description = "The most basic test, which directly exit with an ecall to Miralis"
 
 [test.csr-ops]
-firmware = "csr_ops"
+firmware = "csr-ops"
 config = "qemu-virt"
 description = "Exercise CSR privileged instructions, for various CSRs"
 
@@ -71,7 +71,7 @@ config = "qemu-virt"
 description = "Execute an mret and check the values in mstatus"
 
 [test.os-ctx-switch]
-firmware = "os_ctx_switch"
+firmware = "os-ctx-switch"
 config = "qemu-virt"
 description = "Simple context switch to an S-mode payload"
 
@@ -86,12 +86,12 @@ config = "qemu-virt"
 description = "Ensure that the firmware can receive interrupts"
 
 [test.os-ecall]
-firmware = "os_ecall"
+firmware = "os-ecall"
 config = "qemu-virt"
 description = "Test ecall from OS payload to the virtualized firmware"
 
 [test.vectored-mtvec]
-firmware = "vectored_mtvec"
+firmware = "vectored-mtvec"
 config = "qemu-virt"
 description = "Test vectored trap handler"
 
@@ -106,17 +106,17 @@ config = "qemu-virt"
 description = "Test support for H extension (if available)"
 
 [test.clint-interrupt]
-firmware = "clint_interrupt"
+firmware = "clint-interrupt"
 config = "qemu-virt"
 description = "Check that the CLINT is properly virtualized"
 
 [test.clint-interrupt-priority]
-firmware = "clint_interrupt_priority"
+firmware = "clint-interrupt-priority"
 config = "qemu-virt"
 description = "Check that interrupts are received with the expected priority"
 
 [test.clint-interrupt-multihart]
-firmware = "clint_interrupt_multihart"
+firmware = "clint-interrupt-multihart"
 config = "qemu-virt-2harts"
 description = "A test for cross-hart Machine Software Interrupts (MSI)"
 
@@ -144,7 +144,7 @@ description = "Run an OpenSBI with a dummy payload on 2 harts"
 
 [test.opensbi-jump]
 firmware = "opensbi-jump"
-payload = "hello_world"
+payload = "hello-world"
 config = "qemu-virt"
 description = "Run an OpenSBI in jump mode with a dummy kernel"
 
@@ -184,8 +184,8 @@ expect = "smp: Brought up 1 node, 2 CPUs"
 ## ———————————————————————————— Testing Policies ———————————————————————————— ##
 
 [test.protect-payload]
-firmware = "test_protect_payload_firmware"
-payload = "test_protect_payload_payload"
+firmware = "test-protect-payload-firmware"
+payload = "test-protect-payload-payload"
 config = "qemu-virt-protect-payload"
 description = "Integration test for the protect payload policy, with a custom firmware and payload"
 
@@ -201,13 +201,13 @@ config = "qemu-virt-protect-payload"
 description = "Integration test for the protect payload policy, running U-boot with OpenSBI"
 
 [test.protect-payload-misaligned]
-firmware = "misaligned_op"
+firmware = "misaligned-op"
 config = "spike-protect-payload"
 description = "Test the protect payload policy emulation of misaligned loads (on Spike)."
 
 [test.keystone]
 firmware = "opensbi-jump"
-payload = "test_keystone_payload"
+payload = "test-keystone-payload"
 config = "qemu-virt-keystone"
 description = "Integration test for the protect payload policy, with a custom firmware and payload"
 
@@ -224,16 +224,16 @@ config = "spike"
 description = "The most basic test, which directly exit with an ecall to Miralis"
 
 [test.spike-benchmark]
-firmware = "tracing_firmware"
+firmware = "tracing-firmware"
 config = "spike-benchmark"
 description = "The firmware and configuration we use to measure cycles in the CI"
 
 [test.spike-benchmark-protect-payload]
-firmware = "tracing_firmware"
+firmware = "tracing-firmware"
 config = "spike-benchmark-protect-payload"
 description = "The firmware and configuration we use to measure cycles in the CI using the protect payload policy"
 
 [test.spike-benchmark-offload]
-firmware = "tracing_firmware"
+firmware = "tracing-firmware"
 config = "spike-benchmark-offload"
 description = "The firmware and configuration we use to measure the latency of the offloaded timer"

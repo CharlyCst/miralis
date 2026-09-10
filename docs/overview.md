@@ -71,7 +71,7 @@ It exposes utilities such as configuring the log level (globally or on a per-mod
 
 Configurations are especially important when building for a particular platform.
 The `just build` command takes a configuration as argument.
-This is how Miralis can be built to target specific platforms (such as the `visionfive2` or `qemu_virt`).
+This is how Miralis can be built to target specific platforms (such as the `visionfive2` or `qemu-virt`).
 
 ## Test Artifacts
 

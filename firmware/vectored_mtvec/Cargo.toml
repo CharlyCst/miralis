@@ -1,13 +1,15 @@
 [package]
-name = "vectored_mtvec"
+name = "vectored-mtvec"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "vectored_mtvec"
+name = "vectored-mtvec"
 path = "main.rs"
+
+[lints]
+workspace = true
 
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
