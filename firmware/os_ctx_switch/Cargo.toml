@@ -1,12 +1,11 @@
 [package]
-name = "os_ctx_switch"
+name = "os-ctx-switch"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "os_ctx_switch"
+name = "os-ctx-switch"
 path = "main.rs"
 
 [lints]

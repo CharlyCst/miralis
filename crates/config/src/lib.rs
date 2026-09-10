@@ -64,7 +64,7 @@ pub const VCPU_MAX_PMP_ENV: &str = "MIRALIS_VCPU_MAX_PMP";
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
 /// The target platform
-pub const PLATFORM_NAME: &str = parse_str_or(option_env!("MIRALIS_PLATFORM_NAME"), "qemu_virt");
+pub const PLATFORM_NAME: &str = parse_str_or(option_env!("MIRALIS_PLATFORM_NAME"), "qemu-virt");
 pub const PLATFORM_NAME_ENV: &str = "MIRALIS_PLATFORM_NAME";
 
 /// The expected number of harts.

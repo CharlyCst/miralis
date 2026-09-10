@@ -1,12 +1,11 @@
 [package]
-name = "hello_world"
+name = "hello-world"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "hello_world"
+name = "hello-world"
 path = "main.rs"
 
 [lints]

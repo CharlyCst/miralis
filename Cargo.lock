@@ -141,7 +141,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
 
 [[package]]
-name = "clint_interrupt"
+name = "clint-interrupt"
 version = "0.1.0"
 dependencies = [
  "log",
@@ -150,7 +150,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "clint_interrupt_multihart"
+name = "clint-interrupt-multihart"
 version = "0.1.0"
 dependencies = [
  "log",
@@ -159,7 +159,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "clint_interrupt_priority"
+name = "clint-interrupt-priority"
 version = "0.1.0"
 dependencies = [
  "log",
@@ -207,7 +207,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "csr_ops"
+name = "csr-ops"
 version = "0.1.0"
 dependencies = [
  "log",
@@ -287,7 +287,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
-name = "hello_world"
+name = "hello-world"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -380,7 +380,7 @@ name = "miralis_core"
 version = "0.1.0"
 
 [[package]]
-name = "misaligned_op"
+name = "misaligned-op"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -412,14 +412,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "os_ctx_switch"
+name = "os-ctx-switch"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
 ]
 
 [[package]]
-name = "os_ecall"
+name = "os-ecall"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -710,18 +710,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_helpers"
-version = "0.1.0"
-
-[[package]]
-name = "test_keystone_payload"
+name = "test-keystone-payload"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
 ]
 
 [[package]]
-name = "test_protect_payload_firmware"
+name = "test-protect-payload-firmware"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -729,11 +725,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_protect_payload_payload"
+name = "test-protect-payload-payload"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
 ]
+
+[[package]]
+name = "test_helpers"
+version = "0.1.0"
 
 [[package]]
 name = "tiny-keccak"
@@ -780,7 +780,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing_firmware"
+name = "tracing-firmware"
 version = "0.1.0"
 dependencies = [
  "miralis_abi",
@@ -824,7 +824,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
 
 [[package]]
-name = "vectored_mtvec"
+name = "vectored-mtvec"
 version = "0.1.0"
 dependencies = [
  "log",

@@ -1,12 +1,11 @@
 [package]
-name = "os_ecall"
+name = "os-ecall"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "os_ecall"
+name = "os-ecall"
 path = "main.rs"
 
 [lints]

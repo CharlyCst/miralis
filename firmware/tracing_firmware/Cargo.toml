@@ -1,12 +1,11 @@
 [package]
-name = "tracing_firmware"
+name = "tracing-firmware"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "tracing_firmware"
+name = "tracing-firmware"
 path = "main.rs"
 
 [lints]

@@ -1,12 +1,11 @@
 [package]
-name = "misaligned_op"
+name = "misaligned-op"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
-name = "misaligned_op"
+name = "misaligned-op"
 path = "main.rs"
 
 [lints]

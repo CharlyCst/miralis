@@ -222,7 +222,7 @@ fn locate_bin_artifact(name: &str) -> Option<BinArtifact> {
         "Could not find 'firmware' directory"
     );
 
-    // Look for artifact inside benchmark folder
+    // Look for artifact inside firmware folder
     let artifact = find_artifact(&firmware_path, name);
     if artifact.is_some() {
         return artifact;
@@ -234,18 +234,9 @@ fn locate_bin_artifact(name: &str) -> Option<BinArtifact> {
     assert!(payload_path.is_dir(), "Could not find 'payload' directory");
 
     // Check if one entry match the name
-    for entry in fs::read_dir(&payload_path).unwrap() {
-        let Ok(file_path) = entry.map(|e| e.path()) else {
-            continue;
-        };
-        let Some(file_name) = file_path.file_name() else {
-            continue;
-        };
-        if file_name == name {
-            return Some(BinArtifact::Source {
-                name: name.to_string(),
-            });
-        }
+    let artifact = find_artifact(&payload_path, name);
+    if artifact.is_some() {
+        return artifact;
     }
 
     // Else check if the artifact is defined in the manifest
@@ -267,6 +258,9 @@ fn locate_bin_artifact(name: &str) -> Option<BinArtifact> {
 
 /// Check if one entry match the name
 fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<BinArtifact> {
+    // Binary names use kebab-case, while folder names use snake_case
+    let snake_case_name = name.replace('-', "_");
+
     for entry in fs::read_dir(firmware_path).unwrap() {
         let Ok(file_path) = entry.map(|e| e.path()) else {
             continue;
@@ -274,7 +268,7 @@ fn find_artifact(firmware_path: &PathBuf, name: &str) -> Option<BinArtifact> {
         let Some(file_name) = file_path.file_name() else {
             continue;
         };
-        if file_name == name {
+        if file_name == snake_case_name.as_str() {
             return Some(BinArtifact::Source {
                 name: name.to_string(),
             });

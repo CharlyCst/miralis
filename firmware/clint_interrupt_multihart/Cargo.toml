@@ -1,11 +1,14 @@
 [package]
-name = "clint_interrupt_multihart"
+name = "clint-interrupt-multihart"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "clint_interrupt_multihart"
+name = "clint-interrupt-multihart"
 path = "main.rs"
+
+[lints]
+workspace = true
 
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }

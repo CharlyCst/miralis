@@ -2,12 +2,14 @@
 name = "interrupt"
 version = "0.1.0"
 edition = "2024"
-
 license = "MIT"
 
 [[bin]]
 name = "interrupt"
 path = "main.rs"
+
+[lints]
+workspace = true
 
 [dependencies]
 miralis_abi = { path = "../../crates/abi" }
