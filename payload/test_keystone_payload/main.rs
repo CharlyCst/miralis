@@ -48,15 +48,15 @@ fn main() -> ! {
         assert_eq!(err, ILLEGAL_ARGUMENT);
         log::info!("Illegal argument test passed");
 
-        let shared_memory: [usize; 64] = [0; 64];
+        let shared_memory: [u64; 64] = [0; 64];
         let valid_args = CreateArgs {
             epm_paddr: _enclave as *const () as usize,
-            epm_size: 0x256,
+            epm_size: _enclave_end as *const () as usize - _enclave as *const () as usize,
             utm_paddr: shared_memory.as_ptr() as usize,
-            utm_size: shared_memory.len(),
-            runtime_paddr: _enclave as *const () as usize + 0x128,
-            user_paddr: _enclave as *const () as usize + 0x128,
-            free_paddr: _enclave as *const () as usize + 0x128,
+            utm_size: core::mem::size_of_val(&shared_memory),
+            runtime_paddr: _enclave as *const () as usize,
+            user_paddr: _enclave as *const () as usize,
+            free_paddr: _enclave as *const () as usize,
             free_requested: 0x40000,
         };
 
@@ -91,10 +91,11 @@ fn main() -> ! {
         // Set up a trap handler to catch load access faults
         asm!(
             "csrw stvec, {trap_handler}",
-            trap_handler = in(reg) trap_handler as *const () as usize & !0b11);
+            trap_handler = in(reg) trap_handler as *const () as usize & !0b11
+        );
 
         // Try to access the enclave memory. This should trigger a trap.
-        let y = *(_enclave as *const usize);
+        let y = *(_enclave as *const u8);
 
         log::info!("The enclave memory is not protected: {:x}.", y);
         failure();
@@ -145,9 +146,15 @@ _enclave:
     li a6, 3006        # Keystone exit fid
     li a0, 0xBEEF       # Exit code
     ecall
+
+    # Pad the enclave to 256 bytes
+    .space 256 - (. - _enclave)
+.global _enclave_end
+_enclave_end:
 "#,
 );
 
 unsafe extern "C" {
     fn _enclave();
+    fn _enclave_end();
 }
