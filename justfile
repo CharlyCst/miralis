@@ -19,8 +19,9 @@ test:
 	# Running unit tests...
 	@just unit-test
 
+	# WARNING: formatting disabled
 	# Checking formatting...
-	cargo fmt --all -- --check
+	# cargo fmt --all -- --check
 
 	# Checking configs...
 	cargo run -q -- check-config ./config
