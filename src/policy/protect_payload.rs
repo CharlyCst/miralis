@@ -107,7 +107,6 @@ impl Module for ProtectPayloadPolicy {
         }
 
         // The code becomes harder to read with the linter suggestion
-        #[allow(clippy::needless_range_loop)]
         for i in 0..self.general_registers.len() {
             self.general_registers[i] = ctx.regs[i];
             // Clear the value if not allowed to forward
