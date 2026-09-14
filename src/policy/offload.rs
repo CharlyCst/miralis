@@ -182,7 +182,7 @@ impl OffloadPolicy {
     }
 
     fn broadcast_ssi(mask: usize) {
-        #[allow(clippy::needless_range_loop)]
+        #[expect(clippy::needless_range_loop)]
         for idx in 0..PLATFORM_NB_HARTS {
             if mask & (1 << idx) != 0 {
                 POLICY_SSI_ARRAY[idx].store(true, Ordering::SeqCst);
@@ -193,7 +193,7 @@ impl OffloadPolicy {
     }
 
     fn broadcast_i_fence(mask: usize) {
-        #[allow(clippy::needless_range_loop)]
+        #[expect(clippy::needless_range_loop)]
         for idx in 0..PLATFORM_NB_HARTS {
             if mask & (1 << idx) != 0 {
                 FENCE_I_ARRAY[idx].store(true, Ordering::SeqCst);
@@ -204,7 +204,6 @@ impl OffloadPolicy {
     }
 
     fn broadcast_vma_fence(mask: usize, start_address: usize, size: usize) {
-        #[allow(clippy::needless_range_loop)]
         for idx in 0..PLATFORM_NB_HARTS {
             if mask & (1 << idx) != 0 {
                 FENCE_VMA_ARRAY[idx].store(true, Ordering::SeqCst);
