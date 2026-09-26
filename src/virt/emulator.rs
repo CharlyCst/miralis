@@ -57,6 +57,7 @@ impl VirtContext {
                 if csr.is_unknown() =>
             {
                 self.emulate_firmware_trap();
+                return;
             }
             IllegalInst::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
             IllegalInst::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, *csr, *rd, *rs1),
@@ -902,6 +903,10 @@ impl VirtContext {
                     (self.csr.mstatus & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET
                 );
             }
+        }
+
+        if self.mode != Mode::M {
+            mctx.pmp.set_inactive(0, usize::MAX);
         }
 
         // MIE = MPIE, MPIE = 1, MPRV = 0
