@@ -47,7 +47,7 @@ impl VirtContext {
     /// and increments the program counter by 4 bytes for all instructions (except MRET and SRET).
     fn emulate_privileged_instr(&mut self, instr: &IllegalInst, mctx: &mut MiralisContext) {
         match instr {
-            IllegalInst::Wfi => self.emulate_wfi(mctx),
+            // Exceptional control flow, return before incrementing PC
             IllegalInst::Csrrw { csr, .. }
             | IllegalInst::Csrrs { csr, .. }
             | IllegalInst::Csrrc { csr, .. }
@@ -56,16 +56,19 @@ impl VirtContext {
             | IllegalInst::Csrrci { csr, .. }
                 if csr.is_unknown() =>
             {
-                self.emulate_firmware_trap();
+                return self.emulate_firmware_trap();
             }
+            IllegalInst::Mret => return self.emulate_mret(mctx),
+            IllegalInst::Sret => return self.emulate_sret(mctx),
+
+            // Instructions with without exceptional control flow
             IllegalInst::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
             IllegalInst::Csrrs { csr, rd, rs1 } => self.emulate_csrrs(mctx, *csr, *rd, *rs1),
             IllegalInst::Csrrc { csr, rd, rs1 } => self.emulate_csrrc(mctx, *csr, *rd, *rs1),
             IllegalInst::Csrrwi { csr, rd, uimm } => self.emulate_csrrwi(mctx, *csr, *rd, *uimm),
             IllegalInst::Csrrsi { csr, rd, uimm } => self.emulate_csrrsi(mctx, *csr, *rd, *uimm),
             IllegalInst::Csrrci { csr, rd, uimm } => self.emulate_csrrci(mctx, *csr, *rd, *uimm),
-            IllegalInst::Mret => self.emulate_mret(mctx),
-            IllegalInst::Sret => self.emulate_sret(mctx),
+            IllegalInst::Wfi => self.emulate_wfi(mctx),
             IllegalInst::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
             IllegalInst::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
             IllegalInst::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
@@ -77,10 +80,9 @@ impl VirtContext {
             ),
         }
 
-        // All instructions except MRET and SRET increases the pc by 4
-        if *instr != IllegalInst::Mret && *instr != IllegalInst::Sret {
-            self.pc = self.pc.wrapping_add(4);
-        }
+        // All instructions with exceptional control flow returned before, we increment the PC for
+        // all others.
+        self.pc = self.pc.wrapping_add(4);
     }
 
     /// Handles a devie load instruction.
