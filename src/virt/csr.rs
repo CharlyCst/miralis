@@ -6,6 +6,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
 use crate::arch::pmp::pmpcfg;
+use crate::arch::pmp::pmplayout::MPRV_EMULATION_OFFSET;
 use crate::arch::{Csr, Register, hstatus, menvcfg, mie, misa, mstatus};
 use crate::{MiralisContext, Plat, Platform, arch, debug, logger};
 
@@ -302,9 +303,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 if mprv != previous_mprv {
                     logger::trace!("vMPRV set to {:b}", mprv);
                     if mprv != 0 {
-                        mctx.pmp.set_tor(0, usize::MAX, pmpcfg::X);
+                        mctx.pmp
+                            .set_tor(MPRV_EMULATION_OFFSET, usize::MAX, pmpcfg::X);
                     } else {
-                        mctx.pmp.set_inactive(0, usize::MAX);
+                        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, usize::MAX);
                     }
                     // TODO: it seems the PMP are not yet written to hardware here,
                     // that seems like a bug to me. We should investigate.
