@@ -6,6 +6,7 @@ use super::{VirtContext, VirtCsr};
 use crate::arch;
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
+use crate::arch::pmp::pmplayout::MPRV_EMULATION_OFFSET;
 use crate::arch::{Csr, Mode, mie, mstatus};
 use crate::config::DELEGATE_PERF_COUNTER;
 use crate::host::MiralisContext;
@@ -103,6 +104,8 @@ impl VirtContext {
             mctx.pmp.virt_pmp_offset,
             self.nb_pmp,
         );
+        // Disable MPRV while outside virtual M-mode
+        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
         // Deny all addresses by default if at least one PMP is implemented
         if self.nb_pmp > 0 {
             let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
