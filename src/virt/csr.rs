@@ -304,9 +304,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     logger::trace!("vMPRV set to {:b}", mprv);
                     if mprv != 0 {
                         mctx.pmp
-                            .set_tor(MPRV_EMULATION_OFFSET, usize::MAX, pmpcfg::X);
+                            .set_napot(MPRV_EMULATION_OFFSET, 0, usize::MAX, pmpcfg::X);
                     } else {
-                        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, usize::MAX);
+                        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
                     }
                     // TODO: it seems the PMP are not yet written to hardware here,
                     // that seems like a bug to me. We should investigate.
