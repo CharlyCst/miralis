@@ -14,6 +14,9 @@ path = "config/test/qemu-virt-release.toml"
 [config.qemu-virt-sifive-u54]
 path = "config/test/qemu-virt-sifive-u54.toml"
 
+[config.qemu-virt-no-h]
+path = "config/test/qemu-virt-no-h.toml"
+
 [config.qemu-virt-protect-payload]
 path = "config/test/qemu-virt-protect-payload.toml"
 
@@ -155,10 +158,10 @@ config = "qemu-virt"
 description = "Run an OpenSBI in jump mode with u-boot as a payload"
 
 [test.rustsbi]
-firmware = "rustsbi-qemu"
-payload = "rustsbi-test-kernel"
-config = "qemu-virt"
-description = "Run an RustSBI with its test kernel"
+firmware = "rustsbi-prototyper-test"
+config = "qemu-virt-no-h"
+description = "Run the RustSBI Prototyper with its test kernel as a payload"
+expect = "SBI tests completed: PASS"
 
 [test.zephyr]
 firmware = "zephyr"

@@ -25,14 +25,9 @@ description = "A Zephyr image which summons two threads that print in round-robi
 url = "https://github.com/CharlyCst/miralis-artifact-zephyr/releases/download/v0.1.1/zephyr.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-zephyr"
 
-[bin.rustsbi-qemu]
-description = "A RustSBI image mode for qemu. It is supposed to work in pairs with a test-kenel."
-url = "https://github.com/CharlyCst/miralis-artifact-rustsbi/releases/download/v0.1.3/rustsbi-qemu.bin"
-repo = "https://github.com/CharlyCst/miralis-artifact-rustsbi"
-
-[bin.rustsbi-test-kernel]
-description = "A test-kernel for RustSBI on qemu."
-url = "https://github.com/CharlyCst/miralis-artifact-rustsbi/releases/download/v0.1.3/test-kernel.bin"
+[bin.rustsbi-prototyper-test]
+description = "A RustSBI Prototyper image with the RustSBI test kernel as a payload."
+url = "https://github.com/CharlyCst/miralis-artifact-rustsbi/releases/download/v0.2.0/rustsbi-prototyper-payload-test.bin"
 repo = "https://github.com/CharlyCst/miralis-artifact-rustsbi"
 
 [bin.u-boot]
