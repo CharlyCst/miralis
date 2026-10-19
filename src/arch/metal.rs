@@ -1105,8 +1105,8 @@ pub unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext) {
     // Silence unused warning caused by the macro
     let _ = value;
 
-    if success {
-        // In that case we need to update the trap info and inject the trap back.
+    if !success {
+        // The access trapped, we need to update the trap info and inject the trap back.
         ctx.emulate_firmware_trap();
     } else {
         ctx.pc += if instr.is_compressed { 2 } else { 4 };
