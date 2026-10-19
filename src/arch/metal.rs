@@ -1328,7 +1328,8 @@ unsafe fn find_nb_of_non_zero_pmp(nb_implemented: usize) -> usize {
 naked_soft_asm!(
     _run_vcpu,
     "csrw mscratch, x31",  // Save context in mscratch
-    "sd ra, (0)(sp)",      // Store return address <- Is that a bug? We should bump the stack!
+    "addi sp, sp, -8",     // Bump stack to store return address
+    "sd ra, (0)(sp)",      // Store return address
     "sd sp,(8*0)(x31)",    // Store host stack
     "ld x1,(8+8*32)(x31)", // Read guest PC
     "csrw mepc,x1",        // Restore guest PC in mepc
@@ -1409,6 +1410,7 @@ naked_soft_asm!(
     "sd x30, (8+8*32)(x31)", // Save the PC
     "ld sp,(8*0)(x31)",      // Restore host stack
     "ld ra,(sp)",            // Load return address from stack
+    "addi sp, sp, 8",        // Restore stack pointer
     "jr ra",                 // Return
 );
 
