@@ -462,20 +462,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mcounteren = (value & mask) as u32
             }
             Csr::Menvcfg => {
-                let mut mask: usize = menvcfg::ALL;
-
-                // Filter valid values based on implemented extensions.
-                if !mctx.hw.extensions.has_sstc_extension {
-                    mask &= !menvcfg::STCE_FILTER; // Hardwire STCE to 0 if Sstc is disabled
-                }
-                if !mctx.hw.extensions.has_zicbom_extension {
-                    mask &= !(menvcfg::CBIE_FILTER | menvcfg::CBCFE_FILTER);
-                }
-                if !mctx.hw.extensions.has_zicboz_extension {
-                    mask &= !menvcfg::CBZE_FILTER;
-                }
-
-                self.csr.menvcfg = value & mask;
+                self.csr.menvcfg = menvcfg::legalize_menvcfg(value, &mctx.hw.extensions);
                 mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
             }
             Csr::Mseccfg => self.csr.mseccfg = value,
@@ -562,20 +549,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.scounteren = (value & mask) as u32
             }
             Csr::Senvcfg => {
-                let mut mask = menvcfg::FIOM_FILTER
-                    | menvcfg::CBIE_FILTER
-                    | menvcfg::CBZE_FILTER
-                    | menvcfg::CBCFE_FILTER;
-
-                // Filter valid values based on implemented extensions.
-                if !mctx.hw.extensions.has_zicbom_extension {
-                    mask &= !(menvcfg::CBIE_FILTER | menvcfg::CBCFE_FILTER);
-                }
-                if !mctx.hw.extensions.has_zicboz_extension {
-                    mask &= !menvcfg::CBZE_FILTER;
-                }
-
-                self.csr.senvcfg = value & mask
+                self.csr.senvcfg = menvcfg::legalize_senvcfg(value, &mctx.hw.extensions)
             }
             Csr::Sscratch => self.csr.sscratch = value,
             Csr::Sepc => {
