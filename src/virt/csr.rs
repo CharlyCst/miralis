@@ -369,7 +369,13 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.mie = hw.interrupts & value & mie::MIE_WRITE_FILTER;
             }
             Csr::Mip => {
-                let value = value & hw.interrupts & mie::MIP_WRITE_FILTER;
+                let mut write_mask = hw.interrupts & mie::MIP_WRITE_FILTER;
+
+                // When Sstc is enabled STIP is driven by stimecmp and is read-only in mip.
+                if self.csr.menvcfg & menvcfg::STCE_FILTER != 0 {
+                    write_mask &= !mie::STIE_FILTER;
+                }
+                let value = value & write_mask;
 
                 // If the firmware wants to read the mip register after cleaning vmip.SEIP, and we don't sync
                 // vmip.SEIP with mip.SEIP, it can't know if there is an interrupt signal from the interrupt
@@ -389,7 +395,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
 
                 // Keep all the non-writeable bits
-                self.csr.mip = value | (self.csr.mip & !mie::MIP_WRITE_FILTER);
+                self.csr.mip = value | (self.csr.mip & !write_mask);
             }
             Csr::Mtvec => {
                 match value & 0b11 {
