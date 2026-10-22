@@ -7,7 +7,7 @@ use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::MPRV_EMULATION_OFFSET;
-use crate::arch::{Csr, Register, hstatus, menvcfg, mie, misa, mstatus};
+use crate::arch::{Csr, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
 use crate::{MiralisContext, Plat, Platform, arch, debug, logger};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -480,7 +480,13 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             }
             Csr::Mseccfg => self.csr.mseccfg = value,
             Csr::Mconfigptr => (), // Read-only
-            Csr::Medeleg => self.csr.medeleg = value & !(1 << 11),
+            Csr::Medeleg => {
+                let mut mask = medeleg::DELEGATABLE_BITS;
+                if mctx.hw.extensions.has_h_extension {
+                    mask |= medeleg::H_DELEGATABLE_BITS;
+                }
+                self.csr.medeleg = value & mask;
+            }
             Csr::Mideleg => {
                 self.csr.mideleg = (value & hw.interrupts & !mie::MIDELEG_READ_ONLY_ZERO)
                     | mie::MIDELEG_READ_ONLY_ONE;

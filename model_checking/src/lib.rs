@@ -1,6 +1,6 @@
 use miralis::arch::metal::SOFT_CORE;
 use miralis::arch::pmp::pmplayout;
-use miralis::arch::{MCause, Register, csr, mie, mstatus, write_pmp};
+use miralis::arch::{MCause, Register, csr, medeleg, mie, mstatus, write_pmp};
 use miralis::decoder::IllegalInst;
 use miralis::host::MiralisContext;
 use miralis::platform::{Plat, Platform};
@@ -216,6 +216,17 @@ pub fn write_csr() {
     if csr_register == 0b001100000011 {
         value_to_write |= mie::MIDELEG_READ_ONLY_ONE;
         value_to_write &= !mie::MIDELEG_READ_ONLY_ZERO;
+    }
+
+    // The softcore model predates the `medeleg` delegatable bits of the Sail model, we apply them
+    // manually.
+    // TODO: remove once softcore is generated from a recent enough version of Sail.
+    if csr_register == csr::MEDELEG as u64 {
+        let mut mask = medeleg::DELEGATABLE_BITS;
+        if mctx.hw.extensions.has_h_extension {
+            mask |= medeleg::H_DELEGATABLE_BITS;
+        }
+        value_to_write &= mask;
     }
 
     // Write register in Sail context

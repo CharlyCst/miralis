@@ -361,6 +361,16 @@ pub mod mie {
     // | LCOFIE_FILTER; // Not yet supported in the Sail model
 }
 
+// —————————————————————— Machine Exception Delegation —————————————————————— //
+
+pub mod medeleg {
+    /// Mask of bits that can be delegated.
+    pub const DELEGATABLE_BITS: usize = 0b1111111111 | (0b11 << 12) | (0b1 << 15) | (0b11 << 18);
+
+    /// Mask of bits that can be delegated if the H extension is enabled.
+    pub const H_DELEGATABLE_BITS: usize = (0b1 << 10) | (0b1111 << 20);
+}
+
 // ———————————————————— Machine Trap-Vector Base-Address ———————————————————— //
 
 #[allow(unused)]
