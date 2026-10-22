@@ -400,6 +400,8 @@ pub mod mtvec {
 }
 
 pub mod menvcfg {
+    use super::ExtensionsCapability;
+
     /// Fence I/O Implies Memoru
     pub const FIOM_OFFSET: usize = 0;
     pub const FIOM_FILTER: usize = 0b1 << FIOM_OFFSET;
@@ -425,6 +427,44 @@ pub mod menvcfg {
     /// Note that not all bits might be available on a given hart, depending on the implemented
     /// extensions.
     pub const ALL: usize = FIOM_FILTER | CBIE_FILTER | CBCFE_FILTER | CBZE_FILTER | STCE_FILTER;
+
+    /// All valid bits in senvcfg.
+    pub const SENVCFG_ALL: usize = FIOM_FILTER | CBIE_FILTER | CBCFE_FILTER | CBZE_FILTER;
+
+    /// The reserved CBIE encoding.
+    const CBIE_RESERVED: usize = 0b10 << CBIE_OFFSET;
+
+    /// Returns the legal menvcfg value for a write of `value`.
+    pub fn legalize_menvcfg(value: usize, extensions: &ExtensionsCapability) -> usize {
+        legalize_envcfg(value, ALL, extensions)
+    }
+
+    /// Returns the legal senvcfg value for a write of `value`.
+    pub fn legalize_senvcfg(value: usize, extensions: &ExtensionsCapability) -> usize {
+        legalize_envcfg(value, SENVCFG_ALL, extensions)
+    }
+
+    /// Keeps the bits of `mask` that exist given the implemented extensions, and maps the
+    /// reserved CBIE encoding (0b10) to 0b00.
+    fn legalize_envcfg(value: usize, mask: usize, extensions: &ExtensionsCapability) -> usize {
+        let mut mask = mask;
+        if !extensions.has_sstc_extension {
+            mask &= !STCE_FILTER;
+        }
+        if !extensions.has_zicbom_extension {
+            mask &= !(CBIE_FILTER | CBCFE_FILTER);
+        }
+        if !extensions.has_zicboz_extension {
+            mask &= !CBZE_FILTER;
+        }
+
+        let value = value & mask;
+        if value & CBIE_FILTER == CBIE_RESERVED {
+            value & !CBIE_FILTER
+        } else {
+            value
+        }
+    }
 }
 
 // ————————————————————————————— Hypervisor Status ————————————————————————————— //
