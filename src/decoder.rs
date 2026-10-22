@@ -12,6 +12,14 @@ const HFENCE_INSTR_GVMA_MASK: usize = 0b0110001 << 25;
 
 const RS1_RS1_INSTR_TYPE_MASK: usize = 0b1111111111000000001111111;
 const FUNC3_MASK: usize = 0b111000000000000;
+const FUNC3_CSR_OP_MASK: usize = 0b011000000000000;
+
+const CSRRW: usize = 0x1000;
+const CSRRS: usize = 0x2000;
+const CSRRC: usize = 0x3000;
+const CSRRWI: usize = 0x5000;
+const CSRRSI: usize = 0x6000;
+const CSRRCI: usize = 0x7000;
 
 /// Compressed Load Word opcode
 const C_LW: usize = 0b010;
@@ -63,6 +71,9 @@ pub enum IllegalInst {
         rd: Register,
         uimm: usize,
     },
+    /// A invalid CSR instruction, such as an access to an unknown CSR or a write to a read-only
+    /// CSR.
+    InvalidCsrOp,
     Mret,
     Sret,
     /// Fence instructions
@@ -154,16 +165,34 @@ impl MiralisContext {
             _ => {}
         }
 
-        let csr = self.decode_csr((raw_instr >> 20) & 0b111111111111);
-        let rd = Register::from((raw_instr >> 7) & 0b11111);
+        // The two lower bits of func3 encode the CSR operation (RW, RS or RC), the third bit
+        // selects the immediate variant. 0b000 and 0b100 are not CSR instructions.
+        let func3 = raw_instr & FUNC3_MASK;
+        let csr_op = func3 & FUNC3_CSR_OP_MASK;
+        if csr_op == 0 {
+            return IllegalInst::Unknown;
+        }
 
-        match raw_instr & FUNC3_MASK {
-            0x1000 => IllegalInst::Csrrw { csr, rd, rs1 },
-            0x2000 => IllegalInst::Csrrs { csr, rd, rs1 },
-            0x3000 => IllegalInst::Csrrc { csr, rd, rs1 },
-            0x5000 => IllegalInst::Csrrwi { csr, rd, uimm },
-            0x6000 => IllegalInst::Csrrsi { csr, rd, uimm },
-            0x7000 => IllegalInst::Csrrci { csr, rd, uimm },
+        // Writes to read-only CSRs are illegal. CSRRW(I) always write, while CSRRS(I) and
+        // CSRRC(I) write only when rs1 is not x0 (resp. uimm is not 0). Luckily, both x0 and
+        // immediate 0 have the same bit pattern.
+        let csr_id = (raw_instr >> 20) & 0b111111111111;
+        if is_read_only_csr(csr_id) && (csr_op == CSRRW || uimm != 0) {
+            return IllegalInst::InvalidCsrOp;
+        }
+
+        let rd = Register::from((raw_instr >> 7) & 0b11111);
+        let Some(csr) = self.decode_csr(csr_id) else {
+            return IllegalInst::InvalidCsrOp;
+        };
+
+        match func3 {
+            CSRRW => IllegalInst::Csrrw { csr, rd, rs1 },
+            CSRRS => IllegalInst::Csrrs { csr, rd, rs1 },
+            CSRRC => IllegalInst::Csrrc { csr, rd, rs1 },
+            CSRRWI => IllegalInst::Csrrwi { csr, rd, uimm },
+            CSRRSI => IllegalInst::Csrrsi { csr, rd, uimm },
+            CSRRCI => IllegalInst::Csrrci { csr, rd, uimm },
             _ => IllegalInst::Unknown,
         }
     }
@@ -364,8 +393,9 @@ impl MiralisContext {
         }
     }
 
-    pub fn decode_csr(&self, csr: usize) -> Csr {
-        match csr {
+    /// Decodes a CSR address, returns `None` if the CSR is not available.
+    pub fn decode_csr(&self, csr: usize) -> Option<Csr> {
+        let csr = match csr {
             csr::MSTATUS => Csr::Mstatus,
             csr::MISA => Csr::Misa,
             csr::MIE => Csr::Mie,
@@ -381,7 +411,7 @@ impl MiralisContext {
                 if id.is_multiple_of(2) {
                     Csr::Pmpcfg(id)
                 } else {
-                    Csr::Unknown // Invalid on rv64
+                    return None; // Invalid on rv64
                 }
             }
             csr::PMPADDR0..=csr::PMPADDR63 => Csr::Pmpaddr(csr - csr::PMPADDR0),
@@ -389,35 +419,35 @@ impl MiralisContext {
                 if self.hw.extensions.has_zicntr {
                     Csr::Mcycle
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::MINSTRET => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Minstret
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::CYCLE => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Cycle
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::TIME => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Time
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::INSTRET => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Instret
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::MHPMCOUNTER3..=csr::MHPMCOUNTER31 => {
@@ -425,7 +455,7 @@ impl MiralisContext {
                 if self.hw.extensions.has_zihpm_extension {
                     Csr::Mhpmcounter(csr - csr::MHPMCOUNTER3)
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::MCOUNTINHIBIT => Csr::Mcountinhibit,
@@ -433,14 +463,14 @@ impl MiralisContext {
                 if self.hw.extensions.has_zihpm_extension {
                     Csr::Mhpmevent(csr - csr::MHPMEVENT3)
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::MCOUNTEREN => Csr::Mcounteren,
             csr::MENVCFG => Csr::Menvcfg,
             csr::MSECCFG => {
                 if !self.hw.extensions.has_tee_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Mseccfg
                 }
@@ -452,7 +482,7 @@ impl MiralisContext {
                         "Unknown CSR: 0x{:x}, Medeleg should not exist in a system without S-mode",
                         csr
                     );
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Medeleg
                 }
@@ -463,7 +493,7 @@ impl MiralisContext {
                         "Unknown CSR: 0x{:x}, Mideleg should not exist in a system without S-mode",
                         csr
                     );
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Mideleg
                 }
@@ -474,7 +504,7 @@ impl MiralisContext {
                         "Unknown CSR: 0x{:x}, Mtisnt should not exist in a system without without hypervisor extension",
                         csr
                     );
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Mtinst
                 }
@@ -485,7 +515,7 @@ impl MiralisContext {
                         "Unknown CSR: 0x{:x}, Mtval2 should not exist in a system without hypervisor extension",
                         csr
                     );
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Mtval2
                 }
@@ -493,56 +523,56 @@ impl MiralisContext {
             csr::TSELECT => Csr::Tselect,
             csr::TDATA1 => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Tdata1
                 }
             }
             csr::TDATA2 => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Tdata2
                 }
             }
             csr::TDATA3 => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Tdata3
                 }
             }
             csr::MCONTEXT => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Mcontext
                 }
             }
             csr::DCSR => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Dcsr
                 }
             }
             csr::DPC => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Dpc
                 }
             }
             csr::DSCRATCH0 => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Dscratch0
                 }
             }
             csr::DSCRATCH1 => {
                 if true {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Dscratch1
                 }
@@ -552,7 +582,7 @@ impl MiralisContext {
                 if Plat::is_valid_custom_csr(csr) {
                     Csr::Custom(csr)
                 } else {
-                    Csr::Unknown
+                    return None;
                 }
             }
             csr::MCAUSE => Csr::Mcause,
@@ -561,91 +591,91 @@ impl MiralisContext {
             // Supervisor-level CSRs
             csr::SSTATUS => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Sstatus
                 }
             }
             csr::SIE => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Sie
                 }
             }
             csr::STVEC => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Stvec
                 }
             }
             csr::SCOUNTEREN => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Scounteren
                 }
             }
             csr::SENVCFG => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Senvcfg
                 }
             }
             csr::SSCRATCH => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Sscratch
                 }
             }
             csr::SEPC => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Sepc
                 }
             }
             csr::SCAUSE => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Scause
                 }
             }
             csr::STVAL => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Stval
                 }
             }
             csr::SIP => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Sip
                 }
             }
             csr::STIMECMP => {
                 if !self.hw.extensions.is_sstc_enabled {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Stimecmp
                 }
             }
             csr::SATP => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Satp
                 }
             }
             csr::SCONTEXT => {
                 if !self.hw.extensions.has_s_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Scontext
                 }
@@ -654,161 +684,161 @@ impl MiralisContext {
             // Hypervisor and Virtual Supervisor CSRs
             csr::HSTATUS => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hstatus
                 }
             }
             csr::HEDELEG => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hedeleg
                 }
             }
             csr::HIDELEG => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hideleg
                 }
             }
             csr::HVIP => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hvip
                 }
             }
             csr::HIP => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hip
                 }
             }
             csr::HIE => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hie
                 }
             }
             csr::HGEIP => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hgeip
                 }
             }
             csr::HGEIE => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hgeie
                 }
             }
             csr::HENVCFG => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Henvcfg
                 }
             }
             csr::HCOUNTEREN => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hcounteren
                 }
             }
             csr::HTIMEDELTA => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Htimedelta
                 }
             }
             csr::HTVAL => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Htval
                 }
             }
             csr::HTINST => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Htinst
                 }
             }
             csr::HGATP => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Hgatp
                 }
             }
             csr::VSSTATUS => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vsstatus
                 }
             }
             csr::VSIE => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vsie
                 }
             }
             csr::VSTVEC => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vstvec
                 }
             }
             csr::VSSCRATCH => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vsscratch
                 }
             }
             csr::VSEPC => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vsepc
                 }
             }
             csr::VSCAUSE => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vscause
                 }
             }
             csr::VSTVAL => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vstval
                 }
             }
             csr::VSIP => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vsip
                 }
             }
             csr::VSATP => {
                 if !self.hw.extensions.has_h_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vsatp
                 }
@@ -817,49 +847,49 @@ impl MiralisContext {
             // Vector extension
             csr::VSTART => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vstart
                 }
             }
             csr::VXSAT => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vxsat
                 }
             }
             csr::VXRM => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vxrm
                 }
             }
             csr::VCSR => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vcsr
                 }
             }
             csr::VL => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vl
                 }
             }
             csr::VTYPE => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vtype
                 }
             }
             csr::VLENB => {
                 if !self.hw.extensions.has_v_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Vlenb
                 }
@@ -867,7 +897,7 @@ impl MiralisContext {
             csr::SEED => {
                 // Crypto extension
                 if !self.hw.extensions.has_crypto_extension {
-                    Csr::Unknown
+                    return None;
                 } else {
                     Csr::Seed
                 }
@@ -875,10 +905,21 @@ impl MiralisContext {
 
             _ => {
                 logger::debug!("Unknown CSR: 0x{:x}", csr);
-                Csr::Unknown
+                return None;
             }
-        }
+        };
+
+        Some(csr)
     }
+}
+
+/// Returns true if the CSR address designates a read-only CSR.
+///
+/// The two most significant bits of the address encode whether the CSR is read-only (0b11).
+fn is_read_only_csr(csr_id: usize) -> bool {
+    const CSR_ACCESS_MASK: usize = 0b11 << 10;
+
+    (csr_id & CSR_ACCESS_MASK) == CSR_ACCESS_MASK
 }
 
 fn extract_last_two_bits(value: usize) -> usize {
@@ -927,6 +968,64 @@ mod tests {
                 rs1: Register::X0,
                 rs2: Register::X19
             }
+        );
+    }
+
+    #[test]
+    fn invalid_csr_instructions() {
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x100000, 0x2000);
+
+        // Reading a read-only CSR is valid: csrr a0, mhartid
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xf1402573),
+            IllegalInst::Csrrs {
+                csr: Csr::Mhartid,
+                rd: Register::X10,
+                rs1: Register::X0,
+            }
+        );
+        // CSRRSI with a zero immediate does not write: csrrsi x0, mhartid, 0
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xf1406073),
+            IllegalInst::Csrrsi {
+                csr: Csr::Mhartid,
+                rd: Register::X0,
+                uimm: 0,
+            }
+        );
+
+        // Writes to a read-only CSR are invalid
+        // csrw mhartid, a0
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xf1451073),
+            IllegalInst::InvalidCsrOp
+        );
+        // csrs mhartid, a0
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xf1452073),
+            IllegalInst::InvalidCsrOp
+        );
+        // csrrwi x0, mhartid, 0 (CSRRWI always writes, even with a zero immediate)
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xf1405073),
+            IllegalInst::InvalidCsrOp
+        );
+        // csrsi mhartid, 1
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xf140e073),
+            IllegalInst::InvalidCsrOp
+        );
+
+        // Accesses to unknown CSRs are invalid: csrr a0, 0x800
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x80002573),
+            IllegalInst::InvalidCsrOp
+        );
+
+        // An invalid func3 is not a CSR instruction
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x30004073),
+            IllegalInst::Unknown
         );
     }
 

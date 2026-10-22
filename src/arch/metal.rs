@@ -387,7 +387,6 @@ pub unsafe fn write_csr(csr: Csr, value: usize) -> usize {
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
             Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
-            Csr::Unknown => (),
         };
     }
 
@@ -498,7 +497,6 @@ pub fn read_csr(csr: Csr) -> usize {
         Csr::Vlenb => todo!(),
         Csr::Seed => todo!(),
         Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
-        Csr::Unknown => value = 0,
     };
 
     value
@@ -904,7 +902,6 @@ pub unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
             Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
-            Csr::Unknown => (),
         };
     }
 
@@ -918,7 +915,7 @@ pub unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
 /// This function writes to the hardware CSR, use with caution as it might change the execution
 /// environment.
 pub unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
-    let mut prev_value: usize = 0;
+    let prev_value: usize;
 
     macro_rules! asm_set_csr_bits {
            ($reg:literal) => {
@@ -1018,7 +1015,6 @@ pub unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
             Csr::Vlenb => todo!(),
             Csr::Seed => todo!(),
             Csr::Custom(_) => panic!("Custom CSR must be handled by the platform"),
-            Csr::Unknown => (),
         };
     }
 
