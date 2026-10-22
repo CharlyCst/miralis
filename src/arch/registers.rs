@@ -403,6 +403,12 @@ impl Csr {
         self == Csr::Unknown
     }
 
+    pub fn is_read_only(self) -> bool {
+        const CSR_ACCESS_MASK: usize = 0b11 << 10;
+
+        (self.idx() & CSR_ACCESS_MASK) == CSR_ACCESS_MASK
+    }
+
     /// Return the index of the CSR (i.e. its addess in the CSR address space).
     pub fn idx(self) -> usize {
         match self {

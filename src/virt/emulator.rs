@@ -48,6 +48,14 @@ impl VirtContext {
     fn emulate_privileged_instr(&mut self, instr: &IllegalInst, mctx: &mut MiralisContext) {
         match instr {
             // Exceptional control flow, return before incrementing PC
+            //
+            // CSR operations trap on:
+            //  - Unknown CSR
+            //  - Write to read-only CSR
+            // Where a write is defined as either CSRRW, or a CSRRS or CSRRC where the source (or
+            // immediate) is not x0 (or immediate 0, respectively).
+            //
+            // Mret and Sret do not trap but also skip the PC+4.
             IllegalInst::Csrrw { csr, .. }
             | IllegalInst::Csrrs { csr, .. }
             | IllegalInst::Csrrc { csr, .. }
@@ -55,6 +63,21 @@ impl VirtContext {
             | IllegalInst::Csrrsi { csr, .. }
             | IllegalInst::Csrrci { csr, .. }
                 if csr.is_unknown() =>
+            {
+                return self.emulate_firmware_trap();
+            }
+            IllegalInst::Csrrw { csr, .. } | IllegalInst::Csrrwi { csr, .. }
+                if csr.is_read_only() =>
+            {
+                return self.emulate_firmware_trap();
+            }
+            IllegalInst::Csrrs { csr, rs1, .. } | IllegalInst::Csrrc { csr, rs1, .. }
+                if csr.is_read_only() && *rs1 != Register::X0 =>
+            {
+                return self.emulate_firmware_trap();
+            }
+            IllegalInst::Csrrsi { csr, uimm, .. } | IllegalInst::Csrrci { csr, uimm, .. }
+                if csr.is_read_only() && *uimm != 0 =>
             {
                 return self.emulate_firmware_trap();
             }
