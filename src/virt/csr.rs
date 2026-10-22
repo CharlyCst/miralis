@@ -240,13 +240,6 @@ impl RegisterContextGetter<Csr> for VirtContext {
 
             // Platform-specific CSRs
             Csr::Custom(csr) => Plat::read_custom_csr(csr),
-
-            // Unknown
-            Csr::Unknown => {
-                log::warn!("Tried to access unknown CSR: {:?}", register);
-                // Official specification returns 0x0 when the register is unknown
-                0x0
-            }
         }
     }
 }
@@ -702,10 +695,6 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
 
             // Platform-specific CSRs
             Csr::Custom(csr) => Plat::write_custom_csr(csr, value),
-
-            // Unknown
-            // Specification ingnores the write to a non-existing register
-            Csr::Unknown => log::warn!("Tried to access unknown CSR: {:?}", register),
         }
     }
 }

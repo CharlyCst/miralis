@@ -269,9 +269,6 @@ pub enum Csr {
     /// Those CSRs are specific to each SoC, refer to the corresponding manual for details.
     /// The `usize` fields encode the CSR ID.
     Custom(usize),
-
-    /// An unknown CSR
-    Unknown,
 }
 
 /// Module with the CSR registers indexes.
@@ -399,16 +396,6 @@ impl Csr {
     #[allow(unused)] // TODO: remove once used
     pub const MCOUNTINHIBIT_LEGAL_MASK: usize = !(0b10);
 
-    pub fn is_unknown(self) -> bool {
-        self == Csr::Unknown
-    }
-
-    pub fn is_read_only(self) -> bool {
-        const CSR_ACCESS_MASK: usize = 0b11 << 10;
-
-        (self.idx() & CSR_ACCESS_MASK) == CSR_ACCESS_MASK
-    }
-
     /// Return the index of the CSR (i.e. its addess in the CSR address space).
     pub fn idx(self) -> usize {
         match self {
@@ -506,9 +493,8 @@ impl Csr {
             // Crypto extension CSRs
             Csr::Seed => csr::SEED,
 
-            // Custom and Unknown CSRs
+            // Custom CSRs
             Csr::Custom(addr) => addr,
-            Csr::Unknown => panic!("Cannot get index of unknown CSR"),
         }
     }
 }

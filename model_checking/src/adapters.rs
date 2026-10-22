@@ -289,19 +289,22 @@ pub fn pmpaddr_sail_to_miralis(addresses: [BitVector<64>; 64]) -> [usize; 64] {
     output
 }
 
-pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
+/// Decodes a CSR address, returns `None` if the CSR is unknown.
+pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Option<Csr> {
     if 0b001110100000 <= arg_hashtag_.bits()
         && arg_hashtag_.bits() <= (0b001110100000 + 15)
         && arg_hashtag_.bits() % 2 == 0
     {
-        return Csr::Pmpcfg((arg_hashtag_.bits() - 0b001110100000) as usize);
+        return Some(Csr::Pmpcfg((arg_hashtag_.bits() - 0b001110100000) as usize));
     }
 
     if 0b001110110000 <= arg_hashtag_.bits() && arg_hashtag_.bits() <= (0b001110110000 + 63) {
-        return Csr::Pmpaddr((arg_hashtag_.bits() - 0b001110110000) as usize);
+        return Some(Csr::Pmpaddr(
+            (arg_hashtag_.bits() - 0b001110110000) as usize,
+        ));
     }
 
-    match arg_hashtag_ {
+    let csr = match arg_hashtag_ {
         b_18 if { b_18 == BitVector::<12>::new(0b000100000000) } => Csr::Sstatus,
         b_21 if { b_21 == BitVector::<12>::new(0b000100000100) } => Csr::Sie,
         b_22 if { b_22 == BitVector::<12>::new(0b000100000101) } => Csr::Stvec,
@@ -354,8 +357,10 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Csr {
         b_155 if { bv(0x5A8) == b_155 } => Csr::Scontext,
         b_156 if { bv(0xf13) == b_156 } => Csr::Mimpid,
         // End manually added
-        _ => Csr::Unknown,
-    }
+        _ => return None,
+    };
+
+    Some(csr)
 }
 
 fn size_to_width(size: word_width) -> Width {
@@ -446,7 +451,14 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> IllegalInst {
         //     rs2: Register::from(rs2.bits as usize),
         // },
         ast::CSRReg((csrreg, rs1, rd, op)) => {
-            let csr_register: Csr = decode_csr_register(csrreg);
+            // Same write condition as the `execute` function of the reference model
+            let is_write = op == csrop::CSRRW || rs1.bits() != 0;
+            let Some(csr_register) = decode_csr_register(csrreg) else {
+                return IllegalInst::InvalidCsrOp;
+            };
+            if !raw::check_CSR_access(csrreg, is_write) {
+                return IllegalInst::InvalidCsrOp;
+            }
             let rs1_miralis = Register::from(rs1.bits() as usize);
             let rd_miralis = Register::from(rd.bits() as usize);
 
@@ -469,7 +481,14 @@ pub fn ast_to_miralis_instr(ast_entry: ast) -> IllegalInst {
             }
         }
         ast::CSRImm((csrreg, imm, rd, op)) => {
-            let csr_register: Csr = decode_csr_register(csrreg);
+            // Same write condition as the `execute` function of the reference model
+            let is_write = op == csrop::CSRRW || imm.bits() != 0;
+            let Some(csr_register) = decode_csr_register(csrreg) else {
+                return IllegalInst::InvalidCsrOp;
+            };
+            if !raw::check_CSR_access(csrreg, is_write) {
+                return IllegalInst::InvalidCsrOp;
+            }
             let rd_miralis = Register::from(rd.bits() as usize);
 
             match op {

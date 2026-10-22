@@ -167,22 +167,28 @@ pub fn read_csr() {
 
     let csr_register = generate_csr_register();
 
-    // Read value from Miralis
+    // Read value from Miralis and Sail
     let decoded_csr = mctx.decode_csr(csr_register as usize);
-    let miralis_value = ctx.get(decoded_csr);
+    let sail_value = core.get_csr(csr_register);
 
-    // Read value from Sail
-    match core.get_csr(csr_register) {
-        Some(sail_value) => {
+    match (decoded_csr, sail_value) {
+        (Some(csr), Some(sail_value)) => {
             // Verify value is the same
             assert_eq!(
-                miralis_value, sail_value as usize,
+                ctx.get(csr),
+                sail_value as usize,
                 "Miralis emulation returned a different value from the reference core"
             );
         }
-        None => {
-            // For all invalid CSRs Miralis returns 0
-            assert_eq!(miralis_value, 0, "Invalid register should return 0");
+        (Some(csr), None) => {
+            // Miralis exposes some CSRs not supported by the reference core, which must read as 0
+            assert_eq!(ctx.get(csr), 0, "Invalid register should return 0");
+        }
+        (None, Some(_)) => {
+            panic!("Miralis does not decode a CSR that is valid in the reference core");
+        }
+        (None, None) => {
+            // Both Miralis and the reference core reject the CSR
         }
     }
 }
@@ -203,9 +209,11 @@ pub fn write_csr() {
     // Generate a random value
     let mut value_to_write = any!(usize);
 
-    // Write register in Miralis context
-    let decoded_csr = mctx.decode_csr(csr_register as usize);
-    ctx.set_csr(decoded_csr, value_to_write, &mut mctx);
+    // Write register in Miralis context, unknown CSRs are rejected by the decoder and leave the
+    // state unchanged.
+    if let Some(decoded_csr) = mctx.decode_csr(csr_register as usize) {
+        ctx.set_csr(decoded_csr, value_to_write, &mut mctx);
+    }
 
     assert_eq!(
         core.cur_privilege,

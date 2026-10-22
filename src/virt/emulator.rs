@@ -49,38 +49,11 @@ impl VirtContext {
         match instr {
             // Exceptional control flow, return before incrementing PC
             //
-            // CSR operations trap on:
-            //  - Unknown CSR
-            //  - Write to read-only CSR
-            // Where a write is defined as either CSRRW, or a CSRRS or CSRRC where the source (or
-            // immediate) is not x0 (or immediate 0, respectively).
+            // Invalid CSR operations (unknown CSR, write to read-only CSR) raise an illegal
+            // instruction exception, the decoder takes care of detecting them.
             //
             // Mret and Sret do not trap but also skip the PC+4.
-            IllegalInst::Csrrw { csr, .. }
-            | IllegalInst::Csrrs { csr, .. }
-            | IllegalInst::Csrrc { csr, .. }
-            | IllegalInst::Csrrwi { csr, .. }
-            | IllegalInst::Csrrsi { csr, .. }
-            | IllegalInst::Csrrci { csr, .. }
-                if csr.is_unknown() =>
-            {
-                return self.emulate_firmware_trap();
-            }
-            IllegalInst::Csrrw { csr, .. } | IllegalInst::Csrrwi { csr, .. }
-                if csr.is_read_only() =>
-            {
-                return self.emulate_firmware_trap();
-            }
-            IllegalInst::Csrrs { csr, rs1, .. } | IllegalInst::Csrrc { csr, rs1, .. }
-                if csr.is_read_only() && *rs1 != Register::X0 =>
-            {
-                return self.emulate_firmware_trap();
-            }
-            IllegalInst::Csrrsi { csr, uimm, .. } | IllegalInst::Csrrci { csr, uimm, .. }
-                if csr.is_read_only() && *uimm != 0 =>
-            {
-                return self.emulate_firmware_trap();
-            }
+            IllegalInst::InvalidCsrOp => return self.emulate_firmware_trap(),
             IllegalInst::Mret => return self.emulate_mret(mctx),
             IllegalInst::Sret => return self.emulate_sret(mctx),
 
