@@ -527,9 +527,9 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 );
             }
             Csr::Sie => {
-                // Only delegated interrupts can be enabled through `sie`
-                let mideleg = self.get(Csr::Mideleg);
-                self.csr.mie = (self.csr.mie & !mideleg) | (mideleg & value);
+                // Only interrupts that are delegated and accessible to S-mode enabled through `sie`
+                let mask = self.get(Csr::Mideleg) & mie::SIE_FILTER;
+                self.csr.mie = (self.csr.mie & !mask) | (mask & value);
             }
             Csr::Stvec => {
                 match value & 0b11 {
