@@ -916,6 +916,7 @@ impl VirtContext {
 
     /// Emulates the MRET (Machine Return) instruction.
     pub fn emulate_mret(&mut self, mctx: &mut MiralisContext) {
+        let old_mstatus = self.csr.mstatus;
         match parse_mpp_return_mode(self.csr.mstatus) {
             Mode::M => {
                 logger::trace!("mret to m-mode to {:x}", self.trap_info.mepc);
@@ -978,6 +979,7 @@ impl VirtContext {
             mstatus::MPP_FILTER,
             ret_mpp_val,
         );
+        self.update_mprv_emulation(old_mstatus, mctx);
 
         // Jump back to firmware
         self.pc = self.csr.mepc;

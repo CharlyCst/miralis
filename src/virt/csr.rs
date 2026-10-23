@@ -7,7 +7,7 @@ use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
 use crate::arch::pmp::pmpcfg;
 use crate::arch::pmp::pmplayout::MPRV_EMULATION_OFFSET;
-use crate::arch::{Csr, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
+use crate::arch::{Csr, Mode, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
 use crate::{MiralisContext, Plat, Platform, arch, debug, logger};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -257,6 +257,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
         match register {
             Csr::Mhartid => (), // Read-only
             Csr::Mstatus => {
+                let old_mstatus = self.csr.mstatus;
                 let mut new_value = value & mstatus::MSTATUS_FILTER;
 
                 // MPP : 11 : write legal : 0,1,3
@@ -291,28 +292,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mxl,
                 );
 
-                // MPRV : 17 : write anything
-                let mprv = (value & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
-                let previous_mprv =
-                    (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
-
-                // When vMPRV transitions from 0 to 1, set up a PMP entry to protect all memory.
-                // This allows catching accesses that occur with vMPRV=1, which require a special virtual access handler.
-                // When vMPRV transitions back to 0, remove the protection.
-                // pMPRV is never set to 1 outside of a virtual access handler.
-                if mprv != previous_mprv {
-                    logger::trace!("vMPRV set to {:b}", mprv);
-                    if mprv != 0 {
-                        mctx.pmp
-                            .set_napot(MPRV_EMULATION_OFFSET, 0, usize::MAX, pmpcfg::X);
-                    } else {
-                        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
-                    }
-                    // TODO: it seems the PMP are not yet written to hardware here,
-                    // that seems like a bug to me. We should investigate.
-                    // unsafe { write_pmp(&mctx.pmp).flush() };
-                    arch::sfencevma(None, None);
-                }
+                // MPRV : 17 : write anything (the emulation is updated below, see
+                // `update_mprv_emulation`)
 
                 if !mctx.hw.extensions.has_s_extension || self.csr.misa & misa::S == 0 {
                     // When S mode is not active, we set a bunch of bits to 0
@@ -359,6 +340,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
 
                 self.csr.mstatus = new_value;
+                self.update_mprv_emulation(old_mstatus, mctx);
             }
             Csr::Misa => {} // Read only register, we don't support deactivating extensions in Miralis
             Csr::Mie => {
@@ -749,6 +731,29 @@ where
 // ———————————————————————————————— Helpers ————————————————————————————————— //
 
 impl VirtContext {
+    /// Update the MPRV emulation after the virtual mstatus changed from `old_mstatus`.
+    ///
+    /// With MPRV = 1 and MPP != M loads and stores use the privilege in MPP. Miralis emulates them
+    /// by installing a PMP entry that makes all loads and stores trap, and by handling them in a
+    /// virtual access handler. With MPP = M, MPRV has no effect and no emulation is needed.
+    /// pMPRV is never set to 1 outside of a virtual access handler.
+    pub fn update_mprv_emulation(&self, old_mstatus: usize, mctx: &mut MiralisContext) {
+        let needed = mprv_emulation_needed(self.csr.mstatus);
+        if needed == mprv_emulation_needed(old_mstatus) {
+            return;
+        }
+
+        logger::trace!("MPRV emulation: {}", needed);
+        if needed {
+            mctx.pmp
+                .set_napot(MPRV_EMULATION_OFFSET, 0, usize::MAX, pmpcfg::X);
+        } else {
+            mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
+        }
+        // SAFETY: the PMP entries in mctx are the ones of the firmware currently running.
+        unsafe { arch::write_pmp(&mctx.pmp).flush() };
+    }
+
     /// Return the PMP configuration for a given PMP index.
     pub fn get_pmpcfg(&self, index: usize) -> u8 {
         let reg_idx = index / 8;
@@ -757,4 +762,10 @@ impl VirtContext {
         let cfg = (reg >> (inner_idx * 8)) & 0xff;
         cfg as u8
     }
+}
+
+/// Whether loads and stores must be emulated for MPRV: MPRV = 1 and MPP != M.
+fn mprv_emulation_needed(mstatus: usize) -> bool {
+    mstatus & mstatus::MPRV_FILTER != 0
+        && (mstatus & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET != Mode::M.to_bits()
 }
