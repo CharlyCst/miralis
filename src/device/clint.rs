@@ -115,8 +115,9 @@ impl VirtClint {
         // Read current timestamp
         let current_timestamp = Plat::get_clint().read_mtimecmp(mctx.hw.hart).unwrap();
 
-        // If the timer is for the firmware
-        if current_timestamp >= timestamps.deadline_firmware.load(Ordering::SeqCst) {
+        // If the timer is for the firmware (usize::MAX means no deadline)
+        let deadline_firmware = timestamps.deadline_firmware.load(Ordering::SeqCst);
+        if deadline_firmware != usize::MAX && current_timestamp >= deadline_firmware {
             timestamps
                 .deadline_firmware
                 .store(usize::MAX, Ordering::SeqCst);
@@ -124,8 +125,9 @@ impl VirtClint {
             ctx.csr.mip |= mie::MTIE_FILTER;
         }
 
-        // If the timer is for the payload
-        if current_timestamp >= timestamps.deadline_payload.load(Ordering::SeqCst) {
+        // If the timer is for the payload (usize::MAX means no deadline)
+        let deadline_payload = timestamps.deadline_payload.load(Ordering::SeqCst);
+        if deadline_payload != usize::MAX && current_timestamp >= deadline_payload {
             timestamps
                 .deadline_payload
                 .store(usize::MAX, Ordering::SeqCst);
