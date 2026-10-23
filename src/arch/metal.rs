@@ -150,8 +150,11 @@ pub fn init() {
     install_handler(_raw_trap_handler as *const () as usize);
     // Initialize `medeleg` to ensure all exceptions trap to Miralis
     unsafe { write_csr(Csr::Medeleg, 0) };
-    // Initialize `mideleg` with read-only ones
-    unsafe { write_csr(Csr::Mideleg, mie::MIDELEG_READ_ONLY_ONE) };
+    // The firmware runs first: do not delegate any interrupt, so that they all trap to Miralis.
+    // The payload's value is installed when switching to the payload.
+    unsafe { write_csr(Csr::Mideleg, 0) };
+    // Do not expose the counters to the firmware running in U-mode
+    unsafe { write_csr(Csr::Mcounteren, 0) };
     // Ensure that there are no PT set, so that firmware in U-mode
     // Wouldn't try to read physical address as virtual (with jump, for example)
     unsafe { write_csr(Csr::Satp, 0) };
