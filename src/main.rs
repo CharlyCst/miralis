@@ -146,6 +146,12 @@ _start:
     // enabled them.
     csrrwi x0, mie, 0
 
+    // Harts beyond the configured number of harts have no stack: park them before they touch
+    // memory.
+    csrr t0, mhartid
+    li t1, {nb_harts}
+    bgeu t0, t1, park_hart
+
     // We start by setting up the stack:
     // First we find where the stack is for that hart
     ld t0, __stack_start
@@ -210,6 +216,11 @@ end_wait:
     mv sp, t1
     j {main}
 
+    // Parked harts wait forever (interrupts are disabled)
+park_hart:
+    wfi
+    j park_hart
+
 // Store the address of the stack in memory
 // That way it can be loaded as an absolute value
 .align 8
@@ -228,6 +239,7 @@ __boot_bss_set:
     bss_start = sym _bss_start,
     bss_stop = sym _bss_stop,
     boot_hart_id = const PLATFORM_BOOT_HART_ID,
+    nb_harts = const PLATFORM_NB_HARTS,
     boot_bss_set = sym BOOT_BSS_SET,
 );
 
