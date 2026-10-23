@@ -10,8 +10,8 @@ use spin::Mutex;
 
 use crate::device::{DeviceAccess, Width};
 use crate::driver::plic::PlicDriver;
+use crate::logger;
 use crate::virt::VirtContext;
-use crate::{debug, logger};
 
 // —————————————————————————————— Virtual PLIC —————————————————————————————— //
 
@@ -59,7 +59,7 @@ impl DeviceAccess for VirtPlic {
     ) -> Result<(), &'static str> {
         // Validate the write width and alignment
         if !offset.is_multiple_of(4) && w_width != Width::Byte4 {
-            debug::warn_once!(
+            logger::warn_once!(
                 "Unexpected write width/alignment: offset 0x{:x}, width: {}",
                 offset,
                 w_width as u8

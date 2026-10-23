@@ -159,6 +159,17 @@ macro_rules! debug_enabled {
     };
 }
 
+/// Returns true if the Warn logging level is enabled for the current module.
+///
+/// This macro is guaranteed to be executed at compile time, thus dead-code elimination is
+/// guaranteed by any reasonable compiler.
+macro_rules! warn_enabled {
+    () => {
+        // We wrap the computation in a const block to guarantee execution at compile time
+        const { crate::logger::enabled(core::module_path!(), log::Level::Warn) }
+    };
+}
+
 /// Log a message at the trace level.
 ///
 /// This macro call is guaranteed to be optimized-out at compile time if the corresponding log
@@ -186,10 +197,27 @@ macro_rules! debug {
     };
 }
 
+/// Emit a warning only once.
+///
+/// This macro calls log::warn internally and forwards all arguments. The call is optimized-out at
+/// compile time if the warn level is not enabled.
+macro_rules! warn_once {
+    ($($args:tt)*) => {{
+        use core::sync::atomic::{AtomicBool, Ordering};
+        static IS_FIRST_WARN: AtomicBool = AtomicBool::new(true);
+
+        if crate::logger::warn_enabled!() && IS_FIRST_WARN.swap(false, Ordering::Relaxed) == true {
+            log::warn!($($args)*);
+        }
+    }}
+}
+
 pub(crate) use debug;
 pub(crate) use debug_enabled;
 pub(crate) use trace;
 pub(crate) use trace_enabled;
+pub(crate) use warn_enabled;
+pub(crate) use warn_once;
 
 // ————————————————————————————————— Utils —————————————————————————————————— //
 

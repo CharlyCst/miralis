@@ -6,7 +6,7 @@
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
 use crate::arch::{Csr, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
-use crate::{MiralisContext, Plat, Platform, arch, debug};
+use crate::{MiralisContext, Plat, Platform, arch, logger};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
 ///
@@ -334,7 +334,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Misa => {} // Read only register, we don't support deactivating extensions in Miralis
             Csr::Mie => {
                 if value & mie::MEIE_FILTER != 0 {
-                    debug::warn_once!("MEIE bit in 'mie' is not yet supported");
+                    logger::warn_once!("MEIE bit in 'mie' is not yet supported");
                 }
 
                 self.csr.mie = hw.interrupts & value & mie::MIE_WRITE_FILTER;
@@ -387,7 +387,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Pmpcfg(pmp_cfg_idx) => {
                 let mut value = value;
                 if Csr::PMP_CFG_LOCK_MASK & value != 0 {
-                    debug::warn_once!("PMP lock bits are not yet supported");
+                    logger::warn_once!("PMP lock bits are not yet supported");
                 }
                 if pmp_cfg_idx % 2 == 1 {
                     // Should not happen because we are in a RISCV64 setting (the decoder emmits
