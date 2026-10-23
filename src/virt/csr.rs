@@ -5,10 +5,8 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
-use crate::arch::pmp::pmpcfg;
-use crate::arch::pmp::pmplayout::MPRV_EMULATION_OFFSET;
 use crate::arch::{Csr, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
-use crate::{MiralisContext, Plat, Platform, arch, debug, logger};
+use crate::{MiralisContext, Plat, Platform, arch, debug};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
 ///
@@ -284,28 +282,8 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                     mxl,
                 );
 
-                // MPRV : 17 : write anything
-                let mprv = (value & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
-                let previous_mprv =
-                    (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET;
-
-                // When vMPRV transitions from 0 to 1, set up a PMP entry to protect all memory.
-                // This allows catching accesses that occur with vMPRV=1, which require a special virtual access handler.
-                // When vMPRV transitions back to 0, remove the protection.
-                // pMPRV is never set to 1 outside of a virtual access handler.
-                if mprv != previous_mprv {
-                    logger::trace!("vMPRV set to {:b}", mprv);
-                    if mprv != 0 {
-                        mctx.pmp
-                            .set_napot(MPRV_EMULATION_OFFSET, 0, usize::MAX, pmpcfg::X);
-                    } else {
-                        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
-                    }
-                    // TODO: it seems the PMP are not yet written to hardware here,
-                    // that seems like a bug to me. We should investigate.
-                    // unsafe { write_pmp(&mctx.pmp).flush() };
-                    arch::sfencevma(None, None);
-                }
+                // MPRV : 17 : write anything (the emulation is updated before resuming the
+                // firmware, see `PmpGroup::sync_mprv_emulation`)
 
                 if !mctx.hw.extensions.has_s_extension || self.csr.misa & misa::S == 0 {
                     // When S mode is not active, we set a bunch of bits to 0
