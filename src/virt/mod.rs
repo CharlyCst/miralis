@@ -8,7 +8,7 @@ mod world_switch;
 pub use csr::traits;
 pub use emulator::ExitResult;
 
-use crate::arch::{ExtensionsCapability, Mode, TrapInfo, mie, misa};
+use crate::arch::{ExtensionsCapability, Mode, TrapInfo, mie, misa, mstatus};
 
 /// The execution mode, either virtualized firmware or native payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,7 +83,8 @@ impl VirtContext {
                 mepc: 0,
                 mtval: 0,
                 mtval2: 0,
-                mstatus: 0,
+                // SXL and UXL are read-only 2 (64 bits) on RV64
+                mstatus: (2 << mstatus::SXL_OFFSET) | (2 << mstatus::UXL_OFFSET),
                 mtinst: 0,
                 mconfigptr: 0,
                 stvec: 0,
