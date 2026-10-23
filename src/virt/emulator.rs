@@ -22,7 +22,7 @@ use crate::host::MiralisContext;
 use crate::modules::{MainModule, Module};
 use crate::platform::{Plat, Platform};
 use crate::utils::sign_extend;
-use crate::{arch, debug, device, logger, utils};
+use crate::{arch, device, logger, utils};
 
 /// Whether to continue execution of the virtual firmware or payload, or terminate the run loop.
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -142,7 +142,7 @@ impl VirtContext {
         };
 
         if value > mask {
-            debug::warn_once!(
+            logger::warn_once!(
                 "Value {} exceeds allowed length {}. Trimming to fit.",
                 value,
                 len.to_bits()

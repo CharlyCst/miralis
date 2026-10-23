@@ -17,7 +17,7 @@ use crate::arch;
 use crate::config::{TARGET_FIRMWARE_ADDRESS, TARGET_START_ADDRESS};
 use crate::device::clint::VirtClint;
 use crate::driver::clint::ClintDriver;
-use crate::{debug, device, logger};
+use crate::{device, logger};
 
 // ——————————————————————————— Platform Constants ——————————————————————————— //
 
@@ -118,7 +118,7 @@ pub trait Platform {
     /// Writes to a platform-specific CSR.
     fn write_custom_csr(csr: usize, value: usize) {
         // By default drop the writes.
-        debug::warn_once!(
+        logger::warn_once!(
             "Trying to write to custom CSR 0x{:x}, but custom CSR write is not implemented",
             csr
         );

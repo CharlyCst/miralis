@@ -4,24 +4,6 @@ use crate::arch;
 use crate::arch::Csr;
 use crate::config::TARGET_STACK_SIZE;
 
-// ————————————————————————————— Logging Utils —————————————————————————————— //
-
-/// Emit a warning only once.
-///
-/// This macro calls log::warn internally and forwards all arguments.
-macro_rules! warn_once {
-    ($($args:tt)*) => {{
-        use core::sync::atomic::{AtomicBool, Ordering};
-        static IS_FIRST_WARN: AtomicBool = AtomicBool::new(true);
-
-        if IS_FIRST_WARN.swap(false, Ordering::Relaxed) == true {
-            log::warn!($($args)*);
-        }
-    }}
-}
-
-pub(crate) use warn_once;
-
 // ————————————————————————————— Unimplemented —————————————————————————————— //
 
 /// Mark a code path as not yet implemented, causing a runtime panic.

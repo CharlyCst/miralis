@@ -11,7 +11,7 @@ use crate::driver::clint::{
 use crate::host::MiralisContext;
 use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
-use crate::{arch, debug, logger};
+use crate::{arch, logger};
 
 // ————————————————————————————— Virtual CLINT —————————————————————————————— //
 
@@ -296,7 +296,7 @@ impl VirtClint {
             (o, _) if o == MTIME_OFFSET => {
                 // TODO: when updating mtime we should check on which core the timer should fire.
                 // We don't do it for now so we might loose interrupts.
-                debug::warn_once!(
+                logger::warn_once!(
                     "Write to mtime not yet fully supported (might cause interrupt loss)"
                 );
                 self.driver.write_mtime(value);
