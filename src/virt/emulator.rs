@@ -83,6 +83,8 @@ impl VirtContext {
             }
             IllegalInst::Mret => return self.emulate_mret(mctx),
             IllegalInst::Sret => return self.emulate_sret(mctx),
+            // Instructions we do not emulate are illegal in virtual M-mode too
+            IllegalInst::Unknown => return self.emulate_firmware_trap(),
 
             // Instructions with without exceptional control flow
             IllegalInst::Csrrw { csr, rd, rs1 } => self.emulate_csrrw(mctx, *csr, *rd, *rs1),
@@ -95,12 +97,6 @@ impl VirtContext {
             IllegalInst::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
             IllegalInst::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
             IllegalInst::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
-            _ => todo!(
-                "Instruction not yet implemented: {:?} {:x} {:x}",
-                instr,
-                self.csr.mepc,
-                self.csr.mtval
-            ),
         }
 
         // All instructions with exceptional control flow returned before, we increment the PC for
