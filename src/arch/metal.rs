@@ -22,7 +22,7 @@ use crate::arch::{HardwareCapability, Width, mie, misa, mstatus, parse_mpp_retur
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
-use crate::{RegisterContextGetter, RegisterContextSetter, utils};
+use crate::{MiralisContext, RegisterContextGetter, RegisterContextSetter, utils};
 
 // ———————————————————————————————— Softcore ———————————————————————————————— //
 // For unit testing and verification we compile Miralis on the native host    //
@@ -1028,13 +1028,19 @@ pub unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
 /// This function performs a load using MPRV = 1, whose behavior depends on the privilegd state
 /// and in particular PMP and page tables. The privileged state must be configured properly to
 /// ensure the proper access rights are enforced.
-pub unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext) {
+pub unsafe fn handle_virtual_load(
+    instr: LoadInstr,
+    ctx: &mut VirtContext,
+    mctx: &mut MiralisContext,
+) {
     // Set the MPP mode to match the vMPP
     let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
     let prev_satp = unsafe { write_csr(Csr::Satp, ctx.csr.satp) };
 
-    // Changes to SATP require an sfence instruction to take effect
-    sfencevma(None, None);
+    // The MPRV emulation entry makes all loads and stores trap, including the one we replay here,
+    // so we need to remove it during the load emulation.
+    // SAFETY: the PMP is the one of the firmware currently running
+    unsafe { mctx.pmp.disable_mprv_emulation() };
 
     let success;
     let mut value: usize = 0;
@@ -1077,13 +1083,19 @@ pub unsafe fn handle_virtual_load(instr: LoadInstr, ctx: &mut VirtContext) {
 /// This function performs a store using MPRV = 1, whose behavior depends on the privilegd
 /// state and in particular PMP and page tables. The privileged state must be configured
 /// properly to ensure the proper access rights are enforced.
-pub unsafe fn handle_virtual_store(instr: StoreInstr, ctx: &mut VirtContext) {
+pub unsafe fn handle_virtual_store(
+    instr: StoreInstr,
+    ctx: &mut VirtContext,
+    mctx: &mut MiralisContext,
+) {
     // Set the MPP mode to match the vMPP
     let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
     let prev_satp = unsafe { write_csr(Csr::Satp, ctx.csr.satp) };
 
-    // Changes to SATP require an sfence instruction to take effect
-    sfencevma(None, None);
+    // The MPRV emulation entry makes all store and stores trap, including the one we replay here,
+    // so we need to remove it during the load emulation.
+    // SAFETY: the PMP is the one of the firmware currently running
+    unsafe { mctx.pmp.disable_mprv_emulation() };
 
     let success;
     let mut value: usize = ctx.get(instr.rs2);

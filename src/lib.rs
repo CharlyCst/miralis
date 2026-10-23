@@ -108,11 +108,18 @@ fn handle_trap(
 
             module.switch_from_payload_to_firmware(ctx, mctx);
             unsafe { ctx.switch_from_payload_to_firmware(mctx) };
+            // SAFETY: the PMP is the one of the firmware we are about to resume
+            unsafe { mctx.pmp.sync_mprv_emulation(ctx.csr.mstatus) };
 
             unsafe {
                 // Commit the PMP to hardware
                 write_pmp(&mctx.pmp).flush();
             }
+        }
+        (ExecutionMode::Firmware, ExecutionMode::Firmware) => {
+            // Update the MPRV emulation, the virtual mstatus might have changed
+            // SAFETY: the PMP is the one of the firmware we are about to resume
+            unsafe { mctx.pmp.sync_mprv_emulation(ctx.csr.mstatus) };
         }
         _ => {} // No execution mode transition
     }

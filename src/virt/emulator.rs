@@ -204,10 +204,10 @@ impl VirtContext {
             );
             match instr {
                 LoadStoreInstr::Load(instr) => unsafe {
-                    arch::handle_virtual_load(instr, self);
+                    arch::handle_virtual_load(instr, self, mctx);
                 },
                 LoadStoreInstr::Store(instr) => unsafe {
-                    arch::handle_virtual_store(instr, self);
+                    arch::handle_virtual_store(instr, self, mctx);
                 },
             }
         } else {
@@ -248,6 +248,12 @@ impl VirtContext {
     ///
     /// This function jumps to the trap handler for the corresponding interrupts and updates the
     /// virtual CSRs accordingly.
+    ///
+    /// Not inlined: `check_and_inject_interrupts` runs on every trap and stays cheap only if it
+    /// can be inlined. However, inlining `inject_interrupt` into `check_and_inject_interrupts`
+    /// prevents the inlining of `check_and_inject_interrupts`. As with all manual performance
+    /// tunning, this might need to be revisited on compiler upgrade.
+    #[inline(never)]
     fn inject_interrupt(&mut self, next_int: usize) {
         // Update Mstatus to match the semantic of a trap
         VirtCsr::set_csr_field(

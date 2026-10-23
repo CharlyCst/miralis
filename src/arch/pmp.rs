@@ -11,6 +11,7 @@ use crate::arch::pmp::pmplayout::{
     DEVICES_OFFSET, INACTIVE_ENTRY_OFFSET, MIRALIS_OFFSET, MIRALIS_TOTAL_PMP, MODULE_OFFSET,
     MODULE_SIZE, MPRV_EMULATION_OFFSET, VIRTUAL_PMP_OFFSET,
 };
+use crate::arch::{Mode, mstatus};
 use crate::platform::{Plat, Platform};
 use crate::{arch, config, logger};
 
@@ -424,6 +425,61 @@ impl PmpGroup {
             self.set_pmpcfg(idx, cfg | pmpcfg::RWX);
         }
     }
+}
+
+// ————————————————————————————— MPRV Emulation ————————————————————————————— //
+
+impl PmpGroup {
+    /// Install or remove the MPRV emulation PMP entry to match the virtual `mstatus`.
+    ///
+    /// With MPRV = 1 and MPP != M loads and stores use the privilege in MPP. Miralis emulates them
+    /// by installing a PMP entry that makes all loads and stores trap, and by handling them in a
+    /// virtual access handler. With MPP = M, MPRV has no effect and no emulation is needed.
+    /// pMPRV is never set to 1 outside of a virtual access handler.
+    ///
+    /// Must be called before resuming the firmware. The PMP entry is compared against the virtual
+    /// mstatus, so any change to MPRV or MPP since the last call is taken into account.
+    ///
+    /// # Safety
+    ///
+    /// The PMP is written to the hardware if the entry changes, this PMP group must be the one of
+    /// the firmware currently running.
+    pub unsafe fn sync_mprv_emulation(&mut self, mstatus: usize) {
+        let needed = mprv_emulation_needed(mstatus);
+        let active = self.get_pmpcfg(MPRV_EMULATION_OFFSET) != INACTIVE;
+        if needed == active {
+            return;
+        }
+
+        logger::trace!("MPRV emulation: {}", needed);
+        if needed {
+            // Install the PMP entry that makes all loads and stores trap
+            self.set_napot(MPRV_EMULATION_OFFSET, 0, usize::MAX, pmpcfg::X);
+            unsafe { arch::write_pmp(self).flush() };
+        } else {
+            unsafe { self.disable_mprv_emulation() };
+        }
+    }
+
+    /// Remove the PMP entry that makes all loads and stores trap for MPRV emulation.
+    ///
+    /// `disable_mprv_emulation` executes the `sfencevma` barrier required for the changes to take
+    /// effect.
+    ///
+    /// # Safety
+    ///
+    /// The PMP is written to the hardware, this PMP group must be the one of the firmware
+    /// currently running.
+    pub unsafe fn disable_mprv_emulation(&mut self) {
+        self.set_inactive(MPRV_EMULATION_OFFSET, 0);
+        unsafe { arch::write_pmp(self).flush() };
+    }
+}
+
+/// Whether loads and stores must be emulated for MPRV: MPRV = 1 and MPP != M.
+fn mprv_emulation_needed(mstatus: usize) -> bool {
+    mstatus & mstatus::MPRV_FILTER != 0
+        && (mstatus & mstatus::MPP_FILTER) >> mstatus::MPP_OFFSET != Mode::M.to_bits()
 }
 
 impl PmpFlush {
