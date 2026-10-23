@@ -315,8 +315,12 @@ impl VirtContext {
         //
         // We also preserve the virtualized interrupt bits from the virtual mip, as those are pure
         // software and might not match the physical mip.
-        let hw_mip_bits = self.trap_info.mip & !(mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
-        let sw_mip_bits = self.csr.mip & (mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO);
+        //
+        // LCOFIP is set by the hardware on counter overflow, but Sscofpmf is not exposed to the
+        // firmware for now, so we keep the virtual value.
+        let sw_mask = mie::SEIE_FILTER | mie::MIDELEG_READ_ONLY_ZERO | mie::LCOFIE_FILTER;
+        let hw_mip_bits = self.trap_info.mip & !sw_mask;
+        let sw_mip_bits = self.csr.mip & sw_mask;
         self.csr.mip = hw_mip_bits | sw_mip_bits;
 
         match self.mode {
