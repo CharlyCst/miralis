@@ -139,13 +139,13 @@ impl MiralisContext {
     }
 
     /// Decodes a raw illegal instruction
+    ///
+    /// Instructions that are not SYSTEM instructions (including all compressed instructions) are
+    /// decoded as `IllegalInst::Unknown`.
     pub fn decode_illegal_instruction(&self, raw_instr: usize) -> IllegalInst {
-        assert_eq!(
-            raw_instr & 0b1111111,
-            ILLEGAL_OPCODE_MASK,
-            "Precondition violated, this is not an illegal instruction: 0x{:x}",
-            raw_instr
-        );
+        if raw_instr & 0b1111111 != ILLEGAL_OPCODE_MASK {
+            return IllegalInst::Unknown;
+        }
 
         match raw_instr {
             0b00010000010100000000000001110011 => return IllegalInst::Wfi,
@@ -968,6 +968,27 @@ mod tests {
                 rs1: Register::X0,
                 rs2: Register::X19
             }
+        );
+    }
+
+    /// Instructions that are not SYSTEM instructions are unknown
+    #[test]
+    fn non_system_instructions() {
+        let mctx = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x100000, 0x2000);
+        // c.unimp
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x0000),
+            IllegalInst::Unknown
+        );
+        // c.unimp followed by another compressed instruction
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x4501_0000),
+            IllegalInst::Unknown
+        );
+        // addi x0, x0, 0 (not illegal, but not a SYSTEM instruction either)
+        assert_eq!(
+            mctx.decode_illegal_instruction(0x00000013),
+            IllegalInst::Unknown
         );
     }
 
