@@ -206,8 +206,15 @@ impl VirtContext {
                 LoadStoreInstr::Load(instr) => self.handle_device_load(device, &instr),
                 LoadStoreInstr::Store(instr) => self.handle_device_store(device, &instr),
             }
-        } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1 {
-            // The fault is due to an access with MPRV = 1.
+        } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1
+            && parse_mpp_return_mode(self.csr.mstatus) != Mode::M
+        {
+            // The fault is due to an access with MPRV = 1 and MPP != M.
+            //
+            // With MPP = M, MPRV has no effect: the access is checked as any other firmware
+            // access, so a fault is a genuine access fault of the firmware and is forwarded below.
+            // Replaying it would perform a real M-mode access that unlocked PMP entries (such as
+            // Miralis's own memory) do not check.
             //
             // Miralis need to emulate all such accesses. When the virtual firmware sets MPRV = 1
             // Miralis configures the PMP to traps on all loads and stores, catch the traps and
