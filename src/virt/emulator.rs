@@ -54,6 +54,7 @@ impl VirtContext {
             //
             // Mret and Sret do not trap but also skip the PC+4.
             IllegalInst::InvalidCsrOp => return self.emulate_firmware_trap(),
+            IllegalInst::Unknown => return self.emulate_firmware_trap(),
             IllegalInst::Mret => return self.emulate_mret(mctx),
             IllegalInst::Sret => return self.emulate_sret(mctx),
 
@@ -68,12 +69,6 @@ impl VirtContext {
             IllegalInst::Sfencevma { rs1, rs2 } => self.emulate_sfence_vma(mctx, rs1, rs2),
             IllegalInst::Hfencegvma { rs1, rs2 } => self.emulate_hfence_gvma(mctx, rs1, rs2),
             IllegalInst::Hfencevvma { rs1, rs2 } => self.emulate_hfence_vvma(mctx, rs1, rs2),
-            _ => todo!(
-                "Instruction not yet implemented: {:?} {:x} {:x}",
-                instr,
-                self.csr.mepc,
-                self.csr.mtval
-            ),
         }
 
         // All instructions with exceptional control flow returned before, we increment the PC for
