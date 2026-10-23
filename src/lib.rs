@@ -230,7 +230,8 @@ fn log_ctx(ctx: &VirtContext) {
 /// Mideleg must be 0: don't allow nested interrupts when running Miralis.
 /// ctx.pc must be set to the handler start address.
 /// Mie, vMie, vMideleg must not change.
-/// vMepc and vMstatus.MIE must be set to corresponding values in ctx.trap_info.
+/// vMepc must be set to the corresponding value in ctx.trap_info.
+/// vMstatus must be updated from the virtual mstatus (MPIE = MIE, MIE = 0, MPP = M).
 /// vMip must be updated to the value of Mip.
 /// In case of an interrupt, Mip must be cleared: avoid Miralis to trap again.
 #[cfg(test)]
@@ -248,16 +249,16 @@ mod tests {
         let mut module = MainModule::init();
         let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
 
-        // Firmware is running
+        // Firmware is running, with virtual mstatus.MIE and mstatus.SUM set
         ctx.mode = Mode::M;
-        ctx.csr.mstatus = 0;
+        ctx.csr.mstatus = mstatus::MIE_FILTER | mstatus::SUM_FILTER;
         ctx.csr.mie = 0b1;
         ctx.csr.mideleg = 0;
         ctx.csr.mtvec = 0x80200024; // Dummy mtvec
 
         // Simulating a trap
         ctx.trap_info.mepc = 0x80200042; // Dummy address
-        ctx.trap_info.mstatus = 0b10000000;
+        ctx.trap_info.mstatus = 0; // The physical mstatus is unrelated to the virtual one
         ctx.trap_info.mcause = MCause::Breakpoint as usize; // TODO : use a real int.
         ctx.trap_info.mip = 0b1;
         ctx.trap_info.mtval = 0;
@@ -270,9 +271,9 @@ mod tests {
         assert_eq!(ctx.csr.mideleg, 0, "mideleg must not change");
         assert_eq!(ctx.csr.mepc, 0x80200042);
         assert_eq!(
-            (ctx.csr.mstatus & mstatus::MPIE_FILTER) >> mstatus::MPIE_OFFSET,
-            0b1,
-            "mstatus.MPIE must be set to trap_info.mstatus.MPIE"
+            ctx.csr.mstatus,
+            mstatus::MPIE_FILTER | mstatus::SUM_FILTER | (Mode::M.to_bits() << mstatus::MPP_OFFSET),
+            "mstatus must be MPIE = MIE, MIE = 0, MPP = M, with other bits unchanged"
         );
     }
 }
