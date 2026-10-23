@@ -315,7 +315,6 @@ impl VirtContext {
         // We are now emulating a trap, registers need to be updated
         logger::trace!("Emulating jump to trap handler");
         self.csr.mcause = self.trap_info.mcause;
-        self.csr.mstatus = self.trap_info.mstatus;
         self.csr.mtval = self.trap_info.mtval;
         self.csr.mepc = self.trap_info.mepc;
 
@@ -338,7 +337,21 @@ impl VirtContext {
 
         match self.mode {
             Mode::M => {
-                // Modify mstatus: previous privilege mode is machine = 3
+                // The firmware runs in U-mode, so the physical mstatus does not hold the virtual
+                // one. Update the virtual mstatus as a trap from M-mode would.
+                let mie = (self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET;
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::MPIE_OFFSET,
+                    mstatus::MPIE_FILTER,
+                    mie,
+                );
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::MIE_OFFSET,
+                    mstatus::MIE_FILTER,
+                    0,
+                );
                 VirtCsr::set_csr_field(
                     &mut self.csr.mstatus,
                     mstatus::MPP_OFFSET,
@@ -347,7 +360,8 @@ impl VirtContext {
                 );
             }
             _ => {
-                // No need to modify mstatus: MPP is correct
+                // The physical mstatus holds the payload's mstatus after the trap, including MPP.
+                self.csr.mstatus = self.trap_info.mstatus;
                 self.mode = Mode::M;
             }
         }
