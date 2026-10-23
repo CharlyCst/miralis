@@ -8,13 +8,16 @@ use crate::config::TARGET_STACK_SIZE;
 
 /// Emit a warning only once.
 ///
-/// This macro calls log::warn internally and forwards all arguments.
+/// This macro calls log::warn internally and forwards all arguments. It is compiled out if the
+/// Warn level is not enabled for the current module.
 macro_rules! warn_once {
     ($($args:tt)*) => {{
         use core::sync::atomic::{AtomicBool, Ordering};
         static IS_FIRST_WARN: AtomicBool = AtomicBool::new(true);
 
-        if IS_FIRST_WARN.swap(false, Ordering::Relaxed) == true {
+        // Evaluated at compile time, which guarantees dead-code elimination
+        let enabled = const { crate::logger::enabled(core::module_path!(), log::Level::Warn) };
+        if enabled && IS_FIRST_WARN.swap(false, Ordering::Relaxed) == true {
             log::warn!($($args)*);
         }
     }}
