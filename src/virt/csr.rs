@@ -5,7 +5,7 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
-use crate::arch::{Csr, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
+use crate::arch::{Csr, Mode, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
 use crate::{MiralisContext, Plat, Platform, arch, logger};
 
 /// A module exposing the traits to manipulate registers of a virtual context.
@@ -327,6 +327,14 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 // This bit is similar to MPP but enables and disables virtualisation when jumping using mret
                 if !self.extensions.has_h_extension {
                     new_value &= !(mstatus::GVA_FILTER | mstatus::MPV_FILTER);
+                }
+
+                // While the firmware runs the hardware enforces mstatus.FS: install the new value
+                if self.mode == Mode::M {
+                    unsafe {
+                        arch::clear_csr_bits(Csr::Mstatus, mstatus::FS_FILTER);
+                        arch::set_csr_bits(Csr::Mstatus, new_value & mstatus::FS_FILTER);
+                    }
                 }
 
                 self.csr.mstatus = new_value;

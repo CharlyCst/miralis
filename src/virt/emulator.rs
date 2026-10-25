@@ -547,6 +547,9 @@ impl VirtContext {
         mctx: &mut MiralisContext,
         module: &mut MainModule,
     ) -> ExitResult {
+        // The hardware sets mstatus.FS to Dirty when the firmware writes FP registers
+        self.csr.mstatus = mstatus::with_hw_fs(self.csr.mstatus, self.trap_info.mstatus);
+
         if module.trap_from_firmware(mctx, self).overwrites() {
             logger::trace!("Catching trap in the policy module");
             return ExitResult::Continue;

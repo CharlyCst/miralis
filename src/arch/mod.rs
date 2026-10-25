@@ -287,6 +287,43 @@ pub mod mstatus {
     /// SXL
     pub const SXL_OFFSET: usize = 34;
     pub const SXL_FILTER: usize = 0b11 << SXL_OFFSET;
+
+    /// Returns `mstatus` with FS taken from `hw_mstatus` (the physical mstatus), and SD updated.
+    pub const fn with_hw_fs(mstatus: usize, hw_mstatus: usize) -> usize {
+        let mstatus = (mstatus & !(FS_FILTER | SD_FILTER)) | (hw_mstatus & FS_FILTER);
+        let fs = (mstatus & FS_FILTER) >> FS_OFFSET;
+        let vs = (mstatus & VS_FILTER) >> VS_OFFSET;
+        if fs == 0b11 || vs == 0b11 {
+            mstatus | SD_FILTER
+        } else {
+            mstatus
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn hw_fs() {
+            let v = MIE_FILTER | (0b01 << FS_OFFSET);
+            // FS comes from the hardware, other bits are kept
+            assert_eq!(
+                with_hw_fs(v, 0b10 << FS_OFFSET),
+                MIE_FILTER | (0b10 << FS_OFFSET)
+            );
+            // Dirty sets SD
+            assert_eq!(
+                with_hw_fs(v, 0b11 << FS_OFFSET),
+                MIE_FILTER | (0b11 << FS_OFFSET) | SD_FILTER
+            );
+            // SD is cleared when FS is no longer dirty
+            assert_eq!(
+                with_hw_fs(v | SD_FILTER | (0b11 << FS_OFFSET), 0),
+                MIE_FILTER
+            );
+        }
+    }
     /// SBE
     pub const SBE_OFFSET: usize = 36;
     pub const SBE_FILTER: usize = 0b1 << SBE_OFFSET;

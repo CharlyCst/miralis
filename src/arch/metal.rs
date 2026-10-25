@@ -162,6 +162,8 @@ pub fn init() {
     unsafe { write_csr(Csr::Satp, 0) };
     // Ensure that virtualized interrupts are enabled
     unsafe { set_csr_bits(Csr::Mie, mie::MSIE_FILTER | mie::MTIE_FILTER) };
+    // The FPU starts Off, as in the virtual mstatus of the firmware
+    unsafe { clear_csr_bits(Csr::Mstatus, mstatus::FS_FILTER) };
 }
 
 fn install_handler(handler: usize) {
