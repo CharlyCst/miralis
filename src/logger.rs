@@ -46,7 +46,7 @@ pub fn init() {
     match IS_INITIALIZED.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
         Ok(_) => {
             log::set_logger(&Logger {}).unwrap();
-            log::set_max_level(LevelFilter::Trace);
+            log::set_max_level(MAX_LOG_LEVEL);
         }
         Err(_) => {
             log::warn!("Logger is already initialized, skipping init");
@@ -82,6 +82,33 @@ const GLOBAL_LOG_LEVEL: LevelFilter = match config::LOG_LEVEL {
     },
     _ => LevelFilter::Info,
 };
+
+/// The most verbose level enabled by the configuration, either globally or for at least one
+/// module. Used as the runtime max level, so that disabled log sites never reach the logger.
+const MAX_LOG_LEVEL: LevelFilter = {
+    let mut max = GLOBAL_LOG_LEVEL;
+    if !config::LOG_ERROR.is_empty() {
+        max = more_verbose(max, LevelFilter::Error);
+    }
+    if !config::LOG_WARN.is_empty() {
+        max = more_verbose(max, LevelFilter::Warn);
+    }
+    if !config::LOG_INFO.is_empty() {
+        max = more_verbose(max, LevelFilter::Info);
+    }
+    if !config::LOG_DEBUG.is_empty() {
+        max = more_verbose(max, LevelFilter::Debug);
+    }
+    if !config::LOG_TRACE.is_empty() {
+        max = more_verbose(max, LevelFilter::Trace);
+    }
+    max
+};
+
+/// Returns the most verbose of two level filters.
+const fn more_verbose(a: LevelFilter, b: LevelFilter) -> LevelFilter {
+    if a as usize >= b as usize { a } else { b }
+}
 
 /// Returns true if the list of module names contains the target
 const fn contains_target<const N: usize>(log_modules: &[&str; N], target: &str) -> bool {
