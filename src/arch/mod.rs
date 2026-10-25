@@ -185,7 +185,10 @@ pub mod misa {
     pub const MXL: usize = 0b10 << (core::mem::size_of::<usize>() * 8 - 2);
 
     /// Architecture extensions disabled by the current configuration
-    pub const DISABLED: usize = N | F | D | Q;
+    ///
+    /// F and D are exposed: Miralis never uses the FPU, so the FP state is shared by the firmware
+    /// and the payload, and mstatus.FS is handled by the hardware while the firmware runs.
+    pub const DISABLED: usize = N | Q;
 
     /// Constant to filter out non-writable fields of the misa csr
     pub const MISA_CHANGE_FILTER: usize = 0x0000000003FFFFFF;
