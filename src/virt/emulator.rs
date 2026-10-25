@@ -585,13 +585,23 @@ impl VirtContext {
             }
             MCause::StoreAccessFault => {
                 let instr = unsafe { get_raw_faulting_instr(self) };
-                let instr = mctx.decode_store(instr);
-                self.handle_pmp_fault(mctx, LoadStoreInstr::Store(instr));
+                if MiralisContext::is_supported_store(instr) {
+                    let instr = mctx.decode_store(instr);
+                    self.handle_pmp_fault(mctx, LoadStoreInstr::Store(instr));
+                } else {
+                    // Not an access Miralis emulates (e.g. FP store or AMO)
+                    self.emulate_firmware_trap();
+                }
             }
             MCause::LoadAccessFault => {
                 let instr = unsafe { get_raw_faulting_instr(self) };
-                let instr = mctx.decode_load(instr);
-                self.handle_pmp_fault(mctx, LoadStoreInstr::Load(instr));
+                if MiralisContext::is_supported_load(instr) {
+                    let instr = mctx.decode_load(instr);
+                    self.handle_pmp_fault(mctx, LoadStoreInstr::Load(instr));
+                } else {
+                    // Not an access Miralis emulates (e.g. FP load or LR)
+                    self.emulate_firmware_trap();
+                }
             }
             MCause::InstrAccessFault => {
                 logger::trace!("Instruction access fault: {:x?}", self.trap_info);

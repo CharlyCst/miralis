@@ -126,6 +126,26 @@ impl MiralisContext {
         }
     }
 
+    /// Returns true if `raw` is a load instruction that `decode_load` supports: an integer load
+    /// (LB, LH, LW, LD, LBU, LHU, LWU) or a register-based compressed integer load (C.LW, C.LD).
+    pub fn is_supported_load(raw: usize) -> bool {
+        match extract_last_two_bits(raw) {
+            0b11 => raw & 0b1111111 == 0b0000011 && (raw >> 12) & 0b111 != 0b111,
+            0b00 => matches!((raw >> 13) & 0b111, C_LW | C_LD),
+            _ => false,
+        }
+    }
+
+    /// Returns true if `raw` is a store instruction that `decode_store` supports: an integer store
+    /// (SB, SH, SW, SD) or a register-based compressed integer store (C.SW, C.SD).
+    pub fn is_supported_store(raw: usize) -> bool {
+        match extract_last_two_bits(raw) {
+            0b11 => raw & 0b1111111 == 0b0100011 && (raw >> 12) & 0b111 <= 0b011,
+            0b00 => matches!((raw >> 13) & 0b111, C_SW | C_SD),
+            _ => false,
+        }
+    }
+
     /// Decodes a raw write RISC-V instruction.
     pub fn decode_store(&self, raw: usize) -> StoreInstr {
         match extract_last_two_bits(raw) {
@@ -969,6 +989,21 @@ mod tests {
                 rs2: Register::X19
             }
         );
+    }
+
+    /// Only the integer loads and stores Miralis emulates are supported
+    #[test]
+    fn supported_load_store() {
+        assert!(MiralisContext::is_supported_load(0x00053503)); // ld a0, 0(a0)
+        assert!(MiralisContext::is_supported_load(0x6108)); // c.ld a0, 0(a0)
+        assert!(!MiralisContext::is_supported_load(0x00053507)); // fld fa0, 0(a0)
+        assert!(!MiralisContext::is_supported_load(0x1005352f)); // lr.d a0, (a0)
+        assert!(!MiralisContext::is_supported_load(0x2108)); // c.fld fa0, 0(a0)
+        assert!(!MiralisContext::is_supported_load(0x6502)); // c.ldsp a0, 0(sp)
+        assert!(MiralisContext::is_supported_store(0x00a53023)); // sd a0, 0(a0)
+        assert!(MiralisContext::is_supported_store(0xe108)); // c.sd a0, 0(a0)
+        assert!(!MiralisContext::is_supported_store(0x00a53027)); // fsd fa0, 0(a0)
+        assert!(!MiralisContext::is_supported_store(0x00a5302f)); // amoadd.d zero, a0, (a0)
     }
 
     /// Instructions that are not SYSTEM instructions are unknown
