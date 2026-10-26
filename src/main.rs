@@ -11,6 +11,7 @@
 #![no_main]
 
 use core::arch::global_asm;
+use core::sync::atomic::AtomicUsize;
 
 use miralis::arch;
 use miralis::arch::perf_counters::DELGATE_PERF_COUNTERS_MASK;
@@ -244,4 +245,4 @@ __boot_bss_set:
 );
 
 // Boolean to synchronized harts
-static BOOT_BSS_SET: usize = 1;
+static BOOT_BSS_SET: AtomicUsize = AtomicUsize::new(1);
