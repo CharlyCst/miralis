@@ -492,23 +492,9 @@ impl PmpGroup {
         if needed {
             // Install the PMP entry that makes all loads and stores trap
             self.set_napot(MPRV_EMULATION_OFFSET, 0, usize::MAX, pmpcfg::X);
-            unsafe { arch::write_pmp(self).flush() };
         } else {
-            unsafe { self.disable_mprv_emulation() };
+            self.set_inactive(MPRV_EMULATION_OFFSET, 0);
         }
-    }
-
-    /// Remove the PMP entry that makes all loads and stores trap for MPRV emulation.
-    ///
-    /// `disable_mprv_emulation` executes the `sfencevma` barrier required for the changes to take
-    /// effect.
-    ///
-    /// # Safety
-    ///
-    /// The PMP is written to the hardware, this PMP group must be the one of the firmware
-    /// currently running.
-    pub unsafe fn disable_mprv_emulation(&mut self) {
-        self.set_inactive(MPRV_EMULATION_OFFSET, 0);
         unsafe { arch::write_pmp(self).flush() };
     }
 }
