@@ -18,7 +18,9 @@ use softcore_rv64::{Core, config, new_core};
 use super::{Csr, ExtensionsCapability, Mode, RegistersCapability, menvcfg};
 use crate::arch::Csr::{Mtinst, Mtval2};
 use crate::arch::hstatus::GVA_FILTER;
-use crate::arch::{HardwareCapability, Width, mie, misa, mstatus, parse_mpp_return_mode};
+use crate::arch::{
+    HardwareCapability, Width, mie, misa, mstatus, parse_mpp_return_mode, write_pmp,
+};
 use crate::decoder::{LoadInstr, StoreInstr};
 use crate::platform::{Plat, Platform};
 use crate::virt::VirtContext;
@@ -1037,10 +1039,12 @@ pub unsafe fn handle_virtual_load(
     let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
     let prev_satp = unsafe { write_csr(Csr::Satp, ctx.csr.satp) };
 
-    // The MPRV emulation entry makes all loads and stores trap, including the one we replay here,
-    // so we need to remove it during the load emulation.
+    // The access runs with the privilege in MPP: check it against the PMP as seen by S and U-mode
+    // rather than the MPRV emulation entry. The flush also covers the SATP change.
+    mctx.pmp
+        .set_payload_pmp(&ctx.csr.pmpaddr, &ctx.csr.pmpcfg, ctx.nb_pmp);
     // SAFETY: the PMP is the one of the firmware currently running
-    unsafe { mctx.pmp.disable_mprv_emulation() };
+    unsafe { write_pmp(&mctx.pmp).flush() };
 
     let success;
     let mut value: usize = 0;
@@ -1058,6 +1062,12 @@ pub unsafe fn handle_virtual_load(
             _ => panic!("Unknown load instruction"),
         };
     }
+
+    // Restore the firmware PMP. The MPRV emulation entry is installed back by
+    // `sync_mprv_emulation` before resuming the firmware, if still needed.
+    mctx.pmp.set_firmware_pmp(ctx.nb_pmp);
+    // SAFETY: the PMP is the one of the firmware currently running
+    unsafe { write_pmp(&mctx.pmp).flush() };
 
     if !success {
         // The access trapped, we need to update the trap info and inject the trap back.
@@ -1092,10 +1102,12 @@ pub unsafe fn handle_virtual_store(
     let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
     let prev_satp = unsafe { write_csr(Csr::Satp, ctx.csr.satp) };
 
-    // The MPRV emulation entry makes all store and stores trap, including the one we replay here,
-    // so we need to remove it during the load emulation.
+    // The access runs with the privilege in MPP: check it against the PMP as seen by S and U-mode
+    // rather than the MPRV emulation entry. The flush also covers the SATP change.
+    mctx.pmp
+        .set_payload_pmp(&ctx.csr.pmpaddr, &ctx.csr.pmpcfg, ctx.nb_pmp);
     // SAFETY: the PMP is the one of the firmware currently running
-    unsafe { mctx.pmp.disable_mprv_emulation() };
+    unsafe { write_pmp(&mctx.pmp).flush() };
 
     let success;
     let mut value: usize = ctx.get(instr.rs2);
@@ -1112,6 +1124,12 @@ pub unsafe fn handle_virtual_store(
 
     // Silence unused warning caused by the macro
     let _ = value;
+
+    // Restore the firmware PMP. The MPRV emulation entry is installed back by
+    // `sync_mprv_emulation` before resuming the firmware, if still needed.
+    mctx.pmp.set_firmware_pmp(ctx.nb_pmp);
+    // SAFETY: the PMP is the one of the firmware currently running
+    unsafe { write_pmp(&mctx.pmp).flush() };
 
     if !success {
         // The access trapped, we need to update the trap info and inject the trap back.
