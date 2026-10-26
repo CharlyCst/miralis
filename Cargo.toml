@@ -16,6 +16,7 @@ members = [
     "firmware/breakpoint",
     "firmware/misaligned_op",
     "firmware/mret",
+    "firmware/mprv",
     "firmware/os_ctx_switch",
     "firmware/sandbox",
     "firmware/test_protect_payload_firmware",

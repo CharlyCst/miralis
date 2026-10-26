@@ -83,6 +83,11 @@ firmware = "sandbox"
 config = "qemu-virt"
 description = "Check that Miralis is protected from the firmware"
 
+[test.mprv]
+firmware = "mprv"
+config = "qemu-virt"
+description = "Check the emulation of loads and stores with mstatus.MPRV = 1"
+
 [test.interrupt]
 firmware = "interrupt"
 config = "qemu-virt"
