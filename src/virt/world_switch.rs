@@ -4,9 +4,6 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch;
-use crate::arch::pmp::pmpcfg;
-use crate::arch::pmp::pmpcfg::NO_PERMISSIONS;
-use crate::arch::pmp::pmplayout::MPRV_EMULATION_OFFSET;
 use crate::arch::{Csr, Mode, mie, mstatus};
 use crate::config::DELEGATE_PERF_COUNTER;
 use crate::host::MiralisContext;
@@ -97,21 +94,8 @@ impl VirtContext {
             }
         }
 
-        // Load virtual PMP registers into Miralis's own registers
-        mctx.pmp.load_with_offset(
-            &self.csr.pmpaddr,
-            &self.csr.pmpcfg,
-            mctx.pmp.virt_pmp_offset,
-            self.nb_pmp,
-        );
-        // Disable MPRV while outside virtual M-mode
-        mctx.pmp.set_inactive(MPRV_EMULATION_OFFSET, 0);
-        // Deny all addresses by default if at least one PMP is implemented
-        if self.nb_pmp > 0 {
-            let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-            mctx.pmp
-                .set_napot(last_pmp_idx, 0, usize::MAX, NO_PERMISSIONS);
-        }
+        mctx.pmp
+            .set_payload_pmp(&self.csr.pmpaddr, &self.csr.pmpcfg, self.nb_pmp);
     }
 
     /// Loads the S-mode CSR registers into the virtual context and install sensible values (mostly
@@ -207,12 +191,7 @@ impl VirtContext {
             }
         }
 
-        // Set firmware PMP as RWX to emulate access to all memory in vM-mode
-        mctx.pmp
-            .set_range_rwx(mctx.pmp.virt_pmp_offset, self.nb_pmp);
-        // Allow all addresses by default
-        let last_pmp_idx = mctx.pmp.nb_pmp as usize - 1;
-        mctx.pmp.set_napot(last_pmp_idx, 0, usize::MAX, pmpcfg::RWX);
+        mctx.pmp.set_firmware_pmp(self.nb_pmp);
     }
 }
 
