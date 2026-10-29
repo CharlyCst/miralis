@@ -66,8 +66,8 @@ static VIRT_PLIC: VirtPlic = VirtPlic::new(&PLIC_MUTEX);
 /// The virtual test device.
 static VIRT_TEST_DEVICE: VirtTestDevice = VirtTestDevice::new();
 
-/// The list of virtual devices exposed on the platform.
-static VIRT_DEVICES: &[VirtDevice; 2] = &[
+/// The list of virtual devices exposed on the platform when the test device is enabled.
+static VIRT_DEVICES_WITH_TEST: &[VirtDevice; 2] = &[
     VirtDevice {
         start_addr: CLINT_BASE,
         size: CLINT_SIZE,
@@ -82,13 +82,25 @@ static VIRT_DEVICES: &[VirtDevice; 2] = &[
     },
 ];
 
+/// The list of virtual devices exposed on the platform when the test device is disabled.
+static VIRT_DEVICES_NO_TEST: &[VirtDevice; 1] = &[VirtDevice {
+    start_addr: CLINT_BASE,
+    size: CLINT_SIZE,
+    name: "CLINT",
+    device_interface: &VIRT_CLINT,
+}];
+
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
 pub struct VirtPlatform {}
 
 impl Platform for VirtPlatform {
     const NB_HARTS: usize = usize::MAX;
-    const NB_VIRT_DEVICES: usize = VIRT_DEVICES.len();
+    const NB_VIRT_DEVICES: usize = if crate::config::VIRT_TEST_DEVICE {
+        VIRT_DEVICES_WITH_TEST.len()
+    } else {
+        VIRT_DEVICES_NO_TEST.len()
+    };
 
     fn name() -> &'static str {
         match PLATFORM_NAME {
@@ -129,7 +141,11 @@ impl Platform for VirtPlatform {
     }
 
     fn get_virtual_devices() -> &'static [VirtDevice] {
-        VIRT_DEVICES
+        if crate::config::VIRT_TEST_DEVICE {
+            VIRT_DEVICES_WITH_TEST
+        } else {
+            VIRT_DEVICES_NO_TEST
+        }
     }
 
     fn get_clint() -> &'static ClintDriver {

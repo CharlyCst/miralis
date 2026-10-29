@@ -71,6 +71,10 @@ pub const FIRMWARE_ABI_ENV: &str = "MIRALIS_FIRMWARE_ABI";
 pub const PLATFORM_NAME: &str = parse_str_or(option_env!("MIRALIS_PLATFORM_NAME"), "qemu-virt");
 pub const PLATFORM_NAME_ENV: &str = "MIRALIS_PLATFORM_NAME";
 
+/// Enable the virtual test device on QEMU virt.
+pub const VIRT_TEST_DEVICE: bool = is_enabled!("MIRALIS_VIRT_TEST_DEVICE");
+pub const VIRT_TEST_DEVICE_ENV: &str = "MIRALIS_VIRT_TEST_DEVICE";
+
 /// The expected number of harts.
 pub const PLATFORM_NB_HARTS: usize = parse_usize_or(option_env!("MIRALIS_PLATFORM_NB_HARTS"), 1);
 pub const PLATFORM_NB_HARTS_ENV: &str = "MIRALIS_PLATFORM_NB_HARTS";

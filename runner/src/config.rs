@@ -69,6 +69,7 @@ pub struct Platform {
     pub name: Option<Platforms>,
     pub nb_harts: Option<usize>,
     pub boot_hart_id: Option<usize>,
+    pub virt_test_device: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -263,6 +264,7 @@ impl Platform {
         envs.insert(config::PLATFORM_NAME_ENV, &self.name);
         envs.insert(config::PLATFORM_NB_HARTS_ENV, &self.nb_harts);
         envs.insert(config::PLATFORM_BOOT_HART_ID_ENV, &self.boot_hart_id);
+        envs.insert(config::VIRT_TEST_DEVICE_ENV, &self.virt_test_device);
         envs.envs
     }
 }
