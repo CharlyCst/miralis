@@ -683,15 +683,23 @@ pub unsafe fn get_raw_faulting_instr(ctx: &VirtContext) -> usize {
     match ctx.mode {
         Mode::M => {
             // The virtual firmware runs in U-mode without virtual memory, we can read memory
-            // directly
-            //
-            // NOTE: this access might fault, in the future we might want to use our safer
-            // [Arch::read_bytes_from_mode] function which catches traps during reads. However
-            // doing so would slow down that path quite a lot until we have an optimized
-            // [Arch::read_bytes_from_mode] implementation.
-            let instr_ptr = ctx.trap_info.mepc as *const u32;
-            let instr = unsafe { ptr::read_unaligned(instr_ptr) };
-            instr as usize
+            // directly. If mepc is 4-byte aligned, a 4-byte read cannot cross a page/RAM boundary;
+            // if mepc is 2-byte aligned (mepc & 2 != 0), read the low 16 bits first and only read
+            // the high 16 bits when the low parcel encodes a 32-bit instruction (low & 3 == 3).
+            let mepc = ctx.trap_info.mepc;
+            if mepc & 0b10 == 0 {
+                let instr_ptr = mepc as *const u32;
+                let instr = unsafe { ptr::read_unaligned(instr_ptr) };
+                instr as usize
+            } else {
+                let low = (unsafe { ptr::read_unaligned(mepc as *const u16) }) as usize;
+                if low & 0b11 == 0b11 {
+                    let high = (unsafe { ptr::read_unaligned((mepc + 2) as *const u16) }) as usize;
+                    low | (high << 16)
+                } else {
+                    low
+                }
+            }
         }
         mode => {
             // The instructions come from the payload, therefore virtual memory might be enabled.
@@ -723,4 +731,35 @@ pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
     }
 
     PmpFlush()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raw_faulting_instr_alignment() {
+        #[repr(align(4))]
+        struct Aligned([u16; 4]);
+        let buf = Aligned([0x1234, 0x0000, 0x5673, 0xabcd]);
+        let base = buf.0.as_ptr() as usize;
+
+        let hw = unsafe { detect_hardware() };
+        let mut ctx = VirtContext::new(0, hw.available_reg.nb_pmp, hw.extensions);
+        ctx.trap_info.mcause = MCause::LoadAccessFault as usize;
+        ctx.trap_info.mtval = 0;
+
+        // 4-byte aligned mepc reads 32 bits.
+        ctx.trap_info.mepc = base;
+        assert_eq!(unsafe { get_raw_faulting_instr(&ctx) }, 0x0000_1234);
+
+        // 2-byte aligned mepc with compressed parcel (low & 3 != 3) reads only 16 bits.
+        ctx.trap_info.mepc = base + 2;
+        assert_eq!(unsafe { get_raw_faulting_instr(&ctx) }, 0x0000);
+
+        // 2-byte aligned mepc with 32-bit parcel (low & 3 == 3) reads both 16-bit halves.
+        let buf32 = Aligned([0x0000, 0x3003, 0x00a5, 0xdead]);
+        ctx.trap_info.mepc = (buf32.0.as_ptr() as usize) + 2;
+        assert_eq!(unsafe { get_raw_faulting_instr(&ctx) }, 0x00a5_3003);
+    }
 }
