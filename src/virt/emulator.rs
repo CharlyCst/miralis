@@ -22,7 +22,7 @@ use crate::host::MiralisContext;
 use crate::modules::{MainModule, Module};
 use crate::platform::{Plat, Platform};
 use crate::utils::sign_extend;
-use crate::{arch, device, logger, utils};
+use crate::{arch, config, device, logger, utils};
 
 /// Whether to continue execution of the virtual firmware or payload, or terminate the run loop.
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -561,11 +561,14 @@ impl VirtContext {
                 // Nothing to do, the policy module handles those ecalls
                 logger::trace!("Catching E-call from firmware in the policy module");
             }
-            MCause::EcallFromUMode if self.get(Register::X17) == abi::MIRALIS_EID => {
+            MCause::EcallFromUMode
+                if config::FIRMWARE_ABI && self.get(Register::X17) == abi::MIRALIS_EID =>
+            {
                 return self.handle_ecall();
             }
             MCause::EcallFromUMode => {
-                todo!("ecall is not yet supported for EID other than Miralis ABI");
+                self.trap_info.mcause = MCause::EcallFromMMode as usize;
+                self.emulate_firmware_trap();
             }
             MCause::EcallFromSMode => {
                 panic!("Firmware should not be able to come from S-mode");
@@ -1164,5 +1167,25 @@ mod tests {
         assert_eq!(get_next_interrupt(0b010, 0b010, 0b000), Some(1));
         assert_eq!(get_next_interrupt(0b010, 0b011, 0b000), Some(1));
         assert_eq!(get_next_interrupt(0b011, 0b011, 0b001), Some(1));
+    }
+
+    #[test]
+    fn firmware_ecall_forwarding() {
+        use crate::modules::Module;
+        let hw = unsafe { arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
+        let mut module = crate::modules::MainModule::init();
+        let mut ctx = VirtContext::new(0, mctx.hw.available_reg.nb_pmp, mctx.hw.extensions.clone());
+        ctx.csr.mtvec = 0x8020_1000;
+        ctx.trap_info.mcause = crate::arch::MCause::EcallFromUMode as usize;
+        ctx.trap_info.mepc = 0x8020_0100;
+        ctx.trap_info.mtval = 0;
+
+        let res = ctx.handle_firmware_trap(&mut mctx, &mut module);
+        assert!(res == super::ExitResult::Continue);
+        assert_eq!(ctx.csr.mcause, crate::arch::MCause::EcallFromMMode as usize);
+        assert_eq!(ctx.csr.mepc, 0x8020_0100);
+        assert_eq!(ctx.csr.mtval, 0);
+        assert_eq!(ctx.pc, 0x8020_1000);
     }
 }

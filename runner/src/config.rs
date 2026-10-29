@@ -60,6 +60,7 @@ pub struct Debug {
 pub struct VCpu {
     pub max_pmp: Option<usize>,
     pub delegate_perf_counters: Option<bool>,
+    pub firmware_abi: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -251,6 +252,7 @@ impl VCpu {
             config::DELEGATE_PERF_COUNTER_ENV,
             &self.delegate_perf_counters,
         );
+        envs.insert(config::FIRMWARE_ABI_ENV, &self.firmware_abi);
         envs.envs
     }
 }

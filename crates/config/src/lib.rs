@@ -61,6 +61,10 @@ pub const BENCHMARK_NB_ITER_ENV: &str = "MIRALIS_BENCHMARK_NB_ITER";
 pub const VCPU_MAX_PMP: Option<usize> = parse_usize(option_env!("MIRALIS_VCPU_MAX_PMP"));
 pub const VCPU_MAX_PMP_ENV: &str = "MIRALIS_VCPU_MAX_PMP";
 
+/// Enable custom Miralis ABI ecalls from virtual firmware.
+pub const FIRMWARE_ABI: bool = is_enabled!("MIRALIS_FIRMWARE_ABI");
+pub const FIRMWARE_ABI_ENV: &str = "MIRALIS_FIRMWARE_ABI";
+
 // ———————————————————————————————— Platform ———————————————————————————————— //
 
 /// The target platform
