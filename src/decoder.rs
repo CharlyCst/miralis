@@ -180,8 +180,20 @@ impl MiralisContext {
 
         match raw_instr & !RS1_RS1_INSTR_TYPE_MASK {
             SFENCE_INSTR_VMA_MASK => return IllegalInst::Sfencevma { rs1, rs2 },
-            HFENCE_INSTR_VVMA_MASK => return IllegalInst::Hfencevvma { rs1, rs2 },
-            HFENCE_INSTR_GVMA_MASK => return IllegalInst::Hfencegvma { rs1, rs2 },
+            HFENCE_INSTR_VVMA_MASK => {
+                return if self.hw.extensions.has_h_extension {
+                    IllegalInst::Hfencevvma { rs1, rs2 }
+                } else {
+                    IllegalInst::Unknown
+                };
+            }
+            HFENCE_INSTR_GVMA_MASK => {
+                return if self.hw.extensions.has_h_extension {
+                    IllegalInst::Hfencegvma { rs1, rs2 }
+                } else {
+                    IllegalInst::Unknown
+                };
+            }
             _ => {}
         }
 
@@ -987,6 +999,34 @@ mod tests {
             IllegalInst::Sfencevma {
                 rs1: Register::X0,
                 rs2: Register::X19
+            }
+        );
+        // HFENCE.VVMA / HFENCE.GVMA: decoded only when the H extension is available.
+        let mut mctx_no_h =
+            MiralisContext::new(unsafe { arch::detect_hardware() }, 0x100000, 0x2000);
+        mctx_no_h.hw.extensions.has_h_extension = false;
+        assert_eq!(
+            mctx_no_h.decode_illegal_instruction(0x22000073),
+            IllegalInst::Unknown
+        );
+        assert_eq!(
+            mctx_no_h.decode_illegal_instruction(0x62000073),
+            IllegalInst::Unknown
+        );
+        let mut mctx_h = MiralisContext::new(unsafe { arch::detect_hardware() }, 0x100000, 0x2000);
+        mctx_h.hw.extensions.has_h_extension = true;
+        assert_eq!(
+            mctx_h.decode_illegal_instruction(0x22000073),
+            IllegalInst::Hfencevvma {
+                rs1: Register::X0,
+                rs2: Register::X0
+            }
+        );
+        assert_eq!(
+            mctx_h.decode_illegal_instruction(0x62000073),
+            IllegalInst::Hfencegvma {
+                rs1: Register::X0,
+                rs2: Register::X0
             }
         );
     }
