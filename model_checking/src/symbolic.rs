@@ -147,25 +147,29 @@ pub fn new_ctx(available_extension: ExtensionsCapability) -> VirtContext {
     // ctx.csr.mhpmcounter = [any!(); 29]; todo: What should we do?
     // ctx.csr.mhpmevent = [any!(); 29]; todo: What should we do?
 
-    // Lock mode is not supported at the moment in Miralis
+    // Legalize initial symbolic pmpcfg entries
     for i in 0..8 {
         for j in 0..8 {
             let offset = j * 8;
             let mut pmpcfg = ctx.csr.pmpcfg[i];
 
-            // Lock mode not supported
-            pmpcfg &= !(1 << (7 + offset));
+            if i * 8 + j >= ctx.nb_pmp {
+                pmpcfg &= !(0xff << offset);
+            } else {
+                // Reserved WPRI bits [6:5] are hardwired to 0
+                pmpcfg &= !(0b0110_0000 << offset);
 
-            // NA4 not supported for PMP grain >= 1
-            // If bit 4 is 1, then either NA4 or NAPOT is selected.
-            // In that case, we set bit 3, which forces NAPOT.
-            let nax = pmpcfg & (0b00010000 << offset);
-            pmpcfg |= nax >> 1;
+                // NA4 not supported for PMP grain >= 1
+                // If bit 4 is 1, then either NA4 or NAPOT is selected.
+                // In that case, we set bit 3, which forces NAPOT.
+                let nax = pmpcfg & (0b00010000 << offset);
+                pmpcfg |= nax >> 1;
 
-            // If R = 0 and W = 1, then we set RWX to 0
-            // This is what the Sail spec does too.
-            if pmpcfg & (0b11 << offset) == 0b10 {
-                pmpcfg &= !(0b111 << offset)
+                // If R = 0 and W = 1, then we set RWX to 0
+                // This is what the Sail spec does too.
+                if (pmpcfg >> offset) & 0b11 == 0b10 {
+                    pmpcfg &= !(0b111 << offset)
+                }
             }
 
             ctx.csr.pmpcfg[i] = pmpcfg;

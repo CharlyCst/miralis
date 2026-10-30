@@ -60,6 +60,8 @@ pub struct RegistersCapability {
     pub henvcfg: bool,
     /// Boolean value indicating if Supervisor environment configuration register is present
     pub senvcfg: bool,
+    /// The number of implemented PMP registers (0, 16, or 64)
+    pub nb_implemented_pmp: usize,
     /// The number of implemented and non-zero PMP registers
     pub nb_pmp: usize,
 }
@@ -724,7 +726,7 @@ pub unsafe fn write_pmp(pmp: &PmpGroup) -> PmpFlush {
         "Invalid number of PMP registers"
     );
 
-    for (idx, cfg) in pmpcfg.iter().enumerate().take(nb_pmp / 8) {
+    for (idx, cfg) in pmpcfg.iter().enumerate().take(nb_pmp.div_ceil(8)) {
         unsafe { metal::write_pmpcfg(idx * 2, *cfg) };
     }
 

@@ -440,13 +440,20 @@ impl MiralisContext {
             csr::MIMPID => Csr::Mimpid,
             csr::PMPCFG0..=csr::PMPCFG15 => {
                 let id = csr - csr::PMPCFG0;
-                if id.is_multiple_of(2) {
+                if id.is_multiple_of(2) && id * 4 < self.hw.available_reg.nb_implemented_pmp {
                     Csr::Pmpcfg(id)
                 } else {
-                    return None; // Invalid on rv64
+                    return None;
                 }
             }
-            csr::PMPADDR0..=csr::PMPADDR63 => Csr::Pmpaddr(csr - csr::PMPADDR0),
+            csr::PMPADDR0..=csr::PMPADDR63 => {
+                let id = csr - csr::PMPADDR0;
+                if id < self.hw.available_reg.nb_implemented_pmp {
+                    Csr::Pmpaddr(id)
+                } else {
+                    return None;
+                }
+            }
             csr::MCYCLE => {
                 if self.hw.extensions.has_zicntr {
                     Csr::Mcycle
@@ -1149,6 +1156,25 @@ mod tests {
 
         // Unimplemented scontext (Sdtrig) is rejected
         assert_eq!(mctx.decode_csr(csr::SCONTEXT), None);
+
+        // PMP CSR decode gating respects nb_implemented_pmp (0, 16, or 64)
+        let mut hw0 = unsafe { arch::detect_hardware() };
+        hw0.available_reg.nb_implemented_pmp = 0;
+        let mctx0 = MiralisContext::new(hw0, 0x100000, 0x2000);
+        assert_eq!(mctx0.decode_csr(csr::PMPCFG0), None);
+        assert_eq!(mctx0.decode_csr(csr::PMPADDR0), None);
+
+        let mut hw16 = unsafe { arch::detect_hardware() };
+        hw16.available_reg.nb_implemented_pmp = 16;
+        let mctx16 = MiralisContext::new(hw16, 0x100000, 0x2000);
+        assert_eq!(mctx16.decode_csr(csr::PMPCFG0), Some(Csr::Pmpcfg(0)));
+        assert_eq!(mctx16.decode_csr(csr::PMPCFG0 + 2), Some(Csr::Pmpcfg(2)));
+        assert_eq!(mctx16.decode_csr(csr::PMPCFG0 + 4), None);
+        assert_eq!(
+            mctx16.decode_csr(csr::PMPADDR0 + 15),
+            Some(Csr::Pmpaddr(15))
+        );
+        assert_eq!(mctx16.decode_csr(csr::PMPADDR0 + 16), None);
     }
 
     #[test]

@@ -191,7 +191,8 @@ impl VirtContext {
             }
         }
 
-        mctx.pmp.set_firmware_pmp(self.nb_pmp);
+        mctx.pmp
+            .set_firmware_pmp(&self.csr.pmpaddr, &self.csr.pmpcfg, self.nb_pmp);
     }
 }
 

@@ -1,5 +1,4 @@
 use miralis::arch::metal::SOFT_CORE;
-use miralis::arch::pmp::pmplayout;
 use miralis::arch::{MCause, Register, csr, medeleg, mie, mstatus, write_pmp};
 use miralis::decoder::IllegalInst;
 use miralis::host::MiralisContext;
@@ -382,14 +381,8 @@ pub fn pmp_virtualization() {
     // firmware executes in U-mode.
     let virtual_check = {
         // Here we load the PMPs in the virtual context into the physical core.
-        mctx.pmp.load_with_offset(
-            &ctx.csr.pmpaddr,
-            &ctx.csr.pmpcfg,
-            pmplayout::VIRTUAL_PMP_OFFSET,
-            mctx.pmp.nb_virt_pmp,
-        );
         mctx.pmp
-            .set_range_rwx(mctx.pmp.virt_pmp_offset, mctx.pmp.nb_virt_pmp);
+            .set_firmware_pmp(&ctx.csr.pmpaddr, &ctx.csr.pmpcfg, mctx.pmp.nb_virt_pmp);
         unsafe { write_pmp(&mctx.pmp).flush() };
 
         // And then we can perform a PMP check on the physical core.

@@ -5,6 +5,7 @@
 
 use super::{VirtContext, VirtCsr};
 use crate::arch::mie::SSIE_FILTER;
+use crate::arch::pmp::pmpcfg;
 use crate::arch::{Csr, Mode, Register, hstatus, medeleg, menvcfg, mie, misa, mstatus};
 use crate::{MiralisContext, Plat, Platform, arch, logger};
 
@@ -89,14 +90,15 @@ impl RegisterContextGetter<Csr> for VirtContext {
                     log::warn!("Invalid pmpcfg {}", pmp_cfg_idx);
                     return 0;
                 }
-                if pmp_cfg_idx >= 2 * self.nb_pmp / 8 {
+                let reg_idx = pmp_cfg_idx / 2;
+                if reg_idx >= 8 || pmp_cfg_idx * 4 >= self.nb_pmp {
                     // This PMP is not emulated
                     return 0;
                 }
-                self.csr.pmpcfg[pmp_cfg_idx / 2]
+                self.csr.pmpcfg[reg_idx]
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if pmp_addr_idx >= self.nb_pmp {
+                if pmp_addr_idx >= self.nb_pmp || pmp_addr_idx >= 64 {
                     // This PMP is not emulated
                     return 0;
                 }
@@ -394,45 +396,71 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Marchid => (),   // Read-only
             Csr::Mimpid => (),    // Read-only
             Csr::Pmpcfg(pmp_cfg_idx) => {
-                let mut value = value;
-                if Csr::PMP_CFG_LOCK_MASK & value != 0 {
-                    logger::warn_once!("PMP lock bits are not yet supported");
-                }
                 if pmp_cfg_idx % 2 == 1 {
                     // Should not happen because we are in a RISCV64 setting (the decoder emmits
                     // invalid CSR instead).
                     log::warn!("Invalid pmpcfg write {}", pmp_cfg_idx);
                     return;
-                } else if (pmp_cfg_idx / 2) >= self.nb_pmp / 8 {
+                }
+                let reg_idx = pmp_cfg_idx / 2;
+                let base = pmp_cfg_idx * 4;
+                if reg_idx >= 8 || base >= self.nb_pmp {
                     // This PMP is not emulated, ignore changes
                     return;
                 }
 
-                // Legalize individual pmpcfg entries
+                // Legalize individual pmpcfg entries while preserving locked ones
+                let old_reg = self.csr.pmpcfg[reg_idx];
+                let mut new_reg: usize = 0;
                 for idx in 0..8 {
-                    let offset = idx * 8; // Bit offset
-
-                    // W = 1 & R = 0 is reserved
-                    if (value >> offset) & 0b11 == 0b10 {
-                        value &= !(0b111 << offset);
+                    if base + idx >= self.nb_pmp {
+                        break;
                     }
-
-                    // NA4 can not be selected if the PMP grain G >= 1
-                    if self.pmp_grain >= 1 && (value >> offset) & 0b11000 == 0b10000 {
-                        value &= !(0b11000 << offset);
-                    }
+                    let shift = idx * 8;
+                    let old_byte = ((old_reg >> shift) & 0xff) as u8;
+                    let new_byte = if old_byte & pmpcfg::L != 0 {
+                        old_byte
+                    } else {
+                        let mut b = ((value >> shift) as u8) & pmpcfg::VALID_BITS;
+                        // W = 1 & R = 0 is reserved
+                        if b & (pmpcfg::R | pmpcfg::W) == pmpcfg::W {
+                            b &= !pmpcfg::RWX;
+                        }
+                        // NA4 can not be selected if the PMP grain G >= 1
+                        if self.pmp_grain >= 1 && (b & pmpcfg::A_MASK) == pmpcfg::NA4 {
+                            b &= !pmpcfg::A_MASK;
+                        }
+                        b
+                    };
+                    new_reg |= (new_byte as usize) << shift;
                 }
 
-                self.csr.pmpcfg[pmp_cfg_idx / 2] = value
-                    & Csr::PMP_CFG_LEGAL_MASK
-                    & VirtCsr::get_pmp_cfg_filter(pmp_cfg_idx, self.nb_pmp);
+                self.csr.pmpcfg[reg_idx] = new_reg;
+                if self.mode == Mode::M && mctx.pmp.nb_virt_pmp > 0 {
+                    mctx.pmp
+                        .set_firmware_pmp(&self.csr.pmpaddr, &self.csr.pmpcfg, self.nb_pmp);
+                    unsafe { arch::write_pmp(&mctx.pmp).flush() };
+                }
             }
             Csr::Pmpaddr(pmp_addr_idx) => {
-                if pmp_addr_idx >= mctx.hw.available_reg.nb_pmp {
+                if pmp_addr_idx >= self.nb_pmp || pmp_addr_idx >= 64 {
                     // This PMP is not emulated, ignore
                     return;
                 }
+                let locked = self.get_pmpcfg(pmp_addr_idx) & pmpcfg::L != 0;
+                let tor_locked = pmp_addr_idx + 1 < self.nb_pmp
+                    && pmp_addr_idx + 1 < 64
+                    && (self.get_pmpcfg(pmp_addr_idx + 1) & (pmpcfg::L | pmpcfg::A_MASK))
+                        == (pmpcfg::L | pmpcfg::TOR);
+                if locked || tor_locked {
+                    return;
+                }
                 self.csr.pmpaddr[pmp_addr_idx] = Csr::PMP_ADDR_LEGAL_MASK & value;
+                if self.mode == Mode::M && mctx.pmp.nb_virt_pmp > 0 {
+                    mctx.pmp
+                        .set_firmware_pmp(&self.csr.pmpaddr, &self.csr.pmpcfg, self.nb_pmp);
+                    unsafe { arch::write_pmp(&mctx.pmp).flush() };
+                }
             }
             Csr::Mcycle => self.csr.mcycle = value,
             Csr::Minstret => self.csr.minstret = value,

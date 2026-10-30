@@ -647,6 +647,7 @@ pub unsafe fn detect_hardware() -> HardwareCapability {
             menvcfg: is_menvcfg_present,
             henvcfg: is_henvcfg_present,
             senvcfg: is_senvcfg_present,
+            nb_implemented_pmp,
             nb_pmp,
         },
         extensions: ExtensionsCapability {
@@ -1076,7 +1077,8 @@ pub unsafe fn handle_virtual_load(
 
     // Restore the firmware PMP. The MPRV emulation entry is installed back by
     // `sync_mprv_emulation` before resuming the firmware, if still needed.
-    mctx.pmp.set_firmware_pmp(ctx.nb_pmp);
+    mctx.pmp
+        .set_firmware_pmp(&ctx.csr.pmpaddr, &ctx.csr.pmpcfg, ctx.nb_pmp);
     // SAFETY: the PMP is the one of the firmware currently running
     unsafe { write_pmp(&mctx.pmp).flush() };
 
@@ -1138,7 +1140,8 @@ pub unsafe fn handle_virtual_store(
 
     // Restore the firmware PMP. The MPRV emulation entry is installed back by
     // `sync_mprv_emulation` before resuming the firmware, if still needed.
-    mctx.pmp.set_firmware_pmp(ctx.nb_pmp);
+    mctx.pmp
+        .set_firmware_pmp(&ctx.csr.pmpaddr, &ctx.csr.pmpcfg, ctx.nb_pmp);
     // SAFETY: the PMP is the one of the firmware currently running
     unsafe { write_pmp(&mctx.pmp).flush() };
 

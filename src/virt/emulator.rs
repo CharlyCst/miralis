@@ -12,6 +12,7 @@ use crate::arch::mie::{
 use crate::arch::mstatus::{
     MPP_FILTER, MPP_OFFSET, MPV_FILTER, SPIE_FILTER, SPIE_OFFSET, SPP_FILTER, SPP_OFFSET,
 };
+use crate::arch::pmp::pmpcfg;
 use crate::arch::{
     Csr, MCause, Mode, Register, get_raw_faulting_instr, mie, misa, mstatus, mtvec,
     parse_mpp_return_mode, parse_spp_return_mode,
@@ -156,6 +157,63 @@ impl VirtContext {
         }
     }
 
+    /// Check whether a virtual M-mode data access of `[addr, addr + width)` is permitted by the
+    /// guest firmware's virtual PMP registers (matching RISC-V M-mode `pmpCheck` semantics:
+    /// partial matches always fault, unlocked full matches succeed and shadow lower-priority
+    /// entries, and locked full matches enforce R/W permissions).
+    #[inline(never)]
+    pub fn check_firmware_pmp(&self, addr: usize, width: usize, is_store: bool) -> bool {
+        let Some(addr_end) = addr.checked_add(width) else {
+            return false;
+        };
+        let req_perm = if is_store { pmpcfg::W } else { pmpcfg::R };
+        let nb = self.nb_pmp.min(64);
+        let mut prev_pmpaddr: usize = 0;
+
+        for i in 0..nb {
+            let cfg = self.get_pmpcfg(i);
+            let pmpaddr = self.get(Csr::Pmpaddr(i)) & Csr::PMP_ADDR_LEGAL_MASK;
+            let (begin, end) = match cfg & pmpcfg::A_MASK {
+                pmpcfg::INACTIVE => {
+                    prev_pmpaddr = pmpaddr;
+                    continue;
+                }
+                pmpcfg::TOR => {
+                    let prev = prev_pmpaddr;
+                    prev_pmpaddr = pmpaddr;
+                    if prev >= pmpaddr {
+                        continue;
+                    }
+                    (prev << 2, pmpaddr << 2)
+                }
+                pmpcfg::NA4 => {
+                    prev_pmpaddr = pmpaddr;
+                    let b = pmpaddr << 2;
+                    (b, b + 4)
+                }
+                pmpcfg::NAPOT => {
+                    prev_pmpaddr = pmpaddr;
+                    let mask = pmpaddr ^ (pmpaddr + 1);
+                    let base_w = pmpaddr & !mask;
+                    let end_w = base_w + mask + 1;
+                    (base_w << 2, end_w << 2)
+                }
+                _ => unreachable!(),
+            };
+
+            if addr_end <= begin || end <= addr {
+                continue;
+            }
+            if begin <= addr && addr_end <= end {
+                return (cfg & req_perm) == req_perm || (cfg & pmpcfg::L) == 0;
+            }
+            // Partial match faults even in M-mode with L = 0
+            return false;
+        }
+
+        true
+    }
+
     /// Handle a PMP fault due to a load or store instruction.
     ///
     /// When Miralis gets an access fault there might be three causes:
@@ -164,15 +222,34 @@ impl VirtContext {
     /// - A normal access fault, which should be forwarded.
     fn handle_pmp_fault(&mut self, mctx: &mut MiralisContext, instr: LoadStoreInstr) {
         if let Some(device) = device::find_matching_device(self.trap_info.mtval, mctx.devices) {
-            // The fault is due to an access to a virtual device
-            logger::trace!(
-                "Accessed devices: {} | With instr: {:?}",
-                device.name,
-                instr
-            );
-            match instr {
-                LoadStoreInstr::Load(instr) => self.handle_device_load(device, &instr),
-                LoadStoreInstr::Store(instr) => self.handle_device_store(device, &instr),
+            let (addr, width, is_store) = match &instr {
+                LoadStoreInstr::Load(i) => (
+                    utils::calculate_addr(self.get(i.rs1), i.imm),
+                    i.len.to_bytes(),
+                    false,
+                ),
+                LoadStoreInstr::Store(i) => (
+                    utils::calculate_addr(self.get(i.rs1), i.imm),
+                    i.len.to_bytes(),
+                    true,
+                ),
+            };
+            if addr >= device.start_addr
+                && addr.saturating_add(width) <= device.start_addr + device.size
+                && self.check_firmware_pmp(addr, width, is_store)
+            {
+                // The fault is due to an allowed access to a virtual device
+                logger::trace!(
+                    "Accessed devices: {} | With instr: {:?}",
+                    device.name,
+                    instr
+                );
+                match instr {
+                    LoadStoreInstr::Load(instr) => self.handle_device_load(device, &instr),
+                    LoadStoreInstr::Store(instr) => self.handle_device_store(device, &instr),
+                }
+            } else {
+                self.emulate_firmware_trap();
             }
         } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1
             && parse_mpp_return_mode(self.csr.mstatus) != Mode::M
@@ -1187,5 +1264,64 @@ mod tests {
         assert_eq!(ctx.csr.mepc, 0x8020_0100);
         assert_eq!(ctx.csr.mtval, 0);
         assert_eq!(ctx.pc, 0x8020_1000);
+    }
+
+    #[test]
+    fn pmp_lock_tor_and_firmware_check() {
+        use crate::RegisterContextGetter;
+        use crate::arch::pmp::{build_napot, build_tor, pmpcfg};
+
+        let hw = unsafe { arch::detect_hardware() };
+        let mut mctx = MiralisContext::new(hw, 0x10000, 0x2000);
+
+        // Non-multiple-of-8 nb_pmp (e.g., 3 virtual PMPs on an 8-PMP core)
+        let mut ctx3 = VirtContext::new(0, 3, mctx.hw.extensions.clone());
+        ctx3.pmp_grain = 0;
+        let cfg_all = 0x0f0f_0f0f_0f0f_0f0f_usize;
+        ctx3.set_csr(Csr::Pmpcfg(0), cfg_all, &mut mctx);
+        assert_eq!(ctx3.get(Csr::Pmpcfg(0)), 0x0000_0000_000f_0f0f);
+        ctx3.set_csr(Csr::Pmpaddr(2), 0x1234, &mut mctx);
+        ctx3.set_csr(Csr::Pmpaddr(3), 0x5678, &mut mctx);
+        assert_eq!(ctx3.get(Csr::Pmpaddr(2)), 0x1234);
+        assert_eq!(ctx3.get(Csr::Pmpaddr(3)), 0);
+
+        // Lock bit & TOR-lock semantics + check_firmware_pmp
+        let mut ctx = VirtContext::new(0, 8, mctx.hw.extensions.clone());
+        ctx.pmp_grain = 0;
+
+        // Entry 0: base address 0x2000_000 (unlocked OFF), Entry 1: TOR up to 0x2010_000, L=1, R-only
+        ctx.set_csr(Csr::Pmpaddr(0), build_tor(0x2000_000), &mut mctx);
+        ctx.set_csr(Csr::Pmpaddr(1), build_tor(0x2010_000), &mut mctx);
+        let cfg = ((pmpcfg::L | pmpcfg::TOR | pmpcfg::R) as usize) << 8;
+        ctx.set_csr(Csr::Pmpcfg(0), cfg, &mut mctx);
+
+        // Entry 1 is locked: writes to pmpcfg[1], pmpaddr[1], AND pmpaddr[0] (TOR-locked!) are ignored
+        ctx.set_csr(Csr::Pmpcfg(0), 0, &mut mctx);
+        assert_eq!(ctx.get(Csr::Pmpcfg(0)), cfg);
+        ctx.set_csr(Csr::Pmpaddr(0), 0, &mut mctx);
+        ctx.set_csr(Csr::Pmpaddr(1), 0, &mut mctx);
+        assert_eq!(ctx.get(Csr::Pmpaddr(0)), build_tor(0x2000_000));
+        assert_eq!(ctx.get(Csr::Pmpaddr(1)), build_tor(0x2010_000));
+
+        // Firmware M-mode check: R allowed, W denied by locked Entry 1, partial match faults
+        assert!(ctx.check_firmware_pmp(0x2000_000, 4, false));
+        assert!(!ctx.check_firmware_pmp(0x2000_000, 4, true));
+        assert!(!ctx.check_firmware_pmp(0x1fff_ffe, 4, false));
+
+        // Higher-priority unlocked Entry 0 (L=0, NAPOT, R=W=X=0) shadows locked Entry 1 in M-mode!
+        ctx.set_csr(
+            Csr::Pmpcfg(0),
+            cfg | (pmpcfg::NAPOT as usize), // Entry 0 is still unlocked (only pmpaddr0 was TOR-locked)
+            &mut mctx,
+        );
+        // Set Entry 2 as locked NAPOT R=0,W=0 over [0x8020_0000, 0x8020_1000), shadowed by unlocked Entry 0?
+        // Test priority shadowing cleanly on entries 2 (L=0) and 3 (L=1):
+        let napot = build_napot(0x8020_0000, 0x1000).unwrap();
+        ctx.set_csr(Csr::Pmpaddr(2), napot, &mut mctx);
+        ctx.set_csr(Csr::Pmpaddr(3), napot, &mut mctx);
+        let cfg23 =
+            ((pmpcfg::NAPOT as usize) << 16) | (((pmpcfg::L | pmpcfg::NAPOT) as usize) << 24);
+        ctx.set_csr(Csr::Pmpcfg(0), cfg | cfg23, &mut mctx);
+        assert!(ctx.check_firmware_pmp(0x8020_0000, 8, true));
     }
 }

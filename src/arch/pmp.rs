@@ -440,27 +440,57 @@ impl PmpGroup {
         virt_pmpcfg: &[usize; 8],
         nb_virt_pmp: usize,
     ) {
+        let nb_phys = (self.nb_pmp as usize).min(64);
+        let max_entries = nb_phys.saturating_sub(self.virt_pmp_offset + 1);
+        let count = nb_virt_pmp.min(self.nb_virt_pmp).min(max_entries);
         // Load virtual PMP registers into Miralis's own registers
-        self.load_with_offset(virt_pmpaddr, virt_pmpcfg, self.virt_pmp_offset, nb_virt_pmp);
+        self.load_with_offset(virt_pmpaddr, virt_pmpcfg, self.virt_pmp_offset, count);
         // Disable MPRV while outside virtual M-mode
         self.set_inactive(MPRV_EMULATION_OFFSET, 0);
         // Deny all addresses by default if at least one PMP is implemented
-        if nb_virt_pmp > 0 {
-            let last_pmp_idx = self.nb_pmp as usize - 1;
+        if nb_virt_pmp > 0 && nb_phys > 0 {
+            let last_pmp_idx = nb_phys - 1;
             self.set_napot(last_pmp_idx, 0, usize::MAX, pmpcfg::NO_PERMISSIONS);
         }
     }
 
-    /// Configure the PMP for the firmware: virtual M-mode is not subject to the virtual PMP, so the
-    /// `nb_virt_pmp` virtual entries are RWX and all other addresses are allowed.
+    /// Configure the PMP for the firmware: unlocked virtual PMP entries grant RWX in virtual
+    /// M-mode (while preserving their address-matching mode for TOR chaining, priority shadowing,
+    /// and partial-match faults), locked virtual PMP entries enforce their RWX permissions in
+    /// virtual M-mode too, and unmatched addresses are allowed by default.
     ///
     /// This only updates the PMP group, the caller is responsible for writing it to the hardware.
-    pub fn set_firmware_pmp(&mut self, nb_virt_pmp: usize) {
-        // Set firmware PMP as RWX to emulate access to all memory in vM-mode
-        self.set_range_rwx(self.virt_pmp_offset, nb_virt_pmp);
+    pub fn set_firmware_pmp(
+        &mut self,
+        virt_pmpaddr: &[usize; 64],
+        virt_pmpcfg: &[usize; 8],
+        nb_virt_pmp: usize,
+    ) {
+        let nb_phys = (self.nb_pmp as usize).min(64);
+        let max_entries = nb_phys.saturating_sub(self.virt_pmp_offset + 1);
+        let count = nb_virt_pmp.min(self.nb_virt_pmp).min(max_entries);
+        let offset = self.virt_pmp_offset;
+
+        self.pmpaddr[offset..(offset + count)].copy_from_slice(&virt_pmpaddr[..count]);
+        for idx in 0..count {
+            let reg_idx = idx / 8;
+            let shift = (idx % 8) * 8;
+            let vcfg = ((virt_pmpcfg[reg_idx] >> shift) & 0xff) as u8;
+            let pcfg = if vcfg & pmpcfg::A_MASK == pmpcfg::INACTIVE {
+                pmpcfg::INACTIVE
+            } else if vcfg & pmpcfg::L == 0 {
+                (vcfg & pmpcfg::A_MASK) | pmpcfg::RWX
+            } else {
+                vcfg & (pmpcfg::A_MASK | pmpcfg::RWX)
+            };
+            self.set_pmpcfg(offset + idx, pcfg);
+        }
+
         // Allow all addresses by default
-        let last_pmp_idx = self.nb_pmp as usize - 1;
-        self.set_napot(last_pmp_idx, 0, usize::MAX, pmpcfg::RWX);
+        if nb_phys > 0 {
+            let last_pmp_idx = nb_phys - 1;
+            self.set_napot(last_pmp_idx, 0, usize::MAX, pmpcfg::RWX);
+        }
     }
 }
 
