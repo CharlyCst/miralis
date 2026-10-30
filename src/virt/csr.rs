@@ -118,12 +118,12 @@ impl RegisterContextGetter<Csr> for VirtContext {
             }
             Csr::Mcycle => self.csr.mcycle,
             Csr::Minstret => self.csr.minstret,
-            Csr::Mhpmcounter(n) => self.csr.mhpmcounter[n],
+            Csr::Mhpmcounter(_) => 0,
             Csr::Mcountinhibit => self.csr.mcountinhibit as usize,
-            Csr::Mhpmevent(n) => self.csr.mhpmevent[n],
+            Csr::Mhpmevent(_) => 0,
             Csr::Mcounteren => self.csr.mcounteren as usize,
             Csr::Menvcfg => self.csr.menvcfg,
-            Csr::Mseccfg => self.csr.mseccfg,
+            Csr::Mseccfg => 0,
             Csr::Medeleg => self.csr.medeleg,
             Csr::Mideleg => self.csr.mideleg,
             Csr::Mtinst => {
@@ -231,6 +231,7 @@ impl RegisterContextGetter<Csr> for VirtContext {
             Csr::Cycle => self.csr.mcycle,
             Csr::Time => arch::read_csr(Csr::Time),
             Csr::Instret => self.csr.minstret,
+            Csr::Hpmcounter(_) => 0,
 
             // Crypto extension
             // To get a true random value we defer to the hardware.
@@ -450,7 +451,7 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 self.csr.menvcfg = menvcfg::legalize_menvcfg(value, &mctx.hw.extensions);
                 mctx.hw.extensions.is_sstc_enabled = self.csr.menvcfg & menvcfg::STCE_FILTER != 0;
             }
-            Csr::Mseccfg => self.csr.mseccfg = value,
+            Csr::Mseccfg => (),    // WARL hardwired to 0
             Csr::Mconfigptr => (), // Read-only
             Csr::Medeleg => {
                 let mut mask = medeleg::DELEGATABLE_BITS;
@@ -568,7 +569,16 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
                 }
             }
             Csr::Scontext => (), // TODO: No information from the specification currently
-            Csr::Stimecmp => self.csr.stimecmp = value,
+            Csr::Stimecmp => {
+                self.csr.stimecmp = value;
+                if self.csr.menvcfg & menvcfg::STCE_FILTER != 0 {
+                    if value <= arch::read_csr(Csr::Time) {
+                        self.csr.mip |= mie::STIE_FILTER;
+                    } else {
+                        self.csr.mip &= !mie::STIE_FILTER;
+                    }
+                }
+            }
             Csr::Hstatus => {
                 let mut value = value;
 
@@ -672,9 +682,10 @@ impl HwRegisterContextSetter<Csr> for VirtContext {
             Csr::Vtype => self.csr.vtype = value,
             Csr::Vlenb => self.csr.vlenb = value,
 
-            Csr::Cycle => (),   // Read only register
-            Csr::Time => (),    // Read only register
-            Csr::Instret => (), // Read only register
+            Csr::Cycle => (),         // Read only register
+            Csr::Time => (),          // Read only register
+            Csr::Instret => (),       // Read only register
+            Csr::Hpmcounter(_) => (), // Read only register
 
             // Crypto extension
             Csr::Seed => (), // Read only register

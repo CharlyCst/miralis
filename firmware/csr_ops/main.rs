@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::arch::asm;
+use core::arch::{asm, global_asm};
 
 use miralis_abi::{setup_binary, success};
 
@@ -367,14 +367,52 @@ fn test_menvcfg() {
     }
     assert_eq!(res, target_val);
 
+    let mcause: usize;
     unsafe {
+        let handler = _csr_ops_trap_handler as *const () as usize;
         asm!(
-            "li {0}, 0x42",
-            "csrw mseccfg, {0}",
-            "csrr {1}, mseccfg",
-            out(reg) _,
-            out(reg) res,
+            "csrr {old_mtvec}, mtvec",
+            "csrw mtvec, {handler}",
+            "li t6, 0",
+            "li {tmp}, 0x42",
+            ".option push",
+            ".option norvc",
+            "csrw mseccfg, {tmp}",
+            "csrr {res}, mseccfg",
+            ".option pop",
+            "csrw mtvec, {old_mtvec}",
+            old_mtvec = out(reg) _,
+            handler = in(reg) handler,
+            tmp = out(reg) _,
+            res = inout(reg) 0usize => res,
+            out("t5") _,
+            out("t6") mcause,
         );
     }
-    assert_eq!(res, 0x42);
+    if mcause != 0 {
+        assert_eq!(
+            mcause, 2,
+            "Expected illegal instruction when Smepmp is absent"
+        );
+    } else {
+        assert_eq!(res, 0, "mseccfg should be WARL hardwired to 0");
+    }
+}
+
+global_asm!(
+    r#"
+.text
+.balign 4
+.global _csr_ops_trap_handler
+_csr_ops_trap_handler:
+    csrr t6, mcause
+    csrr t5, mepc
+    addi t5, t5, 4
+    csrw mepc, t5
+    mret
+"#,
+);
+
+unsafe extern "C" {
+    fn _csr_ops_trap_handler();
 }

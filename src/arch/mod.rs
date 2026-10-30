@@ -91,6 +91,8 @@ pub struct ExtensionsCapability {
     pub has_zicbom_extension: bool,
     /// Has Zicboz extension
     pub has_zicboz_extension: bool,
+    /// Has Sdtrig debug trigger extension
+    pub has_sdtrig_extension: bool,
     /// Has Trusted Execution Environment Task Group
     pub has_tee_extension: bool,
 }

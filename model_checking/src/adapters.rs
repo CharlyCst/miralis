@@ -354,7 +354,7 @@ pub fn decode_csr_register(arg_hashtag_: BitVector<12>) -> Option<Csr> {
         // b_144 if { b_144 == BitVector::<12>::new(0b110000100010) } => Csr::Vlenb,
         // b_11 if { b_11 == BitVector::<12>::new(0b000000010101) } => Csr::Seed,
         // Manually added
-        b_155 if { bv(0x5A8) == b_155 } => Csr::Scontext,
+        // b_155 if { bv(0x5A8) == b_155 } => Csr::Scontext,
         b_156 if { bv(0xf13) == b_156 } => Csr::Mimpid,
         // End manually added
         _ => return None,

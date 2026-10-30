@@ -482,6 +482,13 @@ impl MiralisContext {
                     return None;
                 }
             }
+            csr::HPMCOUNTER3..=csr::HPMCOUNTER31 => {
+                if self.hw.extensions.has_zihpm_extension {
+                    Csr::Hpmcounter(csr - csr::HPMCOUNTER3)
+                } else {
+                    return None;
+                }
+            }
             csr::MHPMCOUNTER3..=csr::MHPMCOUNTER31 => {
                 // Mhpm counters start at 3 and end at 31 : we shift them by 3 to start at 0 and end at 29
                 if self.hw.extensions.has_zihpm_extension {
@@ -692,7 +699,7 @@ impl MiralisContext {
                 }
             }
             csr::STIMECMP => {
-                if !self.hw.extensions.is_sstc_enabled {
+                if !self.hw.extensions.has_s_extension || !self.hw.extensions.has_sstc_extension {
                     return None;
                 } else {
                     Csr::Stimecmp
@@ -706,7 +713,7 @@ impl MiralisContext {
                 }
             }
             csr::SCONTEXT => {
-                if !self.hw.extensions.has_s_extension {
+                if !self.hw.extensions.has_s_extension || !self.hw.extensions.has_sdtrig_extension {
                     return None;
                 } else {
                     Csr::Scontext
@@ -1123,6 +1130,25 @@ mod tests {
             mctx.decode_illegal_instruction(0x30004073),
             IllegalInst::Unknown
         );
+
+        // Writes to read-only hpmcounter3..31 are invalid: csrrw x0, hpmcounter3, x1
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xc0309073),
+            IllegalInst::InvalidCsrOp
+        );
+
+        // Read-only hpmcounter3..31 reads decode cleanly: csrrs a0, hpmcounter3, x0
+        assert_eq!(
+            mctx.decode_illegal_instruction(0xc0302573),
+            IllegalInst::Csrrs {
+                csr: Csr::Hpmcounter(0),
+                rd: Register::X10,
+                rs1: Register::X0,
+            }
+        );
+
+        // Unimplemented scontext (Sdtrig) is rejected
+        assert_eq!(mctx.decode_csr(csr::SCONTEXT), None);
     }
 
     #[test]

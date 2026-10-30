@@ -269,6 +269,9 @@ pub enum Csr {
     /// Those CSRs are specific to each SoC, refer to the corresponding manual for details.
     /// The `usize` fields encode the CSR ID.
     Custom(usize),
+
+    /// User/Supervisor performance-monitoring counter
+    Hpmcounter(usize),
 }
 
 /// Module with the CSR registers indexes.
@@ -313,6 +316,8 @@ pub mod csr {
     pub const CYCLE: usize = 0xC00;
     pub const TIME: usize = 0xC01;
     pub const INSTRET: usize = 0xC02;
+    pub const HPMCOUNTER3: usize = 0xC03;
+    pub const HPMCOUNTER31: usize = 0xC1F;
     pub const VL: usize = 0xC20;
     pub const VTYPE: usize = 0xC21;
     pub const VLENB: usize = 0xC22;
@@ -417,6 +422,7 @@ impl Csr {
             Csr::Cycle => csr::CYCLE,
             Csr::Time => csr::TIME,
             Csr::Instret => csr::INSTRET,
+            Csr::Hpmcounter(id) => csr::HPMCOUNTER3 + id,
             Csr::Mhpmcounter(id) => csr::MHPMCOUNTER3 + id,
             Csr::Mcountinhibit => csr::MCOUNTINHIBIT,
             Csr::Mhpmevent(id) => csr::MHPMEVENT3 + id,

@@ -326,6 +326,7 @@ pub unsafe fn write_csr(csr: Csr, value: usize) -> usize {
             Csr::Cycle => todo!(),
             Csr::Time => todo!(),
             Csr::Instret => todo!(),
+            Csr::Hpmcounter(_) => todo!(),
             Csr::Mhpmcounter(_) => todo!(),
             Csr::Mcountinhibit => asm_write_csr!("mcountinhibit"),
             Csr::Mhpmevent(_) => todo!(),
@@ -436,6 +437,7 @@ pub fn read_csr(csr: Csr) -> usize {
             value = Plat::get_clint().read_mtime();
         }
         Csr::Instret => todo!(),
+        Csr::Hpmcounter(_) => todo!(),
         Csr::Mhpmcounter(_) => todo!(),
         Csr::Mcountinhibit => asm_read_csr!("mcountinhibit"),
         Csr::Mhpmevent(_) => todo!(),
@@ -605,6 +607,7 @@ pub unsafe fn detect_hardware() -> HardwareCapability {
 
     // Detect performance counter extensions
     let is_mcycle_present: bool = register_present!("mcycle");
+    let is_mseccfg_present: bool = register_present!("mseccfg");
 
     // Save current CSRs
     let mstatus = read_csr(Csr::Mstatus);
@@ -659,7 +662,8 @@ pub unsafe fn detect_hardware() -> HardwareCapability {
             has_zicntr: is_mcycle_present,
             has_zfinx: false,
             has_zihpm_extension: true,
-            has_tee_extension: true,
+            has_sdtrig_extension: false,
+            has_tee_extension: is_mseccfg_present,
         },
     }
 }
@@ -841,6 +845,7 @@ pub unsafe fn clear_csr_bits(csr: Csr, bits_mask: usize) -> usize {
             Csr::Cycle => todo!(),
             Csr::Time => todo!(),
             Csr::Instret => todo!(),
+            Csr::Hpmcounter(_) => todo!(),
             Csr::Mhpmcounter(_) => todo!(),
             Csr::Mcountinhibit => asm_clear_csr_bits!("mcountinhibit"),
             Csr::Mhpmevent(_) => todo!(),
@@ -954,6 +959,7 @@ pub unsafe fn set_csr_bits(csr: Csr, bits_mask: usize) -> usize {
             Csr::Cycle => todo!(),
             Csr::Time => todo!(),
             Csr::Instret => todo!(),
+            Csr::Hpmcounter(_) => todo!(),
             Csr::Mhpmcounter(_) => todo!(),
             Csr::Mcountinhibit => asm_set_csr_bits!("mcountinhibit"),
             Csr::Mhpmevent(_) => todo!(),
