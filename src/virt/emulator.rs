@@ -217,11 +217,43 @@ impl VirtContext {
     /// Handle a PMP fault due to a load or store instruction.
     ///
     /// When Miralis gets an access fault there might be three causes:
-    /// - An emulated MMIO access, that is a device is being accessed.
-    /// - A load/store with MPRV set to 1
-    /// - A normal access fault, which should be forwarded.
+    /// - A load/store with MPRV set to 1 and MPP != M (checked first so virtual addresses are
+    ///   translated via SATP and checked against MPP-mode PMP rather than treated as physical MMIO)
+    /// - An emulated MMIO access, that is a device is being accessed
+    /// - A normal access fault, which should be forwarded
     fn handle_pmp_fault(&mut self, mctx: &mut MiralisContext, instr: LoadStoreInstr) {
-        if let Some(device) = device::find_matching_device(self.trap_info.mtval, mctx.devices) {
+        if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1
+            && parse_mpp_return_mode(self.csr.mstatus) != Mode::M
+        {
+            // The fault is due to an access with MPRV = 1 and MPP != M.
+            //
+            // MPRV has no effect when MPP = M, so the pmp fault is genuine and should be
+            // re-injected as such.
+            //
+            // When MPP != M, Miralis needs to emulate the memory access. When the virtual firmware
+            // sets MPRV = 1 Miralis configures the PMP to trap on all loads and stores, catches the
+            // traps and emulates the loads/stores one by one.
+            //
+            // Sadly this is necessary as MPRV = 1 changes the access rights for loads & stores, but
+            // not for instruction fetches, thus it is not possible to emulate the MPRV = 1
+            // behavior using page tables. Of course the current emulation strategy comes with a
+            // performance overhead.
+            logger::trace!(
+                "Access fault {:x?} with a virtual address: 0x{:x}",
+                &instr,
+                self.trap_info.mtval
+            );
+            match instr {
+                LoadStoreInstr::Load(instr) => unsafe {
+                    arch::handle_virtual_load(instr, self, mctx);
+                },
+                LoadStoreInstr::Store(instr) => unsafe {
+                    arch::handle_virtual_store(instr, self, mctx);
+                },
+            }
+        } else if let Some(device) =
+            device::find_matching_device(self.trap_info.mtval, mctx.devices)
+        {
             let (addr, width, is_store) = match &instr {
                 LoadStoreInstr::Load(i) => (
                     utils::calculate_addr(self.get(i.rs1), i.imm),
@@ -250,37 +282,6 @@ impl VirtContext {
                 }
             } else {
                 self.emulate_firmware_trap();
-            }
-        } else if (self.csr.mstatus & mstatus::MPRV_FILTER) >> mstatus::MPRV_OFFSET == 1
-            && parse_mpp_return_mode(self.csr.mstatus) != Mode::M
-        {
-            // The fault is due to an access with MPRV = 1 and MPP != M.
-            //
-            // MPRV has no effect when MPP = M, so the pmp fault is genuine and should be
-            // re-injected as such.
-            //
-            // When MPRV != M, Miralis need to emulate the memory access. When the virtual firmware
-            // sets MPRV = 1 Miralis configures the PMP to traps on all loads and stores, catch the
-            // traps and emulate the load/stores one by one.
-            //
-            // Sadly this is necessary as MPRV = 1 changes the access rights for load & stores, but
-            // not for instruction fetches, thus it is not possible to emulate the MPRV = 1
-            // behavior using page tables. Of course the current emulation strategy comes with a
-            // performance overhead.
-            //
-            // TODO: make sure virtual address does not get around PMP protection
-            logger::trace!(
-                "Access fault {:x?} with a virtual address: 0x{:x}",
-                &instr,
-                self.trap_info.mtval
-            );
-            match instr {
-                LoadStoreInstr::Load(instr) => unsafe {
-                    arch::handle_virtual_load(instr, self, mctx);
-                },
-                LoadStoreInstr::Store(instr) => unsafe {
-                    arch::handle_virtual_store(instr, self, mctx);
-                },
             }
         } else {
             logger::trace!(

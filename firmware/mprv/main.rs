@@ -26,6 +26,11 @@ const MODE_M: usize = 0b11;
 
 const LOAD_ACCESS_FAULT: usize = 5;
 const STORE_ACCESS_FAULT: usize = 7;
+const LOAD_PAGE_FAULT: usize = 13;
+const STORE_PAGE_FAULT: usize = 15;
+
+const SUM: usize = 1 << 18;
+const MXR: usize = 1 << 19;
 
 /// An address within Miralis's memory.
 const MIRALIS_ADDR: usize = 0x80002000;
@@ -40,6 +45,7 @@ static mut GOOD: usize = GOOD_VALUE;
 #[repr(C, align(4096))]
 struct Page([usize; 512]);
 static DENIED: Page = Page([DENIED_VALUE; 512]);
+static mut ROOT_PT: Page = Page([0; 512]);
 
 /// Written by the trap handler, with MPRV = 1 and MPP = M.
 #[unsafe(no_mangle)]
@@ -129,6 +135,84 @@ fn main() -> ! {
         MIRALIS_ADDR,
         "MPRV store to Miralis, MPP = M",
     );
+
+    // Compressed stack-relative load/store (c.sdsp / c.ldsp) under MPRV = 1, MPP = S
+    unsafe {
+        let mut loaded_sp: usize;
+        asm!(
+            "mv t4, sp",
+            "mv sp, {addr}",
+            "csrr t5, mstatus",
+            "and t5, t5, {clear}",
+            "or t5, t5, {set}",
+            "csrw mstatus, t5",
+            ".option push",
+            ".option rvc",
+            "c.sdsp a1, 0(sp)",
+            "c.ldsp a0, 0(sp)",
+            ".option pop",
+            "csrc mstatus, {mprv}",
+            "mv sp, t4",
+            addr = in(reg) good,
+            clear = in(reg) !MPP_MASK,
+            set = in(reg) (MODE_S << MPP_OFFSET) | MPRV,
+            mprv = in(reg) MPRV,
+            in("a1") 0xfeed_cafe_usize,
+            out("a0") loaded_sp,
+            out("t4") _,
+            out("t5") _,
+        );
+        assert_eq!(loaded_sp, 0xfeed_cafe, "c.sdsp/c.ldsp under MPRV failed");
+        ptr::write_volatile(good as *mut usize, GOOD_VALUE);
+    }
+
+    // Sv39 translation, SUM, MXR, virtual-address device collision, and page-fault propagation
+    unsafe {
+        let root_pa = &raw mut ROOT_PT as usize;
+        let gigapage_ppn = (0x8000_0000_usize >> 12) << 10;
+        // VPN[2] = 2 (0x8000_0000..0xc000_0000): U-accessible RW gigapage (V|R|W|U|A|D = 0xd7)
+        ROOT_PT.0[2] = gigapage_ppn | 0xd7;
+        // VPN[2] = 3 (0xc000_0000..0x1_0000_0000): S-mode X-only gigapage (V|X|A|D = 0xc9)
+        ROOT_PT.0[3] = gigapage_ppn | 0xc9;
+        let satp_sv39 = (8usize << 60) | (root_pa >> 12);
+        asm!("csrw satp, {satp}", "sfence.vma", satp = in(reg) satp_sv39);
+
+        // Unmapped VA 0x2000000 (collides numerically with physical CLINT) must page-fault, not hit vCLINT
+        let access = mprv_load(0x0200_0000, MODE_S);
+        access.check_fault(LOAD_PAGE_FAULT, 0x0200_0000, "Unmapped VA at CLINT address");
+
+        // SUM = 0: S-mode access to U page faults with LoadPageFault / StorePageFault
+        let access = mprv_load(good, MODE_S);
+        access.check_fault(LOAD_PAGE_FAULT, good, "S-mode load from U page with SUM=0");
+        let access = mprv_store(good, MODE_S, 0x99);
+        access.check_fault(STORE_PAGE_FAULT, good, "S-mode store to U page with SUM=0");
+
+        // SUM = 1: S-mode access to U page succeeds
+        asm!("csrs mstatus, {sum}", sum = in(reg) SUM);
+        let access = mprv_load(good, MODE_S);
+        assert_eq!(
+            access.mcause, 0,
+            "S-mode load from U page with SUM=1 trapped"
+        );
+        assert_eq!(access.value, GOOD_VALUE);
+        asm!("csrc mstatus, {sum}", sum = in(reg) SUM);
+
+        // MXR = 0 vs MXR = 1 on X-only page
+        let xonly_va = good + 0x4000_0000;
+        let access = mprv_load(xonly_va, MODE_S);
+        access.check_fault(
+            LOAD_PAGE_FAULT,
+            xonly_va,
+            "Load from X-only page with MXR=0",
+        );
+        asm!("csrs mstatus, {mxr}", mxr = in(reg) MXR);
+        let access = mprv_load(xonly_va, MODE_S);
+        assert_eq!(access.mcause, 0, "Load from X-only page with MXR=1 trapped");
+        assert_eq!(access.value, GOOD_VALUE);
+        asm!("csrc mstatus, {mxr}", mxr = in(reg) MXR);
+
+        asm!("csrw satp, zero", "sfence.vma");
+    }
 
     // MPRV is now 0, regular accesses must not be affected anymore
     unsafe { ptr::write_volatile(good as *mut usize, GOOD_VALUE) };

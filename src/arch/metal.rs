@@ -77,8 +77,10 @@ macro_rules! naked_soft_asm {
         #[cfg(not(any(test, feature = "userspace")))]
         #[unsafe(naked)]
         #[unsafe(no_mangle)]
+        #[unsafe(link_section = concat!(".text.trap.", stringify!($name)))]
         extern "C" fn $name() {
             core::arch::naked_asm!(
+                ".balign 4",
                 $($asm)*
             );
         }
@@ -1047,9 +1049,17 @@ pub unsafe fn handle_virtual_load(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) {
-    // Set the MPP mode to match the vMPP
-    let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
+    // Save physical CSRs that MPRV emulation modifies or that _mprv_trap_handler clobbers
+    let prev_mstatus = read_csr(Csr::Mstatus);
+    let prev_mepc = read_csr(Csr::Mepc);
     let prev_satp = unsafe { write_csr(Csr::Satp, ctx.csr.satp) };
+    let mprv_mask = mstatus::MPP_FILTER | mstatus::SUM_FILTER | mstatus::MXR_FILTER;
+    unsafe {
+        write_csr(
+            Csr::Mstatus,
+            (prev_mstatus & !mprv_mask) | (ctx.csr.mstatus & mprv_mask),
+        );
+    }
 
     // The access runs with the privilege in MPP: check it against the PMP as seen by S and U-mode
     // rather than the MPRV emulation entry. The flush also covers the SATP change.
@@ -1075,6 +1085,12 @@ pub unsafe fn handle_virtual_load(
         };
     }
 
+    let (trap_mcause, trap_mtval) = if !success {
+        (read_csr(Csr::Mcause), read_csr(Csr::Mtval))
+    } else {
+        (0, 0)
+    };
+
     // Restore the firmware PMP. The MPRV emulation entry is installed back by
     // `sync_mprv_emulation` before resuming the firmware, if still needed.
     mctx.pmp
@@ -1082,22 +1098,25 @@ pub unsafe fn handle_virtual_load(
     // SAFETY: the PMP is the one of the firmware currently running
     unsafe { write_pmp(&mctx.pmp).flush() };
 
+    // Restore the original physical CSRs before updating virtual state
+    unsafe {
+        write_csr(Csr::Satp, prev_satp);
+        write_csr(Csr::Mepc, prev_mepc);
+        write_csr(Csr::Mstatus, prev_mstatus);
+    }
+
+    // Ensure memory consistency
+    sfencevma(None, None);
+
     if !success {
-        // The access trapped, we need to update the trap info and inject the trap back.
+        // Propagate the inner fault cause and address (e.g. LoadPageFault) to the firmware
+        ctx.trap_info.mcause = trap_mcause;
+        ctx.trap_info.mtval = trap_mtval;
         ctx.emulate_firmware_trap();
     } else {
         ctx.set(instr.rd, value);
         ctx.pc += if instr.is_compressed { 2 } else { 4 };
     }
-
-    // Restore the original values
-    unsafe {
-        write_csr(Csr::Satp, prev_satp);
-        set_mpp(prev_mpp);
-    }
-
-    // Ensure memory consistency
-    sfencevma(None, None);
 }
 
 /// Emulates a store instruction using MPRV = 1.
@@ -1111,9 +1130,17 @@ pub unsafe fn handle_virtual_store(
     ctx: &mut VirtContext,
     mctx: &mut MiralisContext,
 ) {
-    // Set the MPP mode to match the vMPP
-    let prev_mpp = unsafe { set_mpp(parse_mpp_return_mode(ctx.csr.mstatus)) };
+    // Save physical CSRs that MPRV emulation modifies or that _mprv_trap_handler clobbers
+    let prev_mstatus = read_csr(Csr::Mstatus);
+    let prev_mepc = read_csr(Csr::Mepc);
     let prev_satp = unsafe { write_csr(Csr::Satp, ctx.csr.satp) };
+    let mprv_mask = mstatus::MPP_FILTER | mstatus::SUM_FILTER | mstatus::MXR_FILTER;
+    unsafe {
+        write_csr(
+            Csr::Mstatus,
+            (prev_mstatus & !mprv_mask) | (ctx.csr.mstatus & mprv_mask),
+        );
+    }
 
     // The access runs with the privilege in MPP: check it against the PMP as seen by S and U-mode
     // rather than the MPRV emulation entry. The flush also covers the SATP change.
@@ -1138,6 +1165,12 @@ pub unsafe fn handle_virtual_store(
     // Silence unused warning caused by the macro
     let _ = value;
 
+    let (trap_mcause, trap_mtval) = if !success {
+        (read_csr(Csr::Mcause), read_csr(Csr::Mtval))
+    } else {
+        (0, 0)
+    };
+
     // Restore the firmware PMP. The MPRV emulation entry is installed back by
     // `sync_mprv_emulation` before resuming the firmware, if still needed.
     mctx.pmp
@@ -1145,21 +1178,24 @@ pub unsafe fn handle_virtual_store(
     // SAFETY: the PMP is the one of the firmware currently running
     unsafe { write_pmp(&mctx.pmp).flush() };
 
-    if !success {
-        // The access trapped, we need to update the trap info and inject the trap back.
-        ctx.emulate_firmware_trap();
-    } else {
-        ctx.pc += if instr.is_compressed { 2 } else { 4 };
-    }
-
-    // Restore the original values
+    // Restore the original physical CSRs before updating virtual state
     unsafe {
         write_csr(Csr::Satp, prev_satp);
-        set_mpp(prev_mpp);
+        write_csr(Csr::Mepc, prev_mepc);
+        write_csr(Csr::Mstatus, prev_mstatus);
     }
 
     // Ensure memory consistency
     sfencevma(None, None);
+
+    if !success {
+        // Propagate the inner fault cause and address (e.g. StorePageFault) to the firmware
+        ctx.trap_info.mcause = trap_mcause;
+        ctx.trap_info.mtval = trap_mtval;
+        ctx.emulate_firmware_trap();
+    } else {
+        ctx.pc += if instr.is_compressed { 2 } else { 4 };
+    }
 }
 
 /// Copies dest.len() bytes from src to dest, using the provided mode to read from src.

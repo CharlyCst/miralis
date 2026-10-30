@@ -25,10 +25,12 @@ const CSRRCI: usize = 0x7000;
 const C_LW: usize = 0b010;
 /// Compressed Load Double word opcode
 const C_LD: usize = 0b011;
+/// Compressed Zcb byte/halfword load/store opcode
+const C_ZCB: usize = 0b100;
 
 /// Compressed Store word opcode
 const C_SW: usize = 0b110;
-/// Compressed Load Double word opcode
+/// Compressed Store Double word opcode
 const C_SD: usize = 0b111;
 
 /// A RISC-V privileged instruction.
@@ -118,30 +120,45 @@ impl MiralisContext {
     pub fn decode_load(&self, raw: usize) -> LoadInstr {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_uncompressed_load(raw),
-            // Register-based load and store instructions for C set start with 0b00
+            // Register-based load and store instructions for C/Zcb start with 0b00
             0b00 => self.decode_register_based_compressed_load(raw),
-            // Stack-based load and store instructions for C set start with 0b10
-            0b10 => todo!("Decode stack based C load"),
+            // Stack-based load and store instructions for C start with 0b10
+            0b10 => self.decode_stack_based_compressed_load(raw),
             _ => unreachable!(),
         }
     }
 
     /// Returns true if `raw` is a load instruction that `decode_load` supports: an integer load
-    /// (LB, LH, LW, LD, LBU, LHU, LWU) or a register-based compressed integer load (C.LW, C.LD).
+    /// (LB, LH, LW, LD, LBU, LHU, LWU), register-based compressed load (C.LW, C.LD, Zcb C.LBU,
+    /// C.LHU, C.LH), or stack-based compressed load (C.LWSP, C.LDSP).
     pub fn is_supported_load(raw: usize) -> bool {
         match extract_last_two_bits(raw) {
             0b11 => raw & 0b1111111 == 0b0000011 && (raw >> 12) & 0b111 != 0b111,
-            0b00 => matches!((raw >> 13) & 0b111, C_LW | C_LD),
+            0b00 => match (raw >> 13) & 0b111 {
+                C_LW | C_LD => true,
+                C_ZCB => matches!((raw >> 10) & 0b111, 0b000 | 0b001),
+                _ => false,
+            },
+            0b10 => matches!((raw >> 13) & 0b111, C_LW | C_LD) && ((raw >> 7) & 0b11111) != 0,
             _ => false,
         }
     }
 
     /// Returns true if `raw` is a store instruction that `decode_store` supports: an integer store
-    /// (SB, SH, SW, SD) or a register-based compressed integer store (C.SW, C.SD).
+    /// (SB, SH, SW, SD), register-based compressed store (C.SW, C.SD, Zcb C.SB, C.SH), or
+    /// stack-based compressed store (C.SWSP, C.SDSP).
     pub fn is_supported_store(raw: usize) -> bool {
         match extract_last_two_bits(raw) {
             0b11 => raw & 0b1111111 == 0b0100011 && (raw >> 12) & 0b111 <= 0b011,
-            0b00 => matches!((raw >> 13) & 0b111, C_SW | C_SD),
+            0b00 => match (raw >> 13) & 0b111 {
+                C_SW | C_SD => true,
+                C_ZCB => {
+                    let sub = (raw >> 10) & 0b111;
+                    sub == 0b010 || (sub == 0b011 && ((raw >> 6) & 0b1) == 0)
+                }
+                _ => false,
+            },
+            0b10 => matches!((raw >> 13) & 0b111, C_SW | C_SD),
             _ => false,
         }
     }
@@ -150,10 +167,10 @@ impl MiralisContext {
     pub fn decode_store(&self, raw: usize) -> StoreInstr {
         match extract_last_two_bits(raw) {
             0b11 => self.decode_uncompressed_store(raw),
-            // Register-based load and store instructions for C set start with 0b00
+            // Register-based load and store instructions for C/Zcb start with 0b00
             0b00 => self.decode_register_based_compressed_store(raw),
-            // Stack-based load and store instructions for C set start with 0b10
-            0b10 => todo!("Decode stack based C store"),
+            // Stack-based load and store instructions for C start with 0b10
+            0b10 => self.decode_stack_based_compressed_store(raw),
             _ => unreachable!(),
         }
     }
@@ -262,6 +279,69 @@ impl MiralisContext {
                     is_unsigned: false,
                 }
             }
+            C_ZCB => match (raw >> 10) & 0b111 {
+                // C.LBU
+                0b000 => {
+                    let imm = (((raw >> 5) & 0b1) << 1) | ((raw >> 6) & 0b1);
+                    LoadInstr {
+                        rd,
+                        rs1,
+                        imm: imm as isize,
+                        len: Width::Byte,
+                        is_compressed: true,
+                        is_unsigned: true,
+                    }
+                }
+                // C.LHU (bit 6 == 0) / C.LH (bit 6 == 1)
+                0b001 => {
+                    let imm = ((raw >> 5) & 0b1) << 1;
+                    LoadInstr {
+                        rd,
+                        rs1,
+                        imm: imm as isize,
+                        len: Width::Byte2,
+                        is_compressed: true,
+                        is_unsigned: ((raw >> 6) & 0b1) == 0,
+                    }
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn decode_stack_based_compressed_load(&self, raw: usize) -> LoadInstr {
+        let rd = Register::from((raw >> 7) & 0b11111);
+        let rs1 = Register::X2;
+        let func3 = (raw >> 13) & 0b111;
+
+        match func3 {
+            C_LW => {
+                let imm = (((raw >> 2) & 0b11) << 6)
+                    | (((raw >> 12) & 0b1) << 5)
+                    | (((raw >> 4) & 0b111) << 2);
+                LoadInstr {
+                    rd,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::Byte4,
+                    is_compressed: true,
+                    is_unsigned: false,
+                }
+            }
+            C_LD => {
+                let imm = (((raw >> 2) & 0b111) << 6)
+                    | (((raw >> 12) & 0b1) << 5)
+                    | (((raw >> 5) & 0b11) << 3);
+                LoadInstr {
+                    rd,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::Byte8,
+                    is_compressed: true,
+                    is_unsigned: false,
+                }
+            }
             _ => unreachable!(),
         }
     }
@@ -294,6 +374,61 @@ impl MiralisContext {
                     rs1,
                     imm: imm as isize,
                     len: Width::from(64),
+                    is_compressed: true,
+                }
+            }
+            C_ZCB => match (raw >> 10) & 0b111 {
+                // C.SB
+                0b010 => {
+                    let imm = (((raw >> 5) & 0b1) << 1) | ((raw >> 6) & 0b1);
+                    StoreInstr {
+                        rs2,
+                        rs1,
+                        imm: imm as isize,
+                        len: Width::Byte,
+                        is_compressed: true,
+                    }
+                }
+                // C.SH (bit 6 == 0)
+                0b011 if ((raw >> 6) & 0b1) == 0 => {
+                    let imm = ((raw >> 5) & 0b1) << 1;
+                    StoreInstr {
+                        rs2,
+                        rs1,
+                        imm: imm as isize,
+                        len: Width::Byte2,
+                        is_compressed: true,
+                    }
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn decode_stack_based_compressed_store(&self, raw: usize) -> StoreInstr {
+        let rs2 = Register::from((raw >> 2) & 0b11111);
+        let rs1 = Register::X2;
+        let func3 = (raw >> 13) & 0b111;
+
+        match func3 {
+            C_SW => {
+                let imm = (((raw >> 7) & 0b11) << 6) | (((raw >> 9) & 0b1111) << 2);
+                StoreInstr {
+                    rs2,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::Byte4,
+                    is_compressed: true,
+                }
+            }
+            C_SD => {
+                let imm = (((raw >> 7) & 0b111) << 6) | (((raw >> 10) & 0b111) << 3);
+                StoreInstr {
+                    rs2,
+                    rs1,
+                    imm: imm as isize,
+                    len: Width::Byte8,
                     is_compressed: true,
                 }
             }
@@ -1050,13 +1185,26 @@ mod tests {
     fn supported_load_store() {
         assert!(MiralisContext::is_supported_load(0x00053503)); // ld a0, 0(a0)
         assert!(MiralisContext::is_supported_load(0x6108)); // c.ld a0, 0(a0)
+        assert!(MiralisContext::is_supported_load(0x6502)); // c.ldsp a0, 0(sp)
+        assert!(MiralisContext::is_supported_load(0x4502)); // c.lwsp a0, 0(sp)
+        assert!(MiralisContext::is_supported_load(0x8108)); // c.lbu a0, 0(a0)
+        assert!(MiralisContext::is_supported_load(0x8508)); // c.lhu a0, 0(a0)
+        assert!(MiralisContext::is_supported_load(0x8548)); // c.lh a0, 0(a0)
+        assert!(!MiralisContext::is_supported_load(0x6002)); // c.ldsp x0, 0(sp) (reserved)
+        assert!(!MiralisContext::is_supported_load(0x4002)); // c.lwsp x0, 0(sp) (reserved)
         assert!(!MiralisContext::is_supported_load(0x00053507)); // fld fa0, 0(a0)
         assert!(!MiralisContext::is_supported_load(0x1005352f)); // lr.d a0, (a0)
         assert!(!MiralisContext::is_supported_load(0x2108)); // c.fld fa0, 0(a0)
-        assert!(!MiralisContext::is_supported_load(0x6502)); // c.ldsp a0, 0(sp)
+        assert!(!MiralisContext::is_supported_load(0x2502)); // c.fldsp fa0, 0(sp)
         assert!(MiralisContext::is_supported_store(0x00a53023)); // sd a0, 0(a0)
         assert!(MiralisContext::is_supported_store(0xe108)); // c.sd a0, 0(a0)
+        assert!(MiralisContext::is_supported_store(0xe02a)); // c.sdsp a0, 0(sp)
+        assert!(MiralisContext::is_supported_store(0xc02a)); // c.swsp a0, 0(sp)
+        assert!(MiralisContext::is_supported_store(0x8908)); // c.sb a0, 0(a0)
+        assert!(MiralisContext::is_supported_store(0x8d08)); // c.sh a0, 0(a0)
+        assert!(!MiralisContext::is_supported_store(0x8d48)); // bit 6 == 1 is not c.sh
         assert!(!MiralisContext::is_supported_store(0x00a53027)); // fsd fa0, 0(a0)
+        assert!(!MiralisContext::is_supported_store(0xa02a)); // c.fsdsp fa0, 0(sp)
         assert!(!MiralisContext::is_supported_store(0x00a5302f)); // amoadd.d zero, a0, (a0)
     }
 
@@ -1417,6 +1565,131 @@ mod tests {
                 len: Width::from(8),
                 is_compressed: false,
                 is_unsigned: true,
+            }
+        );
+
+        // Stack-based compressed loads/stores: C.LWSP, C.LDSP, C.SWSP, C.SDSP
+        // c.lwsp a4, 0x94(sp): uimm=0x94 (imm[7:6]=2, imm[5]=0, imm[4:2]=5)
+        let c_lwsp = (0b010 << 13) | (0 << 12) | (14 << 7) | (0b101 << 4) | (0b10 << 2) | 0b10;
+        assert!(MiralisContext::is_supported_load(c_lwsp));
+        assert_eq!(
+            mctx.decode_load(c_lwsp),
+            LoadInstr {
+                rd: Register::X14,
+                rs1: Register::X2,
+                imm: 0x94,
+                len: Width::Byte4,
+                is_compressed: true,
+                is_unsigned: false,
+            }
+        );
+
+        // c.ldsp a4, 0x138(sp): imm[8:6]=4, imm[5]=1, imm[4:3]=3 -> 0x138
+        let c_ldsp = (0b011 << 13) | (1 << 12) | (14 << 7) | (0b11 << 5) | (0b100 << 2) | 0b10;
+        assert!(MiralisContext::is_supported_load(c_ldsp));
+        assert_eq!(
+            mctx.decode_load(c_ldsp),
+            LoadInstr {
+                rd: Register::X14,
+                rs1: Register::X2,
+                imm: 0x138,
+                len: Width::Byte8,
+                is_compressed: true,
+                is_unsigned: false,
+            }
+        );
+
+        // c.swsp a4, 0x94(sp): imm[7:6]=2, imm[5:2]=5 -> 0x94
+        let c_swsp = (0b110 << 13) | (0b0101 << 9) | (0b10 << 7) | (14 << 2) | 0b10;
+        assert!(MiralisContext::is_supported_store(c_swsp));
+        assert_eq!(
+            mctx.decode_store(c_swsp),
+            StoreInstr {
+                rs2: Register::X14,
+                rs1: Register::X2,
+                imm: 0x94,
+                len: Width::Byte4,
+                is_compressed: true,
+            }
+        );
+
+        // c.sdsp a4, 0x138(sp): imm[8:6]=4, imm[5:3]=7 -> 0x138
+        let c_sdsp = (0b111 << 13) | (0b111 << 10) | (0b100 << 7) | (14 << 2) | 0b10;
+        assert!(MiralisContext::is_supported_store(c_sdsp));
+        assert_eq!(
+            mctx.decode_store(c_sdsp),
+            StoreInstr {
+                rs2: Register::X14,
+                rs1: Register::X2,
+                imm: 0x138,
+                len: Width::Byte8,
+                is_compressed: true,
+            }
+        );
+
+        // Zcb compressed loads/stores: C.LBU, C.LHU, C.LH, C.SB, C.SH
+        // c.lbu a4, 3(a5): rsc1=7 (x15), rdc=6 (x14), uimm[0]=1 (bit 6), uimm[1]=1 (bit 5)
+        let c_lbu = (0b100 << 13) | (0b000 << 10) | (7 << 7) | (1 << 6) | (1 << 5) | (6 << 2);
+        assert!(MiralisContext::is_supported_load(c_lbu));
+        assert_eq!(
+            mctx.decode_load(c_lbu),
+            LoadInstr {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: 3,
+                len: Width::Byte,
+                is_compressed: true,
+                is_unsigned: true,
+            }
+        );
+
+        // c.lhu a4, 2(a5) and c.lh a4, 2(a5)
+        let c_lhu = (0b100 << 13) | (0b001 << 10) | (7 << 7) | (0 << 6) | (1 << 5) | (6 << 2);
+        let c_lh = (0b100 << 13) | (0b001 << 10) | (7 << 7) | (1 << 6) | (1 << 5) | (6 << 2);
+        assert_eq!(
+            mctx.decode_load(c_lhu),
+            LoadInstr {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: 2,
+                len: Width::Byte2,
+                is_compressed: true,
+                is_unsigned: true,
+            }
+        );
+        assert_eq!(
+            mctx.decode_load(c_lh),
+            LoadInstr {
+                rd: Register::X14,
+                rs1: Register::X15,
+                imm: 2,
+                len: Width::Byte2,
+                is_compressed: true,
+                is_unsigned: false,
+            }
+        );
+
+        // c.sb a4, 1(a5) (uimm[0]=1 -> bit 6=1, uimm[1]=0 -> bit 5=0) and c.sh a4, 2(a5)
+        let c_sb = (0b100 << 13) | (0b010 << 10) | (7 << 7) | (1 << 6) | (0 << 5) | (6 << 2);
+        let c_sh = (0b100 << 13) | (0b011 << 10) | (7 << 7) | (0 << 6) | (1 << 5) | (6 << 2);
+        assert_eq!(
+            mctx.decode_store(c_sb),
+            StoreInstr {
+                rs2: Register::X14,
+                rs1: Register::X15,
+                imm: 1,
+                len: Width::Byte,
+                is_compressed: true,
+            }
+        );
+        assert_eq!(
+            mctx.decode_store(c_sh),
+            StoreInstr {
+                rs2: Register::X14,
+                rs1: Register::X15,
+                imm: 2,
+                len: Width::Byte2,
+                is_compressed: true,
             }
         );
     }
