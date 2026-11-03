@@ -139,7 +139,7 @@ impl VirtContext {
             pc: 0,
             mode: Mode::M,
             nb_pmp: nb_pmp_registers_left,
-            pmp_grain: 0,
+            pmp_grain: 1,
             trap_info: TrapInfo {
                 mepc: 0,
                 mstatus: 0,
