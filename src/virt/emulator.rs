@@ -743,7 +743,9 @@ impl VirtContext {
                 // Nothing to do, the Policy module handles those ecalls
                 logger::trace!("Catching E-call from payload in the policy module");
             }
-            MCause::EcallFromSMode if self.get(Register::X17) == abi::MIRALIS_EID => {
+            MCause::EcallFromSMode
+                if config::FIRMWARE_ABI && self.get(Register::X17) == abi::MIRALIS_EID =>
+            {
                 return self.handle_ecall();
             }
             MCause::EcallFromSMode => {
