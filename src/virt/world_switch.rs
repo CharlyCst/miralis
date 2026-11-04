@@ -62,7 +62,7 @@ impl VirtContext {
                 arch::write_csr(Csr::Sepc, self.csr.sepc);
                 arch::write_csr(Csr::Scause, self.csr.scause);
                 arch::write_csr(Csr::Stval, self.csr.stval);
-                if mctx.hw.extensions.is_sstc_enabled {
+                if mctx.hw.extensions.has_sstc_extension {
                     arch::write_csr(Csr::Stimecmp, self.csr.stimecmp);
                 }
             }
@@ -159,7 +159,7 @@ impl VirtContext {
                 self.csr.sepc = arch::write_csr(Csr::Sepc, 0);
                 self.csr.scause = arch::write_csr(Csr::Scause, 0);
                 self.csr.stval = arch::write_csr(Csr::Stval, 0);
-                if mctx.hw.extensions.is_sstc_enabled {
+                if mctx.hw.extensions.has_sstc_extension {
                     self.csr.stimecmp = arch::write_csr(Csr::Stimecmp, 0);
                 }
             }
