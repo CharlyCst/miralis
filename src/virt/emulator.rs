@@ -420,8 +420,16 @@ impl VirtContext {
                 );
             }
             _ => {
-                // The physical mstatus holds the payload's mstatus after the trap, including MPP.
+                // The physical mstatus holds the payload's mstatus after the trap, including MPP,
+                // except MPIE which reflects the host's physical MIE rather than virtual MIE.
+                let mie = (self.csr.mstatus & mstatus::MIE_FILTER) >> mstatus::MIE_OFFSET;
                 self.csr.mstatus = self.trap_info.mstatus;
+                VirtCsr::set_csr_field(
+                    &mut self.csr.mstatus,
+                    mstatus::MPIE_OFFSET,
+                    mstatus::MPIE_FILTER,
+                    mie,
+                );
                 self.mode = Mode::M;
             }
         }
